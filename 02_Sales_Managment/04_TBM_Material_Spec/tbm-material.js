@@ -1,4 +1,7 @@
-/* TBM 자재 규격 관리 (tbm-material.js) */
+/* ═══════════════════════════════════════════════════════════════
+   TBM 자재 규격 관리 (tbm-material.js)
+   ECOUNT ERP 스타일 고밀도 스프레드시트 엔진 & 데이터 바인딩
+   ═══════════════════════════════════════════════════════════════ */
 
 // --- Auth Fetch (with retry for iframe auth race condition) ---
 async function authFetch(url, opts = {}, _retries = 3) {
@@ -19,80 +22,178 @@ window.exchangeRates = {};
 let allData = [], filteredData = [], presetsData = [];
 let currentSort = { column: 'createdAt', asc: false };
 let currentPage = 1, pageSize = 30;
-let activeFilters = [], activeCategoryFilter = 'all';
+let activeCategoryFilter = 'all';
+let activeSourceTypeFilter = 'all';
 let currentFiles = [];
-let activeFieldFilters = {}; // {fieldKey: searchValue}
-const fieldOptions = [['all','통합검색'],['site','현장명'],['equipment','장비명'],['category','분류'],['itemName','품목명'],['spec','규격/모델'],['manufacturer','제조사']];
-const fieldLabels = { all:'통합검색', site:'현장명', equipment:'장비명', category:'분류', itemName:'품목명', spec:'규격/모델', manufacturer:'제조사' };
+let subSearchText = '';
+let subSearchTimer = null;
+
 const $ = id => document.getElementById(id);
+const escapeHtml = str => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
 
-document.addEventListener('DOMContentLoaded', () => { initEvents(); loadPresets().then(() => loadData()); });
+document.addEventListener('DOMContentLoaded', () => {
+    initEvents();
+    loadPresets().then(() => loadData());
+});
 
+// ── 1. 이벤트 초기화 ──
 function initEvents() {
-    $('btn-add-condition')?.addEventListener('click', () => KngSearchEngine.addConditionRow('search-conditions', fieldOptions));
-    $('btn-clear-search')?.addEventListener('click', clearSearch);
+    // 툴바 액션 버튼들
+    $('addBtn')?.addEventListener('click', () => openModal());
+    $('deleteBtn')?.addEventListener('click', deleteSelected);
+    $('exportBtn')?.addEventListener('click', exportExcel);
+    $('compareBtn')?.addEventListener('click', openCompare);
+    $('presetBtn')?.addEventListener('click', openPresetDrawer);
+
+    // 검색창 & 엔터 검색
     $('btn-do-search')?.addEventListener('click', doSearch);
-    document.querySelector('#search-conditions .si-search-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
-    $('selectAll').addEventListener('change', e => document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked));
-    $('addBtn').addEventListener('click', () => openModal());
-    $('deleteBtn').addEventListener('click', deleteSelected);
-    $('exportBtn').addEventListener('click', exportExcel);
-    $('compareBtn').addEventListener('click', openCompare);
-    $('presetBtn').addEventListener('click', openPresetDrawer);
-    $('closeModalBtn').addEventListener('click', confirmCloseModal);
-    $('cancelBtn').addEventListener('click', confirmCloseModal);
-    $('closeDrawerBtn').addEventListener('click', closePresetDrawer);
-    $('closeDrawerBtn2').addEventListener('click', closePresetDrawer);
-    $('closeCompareBtn').addEventListener('click', () => $('compareModal').classList.remove('active'));
-    $('closeCompareBtn2').addEventListener('click', () => $('compareModal').classList.remove('active'));
-    $('compareExportBtn').addEventListener('click', exportCompare);
-    // Track mousedown to prevent close when dragging text outside modal
+    $('btn-clear-search')?.addEventListener('click', clearSearch);
+    $('searchInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doSearch();
+    });
+
+    // 구분 필터 (전체/국내/수입)
+    $('sourceTypeFilter')?.addEventListener('change', e => {
+        activeSourceTypeFilter = e.target.value;
+        currentPage = 1;
+        applyFiltersAndSort();
+    });
+
+    // 검색 대상 변경
+    $('searchTarget')?.addEventListener('change', () => {
+        currentPage = 1;
+        applyFiltersAndSort();
+    });
+
+    // 결과 내 실시간 재검색 (Sub-search)
+    $('subSearchInput')?.addEventListener('input', e => {
+        clearTimeout(subSearchTimer);
+        subSearchTimer = setTimeout(() => {
+            subSearchText = e.target.value.trim().toLowerCase();
+            currentPage = 1;
+            applyFiltersAndSort();
+        }, 150);
+    });
+
+    // 열 너비 조절 도구 버튼
+    $('btnAutoFitCols')?.addEventListener('click', () => {
+        if (window.ErpGridResizer) window.ErpGridResizer.autoFitAll('tbmTable');
+    });
+    $('btnResetCols')?.addEventListener('click', () => {
+        if (window.ErpGridResizer) window.ErpGridResizer.resetWidths('tbmTable');
+    });
+
+    // 페이지 크기 셀렉트
+    $('pageSizeSelect')?.addEventListener('change', e => {
+        pageSize = parseInt(e.target.value) || 30;
+        currentPage = 1;
+        applyFiltersAndSort();
+    });
+
+    // 전체 선택 체크박스
+    $('selectAll')?.addEventListener('change', e => {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
+        updateFloatingBar();
+    });
+
+    // 하단 플로팅 바 버튼
+    $('floatingCompareBtn')?.addEventListener('click', openCompare);
+    $('floatingDeleteBtn')?.addEventListener('click', deleteSelected);
+    $('floatingClearBtn')?.addEventListener('click', () => {
+        $('selectAll').checked = false;
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+        updateFloatingBar();
+    });
+
+    // 모달 닫기
+    $('closeModalBtn')?.addEventListener('click', confirmCloseModal);
+    $('cancelBtn')?.addEventListener('click', confirmCloseModal);
+    $('closeDrawerBtn')?.addEventListener('click', closePresetDrawer);
+    $('closeDrawerBtn2')?.addEventListener('click', closePresetDrawer);
+    $('closeCompareBtn')?.addEventListener('click', () => $('compareModal').classList.remove('active'));
+    $('closeCompareBtn2')?.addEventListener('click', () => $('compareModal').classList.remove('active'));
+    $('compareExportBtn')?.addEventListener('click', exportCompare);
+
+    // 모달 외부 클릭 닫기 제어
     let mouseDownTarget = null;
     window.addEventListener('mousedown', e => { mouseDownTarget = e.target; });
     window.addEventListener('click', e => {
         if (mouseDownTarget !== e.target) { mouseDownTarget = null; return; }
-        if (e.target===$('itemModal')) confirmCloseModal();
-        if (e.target===$('drawerOverlay')) closePresetDrawer();
-        if (e.target===$('compareModal')) $('compareModal').classList.remove('active');
+        if (e.target === $('itemModal')) confirmCloseModal();
+        if (e.target === $('drawerOverlay')) closePresetDrawer();
+        if (e.target === $('compareModal')) $('compareModal').classList.remove('active');
         mouseDownTarget = null;
     });
-    $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
-    ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
-    $('inpCategory').addEventListener('change', onCategoryChange);
-    // Source type toggle
+
+    // 폼 저장 및 계산 이벤트
+    $('itemForm')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        await saveItem();
+    });
+    ['inpQty', 'inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
+    $('inpCategory')?.addEventListener('change', onCategoryChange);
+
+    // 국내 / 수입 구분 라디오
     document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
-    $('addPkgGroupBtn').addEventListener('click', () => addPackagingGroup());
-    // Sort dropdown
-    $('sortSelect').addEventListener('change', () => { const [col,dir] = $('sortSelect').value.split('-'); currentSort = {column:col, asc:dir==='asc'}; applyFiltersAndSort(); });
-    // File upload
+    $('addPkgGroupBtn')?.addEventListener('click', () => addPackagingGroup());
+
+    // 파일 업로드
     const area = $('fileUploadArea'), inp = $('fileInput');
-    area.addEventListener('click', () => inp.click());
-    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
-    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
-    area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('dragover'); uploadFiles(e.dataTransfer.files); });
-    inp.addEventListener('change', () => { if (inp.files.length) uploadFiles(inp.files); inp.value = ''; });
-    // Preset drawer
-    $('addDrawerCatBtn').addEventListener('click', addPresetCategory);
-    $('addDrawerSectionBtn').addEventListener('click', addSectionCard);
-    $('saveDrawerBtn').addEventListener('click', saveCurrentPreset);
-    // Sidebar field search
-    $('sidebarFieldSearchBtn').addEventListener('click', doFieldSearch);
-    $('sidebarFieldResetBtn').addEventListener('click', () => { activeFieldFilters={}; $('sidebarFieldInput').value=''; applyFiltersAndSort(); });
-    $('sidebarFieldInput').addEventListener('keydown', e => { if(e.key==='Enter') doFieldSearch(); });
+    if (area && inp) {
+        area.addEventListener('click', () => inp.click());
+        area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+        area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+        area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('dragover'); uploadFiles(e.dataTransfer.files); });
+        inp.addEventListener('change', () => { if (inp.files.length) uploadFiles(inp.files); inp.value = ''; });
+    }
+
+    // 프리셋 드로어 이벤트
+    $('addDrawerCatBtn')?.addEventListener('click', addPresetCategory);
+    $('addDrawerSectionBtn')?.addEventListener('click', addSectionCard);
+    $('saveDrawerBtn')?.addEventListener('click', saveCurrentPreset);
+
+    // 테이블 헤더 정렬 클릭 이벤트 바인딩
+    document.querySelectorAll('#tbmTable thead th.sortable-th').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (!col) return;
+            if (currentSort.column === col) {
+                currentSort.asc = !currentSort.asc;
+            } else {
+                currentSort.column = col;
+                currentSort.asc = true;
+            }
+            applyFiltersAndSort();
+        });
+    });
 }
 
 function clearSearch() {
-    const c = $('search-conditions');
-    if (c) { c.innerHTML = ''; const row = document.createElement('div'); row.className = 'si-condition-row';
-        row.innerHTML = `<select class="si-field-select" data-role="field">${fieldOptions.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select><input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">`;
-        row.querySelector('.si-search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); }); c.appendChild(row); }
-    activeFilters = []; activeCategoryFilter = 'all'; currentPage = 1; applyFiltersAndSort();
-    $('categoryChips').querySelectorAll('.cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+    $('searchInput').value = '';
+    $('subSearchInput').value = '';
+    $('searchTarget').value = 'all';
+    $('sourceTypeFilter').value = 'all';
+    subSearchText = '';
+    activeCategoryFilter = 'all';
+    activeSourceTypeFilter = 'all';
+    currentPage = 1;
+    applyFiltersAndSort();
 }
 
-function doSearch() { activeFilters = KngSearchEngine.getConditionsFromBar('search-conditions'); currentPage = 1; applyFiltersAndSort(); }
+function doSearch() {
+    currentPage = 1;
+    applyFiltersAndSort();
+}
 
-// --- Data Loading ---
+// ── 2. 데이터 로드 및 초기화 ──
 async function loadData() {
     try {
         const [res, rateRes] = await Promise.all([
@@ -105,8 +206,13 @@ async function loadData() {
             window.exchangeRates = await rateRes.json();
             updateExchangeRateUI();
         }
-        renderSidebar(); updateDatalists(); applyFiltersAndSort();
-    } catch(e) { console.error(e); $('cardList').innerHTML = '<div class="tbm-empty-cards" style="color:red;"><i class="bx bx-error-circle"></i>데이터를 불러오는 중 오류가 발생했습니다.</div>'; }
+        renderCategoryTabs();
+        updateDatalists();
+        applyFiltersAndSort();
+    } catch(e) {
+        console.error(e);
+        $('tbmTbody').innerHTML = '<tr><td colspan="17" class="text-center text-danger py-4"><i class="bx bx-error-circle fs-3 d-block mb-1"></i>데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+    }
 }
 
 function updateExchangeRateUI() {
@@ -125,7 +231,6 @@ async function loadPresets() {
         const res = await authFetch(API + '/presets');
         if (res.ok) {
             presetsData = await res.json();
-            // 과거 버그로 인해 중복된 키가 DB에 저장되어 있는 경우를 위해 로드 시 동적 중복 제거
             presetsData.forEach(p => {
                 if (p.fields) {
                     const seen = new Set();
@@ -150,380 +255,592 @@ async function loadPresets() {
 
 function updateCategorySelect() {
     const sel = $('inpCategory');
+    if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = '<option value="">— 분류 선택 —</option>';
-    presetsData.forEach(p => { const o = document.createElement('option'); o.value = p.category; o.textContent = p.category; sel.appendChild(o); });
-    // Also allow categories from existing data
+    presetsData.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.category;
+        o.textContent = p.category;
+        sel.appendChild(o);
+    });
     const existing = new Set(presetsData.map(p => p.category));
-    allData.forEach(d => { if (d.category && !existing.has(d.category)) { const o = document.createElement('option'); o.value = d.category; o.textContent = d.category; sel.appendChild(o); existing.add(d.category); } });
+    allData.forEach(d => {
+        if (d.category && !existing.has(d.category)) {
+            const o = document.createElement('option');
+            o.value = d.category;
+            o.textContent = d.category;
+            sel.appendChild(o);
+            existing.add(d.category);
+        }
+    });
     sel.value = cur;
 }
 
-function renderSidebar() {
-    const cats = new Map(); // cat -> count
-    allData.forEach(d => { if(d.category) cats.set(d.category, (cats.get(d.category)||0)+1); });
-    presetsData.forEach(p => { if(p.category && !cats.has(p.category)) cats.set(p.category,0); });
-    const totalCount = allData.length;
-    const el = $('sidebarCatList');
-    let html = `<div class="sidebar-cat-item${activeCategoryFilter==='all'?' active':''}" data-cat="all"><span>전체</span><span class="sidebar-cat-count">${totalCount}</span></div>`;
-    [...cats.keys()].sort().forEach(cat => {
-        html += `<div class="sidebar-cat-item${activeCategoryFilter===cat?' active':''}" data-cat="${cat}"><span>${cat}</span><span class="sidebar-cat-count">${cats.get(cat)}</span></div>`;
+// ── 3. 자재 분류 세그먼트 탭 렌더링 ──
+function renderCategoryTabs() {
+    const container = $('categoryTabGroup');
+    if (!container) return;
+
+    const cats = new Map();
+    allData.forEach(d => {
+        if (d.category) cats.set(d.category, (cats.get(d.category) || 0) + 1);
     });
-    el.innerHTML = html;
-    el.querySelectorAll('.sidebar-cat-item').forEach(item => {
-        item.addEventListener('click', () => {
-            activeCategoryFilter = item.dataset.cat;
-            activeFieldFilters = {};
+    presetsData.forEach(p => {
+        if (p.category && !cats.has(p.category)) cats.set(p.category, 0);
+    });
+
+    let html = `<button type="button" class="erp-tab-btn${activeCategoryFilter === 'all' ? ' active' : ''}" data-cat="all">전체 <span class="badge rounded-pill bg-secondary text-white" style="font-size:9px;padding:1px 4px;">${allData.length}</span></button>`;
+    
+    [...cats.keys()].sort().forEach(cat => {
+        const count = cats.get(cat);
+        html += `<button type="button" class="erp-tab-btn${activeCategoryFilter === cat ? ' active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)} <span class="badge rounded-pill bg-light text-secondary border" style="font-size:9px;padding:1px 4px;">${count}</span></button>`;
+    });
+
+    container.innerHTML = html;
+    container.querySelectorAll('.erp-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeCategoryFilter = btn.dataset.cat;
             currentPage = 1;
-            renderSidebar();
-            renderSidebarFields();
+            renderCategoryTabs();
             applyFiltersAndSort();
         });
     });
-    renderSidebarFields();
-}
-
-function renderSidebarFields() {
-    const section = $('sidebarFieldSection');
-    const list = $('sidebarFieldList');
-    if (activeCategoryFilter === 'all') { section.style.display = 'none'; return; }
-    const preset = presetsData.find(p => p.category === activeCategoryFilter);
-    if (!preset || !preset.fields || !preset.fields.length) { section.style.display = 'none'; return; }
-    section.style.display = '';
-    let html = '';
-    preset.fields.forEach(f => {
-        if (f.type === 'section') return;
-        const lbl = (f.label||'').replace(/\n/g,' / ');
-        html += `<div class="sidebar-field-row"><input type="checkbox" data-field-key="${f.key}" ${activeFieldFilters[f.key]?'checked':''}><label>${lbl}</label></div>`;
-    });
-    list.innerHTML = html;
-}
-
-function doFieldSearch() {
-    activeFieldFilters = {};
-    const val = $('sidebarFieldInput').value.trim();
-    $('sidebarFieldList').querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
-        activeFieldFilters[cb.dataset.fieldKey] = val;
-    });
-    currentPage = 1;
-    applyFiltersAndSort();
 }
 
 function updateDatalists() {
     const sets = { site: new Set(), equipment: new Set(), itemName: new Set(), manufacturer: new Set() };
-    allData.forEach(d => { Object.keys(sets).forEach(k => { if (d[k]) sets[k].add(d[k]); }); });
+    allData.forEach(d => {
+        Object.keys(sets).forEach(k => { if (d[k]) sets[k].add(d[k]); });
+    });
     Object.entries(sets).forEach(([k, s]) => {
         const dl = $('list' + k.charAt(0).toUpperCase() + k.slice(1));
-        if (dl) dl.innerHTML = [...s].sort().map(v => `<option value="${v}">`).join('');
+        if (dl) dl.innerHTML = [...s].sort().map(v => `<option value="${escapeHtml(v)}">`).join('');
     });
 }
 
-// --- Filter & Sort ---
+// ── 4. 필터링 및 정렬 ──
 function applyFiltersAndSort() {
+    const searchTarget = $('searchTarget')?.value || 'all';
+    const query = ($('searchInput')?.value || '').trim().toLowerCase();
+    const queryTokens = query ? query.split(/\s+/).filter(Boolean) : [];
+
     filteredData = allData.filter(item => {
+        // 1. 분류 필터
         if (activeCategoryFilter !== 'all' && item.category !== activeCategoryFilter) return false;
-        if (activeFilters.length > 0 && !KngSearchEngine.matchesGroupConditions(item, activeFilters, false, ['site','equipment','category','itemName','spec','manufacturer'])) return false;
-        // Field search filters
-        for (const [key, val] of Object.entries(activeFieldFilters)) {
-            if (!val) continue;
-            const cf = item.customFields || {};
-            const cfVal = String(cf[key] || '').toLowerCase();
-            if (!cfVal.includes(val.toLowerCase())) return false;
+
+        // 2. 구분 필터 (국내/수입)
+        if (activeSourceTypeFilter === 'domestic' && item.sourceType === 'import') return false;
+        if (activeSourceTypeFilter === 'import' && item.sourceType !== 'import') return false;
+
+        // 3. 스마트 다중 검색 (AND 검색)
+        if (queryTokens.length > 0) {
+            let searchableText = '';
+            if (searchTarget === 'all') {
+                searchableText = [
+                    item.site, item.equipment, item.category, item.itemName,
+                    item.spec, item.manufacturer, item.remarks,
+                    ...Object.values(item.customFields || {}),
+                    ...Object.values(item.customFieldNotes || {})
+                ].join(' ').toLowerCase();
+            } else {
+                searchableText = String(item[searchTarget] || '').toLowerCase();
+            }
+
+            const matchAllTokens = queryTokens.every(tok => searchableText.includes(tok));
+            if (!matchAllTokens) return false;
         }
+
+        // 4. 결과 내 재검색 (Sub-search)
+        if (subSearchText) {
+            const rowContent = [
+                item.site, item.equipment, item.category, item.itemName,
+                item.spec, item.manufacturer, item.remarks, item.qty, item.price, item.total,
+                ...Object.values(item.customFields || {})
+            ].join(' ').toLowerCase();
+            if (!rowContent.includes(subSearchText)) return false;
+        }
+
         return true;
     });
-    const numCols = ['qty','price','total'];
-    applySorting(filteredData, currentSort.column, currentSort.asc, [], numCols);
-    KngSearchEngine.renderFilterChips('filter-chips', activeFilters, fieldLabels, idx => { activeFilters.splice(idx, 1); currentPage = 1; applyFiltersAndSort(); });
-    updateKPI(); renderCards();
+
+    // 정렬 수행
+    const numCols = ['qty', 'price', 'total'];
+    if (currentSort.column) {
+        filteredData.sort((a, b) => {
+            let va = a[currentSort.column], vb = b[currentSort.column];
+            if (numCols.includes(currentSort.column)) {
+                va = Number(va) || 0;
+                vb = Number(vb) || 0;
+                return currentSort.asc ? va - vb : vb - va;
+            }
+            if (currentSort.column === 'createdAt') {
+                va = new Date(va || 0).getTime();
+                vb = new Date(vb || 0).getTime();
+                return currentSort.asc ? va - vb : vb - va;
+            }
+            va = String(va || '').toLowerCase();
+            vb = String(vb || '').toLowerCase();
+            return currentSort.asc ? va.localeCompare(vb, 'ko') : vb.localeCompare(va, 'ko');
+        });
+    }
+
+    updateSortUI();
+    updateKPI();
+    renderGrid();
+}
+
+function updateSortUI() {
+    document.querySelectorAll('#tbmTable thead th.sortable-th').forEach(th => {
+        const col = th.dataset.sort;
+        const icon = th.querySelector('.sort-icon');
+        if (!icon) return;
+        if (col === currentSort.column) {
+            icon.textContent = currentSort.asc ? ' 🔼' : ' 🔽';
+            th.classList.add('text-primary');
+        } else {
+            icon.textContent = '';
+            th.classList.remove('text-primary');
+        }
+    });
 }
 
 function updateKPI() {
-    let tQty = 0; const eqSet = new Set();
-    filteredData.forEach(d => { tQty += d.qty || 0; if (d.equipment) eqSet.add(d.equipment); });
-    $('kpiCount').textContent = filteredData.length.toLocaleString();
-    $('kpiQty').textContent = tQty.toLocaleString();
-    $('kpiEquipments').textContent = eqSet.size;
+    let tQty = 0;
+    const eqSet = new Set();
+    filteredData.forEach(d => {
+        tQty += d.qty || 0;
+        if (d.equipment) eqSet.add(d.equipment);
+    });
+
+    if ($('totalCount')) $('totalCount').textContent = `${allData.length}건`;
+    if ($('kpiCount')) $('kpiCount').textContent = filteredData.length.toLocaleString();
+    if ($('kpiQty')) $('kpiQty').textContent = tQty.toLocaleString();
+    if ($('kpiEquipments')) $('kpiEquipments').textContent = eqSet.size;
+    if ($('filterResultCount')) $('filterResultCount').textContent = `조회 ${filteredData.length.toLocaleString()}건`;
 }
 
-// --- Render Cards ---
-function renderCards() {
-    const el = $('cardList');
-    $('totalCount').textContent = `${filteredData.length}건`;
+// ── 5. 고밀도 ERP 시트 테이블 렌더링 ──
+function renderGrid() {
+    const tbody = $('tbmTbody');
+    if (!tbody) return;
+
     $('selectAll').checked = false;
-    if (!filteredData.length) { el.innerHTML = '<div class="tbm-empty-cards"><i class="bx bx-package"></i>데이터가 없습니다.</div>'; $('pagination').innerHTML=''; return; }
+    updateFloatingBar();
+
+    if (!filteredData.length) {
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center text-muted py-4"><i class="bx bx-package fs-3 d-block mb-1"></i>조회된 자재 규격 데이터가 없습니다.</td></tr>';
+        $('pagination').innerHTML = '';
+        return;
+    }
+
     const pg = calcPagination(filteredData.length, currentPage, pageSize);
     currentPage = pg.page;
     const rows = filteredData.slice(pg.startIdx, pg.endIdx);
-    const imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
+    const imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+
     let html = '';
     rows.forEach((d, idx) => {
         const num = pg.startIdx + idx + 1;
         const filesArr = Array.isArray(d.files) ? d.files : [];
-        const thumbFile = filesArr.find(f => { const ext = (f.originalName||f.filename||'').split('.').pop().toLowerCase(); return imgExts.includes(ext); });
-        const thumbHtml = thumbFile ? `<img src="${thumbFile.url||API+'/uploads/'+thumbFile.filename}" alt="${d.itemName||''}">` : `<div class="no-image"><i class='bx bx-image'></i><br>이미지 없음</div>`;
-        // Custom fields rendering — group by section
-        let fieldsHtml = '';
-        const preset = presetsData.find(p => p.category === d.category);
-        const cfNotes = d.customFieldNotes || {};
-        if (preset && preset.fields && d.customFields) {
-            let currentGroup = '';
-            preset.fields.forEach(f => {
-                if (f.type === 'section') {
-                    if (currentGroup) currentGroup += '</div></div>';
-                    currentGroup += `<div class="tbm-cf-group"><div class="tbm-cf-section-label">【${(f.label||'').replace(/\n/g,' / ')}】</div><div class="tbm-cf-values">`;
-                } else {
-                    const v = d.customFields[f.key];
-                    if (v) {
-                        if (!currentGroup) currentGroup = '<div class="tbm-cf-group"><div class="tbm-cf-values">';
-                        const noteStr = cfNotes[f.key] ? `<em class="cf-note-badge" title="${cfNotes[f.key]}">${cfNotes[f.key]}</em>` : '';
-                        currentGroup += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}${noteStr}</span> `;
-                    }
-                }
-            });
-            if (currentGroup) currentGroup += '</div></div>';
-            if (currentGroup) fieldsHtml = `<div class="tbm-card-fields">${currentGroup}</div>`;
+        const thumbFile = filesArr.find(f => {
+            const ext = (f.originalName || f.filename || '').split('.').pop().toLowerCase();
+            return imgExts.includes(ext);
+        });
+        const thumbUrl = thumbFile ? (thumbFile.url || API + '/uploads/' + thumbFile.filename) : '';
+
+        // 미니 썸네일 박스
+        const thumbMiniHtml = thumbUrl 
+            ? `<div class="thumb-mini-box" onmouseenter="showImageHover('${thumbUrl}', '${escapeHtml(d.itemName)}', event)" onmouseleave="hideImageHover()" onclick="openModal('${d.id}')"><img src="${thumbUrl}" alt="썸네일"></div>`
+            : `<div class="thumb-mini-box no-img"><i class='bx bx-image'></i></div>`;
+
+        // 구분 플랫 배지
+        const sourceBadgeHtml = d.sourceType === 'import'
+            ? `<span class="erp-badge erp-badge-import">수입</span>`
+            : `<span class="erp-badge erp-badge-domestic">국내</span>`;
+
+        // 주요 사양 요약 텍스트 (커스텀 필드 요약)
+        let cfSummary = '';
+        if (d.customFields && typeof d.customFields === 'object') {
+            const entries = Object.entries(d.customFields).filter(([k, v]) => v != null && v !== '');
+            if (entries.length > 0) {
+                const preset = presetsData.find(p => p.category === d.category);
+                const fieldLabelMap = {};
+                (preset?.fields || []).forEach(f => { fieldLabelMap[f.key] = (f.label || '').replace(/\n/g, ' '); });
+                cfSummary = entries.slice(0, 3).map(([k, v]) => `${fieldLabelMap[k] || k}: ${v}`).join(' · ');
+                if (entries.length > 3) cfSummary += ` (+${entries.length - 3})`;
+            }
         }
-        const dateStr = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}) : '';
-        const fileCount = filesArr.length;
-        const attachHtml = fileCount ? `<span class="attach-badge has-files"><i class='bx bx-paperclip'></i> ${fileCount}개 파일</span>` : '';
-        html += `<div class="tbm-card" data-id="${d.id}">
-            <div class="tbm-card-header" onclick="openModal('${d.id}')">
-                <div class="tbm-card-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></div>
-                <span class="tbm-card-rank">${num}</span>
-                <div class="tbm-card-title-area">
-                    <span class="tbm-card-name">${d.itemName||'-'}</span>
-                    ${d.manufacturer?`<span class="tbm-card-mfr">| ${d.manufacturer}</span>`:''}
-                </div>
-                <button class="tbm-card-toggle" style="margin-right:4px;" onclick="event.stopPropagation(); window.openModal('${d.id}', true)"><i class='bx bx-copy'></i> 복사</button>
-                <button class="tbm-card-toggle" onclick="event.stopPropagation(); toggleCard(this)">닫기 <i class='bx bx-chevron-up'></i></button>
-            </div>
-            <div class="tbm-card-body">
-                <div class="tbm-card-thumb" onclick="openModal('${d.id}')">${thumbHtml}</div>
-                <div class="tbm-card-detail" onclick="openModal('${d.id}')">
-                    <div class="tbm-card-basic">
-                        ${d.category?`<span class="cat-tag">${d.category}</span>`:''}
-                        ${d.spec?`<span>규격: ${d.spec}</span>`:''}
-                    </div>
-                    ${fieldsHtml}
-                    <div class="tbm-card-meta">
-                        ${d.site?`<span>현장: ${d.site}</span>`:''}
-                        ${d.equipment?`<span>장비: ${d.equipment}</span>`:''}
-                        ${d.sourceType === 'import' ? '' : `<span>수량: ${d.qty||0} ${d.unit||'EA'}</span>`}
-                    </div>
-                    <div class="tbm-card-meta">
-                        ${d.sourceType === 'import' ? buildImportPriceHtml(d) : `<span class="tbm-card-total">단가: ₩${fmtN(d.price)}${d.price > 0 ? ' <em style="font-size:10px;color:var(--gray-400);font-style:normal">(국내)</em>':''}</span><span>합계: ₩${fmtN(d.total)}</span>`}
-                        ${d.quoteDate?`<span>견적일: ${d.quoteDate}</span>`:''}
-                    </div>
-                    <div class="tbm-card-footer">
-                        ${attachHtml}
-                        <span class="tbm-card-date">등록: ${dateStr}</span>
-                    </div>
-                </div>
-            </div>
-        </div>`;
+        if (!cfSummary) cfSummary = '<span class="text-muted opacity-50">-</span>';
+
+        // 날짜 포맷
+        const dateStr = d.quoteDate || (d.updatedAt ? new Date(d.updatedAt).toISOString().split('T')[0] : '-');
+
+        // 메인 데이터 행
+        html += `
+        <tr class="erp-main-row" data-id="${d.id}" id="row_${d.id}">
+            <td class="text-center user-select-none">
+                <input type="checkbox" class="row-check form-check-input mt-0 cursor-pointer" value="${d.id}" onchange="updateFloatingBar(event)">
+                <span class="text-muted ms-1" style="font-size:10.5px;">${num}</span>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn-expand" id="btnExp_${d.id}" onclick="toggleAccordion('${d.id}', event)" title="상세 사양 및 첨부파일 펼치기">
+                    <i class='bx bx-chevron-right'></i>
+                </button>
+            </td>
+            <td class="text-center p-0">
+                ${thumbMiniHtml}
+            </td>
+            <td class="text-center">
+                ${sourceBadgeHtml}
+            </td>
+            <td class="text-center">
+                <span class="erp-badge erp-badge-cat text-truncate d-inline-block" style="max-width:75px;" title="${escapeHtml(d.category)}">${escapeHtml(d.category || '-')}</span>
+            </td>
+            <td title="${escapeHtml(d.site || '-')}">
+                ${escapeHtml(d.site || '-')}
+            </td>
+            <td title="${escapeHtml(d.equipment || '-')}">
+                ${escapeHtml(d.equipment || '-')}
+            </td>
+            <td title="${escapeHtml(d.itemName || '-')}">
+                <strong class="text-primary cursor-pointer hover-underline" onclick="openModal('${d.id}')">${escapeHtml(d.itemName || '-')}</strong>
+            </td>
+            <td title="${escapeHtml(d.spec || '-')}">
+                ${escapeHtml(d.spec || '-')}
+            </td>
+            <td title="${escapeHtml(d.manufacturer || '-')}">
+                ${escapeHtml(d.manufacturer || '-')}
+            </td>
+            <td class="text-end tabular-nums" title="${d.sourceType === 'import' ? '수입 견적' : (d.qty || 0) + ' ' + (d.unit || 'EA')}">
+                ${d.sourceType === 'import' ? '<span class="text-muted">-</span>' : fmtN(d.qty) + ' <span style="font-size:10px;color:#64748b;">' + (d.unit || 'EA') + '</span>'}
+            </td>
+            <td class="text-end tabular-nums">
+                ${d.sourceType === 'import' ? '<span class="text-muted">-</span>' : '₩' + fmtN(d.price)}
+            </td>
+            <td class="text-end tabular-nums fw-bold text-primary">
+                ${d.sourceType === 'import' ? '<span class="text-muted fw-normal">-</span>' : '₩' + fmtN(d.total)}
+            </td>
+            <td class="text-muted" style="font-size:11px;" title="${escapeHtml(cfSummary.replace(/<[^>]+>/g, ''))}">
+                ${cfSummary}
+            </td>
+            <td class="text-center">
+                ${filesArr.length ? `<span class="text-primary cursor-pointer fw-bold" onclick="toggleAccordion('${d.id}', event)" title="${filesArr.length}개 첨부파일"><i class='bx bx-paperclip'></i> ${filesArr.length}</span>` : '<span class="text-muted opacity-50">-</span>'}
+            </td>
+            <td class="text-center text-muted tabular-nums" style="font-size:10.5px;">
+                ${dateStr}
+            </td>
+            <td class="text-center d-print-none">
+                <button type="button" class="btn-grid-action" onclick="openModal('${d.id}')" title="수정"><i class='bx bx-edit'></i></button>
+                <button type="button" class="btn-grid-action ms-1" onclick="openModal('${d.id}', true)" title="복사"><i class='bx bx-copy'></i></button>
+                <button type="button" class="btn-grid-action btn-grid-action-danger ms-1" onclick="deleteSingle('${d.id}')" title="삭제"><i class='bx bx-trash'></i></button>
+            </td>
+        </tr>
+
+        <!-- 아코디언 상세 전표 서브 행 -->
+        <tr class="erp-sub-row d-none" id="subRow_${d.id}">
+            <td colspan="17" class="p-0">
+                ${buildAccordionContentHtml(d, thumbUrl, filesArr)}
+            </td>
+        </tr>`;
     });
-    el.innerHTML = html;
-    renderPagination({container:$('pagination'),totalFiltered:filteredData.length,totalAll:allData.length,totalPages:pg.totalPages,currentPage,pageSize,startIdx:pg.startIdx,endIdx:pg.endIdx,onPageChange:p=>{currentPage=p;renderCards();},onPageSizeChange:s=>{pageSize=s;currentPage=1;renderCards();}});
+
+    tbody.innerHTML = html;
+
+    // 페이지네이션 렌더링
+    renderPagination({
+        container: $('pagination'),
+        totalFiltered: filteredData.length,
+        totalAll: allData.length,
+        totalPages: pg.totalPages,
+        currentPage,
+        pageSize,
+        startIdx: pg.startIdx,
+        endIdx: pg.endIdx,
+        onPageChange: p => { currentPage = p; renderGrid(); },
+        onPageSizeChange: s => { pageSize = s; currentPage = 1; renderGrid(); }
+    });
+
+    // 그리드 열 너비 리사이저 초기화
+    if (window.ErpGridResizer) {
+        window.ErpGridResizer.init('tbmTable');
+    }
 }
 
-window.toggleCard = function(btn) {
-    const card = btn.closest('.tbm-card');
-    card.classList.toggle('collapsed');
-    btn.innerHTML = card.classList.contains('collapsed') ? '열기 <i class="bx bx-chevron-down"></i>' : '닫기 <i class="bx bx-chevron-up"></i>';
+// 호환성 별칭 (기존 코드에서 호출 시 안전하게 연동)
+function renderCards() { renderGrid(); }
+function renderSidebar() { renderCategoryTabs(); }
+
+// ── 6. 아코디언 상세 뷰 빌더 ──
+function buildAccordionContentHtml(d, thumbUrl, filesArr) {
+    const preset = presetsData.find(p => p.category === d.category);
+    const cfNotes = d.customFieldNotes || {};
+
+    // 1) 스펙 테이블 (섹션별 그룹)
+    let specTableHtml = '<div class="text-muted small">등록된 커스텀 사양이 없습니다.</div>';
+    if (preset && preset.fields && d.customFields) {
+        let rowsHtml = '';
+        preset.fields.forEach(f => {
+            if (f.type === 'section') {
+                rowsHtml += `<tr class="table-light"><th colspan="2" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}</th></tr>`;
+            } else {
+                const val = d.customFields[f.key];
+                if (val != null && val !== '') {
+                    const note = cfNotes[f.key] ? ` <span class="badge bg-light text-secondary border ms-1" title="${cfNotes[f.key]}">${cfNotes[f.key]}</span>` : '';
+                    rowsHtml += `<tr><th>${(f.label || '').replace(/\n/g, ' ')}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
+                }
+            }
+        });
+        if (rowsHtml) {
+            specTableHtml = `<table class="acc-spec-table"><tbody>${rowsHtml}</tbody></table>`;
+        }
+    }
+
+    // 2) 첨부파일 다운로드 리스트
+    let filesHtml = '<div class="text-muted" style="font-size:10.5px;">첨부파일 없음</div>';
+    if (filesArr.length > 0) {
+        filesHtml = `<div class="d-flex flex-column gap-1">` + filesArr.map(f => {
+            const ext = (f.originalName || f.filename || '').split('.').pop().toLowerCase();
+            let icon = 'bx-file';
+            if (['pdf'].includes(ext)) icon = 'bx-file-blank text-danger';
+            else if (['xlsx','xls','csv'].includes(ext)) icon = 'bx-spreadsheet text-success';
+            else if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) icon = 'bx-image text-primary';
+            const downloadUrl = f.url || `${API}/uploads/${f.filename}`;
+            return `<a href="${downloadUrl}" target="_blank" download class="text-decoration-none text-dark d-inline-flex align-items-center gap-1 p-1 border rounded bg-white hover-bg-light" style="font-size:11px;">
+                <i class='bx ${icon}'></i>
+                <span class="text-truncate" style="max-width:110px;">${escapeHtml(f.originalName || f.filename)}</span>
+                <i class='bx bx-download text-muted ms-auto'></i>
+            </a>`;
+        }).join('') + `</div>`;
+    }
+
+    // 3) 가격 및 수입/패키징 정보
+    let pricingHtml = '';
+    if (d.sourceType === 'import') {
+        const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
+        pricingHtml = `
+            <div class="acc-price-box">
+                <div class="fw-bold text-warning-emphasis mb-1"><i class='bx bx-globe'></i> 수입 견적 사양</div>
+                ${groups.length ? groups.map(g => {
+                    const its = (g.incoterms || []).map(it => {
+                        const sym = currencySymbol(it.currency || 'KRW');
+                        const approx = formatKrwApprox(it.price, it.currency);
+                        return `<div>- <strong>${it.term}</strong>: ${sym}${fmtDec(it.price)}${approx}</div>`;
+                    }).join('');
+                    return `<div class="mb-2 p-1 border border-warning rounded bg-white">
+                        <div class="fw-bold" style="color:#92400e;">📦 ${escapeHtml(g.packaging || '포장단위')} (${g.qty || 0} ${g.unit || ''})</div>
+                        <div class="ps-2" style="font-size:11px;">${its || '<span class="text-muted">가격 미입력</span>'}</div>
+                    </div>`;
+                }).join('') : '<div class="text-muted">포장단위 정보 없음</div>'}
+            </div>`;
+    } else {
+        pricingHtml = `
+            <div class="acc-price-box">
+                <div class="fw-bold text-primary mb-1"><i class='bx bx-won'></i> 국내 단가 정보</div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">수량:</span>
+                    <strong>${fmtN(d.qty)} ${d.unit || 'EA'}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">단가:</span>
+                    <strong>₩${fmtN(d.price)}</strong>
+                </div>
+                <div class="d-flex justify-content-between pt-1 border-top">
+                    <span class="fw-bold">합계:</span>
+                    <strong class="text-primary fs-6">₩${fmtN(d.total)}</strong>
+                </div>
+            </div>`;
+    }
+
+    // 비고 정보
+    const remarksHtml = d.remarks 
+        ? `<div class="mt-2 p-1 px-2 border rounded bg-light" style="font-size:11px;"><i class='bx bx-note text-secondary'></i> <strong>비고:</strong> ${escapeHtml(d.remarks)}</div>` 
+        : '';
+
+    return `
+    <div class="accordion-content-box">
+        <div class="acc-grid-layout">
+            <!-- 좌측: 썸네일 & 파일 -->
+            <div class="acc-thumb-area">
+                <div class="acc-section-title"><i class='bx bx-image'></i> 사진 및 파일</div>
+                <div class="acc-big-thumb" onclick="openModal('${d.id}')">
+                    ${thumbUrl ? `<img src="${thumbUrl}" alt="${escapeHtml(d.itemName)}">` : `<div class="text-muted text-center" style="font-size:11px;"><i class='bx bx-image fs-1 d-block mb-1 opacity-50'></i>이미지 없음</div>`}
+                </div>
+                ${filesHtml}
+            </div>
+
+            <!-- 중앙: 상세 커스텀 스펙 -->
+            <div>
+                <div class="acc-section-title"><i class='bx bx-slider'></i> 상세 규격 및 기술 사양 (${escapeHtml(d.category || '기본')})</div>
+                ${specTableHtml}
+                ${remarksHtml}
+            </div>
+
+            <!-- 우측: 가격/견적 & 전표 액션 -->
+            <div>
+                <div class="acc-section-title"><i class='bx bx-calculator'></i> 견적 및 관리</div>
+                ${pricingHtml}
+                <div class="d-flex gap-1 mt-2">
+                    <button type="button" class="btn-erp btn-erp-primary flex-fill justify-content-center" onclick="openModal('${d.id}')">
+                        <i class='bx bx-edit'></i> 수정
+                    </button>
+                    <button type="button" class="btn-erp flex-fill justify-content-center" onclick="openModal('${d.id}', true)">
+                        <i class='bx bx-copy'></i> 복사
+                    </button>
+                    <button type="button" class="btn-erp btn-erp-danger flex-fill justify-content-center" onclick="deleteSingle('${d.id}')">
+                        <i class='bx bx-trash'></i> 삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ── 7. 아코디언 토글 & 호버 팝오버 ──
+window.toggleAccordion = function(id, event) {
+    if (event) event.stopPropagation();
+    const subRow = $('subRow_' + id);
+    const btn = $('btnExp_' + id);
+    const mainRow = $('row_' + id);
+    if (!subRow) return;
+
+    const isHidden = subRow.classList.contains('d-none');
+    if (isHidden) {
+        subRow.classList.remove('d-none');
+        btn?.classList.add('expanded');
+        mainRow?.classList.add('selected-row');
+    } else {
+        subRow.classList.add('d-none');
+        btn?.classList.remove('expanded');
+        mainRow?.classList.remove('selected-row');
+    }
 };
 
-function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
+window.showImageHover = function(url, title, e) {
+    if (!url) return;
+    const pop = $('imageHoverPopover');
+    const img = $('imageHoverImg');
+    const titleEl = $('imageHoverTitle');
+    if (!pop || !img) return;
 
-function formatKrwApprox(price, currency) {
-    if (currency === 'KRW' || !window.exchangeRates || !window.exchangeRates[currency]) return '';
-    const krwValue = price * (1 / window.exchangeRates[currency]);
-    return ` <em style="font-size:10px;color:#9ca3af;font-style:normal">(약 ₩${fmtN(Math.round(krwValue))})</em>`;
-}
+    img.src = url;
+    if (titleEl) titleEl.textContent = title || '';
 
-function buildImportPriceHtml(d) {
-    const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
-    // Backward compat: fallback to old flat incoterms
-    if (!groups.length) {
-        const its = Array.isArray(d.incoterms) ? d.incoterms : [];
-        if (!its.length) return '<span class="tbm-card-total">가격 미입력 <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em></span>';
-        const basis = d.perUnitBasis ? ` (${d.perUnitBasis}개 기준)` : '';
-        return its.map(it => {
-            const sym = currencySymbol(it.currency || 'KRW');
-            const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-            const approxKrw = formatKrwApprox(it.price, it.currency || 'KRW');
-            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${approxKrw}${basis}</span>`;
-        }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
-    }
-    return groups.map(g => {
-        const label = g.packaging || '미지정';
-        const unitStr = g.unit ? ` ${g.unit}` : '';
-        const qtyStr = g.qty ? ` · 수량: ${fmtDec(g.qty)}${unitStr}` : '';
-        const itsHtml = (g.incoterms || []).map(it => {
-            const sym = currencySymbol(it.currency || 'KRW');
-            const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-            const approxKrw = formatKrwApprox(it.price, it.currency || 'KRW');
-            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${approxKrw}</span>`;
-        }).join('');
-        return `<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:600;color:#92400e;">📦 ${label}${qtyStr}</span><br>${itsHtml || '<span style="font-size:10px;color:var(--gray-400);">가격 미입력</span>'}</div>`;
-    }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
-}
-function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
+    pop.style.display = 'block';
+    const x = Math.min(e.clientX + 15, window.innerWidth - 250);
+    const y = Math.min(e.clientY + 15, window.innerHeight - 250);
+    pop.style.left = x + 'px';
+    pop.style.top = y + 'px';
+};
 
-const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
-const CURRENCY_LIST = [
-    { code: 'USD', symbol: '$', label: 'USD ($)' },
-    { code: 'CNY', symbol: '¥', label: 'CNY (¥)' },
-    { code: 'EUR', symbol: '€', label: 'EUR (€)' },
-    { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
-    { code: 'KRW', symbol: '₩', label: 'KRW (₩)' },
-    { code: 'GBP', symbol: '£', label: 'GBP (£)' },
-];
-function currencySymbol(code) { return (CURRENCY_LIST.find(c => c.code === code) || {}).symbol || code + ' '; }
-function fmtDec(n) { if (n == null || n === 0) return '0'; return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }); }
+window.hideImageHover = function() {
+    const pop = $('imageHoverPopover');
+    if (pop) pop.style.display = 'none';
+};
 
-function toggleSourceType() {
-    const isImport = $('srcImport').checked;
-    $('domesticFields').style.display = isImport ? 'none' : '';
-    $('importFields').style.display = isImport ? '' : 'none';
-}
+// ── 8. 하단 플로팅 요약 바 & 다중 선택 제어 ──
+function updateFloatingBar(event) {
+    if (event) event.stopPropagation();
+    const checked = Array.from(document.querySelectorAll('.row-check:checked'));
+    const bar = $('floatingBar');
+    const deleteBtn = $('deleteBtn');
+    const badge = $('selectedItemsBadge');
 
-// ── Packaging Group Functions ──
-function addPackagingGroup(data) {
-    const container = $('packagingGroupsContainer');
-    const group = document.createElement('div');
-    group.className = 'pkg-group';
-    group.innerHTML = `
-        <div class="pkg-group-header">
-            <i class='bx bx-package pkg-icon'></i>
-            <input type="text" class="pkg-name" placeholder="포장단위 입력 (예: Drum 200L, Bulk, IBC 등)" value="${data?.packaging || ''}">
-            <button type="button" class="pkg-del" title="삭제"><i class='bx bx-trash'></i></button>
-        </div>
-        <div class="pkg-group-body">
-            <div class="pkg-meta">
-                <div class="fg">
-                    <label>수량</label>
-                    <input type="number" class="pkg-qty" placeholder="0" min="0" step="any" value="${data?.qty || ''}">
-                </div>
-                <div class="fg">
-                    <label>단위</label>
-                    <select class="pkg-unit">
-                        ${['EA','SET','BOX','M','KG','L','TON','ROLL','DRUM','IBC','BAG','PAIL'].map(u => `<option value="${u}"${u===(data?.unit||'EA')?' selected':''}>${u}</option>`).join('')}
-                    </select>
-                </div>
-            </div>
-            <div class="pkg-incoterms"></div>
-            <button type="button" class="add-incoterm-btn pkg-add-it">
-                <i class='bx bx-plus'></i> Incoterms 추가
-            </button>
-        </div>`;
-    // Delete
-    group.querySelector('.pkg-del').addEventListener('click', () => {
-        if (confirm('이 포장단위 그룹을 삭제하시겠습니까?')) group.remove();
-    });
-    // Add incoterm
-    group.querySelector('.pkg-add-it').addEventListener('click', () => {
-        addIncotermToGroup(group);
-    });
-    container.appendChild(group);
-    // Populate existing incoterms
-    if (data?.incoterms?.length) {
-        data.incoterms.forEach(it => addIncotermToGroup(group, it.term, it.price, it.currency));
-    }
-    return group;
-}
+    if (!bar) return;
 
-function addIncotermToGroup(groupEl, term, price, currency) {
-    const container = groupEl.querySelector('.pkg-incoterms');
-    const row = document.createElement('div');
-    row.className = 'incoterm-row';
-    row.innerHTML = `
-        <select class="it-term">${INCOTERMS_LIST.map(t => `<option value="${t}"${t===term?' selected':''}>${t}</option>`).join('')}</select>
-        <select class="it-currency">${CURRENCY_LIST.map(c => `<option value="${c.code}"${c.code===(currency||'USD')?' selected':''}>${c.label}</option>`).join('')}</select>
-        <input type="number" class="it-price" placeholder="가격" min="0" step="any" value="${price||''}">
-        <button type="button" class="it-del" title="삭제"><i class='bx bx-x'></i></button>`;
-    row.querySelector('.it-del').addEventListener('click', () => row.remove());
-    container.appendChild(row);
-}
+    if (checked.length > 0) {
+        bar.classList.add('show');
+        if (deleteBtn) deleteBtn.classList.remove('d-none');
+        if (badge) {
+            badge.classList.remove('d-none');
+            badge.textContent = `${checked.length}건 선택됨`;
+        }
 
-function collectPackagingGroups() {
-    const groups = [];
-    $('packagingGroupsContainer').querySelectorAll('.pkg-group').forEach(g => {
-        const packaging = g.querySelector('.pkg-name').value.trim();
-        const qty = parseFloat(g.querySelector('.pkg-qty').value) || 0;
-        const unit = g.querySelector('.pkg-unit').value || 'EA';
-        const incoterms = [];
-        g.querySelectorAll('.incoterm-row').forEach(r => {
-            const term = r.querySelector('.it-term').value;
-            const currency = r.querySelector('.it-currency').value;
-            const p = parseFloat(r.querySelector('.it-price').value) || 0;
-            if (term && p > 0) incoterms.push({ term, price: p, currency });
+        let domesticTotal = 0;
+        checked.forEach(cb => {
+            const item = allData.find(x => x.id === cb.value);
+            if (item && item.sourceType !== 'import') {
+                domesticTotal += item.total || 0;
+            }
         });
-        groups.push({ packaging, qty, unit, incoterms });
-    });
-    return groups;
+
+        $('floatingCount').textContent = checked.length;
+        $('floatingDomesticTotal').textContent = '₩' + domesticTotal.toLocaleString();
+    } else {
+        bar.classList.remove('show');
+        if (deleteBtn) deleteBtn.classList.add('d-none');
+        if (badge) badge.classList.add('d-none');
+    }
 }
 
-// --- Modal CRUD ---
+// ── 9. 등록 / 수정 모달 로직 ──
 let modalSnapshot = '';
 
 function getFormSnapshot() {
     const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'].map(id => $(id)?.value || '');
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const cfVals = [];
-    $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => cfVals.push(inp.value || ''));
+    $('customFieldsGrid')?.querySelectorAll('[data-cf-key]')?.forEach(inp => cfVals.push(inp.value || ''));
     const cfNoteVals = [];
-    $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => cfNoteVals.push(inp.value || ''));
-    // Packaging groups snapshot
+    $('customFieldsGrid')?.querySelectorAll('[data-cf-note-key]')?.forEach(inp => cfNoteVals.push(inp.value || ''));
     const pkgSnap = JSON.stringify(collectPackagingGroups());
     return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, pkgSnap, currentFiles.length]);
 }
 
 window.openModal = function(id = null, isDuplicate = false) {
-    $('itemForm').reset(); $('inpTotal').value = ''; currentFiles = [];
-    $('customFieldsSection').style.display = 'none'; $('customFieldsGrid').innerHTML = '';
+    $('itemForm').reset();
+    $('inpTotal').value = '';
+    currentFiles = [];
+    $('customFieldsSection').style.display = 'none';
+    $('customFieldsGrid').innerHTML = '';
     $('packagingGroupsContainer').innerHTML = '';
-    $('srcDomestic').checked = true; toggleSourceType();
+    $('srcDomestic').checked = true;
+    toggleSourceType();
     renderFileList();
+
     if (id) {
         const d = allData.find(x => x.id === id);
         if (!d) return;
         $('modalTitle').textContent = isDuplicate ? '자재 규격 복사 등록' : '자재 규격 수정';
         $('editId').value = isDuplicate ? '' : d.id;
-        $('inpSite').value = d.site||''; $('inpEquipment').value = d.equipment||'';
-        $('inpCategory').value = d.category||''; 
-        
+        $('inpSite').value = d.site || '';
+        $('inpEquipment').value = d.equipment || '';
+        $('inpCategory').value = d.category || '';
+
         let newItemName = d.itemName || '';
-        if (isDuplicate && newItemName) {
-            newItemName += ' (복사본)';
-        }
+        if (isDuplicate && newItemName) newItemName += ' (복사본)';
         $('inpItemName').value = newItemName;
-        
-        $('inpSpec').value = d.spec||''; $('inpUnit').value = d.unit||'EA';
-        $('inpQty').value = d.qty||0; $('inpPrice').value = d.price||0;
-        $('inpManufacturer').value = d.manufacturer||''; $('inpRemarks').value = d.remarks||'';
+
+        $('inpSpec').value = d.spec || '';
+        $('inpUnit').value = d.unit || 'EA';
+        $('inpQty').value = d.qty || 0;
+        $('inpPrice').value = d.price || 0;
+        $('inpManufacturer').value = d.manufacturer || '';
+        $('inpRemarks').value = d.remarks || '';
         $('inpQuoteDate').value = d.quoteDate || '';
         currentFiles = isDuplicate ? [] : (Array.isArray(d.files) ? [...d.files] : []);
-        // Source type
+
         if (d.sourceType === 'import') {
-            $('srcImport').checked = true; toggleSourceType();
-            // Load packaging groups (with backward compat for old flat incoterms)
+            $('srcImport').checked = true;
+            toggleSourceType();
             const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
             if (groups.length) {
                 groups.forEach(g => addPackagingGroup(g));
             } else {
-                // Migrate old flat incoterms to a single default packaging group
                 const oldIts = Array.isArray(d.incoterms) ? d.incoterms : [];
                 if (oldIts.length || d.qty) {
                     addPackagingGroup({ packaging: '', qty: d.qty || 0, unit: d.unit || 'EA', incoterms: oldIts });
                 }
             }
         }
-        updateCalc(); renderFileList();
+        updateCalc();
+        renderFileList();
         if (d.category) { onCategoryChange(null, d.customFields || {}, d.customFieldNotes || {}); }
     } else {
-        $('modalTitle').textContent = '신규 자재 등록'; $('editId').value = '';
+        $('modalTitle').textContent = '신규 자재 등록';
+        $('editId').value = '';
     }
+
     $('itemModal').classList.add('active');
     document.body.style.overflow = 'hidden';
     requestAnimationFrame(() => { modalSnapshot = getFormSnapshot(); });
@@ -536,7 +853,10 @@ function confirmCloseModal() {
     }
 }
 
-function closeModal() { $('itemModal').classList.remove('active'); document.body.style.overflow = ''; }
+function closeModal() {
+    $('itemModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
 
 async function saveItem() {
     const id = $('editId').value;
@@ -546,137 +866,324 @@ async function saveItem() {
     $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
     const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const isImport = sourceType === 'import';
-    const qty = isImport ? 0 : (parseInt($('inpQty').value)||0);
-    const price = isImport ? 0 : (parseInt($('inpPrice').value)||0);
-    // Collect packaging groups
+    const qty = isImport ? 0 : (parseInt($('inpQty').value) || 0);
+    const price = isImport ? 0 : (parseInt($('inpPrice').value) || 0);
     const packagingGroups = isImport ? collectPackagingGroups() : [];
-    // For backward compat, also flatten incoterms from first group
     const incoterms = packagingGroups.length ? packagingGroups[0].incoterms || [] : [];
     const perUnitBasis = 0;
+
     const payload = {
-        site: $('inpSite').value.trim(), equipment: $('inpEquipment').value.trim(),
-        category: $('inpCategory').value.trim(), itemName: $('inpItemName').value.trim(),
-        spec: $('inpSpec').value.trim(), unit: $('inpUnit').value,
+        site: $('inpSite').value.trim(),
+        equipment: $('inpEquipment').value.trim(),
+        category: $('inpCategory').value.trim(),
+        itemName: $('inpItemName').value.trim(),
+        spec: $('inpSpec').value.trim(),
+        unit: $('inpUnit').value,
         qty, price,
-        manufacturer: $('inpManufacturer').value.trim(), remarks: $('inpRemarks').value.trim(),
-        customFields, customFieldNotes, files: currentFiles,
+        manufacturer: $('inpManufacturer').value.trim(),
+        remarks: $('inpRemarks').value.trim(),
+        customFields,
+        customFieldNotes,
+        files: currentFiles,
         sourceType,
         quoteDate: $('inpQuoteDate').value || '',
         perUnitBasis,
         incoterms,
         packagingGroups
     };
+
     try {
         const url = id ? `${API}/materials/${id}` : `${API}/materials`;
         const method = id ? 'PUT' : 'POST';
         const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        if (res.ok) { 
-            showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success'); 
-            closeModal(); 
-            if (!id) currentPage = 1; // 신규 등록 시 1페이지로 이동
-            loadData(); 
+        if (res.ok) {
+            showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
+            closeModal();
+            if (!id) currentPage = 1;
+            loadData();
+        } else {
+            const err = await res.json();
+            showToast('저장 실패: ' + err.error, 'error');
         }
-        else { const err = await res.json(); showToast('저장 실패: '+err.error, 'error'); }
-    } catch(e) { console.error(e); showToast('서버 연결 오류', 'error'); }
+    } catch(e) {
+        console.error(e);
+        showToast('서버 연결 오류', 'error');
+    }
 }
 
+// 단일 삭제
+async function deleteSingle(id) {
+    if (!confirm('이 자재 규격 항목을 삭제하시겠습니까?')) return;
+    try {
+        const res = await authFetch(`${API}/materials/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ids: [id] })
+        });
+        if (res.ok) {
+            showToast('삭제되었습니다.', 'success');
+            loadData();
+        } else {
+            const err = await res.json();
+            showToast('삭제 실패: ' + err.error, 'error');
+        }
+    } catch(e) {
+        showToast('서버 연결 오류', 'error');
+    }
+}
+
+// 다중 선택 삭제
 async function deleteSelected() {
     const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
     if (!ids.length) return showToast('삭제할 항목을 선택해주세요.', 'warning');
-    if (!confirm(`선택한 ${ids.length}개 항목을 삭제하시겠습니까?`)) return;
+    if (!confirm(`선택한 ${ids.length}개 항목을 일괄 삭제하시겠습니까?`)) return;
     try {
-        const res = await authFetch(`${API}/materials/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids}) });
-        if (res.ok) { showToast('삭제되었습니다.', 'success'); loadData(); }
-        else { const err = await res.json(); showToast('삭제 실패: '+err.error, 'error'); }
-    } catch(e) { console.error(e); showToast('서버 연결 오류', 'error'); }
+        const res = await authFetch(`${API}/materials/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ids })
+        });
+        if (res.ok) {
+            showToast('선택 항목이 삭제되었습니다.', 'success');
+            loadData();
+        } else {
+            const err = await res.json();
+            showToast('삭제 실패: ' + err.error, 'error');
+        }
+    } catch(e) {
+        showToast('서버 연결 오류', 'error');
+    }
 }
 
-// --- Custom Fields (Dynamic by Category) ---
+// ── 10. 수입/국내 및 패키징 관리 ──
+function toggleSourceType() {
+    const isImport = $('srcImport').checked;
+    $('domesticFields').style.display = isImport ? 'none' : '';
+    $('importFields').style.display = isImport ? '' : 'none';
+}
+
+function updateCalc() {
+    const q = parseInt($('inpQty')?.value) || 0;
+    const p = parseInt($('inpPrice')?.value) || 0;
+    $('inpTotal').value = (q * p) > 0 ? '₩' + (q * p).toLocaleString() : '';
+}
+
+const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+const CURRENCY_LIST = [
+    { code: 'USD', symbol: '$', label: 'USD ($)' },
+    { code: 'CNY', symbol: '¥', label: 'CNY (¥)' },
+    { code: 'EUR', symbol: '€', label: 'EUR (€)' },
+    { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
+    { code: 'KRW', symbol: '₩', label: 'KRW (₩)' },
+    { code: 'GBP', symbol: '£', label: 'GBP (£)' },
+];
+function currencySymbol(code) { return (CURRENCY_LIST.find(c => c.code === code) || {}).symbol || code + ' '; }
+function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
+function fmtDec(n) { if (n == null || n === 0) return '0'; return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }); }
+function formatKrwApprox(price, currency) {
+    if (currency === 'KRW' || !window.exchangeRates || !window.exchangeRates[currency]) return '';
+    const krwValue = price * (1 / window.exchangeRates[currency]);
+    return ` <em style="font-size:10px;color:#9ca3af;font-style:normal">(약 ₩${fmtN(Math.round(krwValue))})</em>`;
+}
+
+function addPackagingGroup(data) {
+    const container = $('packagingGroupsContainer');
+    const group = document.createElement('div');
+    group.className = 'pkg-group';
+    group.innerHTML = `
+        <div class="pkg-group-header">
+            <i class='bx bx-package pkg-icon text-warning'></i>
+            <input type="text" class="pkg-name" placeholder="포장단위 (예: Drum 200L, Bulk, IBC 등)" value="${escapeHtml(data?.packaging || '')}">
+            <button type="button" class="btn-grid-action btn-grid-action-danger ms-auto pkg-del" title="삭제"><i class='bx bx-trash'></i></button>
+        </div>
+        <div class="pkg-group-body">
+            <div class="erp-form-grid mb-1">
+                <div class="fg">
+                    <label>수량</label>
+                    <input type="number" class="pkg-qty" placeholder="0" min="0" step="any" value="${data?.qty || ''}">
+                </div>
+                <div class="fg">
+                    <label>단위</label>
+                    <select class="pkg-unit">
+                        ${['EA','SET','BOX','M','KG','L','TON','ROLL','DRUM','IBC','BAG','PAIL'].map(u => `<option value="${u}"${u === (data?.unit || 'EA') ? ' selected' : ''}>${u}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="pkg-incoterms"></div>
+            <button type="button" class="btn-erp btn-erp-warning mt-1 pkg-add-it">
+                <i class='bx bx-plus'></i> Incoterms 추가
+            </button>
+        </div>`;
+
+    group.querySelector('.pkg-del').addEventListener('click', () => {
+        if (confirm('이 포장단위 그룹을 삭제하시겠습니까?')) group.remove();
+    });
+    group.querySelector('.pkg-add-it').addEventListener('click', () => {
+        addIncotermToGroup(group);
+    });
+
+    container.appendChild(group);
+
+    if (data?.incoterms?.length) {
+        data.incoterms.forEach(it => addIncotermToGroup(group, it.term, it.price, it.currency));
+    }
+    return group;
+}
+
+function addIncotermToGroup(groupEl, term, price, currency) {
+    const container = groupEl.querySelector('.pkg-incoterms');
+    const row = document.createElement('div');
+    row.className = 'd-flex align-items-center gap-1 mt-1';
+    row.innerHTML = `
+        <select class="form-select form-select-sm it-term" style="width:75px;height:26px;font-size:11px;">${INCOTERMS_LIST.map(t => `<option value="${t}"${t === term ? ' selected' : ''}>${t}</option>`).join('')}</select>
+        <select class="form-select form-select-sm it-currency" style="width:85px;height:26px;font-size:11px;">${CURRENCY_LIST.map(c => `<option value="${c.code}"${c.code === (currency || 'USD') ? ' selected' : ''}>${c.label}</option>`).join('')}</select>
+        <input type="number" class="form-control form-control-sm it-price" placeholder="가격" min="0" step="any" value="${price || ''}" style="height:26px;font-size:11px;">
+        <button type="button" class="btn-grid-action btn-grid-action-danger it-del" title="삭제"><i class='bx bx-x'></i></button>`;
+    row.querySelector('.it-del').addEventListener('click', () => row.remove());
+    container.appendChild(row);
+}
+
+function collectPackagingGroups() {
+    const groups = [];
+    $('packagingGroupsContainer')?.querySelectorAll('.pkg-group').forEach(g => {
+        const packaging = g.querySelector('.pkg-name').value.trim();
+        const qty = parseFloat(g.querySelector('.pkg-qty').value) || 0;
+        const unit = g.querySelector('.pkg-unit').value || 'EA';
+        const incoterms = [];
+        g.querySelectorAll('.it-term').forEach((termEl, i) => {
+            const term = termEl.value;
+            const currency = g.querySelectorAll('.it-currency')[i].value;
+            const p = parseFloat(g.querySelectorAll('.it-price')[i].value) || 0;
+            if (term && p > 0) incoterms.push({ term, price: p, currency });
+        });
+        groups.push({ packaging, qty, unit, incoterms });
+    });
+    return groups;
+}
+
+// ── 11. 커스텀 필드 동적 생성 ──
 function onCategoryChange(e, existingValues, existingNotes) {
     const cat = $('inpCategory').value;
     const section = $('customFieldsSection'), grid = $('customFieldsGrid');
     const preset = presetsData.find(p => p.category === cat);
-    if (!preset || !preset.fields || !preset.fields.length) { section.style.display = 'none'; grid.innerHTML = ''; return; }
+
+    if (!preset || !preset.fields || !preset.fields.length) {
+        section.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+    }
+
     section.style.display = '';
-    $('customFieldsSectionTitle').textContent = `${cat} — 커스텀 필드`;
+    $('customFieldsSectionTitle').textContent = `${cat} — 커스텀 사양 필드`;
     grid.innerHTML = '';
+
     const vals = existingValues || {};
     const notes = existingNotes || {};
+
     preset.fields.forEach(f => {
         if (f.type === 'section') {
             const divider = document.createElement('div');
-            divider.className = 'cf-section-divider';
-            divider.innerHTML = `<i class='bx bx-chevrons-right'></i> ${(f.label || '').replace(/\n/g, '<br>')}`;
+            divider.className = 'fg-full modal-section-title mt-2';
+            divider.innerHTML = `<i class='bx bx-chevrons-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}`;
             grid.appendChild(divider);
             return;
         }
-        const div = document.createElement('div'); div.className = 'fg cf-with-note';
+
+        const div = document.createElement('div');
+        div.className = 'fg';
+
         const lbl = document.createElement('label');
-        lbl.innerHTML = (f.label || '').replace(/\n/g, '<br>');
-        lbl.setAttribute('for', 'cf-'+f.key);
-        // Preset note hint (from preset manager)
-        const presetNote = f.note ? `<span class="cf-preset-hint" title="${f.note}">${f.note}</span>` : '';
-        if (presetNote) { const hint = document.createElement('span'); hint.className = 'cf-preset-hint'; hint.title = f.note; hint.textContent = f.note; lbl.appendChild(hint); }
-        const inp = document.createElement('input'); inp.type = f.type || 'text'; inp.id = 'cf-'+f.key;
-        inp.dataset.cfKey = f.key; inp.placeholder = (f.label || '').replace(/\n/g, ' '); inp.value = vals[f.key] || '';
+        lbl.textContent = (f.label || '').replace(/\n/g, ' ');
+        if (f.note) {
+            const hint = document.createElement('small');
+            hint.className = 'text-muted ms-1';
+            hint.textContent = `(${f.note})`;
+            lbl.appendChild(hint);
+        }
+
+        const inp = document.createElement('input');
+        inp.type = f.type || 'text';
+        inp.dataset.cfKey = f.key;
+        inp.placeholder = (f.label || '').replace(/\n/g, ' ');
+        inp.value = vals[f.key] || '';
         if (f.required) inp.required = true;
-        // Per-material note input
-        const noteInp = document.createElement('input'); noteInp.type = 'text';
-        noteInp.className = 'cf-note-input'; noteInp.placeholder = '비고 (Testing method 등)';
-        noteInp.dataset.cfNoteKey = f.key; noteInp.value = notes[f.key] || '';
-        div.appendChild(lbl); div.appendChild(inp); div.appendChild(noteInp); grid.appendChild(div);
+
+        const noteInp = document.createElement('input');
+        noteInp.type = 'text';
+        noteInp.className = 'mt-1 text-muted';
+        noteInp.style.fontSize = '10.5px';
+        noteInp.placeholder = '비고 (시험방법 등)';
+        noteInp.dataset.cfNoteKey = f.key;
+        noteInp.value = notes[f.key] || '';
+
+        div.appendChild(lbl);
+        div.appendChild(inp);
+        div.appendChild(noteInp);
+        grid.appendChild(div);
     });
 }
 
-// --- File Upload ---
+// ── 12. 첨부파일 업로드 및 관리 ──
 async function uploadFiles(fileList) {
     const formData = new FormData();
     for (const f of fileList) formData.append('files', f);
     try {
         showToast('파일 업로드 중...', 'info');
-        const res = await authFetch(`${API}/files/upload`, { method:'POST', body: formData });
+        const res = await authFetch(`${API}/files/upload`, { method: 'POST', body: formData });
         if (res.ok) {
             const data = await res.json();
             data.files.forEach(f => currentFiles.push(f));
-            renderFileList(); showToast('업로드 완료', 'success');
-        } else { const err = await res.json(); showToast('업로드 실패: '+err.error, 'error'); }
-    } catch(e) { console.error(e); showToast('업로드 오류', 'error'); }
+            renderFileList();
+            showToast('업로드 완료', 'success');
+        } else {
+            const err = await res.json();
+            showToast('업로드 실패: ' + err.error, 'error');
+        }
+    } catch(e) {
+        showToast('업로드 오류', 'error');
+    }
 }
 
 function renderFileList() {
-    const el = $('fileList'); el.innerHTML = '';
+    const el = $('fileList');
+    if (!el) return;
+    el.innerHTML = '';
     currentFiles.forEach((f, i) => {
         const ext = (f.originalName || f.filename || '').split('.').pop().toLowerCase();
         let icon = 'bx-file';
-        if (['pdf'].includes(ext)) icon = 'bx-file-blank';
-        else if (['xlsx','xls','csv'].includes(ext)) icon = 'bx-spreadsheet';
-        else if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) icon = 'bx-image';
-        else if (['dwg','dxf'].includes(ext)) icon = 'bx-vector';
-        else if (['zip','rar','7z'].includes(ext)) icon = 'bx-archive';
-        const sizeStr = f.size ? (f.size < 1024*1024 ? Math.round(f.size/1024)+'KB' : (f.size/1024/1024).toFixed(1)+'MB') : '';
+        if (['pdf'].includes(ext)) icon = 'bx-file-blank text-danger';
+        else if (['xlsx','xls','csv'].includes(ext)) icon = 'bx-spreadsheet text-success';
+        else if (['jpg','jpeg','png','gif','webp','bmp'].includes(ext)) icon = 'bx-image text-primary';
+
+        const sizeStr = f.size ? (f.size < 1024*1024 ? Math.round(f.size/1024) + 'KB' : (f.size/1024/1024).toFixed(1) + 'MB') : '';
         const downloadUrl = f.url || `${API}/uploads/${f.filename}`;
-        el.innerHTML += `<div class="file-item">
-            <i class="bx ${icon} file-icon"></i>
-            <span class="file-name">${f.originalName || f.filename}</span>
-            <span class="file-size">${sizeStr}</span>
-            <div class="file-actions">
-                <a href="${downloadUrl}" target="_blank" download title="다운로드"><button type="button"><i class='bx bx-download'></i></button></a>
-                <button type="button" class="file-delete-btn" onclick="removeFile(${i})" title="삭제"><i class='bx bx-trash'></i></button>
+
+        const row = document.createElement('div');
+        row.className = 'd-flex align-items-center justify-content-between p-1 px-2 border rounded bg-white mt-1';
+        row.innerHTML = `
+            <div class="d-flex align-items-center gap-1 overflow-hidden">
+                <i class='bx ${icon}'></i>
+                <span class="text-truncate" style="max-width:260px; font-size:11px;">${escapeHtml(f.originalName || f.filename)}</span>
+                <span class="text-muted" style="font-size:10px;">(${sizeStr})</span>
             </div>
-        </div>`;
+            <div class="d-flex gap-1">
+                <a href="${downloadUrl}" target="_blank" download class="btn-grid-action text-decoration-none" title="다운로드"><i class='bx bx-download'></i></a>
+                <button type="button" class="btn-grid-action btn-grid-action-danger" onclick="removeFile(${i})" title="삭제"><i class='bx bx-trash'></i></button>
+            </div>`;
+        el.appendChild(row);
     });
 }
 
 window.removeFile = function(idx) {
     if (confirm('이 파일을 삭제하시겠습니까?')) {
         const f = currentFiles[idx];
-        // Delete from server
-        authFetch(`${API}/files/${f.filename}`, {method:'DELETE'}).catch(()=>{});
-        currentFiles.splice(idx, 1); renderFileList();
+        authFetch(`${API}/files/${f.filename}`, { method: 'DELETE' }).catch(() => {});
+        currentFiles.splice(idx, 1);
+        renderFileList();
     }
 };
 
-// --- Preset Drawer ---
+// ── 13. 프리셋 드로어 (Preset Drawer) ──
 let selectedPresetId = null;
 
 function openPresetDrawer() {
@@ -696,28 +1203,36 @@ function closePresetDrawer() {
 }
 
 function renderDrawerCategories() {
-    const el = $('drawerCatList'); el.innerHTML = '';
+    const el = $('drawerCatList');
+    if (!el) return;
+    el.innerHTML = '';
     presetsData.forEach(p => {
         const chip = document.createElement('button');
         chip.className = 'drawer-cat-chip' + (p.id === selectedPresetId ? ' active' : '');
-        chip.innerHTML = `<span>${p.category}</span><i class='bx bx-x cat-del'></i>`;
+        chip.innerHTML = `<span>${escapeHtml(p.category)}</span><i class='bx bx-x cat-del' style="cursor:pointer;"></i>`;
         chip.querySelector('span').addEventListener('click', () => selectDrawerPreset(p.id));
-        chip.querySelector('.cat-del').addEventListener('click', async (e) => {
+        chip.querySelector('.cat-del').addEventListener('click', async e => {
             e.stopPropagation();
-            if (!confirm(`"${p.category}" 분류를 삭제하시겠습니까?`)) return;
+            if (!confirm(`"${p.category}" 분류 프리셋을 삭제하시겠습니까?`)) return;
             try {
-                await authFetch(`${API}/presets/${p.id}`, {method:'DELETE'});
+                await authFetch(`${API}/presets/${p.id}`, { method: 'DELETE' });
                 await loadPresets();
-                if (selectedPresetId === p.id) { selectedPresetId = null; $('drawerNoSelection').style.display = ''; $('drawerEditorContent').style.display = 'none'; }
+                if (selectedPresetId === p.id) {
+                    selectedPresetId = null;
+                    $('drawerNoSelection').style.display = '';
+                    $('drawerEditorContent').style.display = 'none';
+                }
                 renderDrawerCategories();
+                renderCategoryTabs();
                 showToast('삭제되었습니다.', 'success');
-            } catch(e2) { showToast('삭제 실패', 'error'); }
+            } catch(e2) {
+                showToast('삭제 실패', 'error');
+            }
         });
         el.appendChild(chip);
     });
 }
 
-/* Group flat fields array into sections for visual editing */
 function groupFieldsIntoSections(fields) {
     const sections = [];
     let cur = null;
@@ -726,14 +1241,102 @@ function groupFieldsIntoSections(fields) {
             cur = { label: f.label || '', fields: [] };
             sections.push(cur);
         } else {
-            if (!cur) { cur = { label: '기본 필드', fields: [] }; sections.push(cur); }
+            if (!cur) { cur = { label: '기본 사양', fields: [] }; sections.push(cur); }
             cur.fields.push({ key: f.key, label: f.label || '', type: f.type || 'text', note: f.note || '' });
         }
     });
     return sections;
 }
 
-/* Flatten section cards back to flat array for storage */
+function selectDrawerPreset(id) {
+    selectedPresetId = id;
+    const p = presetsData.find(x => x.id === id);
+    if (!p) return;
+    $('drawerNoSelection').style.display = 'none';
+    $('drawerEditorContent').style.display = '';
+    $('drawerEditorTitle').textContent = `"${p.category}" 사양 필드 설정`;
+    renderDrawerCategories();
+
+    const sections = groupFieldsIntoSections(p.fields);
+    const list = $('drawerSectionList');
+    list.innerHTML = '';
+    if (sections.length === 0) {
+        addSectionCard();
+    } else {
+        sections.forEach(sec => renderSectionCard(sec));
+    }
+}
+
+function renderSectionCard(sectionData) {
+    const list = $('drawerSectionList');
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.innerHTML = `
+        <div class="section-card-header">
+            <button type="button" class="sec-drag" title="순서 드래그"><i class='bx bx-grid-vertical'></i></button>
+            <i class='bx bx-category text-primary'></i>
+            <textarea class="sec-label" placeholder="섹션명 입력 (예: 물리적 특성)" rows="1">${sectionData?.label || ''}</textarea>
+            <button type="button" class="btn-grid-action btn-grid-action-danger ms-auto sec-del" title="삭제"><i class='bx bx-trash'></i></button>
+        </div>
+        <div class="section-card-body">
+            <div class="sec-fields"></div>
+            <button type="button" class="sec-add-field"><i class='bx bx-plus'></i> 사양 필드 추가</button>
+        </div>`;
+
+    card.querySelector('.sec-del').addEventListener('click', () => {
+        if (card.querySelectorAll('.sec-field-row').length > 0 && !confirm('이 섹션과 포함된 필드를 모두 삭제하시겠습니까?')) return;
+        card.remove();
+    });
+
+    const addBtn = card.querySelector('.sec-add-field');
+    const fieldsContainer = card.querySelector('.sec-fields');
+
+    addBtn.addEventListener('click', () => addFieldRow(fieldsContainer));
+
+    if (sectionData?.fields?.length) {
+        sectionData.fields.forEach(f => addFieldRow(fieldsContainer, f));
+    } else {
+        addFieldRow(fieldsContainer);
+    }
+
+    list.appendChild(card);
+    setupDragAndDrop(list, '.section-card', '.sec-drag', 'section');
+}
+
+function addFieldRow(container, fieldData) {
+    const row = document.createElement('div');
+    row.className = 'sec-field-row';
+    row.innerHTML = `
+        <button type="button" class="f-drag" title="순서 드래그"><i class='bx bx-grid-vertical'></i></button>
+        <span class="f-order text-muted" style="font-size:10px;">${container.children.length + 1}</span>
+        <textarea class="sf-label" placeholder="필드명 (예: 정격 압력)" rows="1" style="height:26px;resize:none;font-size:11.5px;">${fieldData?.label || ''}</textarea>
+        <select class="sf-type">
+            <option value="text"${fieldData?.type === 'text' ? ' selected' : ''}>텍스트</option>
+            <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
+        </select>
+        <input type="text" class="sf-note" placeholder="안내/비고" value="${fieldData?.note || ''}">
+        <button type="button" class="btn-grid-action btn-grid-action-danger f-del" title="삭제"><i class='bx bx-x'></i></button>`;
+
+    row.querySelector('.f-del').addEventListener('click', () => {
+        row.remove();
+        reorderSectionFields(container);
+    });
+
+    container.appendChild(row);
+    setupDragAndDrop(container, '.sec-field-row', '.f-drag', 'field');
+}
+
+function reorderSectionFields(container) {
+    container.querySelectorAll('.sec-field-row').forEach((r, i) => {
+        const orderEl = r.querySelector('.f-order');
+        if (orderEl) orderEl.textContent = i + 1;
+    });
+}
+
+function addSectionCard() {
+    renderSectionCard({ label: '신규 섹션', fields: [] });
+}
+
 function flattenSections() {
     const fields = [];
     $('drawerSectionList').querySelectorAll('.section-card').forEach(card => {
@@ -758,145 +1361,85 @@ function flattenSections() {
     return fields;
 }
 
-function selectDrawerPreset(id) {
-    selectedPresetId = id;
-    const p = presetsData.find(x => x.id === id);
-    if (!p) return;
-    $('drawerNoSelection').style.display = 'none';
-    $('drawerEditorContent').style.display = '';
-    $('drawerEditorTitle').textContent = `"${p.category}" 필드 설정`;
-    renderDrawerCategories();
-    // Render section cards
-    const sections = groupFieldsIntoSections(p.fields);
-    const list = $('drawerSectionList'); list.innerHTML = '';
-    if (sections.length === 0) {
-        // Auto-create one empty section
-        addSectionCard();
-    } else {
-        sections.forEach(sec => renderSectionCard(sec));
-    }
-}
-
-function renderSectionCard(sectionData) {
-    const list = $('drawerSectionList');
-    const card = document.createElement('div');
-    card.className = 'section-card';
-    card.innerHTML = `
-        <div class="section-card-header">
-            <button type="button" class="sec-drag" draggable="false" title="드래그하여 순서 변경"><i class='bx bx-grid-vertical'></i></button>
-            <i class='bx bx-category sec-icon'></i>
-            <textarea class="sec-label" placeholder="섹션명 입력 (예: 물리적 특성)" rows="1">${sectionData?.label || ''}</textarea>
-            <button type="button" class="sec-del" title="섹션 삭제"><i class='bx bx-trash'></i></button>
-        </div>
-        <div class="section-card-body">
-            <div class="sec-fields"></div>
-            <button type="button" class="sec-add-field"><i class='bx bx-plus'></i> 필드 추가</button>
-        </div>`;
-    // Delete section
-    card.querySelector('.sec-del').addEventListener('click', () => {
-        if (card.querySelectorAll('.sec-field-row').length > 0 && !confirm('이 섹션과 포함된 필드를 모두 삭제하시겠습니까?')) return;
-        card.remove();
-    });
-    // Add field button inside section
-    card.querySelector('.sec-add-field').addEventListener('click', () => addFieldToSection(card));
-    // Populate existing fields
-    if (sectionData?.fields) {
-        sectionData.fields.forEach(f => addFieldToSection(card, f));
-    }
-    list.appendChild(card);
-    // Section-level drag-and-drop
-    initSectionDrag(card);
-    return card;
-}
-
-function addSectionCard() {
-    renderSectionCard({ label: '', fields: [] });
-}
-
-function addFieldToSection(card, fieldData) {
-    const container = card.querySelector('.sec-fields');
-    const order = container.children.length + 1;
-    const row = document.createElement('div');
-    row.className = 'sec-field-row';
-    row.innerHTML = `
-        <button type="button" class="f-drag" draggable="false" title="드래그하여 순서 변경"><i class='bx bx-grid-vertical'></i></button>
-        <span class="f-order">${order}</span>
-        <textarea class="sf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="2">${fieldData?.label || ''}</textarea>
-        <select class="sf-type">
-            <option value="text"${(!fieldData || fieldData.type === 'text') ? ' selected' : ''}>텍스트</option>
-            <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
-        </select>
-        <input type="text" class="sf-note" placeholder="비고" value="${fieldData?.note || ''}">
-        <button type="button" class="f-del" title="삭제"><i class='bx bx-x'></i></button>`;
-    row.querySelector('.f-del').addEventListener('click', () => {
-        row.remove();
-        reorderSectionFields(container);
-    });
-    container.appendChild(row);
-    // Field-level drag-and-drop
-    initFieldDrag(row, container);
-}
-
-function reorderSectionFields(container) {
-    container.querySelectorAll('.sec-field-row').forEach((r, i) => {
-        r.querySelector('.f-order').textContent = i + 1;
-    });
-}
-
 async function saveCurrentPreset() {
     if (!selectedPresetId) return;
-    const p = presetsData.find(x => x.id === selectedPresetId);
-    if (!p) return;
+    const preset = presetsData.find(x => x.id === selectedPresetId);
+    if (!preset) return;
+
     const fields = flattenSections();
-    const payload = { id: p.id, category: p.category, fields };
+    const payload = { ...preset, fields };
+
     try {
-        const res = await authFetch(`${API}/presets`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); closePresetDrawer(); renderSidebar(); }
-        else { showToast('저장 실패', 'error'); }
-    } catch(e) { showToast('서버 오류', 'error'); }
+        const res = await authFetch(`${API}/presets/${selectedPresetId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('프리셋이 저장되었습니다.', 'success');
+            await loadPresets();
+            renderCategoryTabs();
+            applyFiltersAndSort();
+        } else {
+            showToast('저장 실패', 'error');
+        }
+    } catch(e) {
+        showToast('서버 오류', 'error');
+    }
 }
 
-// ── Drag & Drop: Pointer-based (mousedown/mousemove/mouseup) ──
-// More reliable than HTML5 DnD for nested elements
+function addPresetCategory() {
+    const name = prompt('새 자재 분류명을 입력하세요:');
+    if (!name || !name.trim()) return;
+    const id = 'TBMFP-' + Date.now() + '-' + Math.random().toString(36).substring(2,6);
+    const payload = { id, category: name.trim(), fields: [] };
+    authFetch(`${API}/presets`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(async res => {
+        if (res.ok) {
+            showToast('분류 추가 완료', 'success');
+            await loadPresets();
+            renderDrawerCategories();
+            renderCategoryTabs();
+            selectDrawerPreset(id);
+        } else {
+            showToast('추가 실패', 'error');
+        }
+    })
+    .catch(() => showToast('서버 오류', 'error'));
+}
 
-const dragState = { active: false, el: null, type: null, container: null };
+function setupDragAndDrop(container, selector, handleSelector, type) {
+    let dragState = { el: null, active: false };
 
-function initFieldDrag(row, container) {
-    const handle = row.querySelector('.f-drag');
-    handle.addEventListener('mousedown', e => {
-        e.preventDefault();
-        startDrag(row, 'field', container);
+    container.querySelectorAll(selector).forEach(item => {
+        const handle = item.querySelector(handleSelector);
+        if (!handle || handle.dataset.dragInit) return;
+        handle.dataset.dragInit = 'true';
+
+        handle.addEventListener('mousedown', e => {
+            if (e.button !== 0) return;
+            dragState.el = item;
+            dragState.active = true;
+            item.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
     });
-}
-
-function initSectionDrag(card) {
-    const handle = card.querySelector('.sec-drag');
-    handle.addEventListener('mousedown', e => {
-        e.preventDefault();
-        startDrag(card, 'section', $('drawerSectionList'));
-    });
-}
-
-function startDrag(el, type, container) {
-    dragState.active = true;
-    dragState.el = el;
-    dragState.type = type;
-    dragState.container = container;
-    el.classList.add('dragging');
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = 'grabbing';
-
-    const selector = type === 'field' ? '.sec-field-row' : '.section-card';
 
     function onMouseMove(e) {
-        if (!dragState.active) return;
-        const siblings = [...container.querySelectorAll(selector)];
-        siblings.forEach(s => s.classList.remove('drag-over'));
-        for (const sibling of siblings) {
-            if (sibling === dragState.el) continue;
-            const rect = sibling.getBoundingClientRect();
+        if (!dragState.active || !dragState.el) return;
+        const items = [...container.querySelectorAll(selector + ':not(.dragging)')];
+        for (const item of items) {
+            const rect = item.getBoundingClientRect();
             if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                sibling.classList.add('drag-over');
+                container.querySelectorAll(selector).forEach(s => s.classList.remove('drag-over'));
+                item.classList.add('drag-over');
                 break;
             }
         }
@@ -923,32 +1466,33 @@ function startDrag(el, type, container) {
         container.querySelectorAll(selector).forEach(s => s.classList.remove('drag-over'));
         dragState.el.classList.remove('dragging');
         document.body.style.userSelect = '';
-        document.body.style.cursor = '';
         dragState.active = false;
         dragState.el = null;
     }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
 }
 
-function addPresetCategory() {
-    const name = prompt('새 분류명을 입력하세요:');
-    if (!name || !name.trim()) return;
-    const id = 'TBMFP-' + Date.now() + '-' + Math.random().toString(36).substring(2,6);
-    const payload = { id, category: name.trim(), fields: [] };
-    authFetch(`${API}/presets`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
-        .then(async res => { if (res.ok) { showToast('분류 추가 완료', 'success'); await loadPresets(); renderDrawerCategories(); selectDrawerPreset(id); } else showToast('추가 실패', 'error'); })
-        .catch(() => showToast('서버 오류', 'error'));
-}
-
-// --- Excel Export ---
+// ── 14. 엑셀 내보내기 ──
 function exportExcel() {
     if (!filteredData.length) return showToast('내보낼 데이터가 없습니다.', 'warning');
     const rows = filteredData.map(d => {
-        const row = { '현장명': d.site, '장비명': d.equipment, '분류': d.category, '품목명': d.itemName, '규격/모델': d.spec, '단위': d.unit, '수량': d.qty, '단가': d.price, '합계': d.total, '제조사': d.manufacturer, '비고': d.remarks };
-        // Add custom fields
-        if (d.customFields && typeof d.customFields === 'object') { Object.entries(d.customFields).forEach(([k,v]) => { row[k] = v; }); }
+        const row = {
+            '구분': d.sourceType === 'import' ? '수입' : '국내',
+            '현장명': d.site,
+            '장비명': d.equipment,
+            '분류': d.category,
+            '품목명': d.itemName,
+            '규격/모델': d.spec,
+            '제조사': d.manufacturer,
+            '단위': d.unit,
+            '수량': d.qty,
+            '단가': d.price,
+            '합계': d.total,
+            '견적일': d.quoteDate || '',
+            '비고': d.remarks
+        };
+        if (d.customFields && typeof d.customFields === 'object') {
+            Object.entries(d.customFields).forEach(([k, v]) => { row[k] = v; });
+        }
         return row;
     });
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -958,7 +1502,7 @@ function exportExcel() {
     showToast('엑셀 파일이 다운로드됩니다.', 'success');
 }
 
-// --- Compare ---
+// ── 15. 자재 비교 (Compare Modal) ──
 let compareItems = [];
 
 function openCompare() {
@@ -967,6 +1511,7 @@ function openCompare() {
     const items = ids.map(id => allData.find(d => d.id === id)).filter(Boolean);
     const cats = new Set(items.map(d => d.category));
     if (cats.size > 1) return showToast('같은 분류의 자재만 비교할 수 있습니다.', 'warning');
+
     compareItems = items;
     renderCompareTable();
     $('compareModal').classList.add('active');
@@ -978,69 +1523,65 @@ function renderCompareTable() {
     const preset = presetsData.find(p => p.category === cat);
     const fields = preset?.fields || [];
     const n = compareItems.length;
-    // Basic rows
+
     const basicRows = [
-        ['품목명', d => d.itemName||'-'],
-        ['규격/모델', d => d.spec||'-'],
-        ['제조사', d => d.manufacturer||'-'],
-        ['현장명', d => d.site||'-'],
-        ['장비명', d => d.equipment||'-'],
-        ['수량 (국내)', d => d.sourceType === 'import' ? '-' : `${d.qty||0} ${d.unit||'EA'}`],
-        ['단가 (국내)', d => d.sourceType === 'import' ? '-' : '₩'+fmtN(d.price)],
-        ['합계 (국내)', d => d.sourceType === 'import' ? '-' : '₩'+fmtN(d.total)],
-        ['수입 견적<br><span style="font-size:10px;font-weight:normal">(포장 및 조건별)</span>', d => {
+        ['품목명', d => d.itemName || '-'],
+        ['규격/모델', d => d.spec || '-'],
+        ['제조사', d => d.manufacturer || '-'],
+        ['현장명', d => d.site || '-'],
+        ['장비명', d => d.equipment || '-'],
+        ['구분', d => d.sourceType === 'import' ? '수입' : '국내'],
+        ['수량 (국내)', d => d.sourceType === 'import' ? '-' : `${d.qty || 0} ${d.unit || 'EA'}`],
+        ['단가 (국내)', d => d.sourceType === 'import' ? '-' : '₩' + fmtN(d.price)],
+        ['합계 (국내)', d => d.sourceType === 'import' ? '-' : '₩' + fmtN(d.total)],
+        ['수입 견적 (포장 및 조건별)', d => {
             if (d.sourceType !== 'import') return '-';
             const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
-            if (!groups.length) {
-                const its = Array.isArray(d.incoterms) ? d.incoterms : [];
-                if (!its.length) return '<span style="color:var(--gray-400);">가격 미입력</span>';
-                return its.map(it => {
-                    const priceStr = (it.currency && it.currency !== 'KRW') ? `${currencySymbol(it.currency)}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-                    return `<div style="color:#92400e;">${it.term}: ${priceStr}${formatKrwApprox(it.price, it.currency)}</div>`;
-                }).join('');
-            }
+            if (!groups.length) return '<span class="text-muted">가격 미입력</span>';
             return groups.map(g => {
                 const label = g.packaging || '미지정';
-                const qtyStr = g.qty ? `(${fmtDec(g.qty)} ${g.unit||''})` : '';
+                const qtyStr = g.qty ? `(${fmtDec(g.qty)} ${g.unit || ''})` : '';
                 const itsHtml = (g.incoterms || []).map(it => {
-                    const priceStr = (it.currency && it.currency !== 'KRW') ? `${currencySymbol(it.currency)}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-                    return `<div style="padding-left:12px;color:#92400e;font-size:12px;">- ${it.term}: ${priceStr}${formatKrwApprox(it.price, it.currency)}</div>`;
+                    const sym = currencySymbol(it.currency || 'KRW');
+                    return `<div>- <strong>${it.term}</strong>: ${sym}${fmtDec(it.price)}${formatKrwApprox(it.price, it.currency)}</div>`;
                 }).join('');
-                return `<div style="margin-bottom:8px;"><strong style="color:#111827;">📦 ${label} ${qtyStr}</strong>${itsHtml || '<div style="color:var(--gray-400);font-size:12px;padding-left:12px;">가격 미입력</div>'}</div>`;
+                return `<div class="mb-1"><strong>📦 ${escapeHtml(label)} ${qtyStr}</strong>${itsHtml || '<div class="text-muted">미입력</div>'}</div>`;
             }).join('');
         }]
     ];
-    let html = `<table class="compare-table"><thead><tr><th style="width:140px;">${cat} 비교 (${n}개)</th>`;
-    compareItems.forEach(d => { html += `<th>${d.itemName||d.spec||'-'}</th>`; });
+
+    let html = `<table class="compare-table"><thead><tr><th style="width:140px;">${escapeHtml(cat)} 비교 (${n}개)</th>`;
+    compareItems.forEach(d => { html += `<th>${escapeHtml(d.itemName || d.spec || '-')}</th>`; });
     html += '</tr></thead><tbody>';
-    // Basic info rows
+
     basicRows.forEach(([label, fn]) => {
         const vals = compareItems.map(fn);
         const allSame = vals.every(v => v === vals[0]);
         html += `<tr><td class="compare-label">${label}</td>`;
-        vals.forEach(v => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
+        vals.forEach(v => { html += `<td class="${allSame ? '' : 'compare-diff'}">${v}</td>`; });
         html += '</tr>';
     });
-    // Custom field rows with sections
+
     if (fields.length) {
         fields.forEach(f => {
             if (f.type === 'section') {
-                html += `<tr class="compare-section-row"><td colspan="${n+1}">▸ ${(f.label||'').replace(/\n/g,' / ')}</td></tr>`;
+                html += `<tr class="table-light"><td colspan="${n + 1}" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}</td></tr>`;
             } else {
-                const lbl = (f.label||'').replace(/\n/g,' / ');
+                const lbl = (f.label || '').replace(/\n/g, ' / ');
                 const vals = compareItems.map(d => {
-                    const v = (d.customFields||{})[f.key]||'-';
-                    const note = (d.customFieldNotes||{})[f.key];
-                    return note ? `${v} <em class="cf-note-badge">${note}</em>` : v;
+                    const v = (d.customFields || {})[f.key] || '-';
+                    const note = (d.customFieldNotes || {})[f.key];
+                    return note ? `${escapeHtml(v)} <span class="badge bg-light text-secondary border">${escapeHtml(note)}</span>` : escapeHtml(v);
                 });
-                const rawVals = compareItems.map(d => (d.customFields||{})[f.key]||'-');
+                const rawVals = compareItems.map(d => (d.customFields || {})[f.key] || '-');
                 const allSame = rawVals.every(v => v === rawVals[0]);
                 html += `<tr><td class="compare-label">${lbl}</td>`;
-                vals.forEach((v, i) => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
+                vals.forEach(v => { html += `<td class="${allSame ? '' : 'compare-diff'}">${v}</td>`; });
                 html += '</tr>';
             }
         });
     }
+
     html += '</tbody></table>';
     $('compareTableWrap').innerHTML = html;
 }
@@ -1051,15 +1592,21 @@ function exportCompare() {
     const preset = presetsData.find(p => p.category === cat);
     const fields = preset?.fields || [];
     const rows = [];
-    const header = ['항목', ...compareItems.map(d => d.itemName||d.spec||'-')];
+    const header = ['항목', ...compareItems.map(d => d.itemName || d.spec || '-')];
     rows.push(header);
+
     [['품목명','itemName'],['규격/모델','spec'],['제조사','manufacturer'],['현장명','site'],['장비명','equipment'],['수량','qty'],['단가','price'],['합계','total']].forEach(([lbl,key]) => {
-        rows.push([lbl, ...compareItems.map(d => key==='price'||key==='total' ? d[key]||0 : d[key]||'-')]);
+        rows.push([lbl, ...compareItems.map(d => key === 'price' || key === 'total' ? d[key] || 0 : d[key] || '-')]);
     });
+
     fields.forEach(f => {
-        if (f.type === 'section') { rows.push([`[${(f.label||'').replace(/\n/g,' ')}]`]); }
-        else { rows.push([(f.label||'').replace(/\n/g,' '), ...compareItems.map(d => (d.customFields||{})[f.key]||'-')]); }
+        if (f.type === 'section') {
+            rows.push([`[${(f.label || '').replace(/\n/g, ' ')}]`]);
+        } else {
+            rows.push([(f.label || '').replace(/\n/g, ' '), ...compareItems.map(d => (d.customFields || {})[f.key] || '-')]);
+        }
     });
+
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '자재 비교');
