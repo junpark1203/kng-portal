@@ -957,6 +957,71 @@
             background: #f1f5f9; font-weight: 600; color: #475569; width: 130px;
         }
         .compare-diff { background: #fef9c3 !important; font-weight: 600; }
+
+        /* ── 토스트 알림 (Toast Notification) ── */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 10050 !important;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex !important;
+            align-items: center;
+            gap: 10px;
+            min-width: 280px;
+            max-width: 440px;
+            padding: 11px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #ffffff !important;
+            background: #1e293b;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            opacity: 0;
+            transform: translateY(-12px);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast i {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .toast-success {
+            background: #059669 !important;
+            border-color: #10b981 !important;
+        }
+        .toast-error {
+            background: #dc2626 !important;
+            border-color: #ef4444 !important;
+        }
+        .toast-warning {
+            background: #d97706 !important;
+            border-color: #f59e0b !important;
+        }
+        .toast-info {
+            background: #2563eb !important;
+            border-color: #3b82f6 !important;
+        }
+
+        /* ── 저장 완료된 테이블 행 강조 애니메이션 ── */
+        @keyframes rowSavedGlow {
+            0% { background-color: #bbf7d0 !important; }
+            50% { background-color: #dcfce7 !important; }
+            100% { background-color: transparent; }
+        }
+        .row-highlight-saved {
+            animation: rowSavedGlow 2.5s ease-out;
+        }
     </style>
 </head>
 
@@ -1290,11 +1355,11 @@
                             </div>
                             <div class="fg fg-full">
                                 <label>첨부파일 (도면, 시험성적서, 이미지 등)</label>
-                                <div class="file-upload-area" id="fileUploadArea">
+                                <label for="fileInput" class="file-upload-area d-block m-0" id="fileUploadArea">
                                     <i class='bx bx-cloud-upload' style="font-size:20px; display:block; margin-bottom:2px;"></i>
                                     파일을 드래그하거나 클릭하여 업로드 (최대 30MB)
-                                </div>
-                                <input type="file" id="fileInput" multiple hidden>
+                                </label>
+                                <input type="file" id="fileInput" multiple style="display:none;" accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.bmp,.zip,.rar,.7z,.dwg,.dxf">
                                 <div class="file-list mt-1" id="fileList"></div>
                             </div>
                         </div>
@@ -1312,7 +1377,7 @@
 
                         <div class="modal-footer mt-3">
                             <button type="button" class="btn-erp" id="cancelBtn">취소</button>
-                            <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장</button>
+                            <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
                         </div>
                     </form>
                 </div>
@@ -1379,6 +1444,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_8"></script>
+    <script src="tbm-material.js?v=20260928_9"></script>
 </body>
 </html>

@@ -227,7 +227,7 @@ router.put('/materials/:id', async (req, res) => {
         ];
         const result = await dbRun(sql, params);
         if (result.changes === 0) return res.status(404).json({ error: '자재를 찾을 수 없습니다.' });
-        res.json({ message: '수정 성공' });
+        res.json({ message: '수정 성공', id });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -329,23 +329,35 @@ router.delete('/presets/:id', async (req, res) => {
 // ════════════════════════════════════════
 
 // 파일 업로드 (다중)
-router.post('/files/upload', upload.array('files', 10), (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: '파일이 필요합니다.' });
+router.post('/files/upload', (req, res) => {
+    upload.array('files', 10)(req, res, function (err) {
+        if (err) {
+            console.error('TBM File upload multer error:', err);
+            return res.status(400).json({ error: err.message || '파일 업로드 처리 실패' });
         }
-        const baseUrl = `${req.protocol}://${req.get('host')}/api/tbm/uploads`;
-        const results = req.files.map(f => ({
-            filename: f.filename,
-            originalName: f.originalname,
-            url: baseUrl + '/' + f.filename,
-            size: f.size,
-            mimetype: f.mimetype
-        }));
-        res.json({ message: '업로드 성공', files: results });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        try {
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({ error: '파일이 필요합니다.' });
+            }
+            const baseUrl = `${req.protocol}://${req.get('host')}/api/tbm/uploads`;
+            const results = req.files.map(f => {
+                let originalName = f.originalname;
+                try {
+                    originalName = Buffer.from(f.originalname, 'latin1').toString('utf8');
+                } catch(e) {}
+                return {
+                    filename: f.filename,
+                    originalName,
+                    url: baseUrl + '/' + f.filename,
+                    size: f.size,
+                    mimetype: f.mimetype
+                };
+            });
+            res.json({ message: '업로드 성공', files: results });
+        } catch (innerErr) {
+            res.status(500).json({ error: innerErr.message });
+        }
+    });
 });
 
 // 파일 삭제

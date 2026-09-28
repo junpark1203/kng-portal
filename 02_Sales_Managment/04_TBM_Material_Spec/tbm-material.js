@@ -203,15 +203,38 @@ function initEvents() {
     document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
     $('addPkgGroupBtn')?.addEventListener('click', () => addPackagingGroup());
 
-    // 파일 업로드
+    // 파일 업로드 (label click은 브라우저가 기본 지원하므로 드래그앤드롭 및 change 이벤트 처리)
     const area = $('fileUploadArea'), inp = $('fileInput');
     if (area && inp) {
-        area.addEventListener('click', () => inp.click());
         area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
         area.addEventListener('dragleave', () => area.classList.remove('dragover'));
-        area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('dragover'); uploadFiles(e.dataTransfer.files); });
-        inp.addEventListener('change', () => { if (inp.files.length) uploadFiles(inp.files); inp.value = ''; });
+        area.addEventListener('drop', e => {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+                uploadFiles(e.dataTransfer.files);
+            }
+        });
+        inp.addEventListener('change', () => {
+            if (inp.files && inp.files.length) {
+                uploadFiles(inp.files);
+            }
+        });
     }
+
+    // 모달 단축키 (Ctrl+S / Cmd+S: 저장, ESC: 닫기)
+    window.addEventListener('keydown', e => {
+        const itemModal = $('itemModal');
+        if (itemModal && itemModal.classList.contains('active')) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveItem();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                confirmCloseModal();
+            }
+        }
+    });
 
     // 프리셋 드로어 이벤트
     $('addDrawerCatBtn')?.addEventListener('click', addPresetCategory);
@@ -932,16 +955,30 @@ function updateFloatingBar(event) {
 
 // ── 9. 등록 / 수정 모달 로직 ──
 function getFormSnapshot() {
-    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'].map(id => $(id)?.value || '');
+    const basicKeys = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'];
+    const basicVals = basicKeys.map(id => $(id)?.value.trim() || '');
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
-    const cfVals = [];
+    const pkgSnap = JSON.stringify(collectPackagingGroups());
+    
+    const customSpecs = [];
     const container = $('modalCustomSectionsContainer');
     if (container) {
-        container.querySelectorAll('input').forEach(inp => cfVals.push(inp.value || ''));
+        container.querySelectorAll('.modal-spec-section').forEach(sec => {
+            const secTitle = sec.querySelector('.sec-title-inp')?.value.trim() || '';
+            const rows = [];
+            sec.querySelectorAll('.modal-spec-row').forEach(row => {
+                const lbl = row.querySelector('.spec-field-label')?.value.trim() || '';
+                const val = row.querySelector('.spec-field-val')?.value.trim() || '';
+                const note = row.querySelector('.spec-field-note')?.value.trim() || '';
+                rows.push({ lbl, val, note });
+            });
+            customSpecs.push({ secTitle, rows });
+        });
     }
-    const pkgSnap = JSON.stringify(collectPackagingGroups());
+
+    const fileKeys = currentFiles.map(f => f.filename || f.originalName || '').sort();
     const syncCheck = $('syncPresetCheck')?.checked ? '1' : '0';
-    return JSON.stringify([...vals, src, ...cfVals, pkgSnap, syncCheck, currentFiles.length]);
+    return JSON.stringify({ basicVals, src, pkgSnap, customSpecs, fileKeys, syncCheck });
 }
 
 window.openModal = function(id = null, isDuplicate = false) {
@@ -1010,12 +1047,39 @@ window.openModal = function(id = null, isDuplicate = false) {
 
     $('itemModal').classList.add('active');
     document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => { modalSnapshot = getFormSnapshot(); });
+    modalSnapshot = getFormSnapshot();
 };
 
 function confirmCloseModal() {
-    const changed = getFormSnapshot() !== modalSnapshot;
-    if (!changed || confirm('변경된 내용이 있습니다. 정말 닫으시겠습니까?')) {
+    const isNew = !$('editId')?.value;
+    if (isNew) {
+        const itemName = $('inpItemName')?.value.trim();
+        const spec = $('inpSpec')?.value.trim();
+        const manufacturer = $('inpManufacturer')?.value.trim();
+        const remarks = $('inpRemarks')?.value.trim();
+        const price = parseFloat($('inpPrice')?.value) || 0;
+        const hasFiles = currentFiles.length > 0;
+        let hasCustomVal = false;
+        const container = $('modalCustomSectionsContainer');
+        if (container) {
+            container.querySelectorAll('.spec-field-val').forEach(inp => {
+                if (inp.value.trim()) hasCustomVal = true;
+            });
+        }
+        const hasEnteredData = itemName || spec || manufacturer || remarks || price > 0 || hasFiles || hasCustomVal;
+        if (!hasEnteredData) {
+            closeModal();
+            return;
+        }
+    } else {
+        const currentSnapshot = getFormSnapshot();
+        if (currentSnapshot === modalSnapshot) {
+            closeModal();
+            return;
+        }
+    }
+
+    if (confirm('변경된 내용이 있습니다. 저장하지 않고 모달을 닫으시겠습니까?')) {
         closeModal();
     }
 }
@@ -1023,6 +1087,18 @@ function confirmCloseModal() {
 function closeModal() {
     $('itemModal').classList.remove('active');
     document.body.style.overflow = '';
+}
+
+function highlightSavedRow(id) {
+    if (!id) return;
+    setTimeout(() => {
+        const row = document.getElementById(`row_${id}`) || document.querySelector(`tr[data-id="${id}"]`);
+        if (row) {
+            row.classList.add('row-highlight-saved');
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            setTimeout(() => row.classList.remove('row-highlight-saved'), 2600);
+        }
+    }, 150);
 }
 
 async function saveItem() {
@@ -1102,11 +1178,20 @@ async function saveItem() {
                 }
             }
 
+            let savedId = id;
+            try {
+                const resData = await res.json();
+                if (resData && resData.id) savedId = resData.id;
+            } catch(e) {}
+
             modalSnapshot = getFormSnapshot();
-            showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
+            showToast(id ? '✅ 자재 규격이 성공적으로 수정되었습니다.' : '✅ 신규 자재가 성공적으로 등록되었습니다.', 'success');
             closeModal();
             if (!id) currentPage = 1;
-            loadData();
+            await loadData();
+            if (savedId) {
+                highlightSavedRow(savedId);
+            }
         } else {
             let errMsg = '저장 실패';
             try {
@@ -1499,22 +1584,55 @@ function onCategoryChange(e, existingValues = {}, existingNotes = {}, existingLa
 
 // ── 12. 첨부파일 업로드 및 관리 ──
 async function uploadFiles(fileList) {
+    if (!fileList || !fileList.length) return;
+    const filesArray = Array.from(fileList);
+
+    // 허용 크기 사전 검증 (30MB)
+    const maxSizeBytes = 30 * 1024 * 1024;
+    const oversized = filesArray.find(f => f.size > maxSizeBytes);
+    if (oversized) {
+        showToast(`파일 용량 초과: "${oversized.name}"은 30MB를 초과할 수 없습니다.`, 'warning');
+        return;
+    }
+
+    const area = $('fileUploadArea');
+    const origAreaHtml = area ? area.innerHTML : '';
+    if (area) {
+        area.style.pointerEvents = 'none';
+        area.innerHTML = `<i class='bx bx-loader-alt bx-spin' style="font-size:20px; display:block; margin-bottom:2px; color:#2563eb;"></i><strong>${filesArray.length}개 파일 업로드 중...</strong>`;
+    }
+
     const formData = new FormData();
-    for (const f of fileList) formData.append('files', f);
+    for (const f of filesArray) formData.append('files', f);
+
     try {
-        showToast('파일 업로드 중...', 'info');
+        showToast(`${filesArray.length}개 파일 업로드 중...`, 'info');
         const res = await authFetch(`${API}/files/upload`, { method: 'POST', body: formData });
         if (res.ok) {
             const data = await res.json();
-            data.files.forEach(f => currentFiles.push(f));
-            renderFileList();
-            showToast('업로드 완료', 'success');
+            if (Array.isArray(data.files)) {
+                data.files.forEach(f => currentFiles.push(f));
+                renderFileList();
+                showToast(`✅ ${data.files.length}개 첨부파일이 등록되었습니다.`, 'success');
+            }
         } else {
-            const err = await res.json();
-            showToast('업로드 실패: ' + err.error, 'error');
+            let errMsg = '업로드 실패';
+            try {
+                const err = await res.json();
+                if (err && err.error) errMsg += ': ' + err.error;
+            } catch(e) {}
+            showToast(errMsg, 'error');
         }
     } catch(e) {
-        showToast('업로드 오류', 'error');
+        console.error('uploadFiles error:', e);
+        showToast('업로드 오류: ' + (e.message || ''), 'error');
+    } finally {
+        if (area) {
+            area.style.pointerEvents = '';
+            area.innerHTML = origAreaHtml || `<i class='bx bx-cloud-upload' style="font-size:20px; display:block; margin-bottom:2px;"></i> 파일을 드래그하거나 클릭하여 업로드 (최대 30MB)`;
+        }
+        const inp = $('fileInput');
+        if (inp) inp.value = '';
     }
 }
 
