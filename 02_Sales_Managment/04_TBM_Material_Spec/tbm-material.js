@@ -4,18 +4,28 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // --- Auth Fetch (with retry for iframe auth race condition) ---
-async function authFetch(url, opts = {}, _retries = 3) {
-    let token = null;
+async function getToken() {
     try {
-        if (window.parent && window.parent !== window && window.parent.getAuthToken) {
-            token = await window.parent.getAuthToken();
+        if (window.parent && window.parent !== window && typeof window.parent.getAuthToken === 'function') {
+            let token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 5) {
+                await new Promise(r => setTimeout(r, 300));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
+            if (token) return token;
         }
     } catch(e) {}
-    if (!token) {
-        try {
-            token = localStorage.getItem('kng_token') || sessionStorage.getItem('kng_token') || localStorage.getItem('token');
-        } catch(e) {}
-    }
+    try {
+        const token = localStorage.getItem('kng_token') || sessionStorage.getItem('kng_token') || localStorage.getItem('token');
+        if (token) return token;
+    } catch(e) {}
+    return '';
+}
+
+async function authFetch(url, opts = {}, _retries = 3) {
+    const token = await getToken();
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, opts);
@@ -26,7 +36,9 @@ async function authFetch(url, opts = {}, _retries = 3) {
     return res;
 }
 
-const API = 'https://kng.junparks.com/api/tbm';
+const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api/tbm'
+    : 'https://kng.junparks.com/api/tbm';
 window.exchangeRates = {};
 let allData = [], filteredData = [], presetsData = [];
 let currentSort = { column: 'createdAt', asc: false };
@@ -203,9 +215,19 @@ function initEvents() {
     document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
     $('addPkgGroupBtn')?.addEventListener('click', () => addPackagingGroup());
 
-    // 파일 업로드 (label click은 브라우저가 기본 지원하므로 드래그앤드롭 및 change 이벤트 처리)
+    // 파일 업로드 영역 이벤트 바인딩 (클릭/키보드 시 파일 다이얼로그 즉시 실행)
     const area = $('fileUploadArea'), inp = $('fileInput');
     if (area && inp) {
+        area.addEventListener('click', e => {
+            e.preventDefault();
+            inp.click();
+        });
+        area.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                inp.click();
+            }
+        });
         area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
         area.addEventListener('dragleave', () => area.classList.remove('dragover'));
         area.addEventListener('drop', e => {
@@ -1599,7 +1621,7 @@ async function uploadFiles(fileList) {
     const origAreaHtml = area ? area.innerHTML : '';
     if (area) {
         area.style.pointerEvents = 'none';
-        area.innerHTML = `<i class='bx bx-loader-alt bx-spin' style="font-size:20px; display:block; margin-bottom:2px; color:#2563eb;"></i><strong>${filesArray.length}개 파일 업로드 중...</strong>`;
+        area.innerHTML = `<i class='bx bx-loader-alt bx-spin' style="font-size:24px; display:block; margin-bottom:4px; color:#2563eb;"></i><strong class="text-primary">${filesArray.length}개 파일 업로드 중...</strong>`;
     }
 
     const formData = new FormData();
@@ -1610,10 +1632,22 @@ async function uploadFiles(fileList) {
         const res = await authFetch(`${API}/files/upload`, { method: 'POST', body: formData });
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data.files)) {
+            let addedCount = 0;
+            if (Array.isArray(data.files) && data.files.length > 0) {
                 data.files.forEach(f => currentFiles.push(f));
+                addedCount = data.files.length;
+            } else if (Array.isArray(data.urls) && data.urls.length > 0) {
+                data.urls.forEach(url => {
+                    const filename = url.split('/').pop();
+                    currentFiles.push({ filename, originalName: filename, url });
+                });
+                addedCount = data.urls.length;
+            }
+            if (addedCount > 0) {
                 renderFileList();
-                showToast(`✅ ${data.files.length}개 첨부파일이 등록되었습니다.`, 'success');
+                showToast(`✅ ${addedCount}개 첨부파일이 등록되었습니다.`, 'success');
+            } else {
+                showToast('업로드된 파일 정보가 비어있습니다.', 'warning');
             }
         } else {
             let errMsg = '업로드 실패';
@@ -1622,6 +1656,7 @@ async function uploadFiles(fileList) {
                 if (err && err.error) errMsg += ': ' + err.error;
             } catch(e) {}
             showToast(errMsg, 'error');
+            console.error('File upload error:', res.status, errMsg);
         }
     } catch(e) {
         console.error('uploadFiles error:', e);
@@ -1629,7 +1664,7 @@ async function uploadFiles(fileList) {
     } finally {
         if (area) {
             area.style.pointerEvents = '';
-            area.innerHTML = origAreaHtml || `<i class='bx bx-cloud-upload' style="font-size:20px; display:block; margin-bottom:2px;"></i> 파일을 드래그하거나 클릭하여 업로드 (최대 30MB)`;
+            area.innerHTML = origAreaHtml || `<i class='bx bx-cloud-upload' style="font-size:24px; display:block; margin-bottom:4px; color:#2563eb;"></i><span class="fw-bold text-dark" style="font-size:12px;">파일을 드래그하거나 여기를 클릭하여 첨부</span><div class="text-muted mt-1" style="font-size:11px;">PDF, 도면(CAD/DWG/STEP), 엑셀, 이미지, 문서, 압축파일 등 (개당 최대 30MB)</div>`;
         }
         const inp = $('fileInput');
         if (inp) inp.value = '';

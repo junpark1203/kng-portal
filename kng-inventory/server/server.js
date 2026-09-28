@@ -132,8 +132,12 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:8000',
     'http://localhost:8090',            // mass_upload dev-server
+    'http://localhost:5500',            // VS Code Live Server
+    'http://localhost:5173',            // Vite dev-server
     'http://127.0.0.1:8788',
-    'http://127.0.0.1:8090'
+    'http://127.0.0.1:8090',
+    'http://127.0.0.1:5500',
+    'http://127.0.0.1:5173'
 ];
 app.use(cors({
     origin: function(origin, callback) {

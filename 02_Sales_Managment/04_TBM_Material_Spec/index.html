@@ -1355,11 +1355,12 @@
                             </div>
                             <div class="fg fg-full">
                                 <label>첨부파일 (도면, 시험성적서, 이미지 등)</label>
-                                <label for="fileInput" class="file-upload-area d-block m-0" id="fileUploadArea">
-                                    <i class='bx bx-cloud-upload' style="font-size:20px; display:block; margin-bottom:2px;"></i>
-                                    파일을 드래그하거나 클릭하여 업로드 (최대 30MB)
-                                </label>
-                                <input type="file" id="fileInput" multiple style="display:none;" accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.bmp,.zip,.rar,.7z,.dwg,.dxf">
+                                <div class="file-upload-area cursor-pointer" id="fileUploadArea" role="button" tabindex="0">
+                                    <i class='bx bx-cloud-upload' style="font-size:24px; display:block; margin-bottom:4px; color:#2563eb;"></i>
+                                    <span class="fw-bold text-dark" style="font-size:12px;">파일을 드래그하거나 여기를 클릭하여 첨부</span>
+                                    <div class="text-muted mt-1" style="font-size:11px;">PDF, 도면(CAD/DWG/STEP), 엑셀, 이미지, 문서, 압축파일 등 (개당 최대 30MB)</div>
+                                </div>
+                                <input type="file" id="fileInput" multiple style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; opacity:0; pointer-events:none;">
                                 <div class="file-list mt-1" id="fileList"></div>
                             </div>
                         </div>
@@ -1444,6 +1445,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_9"></script>
+    <script src="tbm-material.js?v=20260928_10"></script>
 </body>
 </html>

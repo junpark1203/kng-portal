@@ -27,13 +27,20 @@ if (!fs.existsSync(TBM_UPLOAD_DIR)) {
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
+        if (!fs.existsSync(TBM_UPLOAD_DIR)) {
+            try { fs.mkdirSync(TBM_UPLOAD_DIR, { recursive: true }); } catch(e) {}
+        }
         cb(null, TBM_UPLOAD_DIR);
     },
     filename: function (req, file, cb) {
-        // 타임스탬프 + 원본 파일명 (한글 파일명 보존)
         const ts = Date.now();
-        const safeName = file.originalname.replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
-        cb(null, 'tbm-' + ts + '-' + safeName);
+        let origName = file.originalname;
+        try {
+            origName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        } catch(e) {}
+        const ext = path.extname(origName) || '';
+        const base = path.basename(origName, ext).replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
+        cb(null, `tbm-${ts}-${base}${ext.toLowerCase()}`);
     }
 });
 
@@ -41,10 +48,16 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 30 * 1024 * 1024 }, // 30MB
     fileFilter: function (req, file, cb) {
-        const allowed = /jpeg|jpg|png|gif|webp|bmp|pdf|xlsx|xls|csv|doc|docx|ppt|pptx|zip|rar|7z|dwg|dxf/;
-        const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-        if (ext) return cb(null, true);
-        cb(new Error('허용되지 않는 파일 형식입니다. (PDF, Excel, 이미지, CAD, 압축파일 등 허용)'));
+        const dangerous = /exe|bat|cmd|sh|vbs|msi|com|scr|pif|jar/i;
+        let origName = file.originalname;
+        try {
+            origName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        } catch(e) {}
+        const ext = (path.extname(origName) || '').replace('.', '').toLowerCase();
+        if (dangerous.test(ext)) {
+            return cb(new Error('실행 파일(.exe, .bat 등)은 업로드할 수 없습니다.'));
+        }
+        cb(null, true);
     }
 });
 
