@@ -29,6 +29,11 @@ async function authFetch(url, opts = {}, _retries = 3) {
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
 
+    // 캐시 방지 헤더 및 옵션 항상 적용 (브라우저/CDN 304 또는 이전 응답 캐시 완벽 차단)
+    opts.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    opts.headers['Pragma'] = 'no-cache';
+    if (!opts.cache) opts.cache = 'no-store';
+
     // 타임아웃 방지 (기본 15초 초과 시 자동 abort)
     const controller = new AbortController();
     const timeoutMs = opts.timeout || 15000;
@@ -317,9 +322,10 @@ function doSearch() {
 // ── 2. 데이터 로드 및 초기화 ──
 async function loadData() {
     try {
+        const cacheBuster = `t=${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const [res, rateRes] = await Promise.all([
-            authFetch(`${API}/materials?t=${Date.now()}`),
-            authFetch(`https://kng.junparks.com/api/exchange-rates?t=${Date.now()}`).catch(() => ({ok: false}))
+            authFetch(`${API}/materials?${cacheBuster}`, { cache: 'no-store' }),
+            authFetch(`https://kng.junparks.com/api/exchange-rates?${cacheBuster}`, { cache: 'no-store' }).catch(() => ({ok: false}))
         ]);
         if (!res.ok) throw new Error(`API 응답 실패 (HTTP ${res.status})`);
         allData = await res.json();
@@ -1034,10 +1040,13 @@ window.openModal = function(id = null, isDuplicate = false) {
     renderFileList();
 
     if (id) {
-        const d = allData.find(x => x.id === id);
-        if (!d) return;
+        const d = allData.find(x => String(x.id) === String(id));
+        if (!d) {
+            console.warn('openModal: 항목을 찾을 수 없습니다. id =', id);
+            return;
+        }
         $('modalTitle').textContent = isDuplicate ? '자재 규격 복사 등록' : '자재 규격 수정';
-        $('editId').value = isDuplicate ? '' : d.id;
+        $('editId').value = isDuplicate ? '' : String(d.id);
         $('inpSite').value = d.site || '';
         $('inpEquipment').value = d.equipment || '';
         $('inpCategory').value = d.category || '';
@@ -1170,7 +1179,7 @@ async function saveItem() {
     isSavingItem = true;
 
     try {
-        const id = $('editId')?.value || '';
+        const id = $('editId')?.value ? String($('editId').value).trim() : '';
         const { customFields, customFieldNotes, customFieldLabels, specFieldList } = modalCollectSpecs();
         if (Object.keys(customFieldLabels).length > 0) {
             customFieldNotes['__labels__'] = JSON.stringify(customFieldLabels);
@@ -1204,10 +1213,19 @@ async function saveItem() {
             incoterms,
             packagingGroups
         };
+        if (id) payload.id = id;
 
         const url = id ? `${API}/materials/${encodeURIComponent(id)}` : `${API}/materials`;
         const method = id ? 'PUT' : 'POST';
-        const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        console.log(`[TBM Save] Method: ${method}, ID: ${id || '(신규)'}, Item: ${itemName}`);
+
+        const res = await authFetch(url, {
+            method,
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload),
+            cache: 'no-store'
+        });
+
         if (res.ok) {
             // Optional: Preset sync if user checked syncPresetCheck
             if (category && $('syncPresetCheck')?.checked) {
@@ -1234,13 +1252,48 @@ async function saveItem() {
             let savedId = id;
             try {
                 const resData = await res.json();
-                if (resData && resData.id) savedId = resData.id;
+                if (resData && resData.id) savedId = String(resData.id);
             } catch(e) {}
+
+            // 1. 낙관적 UI 업데이트: 즉시 메모리 allData에 반영하여 새로고침 없이 0ms 즉시 표시
+            const optimisticItem = {
+                id: savedId,
+                ...payload,
+                total: isImport ? 0 : (qty * price),
+                updatedAt: new Date().toISOString(),
+                createdAt: id ? (allData.find(x => String(x.id) === String(id))?.createdAt || new Date().toISOString()) : new Date().toISOString()
+            };
+
+            if (id) {
+                const existingIdx = allData.findIndex(x => String(x.id) === String(id));
+                if (existingIdx !== -1) {
+                    allData[existingIdx] = { ...allData[existingIdx], ...optimisticItem };
+                } else {
+                    allData.unshift(optimisticItem);
+                }
+            } else {
+                allData.unshift(optimisticItem);
+            }
 
             modalSnapshot = getFormSnapshot();
             showToast(id ? '✅ 자재 규격이 성공적으로 수정되었습니다.' : '✅ 신규 자재가 성공적으로 등록되었습니다.', 'success');
             closeModal();
+
+            // 저장된 항목의 분류가 있고 현재 선택된 분류 탭과 다르다면 사용자가 볼 수 있도록 탭 전환
+            if (category && activeCategoryFilter !== 'all' && activeCategoryFilter !== category) {
+                activeCategoryFilter = category;
+            }
             if (!id) currentPage = 1;
+
+            // 즉각 화면 렌더링 갱신
+            renderCategoryTabs();
+            updateDatalists();
+            applyFiltersAndSort();
+            if (savedId) {
+                highlightSavedRow(savedId);
+            }
+
+            // 2. 서버와 백그라운드 데이터 최종 동기화 (최신 데이터 일치 보장)
             await loadData();
             if (savedId) {
                 highlightSavedRow(savedId);
@@ -1279,7 +1332,7 @@ async function saveAsCopy() {
         return;
     }
 
-    const orig = allData.find(x => x.id === currentId);
+    const orig = allData.find(x => String(x.id) === String(currentId));
     if (orig && orig.itemName === itemName) {
         itemName += ' (복사본)';
         $('inpItemName').value = itemName;
@@ -1323,7 +1376,7 @@ async function duplicateSelected() {
     let successCount = 0;
     showToast(`${ids.length}개 항목 일괄 복사 중...`, 'info');
     for (const id of ids) {
-        const d = allData.find(x => x.id === id);
+        const d = allData.find(x => String(x.id) === String(id));
         if (!d) continue;
         const payload = {
             site: d.site || '',
@@ -1364,22 +1417,42 @@ window.duplicateSelected = duplicateSelected;
 
 // 단일 삭제
 async function deleteSingle(id) {
-    if (!confirm('이 자재 규격 항목을 삭제하시겠습니까?')) return;
+    if (!id) return;
+    const item = allData.find(x => String(x.id) === String(id));
+    const itemName = item?.itemName || '이 자재';
+    if (!confirm(`"${itemName}" 자재 규격 항목을 삭제하시겠습니까?`)) return;
+
+    // 1. 낙관적 UI 업데이트: 즉시 메모리 및 화면에서 삭제 반영 (새로고침 없이 0ms 즉각 제거)
+    const backupData = [...allData];
+    allData = allData.filter(x => String(x.id) !== String(id));
+    renderCategoryTabs();
+    updateDatalists();
+    applyFiltersAndSort();
+
     try {
         const res = await authFetch(`${API}/materials/delete`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ids: [id] })
+            body: JSON.stringify({ ids: [id] }),
+            cache: 'no-store'
         });
         if (res.ok) {
-            showToast('삭제되었습니다.', 'success');
-            loadData();
+            showToast('✅ 삭제되었습니다.', 'success');
+            await loadData();
         } else {
-            const err = await res.json();
-            showToast('삭제 실패: ' + err.error, 'error');
+            allData = backupData;
+            renderCategoryTabs();
+            updateDatalists();
+            applyFiltersAndSort();
+            const err = await res.json().catch(() => ({}));
+            showToast('삭제 실패: ' + (err.error || '서버 오류'), 'error');
         }
     } catch(e) {
-        showToast('서버 연결 오류', 'error');
+        allData = backupData;
+        renderCategoryTabs();
+        updateDatalists();
+        applyFiltersAndSort();
+        showToast('서버 연결 오류: ' + (e.message || ''), 'error');
     }
 }
 
@@ -1388,21 +1461,42 @@ async function deleteSelected() {
     const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
     if (!ids.length) return showToast('삭제할 항목을 선택해주세요.', 'warning');
     if (!confirm(`선택한 ${ids.length}개 항목을 일괄 삭제하시겠습니까?`)) return;
+
+    // 1. 낙관적 UI 업데이트: 즉시 메모리 및 화면에서 선택 항목 일괄 제거
+    const backupData = [...allData];
+    const idSet = new Set(ids.map(String));
+    allData = allData.filter(x => !idSet.has(String(x.id)));
+    if ($('selectAll')) $('selectAll').checked = false;
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+    updateFloatingBar();
+    renderCategoryTabs();
+    updateDatalists();
+    applyFiltersAndSort();
+
     try {
         const res = await authFetch(`${API}/materials/delete`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ids })
+            body: JSON.stringify({ ids }),
+            cache: 'no-store'
         });
         if (res.ok) {
-            showToast('선택 항목이 삭제되었습니다.', 'success');
-            loadData();
+            showToast(`✅ ${ids.length}개 항목이 삭제되었습니다.`, 'success');
+            await loadData();
         } else {
-            const err = await res.json();
-            showToast('삭제 실패: ' + err.error, 'error');
+            allData = backupData;
+            renderCategoryTabs();
+            updateDatalists();
+            applyFiltersAndSort();
+            const err = await res.json().catch(() => ({}));
+            showToast('삭제 실패: ' + (err.error || '서버 오류'), 'error');
         }
     } catch(e) {
-        showToast('서버 연결 오류', 'error');
+        allData = backupData;
+        renderCategoryTabs();
+        updateDatalists();
+        applyFiltersAndSort();
+        showToast('서버 연결 오류: ' + (e.message || ''), 'error');
     }
 }
 

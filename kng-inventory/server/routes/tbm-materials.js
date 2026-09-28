@@ -150,6 +150,12 @@ function initTbmTables(database) {
 // 전체 목록 조회
 router.get('/materials', async (req, res) => {
     try {
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store'
+        });
         const rows = await dbAll('SELECT * FROM tbm_materials ORDER BY createdAt DESC');
         // JSON 파싱
         const result = rows.map(r => {
@@ -169,6 +175,10 @@ router.get('/materials', async (req, res) => {
 // 단일 조회
 router.get('/materials/:id', async (req, res) => {
     try {
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+        });
         const row = await dbGet('SELECT * FROM tbm_materials WHERE id = ?', [req.params.id]);
         if (!row) return res.status(404).json({ error: '자재를 찾을 수 없습니다.' });
         try { row.customFields = JSON.parse(row.customFields || '{}'); } catch(e) { row.customFields = {}; }
@@ -240,16 +250,12 @@ router.put('/materials/:id', async (req, res) => {
         ];
         const result = await dbRun(sql, params);
         if (result.changes === 0) {
-            // DB에 해당 id가 존재하는지 확인 (필드값 차이가 없거나 sqlite 상태에 따른 changes 0 대비)
+            // DB에 해당 id가 실제로 존재하는지 확인 (필드값 차이가 없어서 sqlite changes가 0인 경우)
             const existing = await dbGet('SELECT id FROM tbm_materials WHERE id = ?', [id]);
             if (existing) {
                 return res.json({ message: '수정 성공', id });
             }
-            // 미존재 시 안전하게 신규 삽입
-            const insertSql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, customFieldNotes, files, sourceType, quoteDate, perUnitBasis, incoterms, packagingGroups, createdAt, updatedAt)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            await dbRun(insertSql, [id, ...params.slice(0, 19), now, now]);
-            return res.json({ message: '수정 완료', id });
+            return res.status(404).json({ error: `자재를 찾을 수 없습니다. (ID: ${id})` });
         }
         res.json({ message: '수정 성공', id });
     } catch (err) {
@@ -261,6 +267,10 @@ router.put('/materials/:id', async (req, res) => {
 // 다중 삭제
 router.post('/materials/delete', async (req, res) => {
     try {
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+        });
         const { ids } = req.body;
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
