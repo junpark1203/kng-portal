@@ -136,7 +136,7 @@ function initEvents() {
     $('deleteBtn')?.addEventListener('click', deleteSelected);
     $('exportBtn')?.addEventListener('click', exportExcel);
     $('compareBtn')?.addEventListener('click', openCompare);
-    $('presetBtn')?.addEventListener('click', openPresetDrawer);
+    $('presetBtn')?.addEventListener('click', openPresetModal);
 
     // 검색창 & 엔터 검색
     $('btn-do-search')?.addEventListener('click', doSearch);
@@ -202,8 +202,10 @@ function initEvents() {
     // 모달 닫기
     $('closeModalBtn')?.addEventListener('click', confirmCloseModal);
     $('cancelBtn')?.addEventListener('click', confirmCloseModal);
-    $('closeDrawerBtn')?.addEventListener('click', closePresetDrawer);
-    $('closeDrawerBtn2')?.addEventListener('click', closePresetDrawer);
+    $('closePresetModalBtn')?.addEventListener('click', closePresetModal);
+    $('closePresetModalBtn2')?.addEventListener('click', closePresetModal);
+    $('closeDrawerBtn')?.addEventListener('click', closePresetModal);
+    $('closeDrawerBtn2')?.addEventListener('click', closePresetModal);
     $('closeCompareBtn')?.addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('closeCompareBtn2')?.addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('compareExportBtn')?.addEventListener('click', exportCompare);
@@ -214,7 +216,7 @@ function initEvents() {
     window.addEventListener('click', e => {
         if (mouseDownTarget !== e.target) { mouseDownTarget = null; return; }
         if (e.target === $('itemModal')) confirmCloseModal();
-        if (e.target === $('drawerOverlay')) closePresetDrawer();
+        if (e.target === $('presetModal')) closePresetModal();
         if (e.target === $('compareModal')) $('compareModal').classList.remove('active');
         mouseDownTarget = null;
     });
@@ -278,11 +280,24 @@ function initEvents() {
                 confirmCloseModal();
             }
         }
+        const presetModal = $('presetModal');
+        if (presetModal && presetModal.classList.contains('active')) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveCurrentPreset();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closePresetModal();
+            }
+        }
     });
 
-    // 프리셋 드로어 이벤트
-    $('addDrawerCatBtn')?.addEventListener('click', addPresetCategory);
-    $('addDrawerSectionBtn')?.addEventListener('click', addSectionCard);
+    // 프리셋 모달 이벤트 바인딩
+    $('addPresetCatBtn')?.addEventListener('click', addPresetCategory);
+    $('deletePresetCatBtn')?.addEventListener('click', deleteCurrentPresetCategory);
+    $('addPresetSectionBtn')?.addEventListener('click', addSectionCard);
+    $('savePresetBtn')?.addEventListener('click', saveCurrentPreset);
+    $('presetCatSearchInput')?.addEventListener('input', e => renderPresetCategories(e.target.value));
     $('saveDrawerBtn')?.addEventListener('click', saveCurrentPreset);
 
     // 테이블 헤더 정렬 클릭 이벤트 바인딩
@@ -1932,12 +1947,15 @@ window.removeFile = function(idx) {
     }
 };
 
-// ── 13. 프리셋 드로어 (Preset Drawer) ──
-function openPresetDrawer() {
-    $('drawerOverlay').classList.add('active');
-    $('presetDrawer').classList.add('open');
+// ── 13. 프리셋 관리 모달 (Preset Modal: 2-Column Master-Detail) ──
+function openPresetModal() {
+    const modal = $('presetModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    modal.scrollTop = 0;
     document.body.style.overflow = 'hidden';
-    renderDrawerCategories();
+    if ($('presetCatSearchInput')) $('presetCatSearchInput').value = '';
+    renderPresetCategories();
 
     let targetPreset = null;
     if (activeCategoryFilter && activeCategoryFilter !== 'all') {
@@ -1948,50 +1966,55 @@ function openPresetDrawer() {
     }
 
     if (targetPreset) {
-        selectDrawerPreset(targetPreset.id);
+        selectPreset(targetPreset.id);
     } else {
         selectedPresetId = null;
-        $('drawerNoSelection').style.display = '';
-        $('drawerEditorContent').style.display = 'none';
+        if ($('presetNoSelection')) $('presetNoSelection').style.display = '';
+        if ($('presetEditorHeader')) $('presetEditorHeader').style.display = 'none';
+        if ($('presetEditorContent')) $('presetEditorContent').style.display = 'none';
     }
 }
+window.openPresetModal = openPresetModal;
+window.openPresetDrawer = openPresetModal; // 호환성 별칭
 
-function closePresetDrawer() {
-    $('drawerOverlay').classList.remove('active');
-    $('presetDrawer').classList.remove('open');
+function closePresetModal() {
+    const modal = $('presetModal');
+    if (modal) modal.classList.remove('active');
     document.body.style.overflow = '';
 }
+window.closePresetModal = closePresetModal;
+window.closePresetDrawer = closePresetModal; // 호환성 별칭
 
-function renderDrawerCategories() {
-    const el = $('drawerCatList');
+function renderPresetCategories(filterText = '') {
+    const el = $('presetCatList');
     if (!el) return;
     el.innerHTML = '';
-    presetsData.forEach(p => {
-        const chip = document.createElement('button');
-        chip.className = 'drawer-cat-chip' + (p.id === selectedPresetId ? ' active' : '');
-        chip.innerHTML = `<span>${escapeHtml(p.category)}</span><i class='bx bx-x cat-del' style="cursor:pointer;"></i>`;
-        chip.querySelector('span').addEventListener('click', () => selectDrawerPreset(p.id));
-        chip.querySelector('.cat-del').addEventListener('click', async e => {
-            e.stopPropagation();
-            if (!confirm(`"${p.category}" 분류 프리셋을 삭제하시겠습니까?`)) return;
-            try {
-                await authFetch(`${API}/presets/${p.id}`, { method: 'DELETE' });
-                await loadPresets();
-                if (selectedPresetId === p.id) {
-                    selectedPresetId = null;
-                    $('drawerNoSelection').style.display = '';
-                    $('drawerEditorContent').style.display = 'none';
-                }
-                renderDrawerCategories();
-                renderCategoryTabs();
-                showToast('삭제되었습니다.', 'success');
-            } catch(e2) {
-                showToast('삭제 실패', 'error');
-            }
-        });
-        el.appendChild(chip);
+    const q = (filterText || '').trim().toLowerCase();
+    const filtered = q ? presetsData.filter(p => (p.category || '').toLowerCase().includes(q)) : presetsData;
+    if ($('presetCatCount')) $('presetCatCount').textContent = presetsData.length;
+
+    if (!filtered.length) {
+        el.innerHTML = '<div class="text-center text-muted py-3" style="font-size:11px;">검색된 분류가 없습니다.</div>';
+        return;
+    }
+
+    filtered.forEach(p => {
+        const count = Array.isArray(p.fields) ? p.fields.filter(f => f.type !== 'section').length : 0;
+        const item = document.createElement('div');
+        item.className = 'preset-cat-item' + (p.id === selectedPresetId ? ' active' : '');
+        item.innerHTML = `
+            <div class="cat-name" title="${escapeHtml(p.category)}">
+                <i class='bx ${p.id === selectedPresetId ? 'bxs-folder-open text-primary' : 'bx-folder text-secondary'}'></i>
+                <span>${escapeHtml(p.category)}</span>
+            </div>
+            <span class="badge rounded-pill bg-light text-secondary border" style="font-size:9.5px; padding:2px 5px;">${count}개</span>
+        `;
+        item.addEventListener('click', () => selectPreset(p.id));
+        el.appendChild(item);
     });
 }
+window.renderPresetCategories = renderPresetCategories;
+window.renderDrawerCategories = renderPresetCategories; // 호환성 별칭
 
 function groupFieldsIntoSections(fields) {
     const sections = [];
@@ -2008,17 +2031,19 @@ function groupFieldsIntoSections(fields) {
     return sections;
 }
 
-function selectDrawerPreset(id) {
+function selectPreset(id) {
     selectedPresetId = id;
     const p = presetsData.find(x => x.id === id);
     if (!p) return;
-    $('drawerNoSelection').style.display = 'none';
-    $('drawerEditorContent').style.display = '';
-    $('drawerEditorTitle').textContent = `"${p.category}" 사양 필드 설정`;
-    renderDrawerCategories();
+    if ($('presetNoSelection')) $('presetNoSelection').style.display = 'none';
+    if ($('presetEditorHeader')) $('presetEditorHeader').style.display = 'flex';
+    if ($('presetEditorContent')) $('presetEditorContent').style.display = '';
+    if ($('presetActiveCatBadge')) $('presetActiveCatBadge').textContent = p.category;
+    renderPresetCategories($('presetCatSearchInput')?.value || '');
 
     const sections = groupFieldsIntoSections(p.fields);
-    const list = $('drawerSectionList');
+    const list = $('presetSectionList');
+    if (!list) return;
     list.innerHTML = '';
     if (sections.length === 0) {
         addSectionCard();
@@ -2026,29 +2051,32 @@ function selectDrawerPreset(id) {
         sections.forEach(sec => renderSectionCard(sec));
     }
 }
+window.selectPreset = selectPreset;
+window.selectDrawerPreset = selectPreset; // 호환성 별칭
 
 function renderSectionCard(sectionData) {
-    const list = $('drawerSectionList');
+    const list = $('presetSectionList');
+    if (!list) return;
     const card = document.createElement('div');
-    card.className = 'section-card';
+    card.className = 'preset-section-card';
     card.innerHTML = `
-        <div class="section-card-header">
+        <div class="preset-section-header">
             <button type="button" class="sec-drag" title="순서 드래그"><i class='bx bx-grid-vertical'></i></button>
-            <i class='bx bx-category text-primary'></i>
-            <textarea class="sec-label" placeholder="섹션명 입력 (예: 물리적 특성)" rows="1">${sectionData?.label || ''}</textarea>
-            <button type="button" class="btn-grid-action btn-grid-action-danger ms-auto sec-del" title="삭제"><i class='bx bx-trash'></i></button>
+            <i class='bx bx-folder text-primary' style="font-size:13px;"></i>
+            <input type="text" class="sec-label" placeholder="섹션 그룹명 입력 (예: 물리적 특성, 배합비 등)" value="${escapeHtml(sectionData?.label || '')}">
+            <button type="button" class="btn-grid-action btn-grid-action-danger ms-auto sec-del" title="이 섹션 그룹 삭제"><i class='bx bx-trash'></i></button>
         </div>
-        <div class="section-card-body">
-            <div class="sec-fields"></div>
-            <button type="button" class="sec-add-field"><i class='bx bx-plus'></i> 사양 필드 추가</button>
+        <div class="preset-section-body">
+            <div class="sec-fields d-flex flex-column gap-1"></div>
+            <button type="button" class="preset-sec-add-field"><i class='bx bx-plus'></i> 사양 필드 추가</button>
         </div>`;
 
     card.querySelector('.sec-del').addEventListener('click', () => {
-        if (card.querySelectorAll('.sec-field-row').length > 0 && !confirm('이 섹션과 포함된 필드를 모두 삭제하시겠습니까?')) return;
+        if (card.querySelectorAll('.preset-field-row').length > 0 && !confirm('이 섹션과 포함된 필드를 모두 삭제하시겠습니까?')) return;
         card.remove();
     });
 
-    const addBtn = card.querySelector('.sec-add-field');
+    const addBtn = card.querySelector('.preset-sec-add-field');
     const fieldsContainer = card.querySelector('.sec-fields');
 
     addBtn.addEventListener('click', () => addFieldRow(fieldsContainer));
@@ -2060,21 +2088,21 @@ function renderSectionCard(sectionData) {
     }
 
     list.appendChild(card);
-    setupDragAndDrop(list, '.section-card', '.sec-drag', 'section');
+    setupDragAndDrop(list, '.preset-section-card', '.sec-drag', 'section');
 }
 
 function addFieldRow(container, fieldData) {
     const row = document.createElement('div');
-    row.className = 'sec-field-row';
+    row.className = 'preset-field-row';
     row.innerHTML = `
         <button type="button" class="f-drag" title="순서 드래그"><i class='bx bx-grid-vertical'></i></button>
-        <span class="f-order text-muted" style="font-size:10px;">${container.children.length + 1}</span>
-        <textarea class="sf-label" placeholder="필드명 (예: 정격 압력)" rows="1" style="height:26px;resize:none;font-size:11.5px;">${fieldData?.label || ''}</textarea>
+        <span class="f-order">${container.children.length + 1}</span>
+        <input type="text" class="sf-label" placeholder="사양 항목명 (예: 비중, 점도, 인장강도)" value="${escapeHtml(fieldData?.label || '')}">
         <select class="sf-type">
             <option value="text"${fieldData?.type === 'text' ? ' selected' : ''}>텍스트</option>
             <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
         </select>
-        <input type="text" class="sf-note" placeholder="안내/비고" value="${fieldData?.note || ''}">
+        <input type="text" class="sf-note" placeholder="시험규격 / 단위 / 비고 안내 (예: KS F 4009, g/cm³)" value="${escapeHtml(fieldData?.note || '')}">
         <button type="button" class="btn-grid-action btn-grid-action-danger f-del" title="삭제"><i class='bx bx-x'></i></button>`;
 
     row.querySelector('.f-del').addEventListener('click', () => {
@@ -2083,28 +2111,34 @@ function addFieldRow(container, fieldData) {
     });
 
     container.appendChild(row);
-    setupDragAndDrop(container, '.sec-field-row', '.f-drag', 'field');
+    setupDragAndDrop(container, '.preset-field-row', '.f-drag', 'field');
 }
 
 function reorderSectionFields(container) {
-    container.querySelectorAll('.sec-field-row').forEach((r, i) => {
+    container.querySelectorAll('.preset-field-row').forEach((r, i) => {
         const orderEl = r.querySelector('.f-order');
         if (orderEl) orderEl.textContent = i + 1;
     });
 }
 
 function addSectionCard() {
-    renderSectionCard({ label: '신규 섹션', fields: [] });
+    renderSectionCard({ label: '신규 사양 섹션', fields: [] });
+    const list = $('presetSectionList');
+    const lastCard = list?.querySelector('.preset-section-card:last-child');
+    lastCard?.querySelector('.sec-label')?.focus();
 }
 
 function flattenSections() {
     const fields = [];
-    $('drawerSectionList').querySelectorAll('.section-card').forEach(card => {
-        const secLabel = card.querySelector('.sec-label').value.trim();
+    const list = $('presetSectionList');
+    if (!list) return fields;
+
+    list.querySelectorAll('.preset-section-card').forEach(card => {
+        const secLabel = card.querySelector('.sec-label')?.value.trim();
         fields.push({ key: '_section_' + fields.length, label: secLabel || '섹션', type: 'section' });
-        card.querySelectorAll('.sec-field-row').forEach(row => {
-            const label = row.querySelector('.sf-label').value.trim();
-            const type = row.querySelector('.sf-type').value;
+        card.querySelectorAll('.preset-field-row').forEach(row => {
+            const label = row.querySelector('.sf-label')?.value.trim();
+            const type = row.querySelector('.sf-type')?.value || 'text';
             const note = row.querySelector('.sf-note')?.value.trim() || '';
             if (label) {
                 const baseKey = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + fields.length;
@@ -2132,7 +2166,7 @@ async function saveCurrentPreset() {
         return;
     }
 
-    const saveBtn = $('saveDrawerBtn');
+    const saveBtn = $('savePresetBtn');
     const origHtml = saveBtn ? saveBtn.innerHTML : '';
     if (saveBtn) {
         saveBtn.disabled = true;
@@ -2146,14 +2180,16 @@ async function saveCurrentPreset() {
         const res = await authFetch(`${API}/presets`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            cache: 'no-store'
         });
         if (res.ok) {
-            showToast(`"${preset.category}" 프리셋이 저장되었습니다.`, 'success');
+            showToast(`"${preset.category}" 프리셋이 성공적으로 저장되었습니다.`, 'success');
             await loadPresets();
-            renderDrawerCategories();
-            selectDrawerPreset(selectedPresetId);
+            renderPresetCategories($('presetCatSearchInput')?.value || '');
+            selectPreset(selectedPresetId);
             renderCategoryTabs();
+            updateCategorySelect();
             applyFiltersAndSort();
         } else {
             let errMsg = '저장 실패';
@@ -2169,35 +2205,76 @@ async function saveCurrentPreset() {
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = origHtml || "<i class='bx bx-save'></i> 저장";
+            saveBtn.innerHTML = origHtml || "<i class='bx bx-save'></i> 프리셋 저장 <span class=\"opacity-75 ms-1\" style=\"font-size:10px;\">(Ctrl+S)</span>";
         }
     }
 }
 window.saveCurrentPreset = saveCurrentPreset;
 
-function addPresetCategory() {
-    const name = prompt('새 자재 분류명을 입력하세요:');
+async function addPresetCategory() {
+    const name = prompt('추가할 새 자재 분류명을 입력하세요:');
     if (!name || !name.trim()) return;
+    const catName = name.trim();
+    if (presetsData.some(p => p.category === catName)) {
+        showToast('이미 존재하는 분류명입니다.', 'warning');
+        return;
+    }
     const id = 'TBMFP-' + Date.now() + '-' + Math.random().toString(36).substring(2,6);
-    const payload = { id, category: name.trim(), fields: [] };
-    authFetch(`${API}/presets`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    })
-    .then(async res => {
+    const payload = { id, category: catName, fields: [] };
+    try {
+        const res = await authFetch(`${API}/presets`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+            cache: 'no-store'
+        });
         if (res.ok) {
-            showToast('분류 추가 완료', 'success');
+            showToast(`"${catName}" 분류가 추가되었습니다.`, 'success');
             await loadPresets();
-            renderDrawerCategories();
+            renderPresetCategories();
             renderCategoryTabs();
-            selectDrawerPreset(id);
+            updateCategorySelect();
+            selectPreset(id);
         } else {
-            showToast('추가 실패', 'error');
+            showToast('분류 추가 실패', 'error');
         }
-    })
-    .catch(() => showToast('서버 오류', 'error'));
+    } catch(e) {
+        showToast('서버 오류: ' + (e.message || ''), 'error');
+    }
 }
+window.addPresetCategory = addPresetCategory;
+
+async function deleteCurrentPresetCategory() {
+    if (!selectedPresetId) return;
+    const preset = presetsData.find(x => x.id === selectedPresetId);
+    if (!preset) return;
+    if (!confirm(`"${preset.category}" 분류 및 포함된 모든 사양 필드 프리셋을 삭제하시겠습니까?`)) return;
+
+    try {
+        const res = await authFetch(`${API}/presets/${preset.id}`, { method: 'DELETE', cache: 'no-store' });
+        if (res.ok) {
+            showToast(`"${preset.category}" 분류 프리셋이 삭제되었습니다.`, 'success');
+            await loadPresets();
+            selectedPresetId = presetsData.length > 0 ? presetsData[0].id : null;
+            renderPresetCategories();
+            if (selectedPresetId) {
+                selectPreset(selectedPresetId);
+            } else {
+                if ($('presetNoSelection')) $('presetNoSelection').style.display = '';
+                if ($('presetEditorHeader')) $('presetEditorHeader').style.display = 'none';
+                if ($('presetEditorContent')) $('presetEditorContent').style.display = 'none';
+            }
+            renderCategoryTabs();
+            updateCategorySelect();
+            applyFiltersAndSort();
+        } else {
+            showToast('삭제 실패', 'error');
+        }
+    } catch(e) {
+        showToast('서버 오류: ' + (e.message || ''), 'error');
+    }
+}
+window.deleteCurrentPresetCategory = deleteCurrentPresetCategory;
 
 function setupDragAndDrop(container, selector, handleSelector, type) {
     let dragState = { el: null, active: false };

@@ -608,117 +608,244 @@
             font-size: 12px;
         }
 
-        /* ── 6. Preset Drawer (ERP 모던 스타일) ── */
-        .drawer-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.35);
-            z-index: 999; opacity: 0; visibility: hidden;
-            transition: all 0.25s ease;
-        }
-        .drawer-overlay.active { opacity: 1; visibility: visible; }
-        .preset-drawer {
-            position: fixed; top: 0; right: 0; bottom: 0;
-            width: 580px; max-width: 94vw;
-            background: #ffffff; z-index: 1000;
-            box-shadow: -4px 0 24px rgba(0,0,0,0.15);
-            transform: translateX(100%);
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column;
-        }
-        .preset-drawer.open { transform: translateX(0); }
-        .drawer-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 18px; border-bottom: 1px solid #cbd5e1;
-            background: #1e293b; color: #ffffff;
-        }
-        .drawer-header h2 {
-            font-size: 14px; font-weight: 700; color: #ffffff;
-            display: flex; align-items: center; gap: 8px; margin: 0;
-        }
-        .drawer-header .btn-close {
-            filter: invert(1);
-        }
-        .drawer-cat-bar {
-            padding: 8px 16px; border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc; display: flex; align-items: center; gap: 6px;
-            overflow-x: auto; flex-shrink: 0;
-        }
-        .drawer-cat-chip {
-            padding: 3px 10px; border-radius: 2px; font-size: 11px; font-weight: 600;
-            cursor: pointer; border: 1px solid #cbd5e1; background: #ffffff;
-            color: #475569; white-space: nowrap; transition: all 0.1s;
-            display: inline-flex; align-items: center; gap: 4px;
-        }
-        .drawer-cat-chip:hover { border-color: #2563eb; color: #2563eb; }
-        .drawer-cat-chip.active {
-            background: #2563eb; color: #fff; border-color: #2563eb;
-        }
-        .drawer-cat-add {
-            padding: 3px 10px; border-radius: 2px; font-size: 11px; font-weight: 600;
-            border: 1px dashed #94a3b8; background: transparent;
-            color: #475569; cursor: pointer; white-space: nowrap;
-        }
-        .drawer-cat-add:hover { border-color: #2563eb; color: #2563eb; }
-        .drawer-body { flex: 1; overflow-y: auto; padding: 14px 18px 40px; }
-        .drawer-footer {
-            padding: 10px 18px; border-top: 1px solid #e2e8f0;
-            display: flex; justify-content: flex-end; gap: 6px; flex-shrink: 0;
-            background: #f8fafc;
+        /* ── 6. Preset Modal (2-Column Master-Detail Layout) ── */
+        .preset-modal-layout {
+            display: flex;
+            height: 68vh;
+            min-height: 500px;
+            max-height: calc(100vh - 160px);
+            overflow: hidden;
+            background: #ffffff;
         }
 
-        /* Section Card (ERP Forms Style) */
-        .section-card {
-            border: 1px solid #cbd5e1; border-radius: 3px;
-            margin-bottom: 12px; background: #ffffff; overflow: hidden;
+        /* 좌측: 분류 사이드바 */
+        .preset-cat-sidebar {
+            width: 250px;
+            min-width: 230px;
+            background: #f8fafc;
+            border-right: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
         }
-        .section-card-header {
-            display: flex; align-items: center; gap: 6px;
+        .preset-cat-sidebar-header {
+            padding: 8px 10px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .preset-cat-search-box {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+        }
+        .preset-cat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .preset-cat-item {
+            padding: 7px 10px;
+            border-radius: 3px;
+            font-size: 11.5px;
+            font-weight: 500;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #334155;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            transition: all 0.15s ease;
+            text-align: left;
+            user-select: none;
+        }
+        .preset-cat-item:hover {
+            border-color: #93c5fd;
+            background: #f0f7ff;
+            color: #1d4ed8;
+        }
+        .preset-cat-item.active {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+            font-weight: 700;
+            box-shadow: 0 1px 3px rgba(37,99,235,0.12);
+        }
+        .preset-cat-item .cat-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 우측: 에디터 영역 */
+        .preset-editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .preset-editor-header {
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .preset-editor-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 18px 40px;
+        }
+
+        /* Section Card in Preset Modal */
+        .preset-section-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+            margin-bottom: 12px;
+            background: #ffffff;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .preset-section-card.drag-over {
+            border: 2px dashed #2563eb !important;
+            background: #eff6ff !important;
+        }
+        .preset-section-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             padding: 6px 10px;
             background: #f1f5f9;
             border-bottom: 1px solid #e2e8f0;
             border-left: 3px solid #2563eb;
         }
-        .section-card-header .sec-label {
-            flex: 1; border: 1px solid transparent; background: transparent;
-            font-size: 12px; font-weight: 700; color: #1e293b;
-            outline: none; resize: none; height: 22px; padding: 1px 4px;
+        .preset-section-header .sec-label {
+            flex: 1;
+            border: 1px solid transparent;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            outline: none;
+            height: 24px;
+            padding: 1px 6px;
+            border-radius: 2px;
         }
-        .section-card-header .sec-label:focus {
-            background: #ffffff; border-color: #2563eb; border-radius: 2px;
+        .preset-section-header .sec-label:focus {
+            background: #ffffff;
+            border-color: #2563eb;
         }
-        .section-card-body { padding: 6px 10px 8px; }
-        .sec-field-row {
-            display: flex; align-items: center; gap: 6px;
-            padding: 4px 0; border-bottom: 1px solid #f1f5f9;
+        .preset-section-body {
+            padding: 8px 10px;
         }
-        .sec-field-row:last-of-type { border-bottom: none; }
-        .sec-field-row .sf-label {
-            flex: 1; height: 26px; padding: 2px 6px;
-            border: 1px solid #cbd5e1; border-radius: 2px;
-            font-size: 11.5px; outline: none;
+        .preset-field-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 2px;
+            margin-bottom: 4px;
+            background: #ffffff;
+            transition: all 0.1s ease;
         }
-        .sec-field-row .sf-type {
-            width: 76px; height: 26px; padding: 0 4px;
-            border: 1px solid #cbd5e1; border-radius: 2px;
-            font-size: 11px; outline: none;
+        .preset-field-row:hover {
+            border-color: #94a3b8;
         }
-        .sec-field-row .sf-note {
-            width: 110px; height: 26px; padding: 0 6px;
-            border: 1px solid #cbd5e1; border-radius: 2px;
-            font-size: 11px; outline: none; color: #64748b;
+        .preset-field-row.drag-over {
+            border: 2px dashed #2563eb !important;
+            background: #eff6ff !important;
         }
-        .sec-add-field {
-            display: flex; align-items: center; gap: 4px; justify-content: center;
-            width: 100%; padding: 5px; margin-top: 4px;
-            border: 1px dashed #cbd5e1; border-radius: 2px;
-            background: none; color: #64748b; font-size: 11px;
+        .preset-field-row .f-order {
+            width: 22px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .preset-field-row .sf-label {
+            flex: 1.5;
+            min-width: 150px;
+            height: 26px;
+            padding: 2px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            font-size: 11.5px;
+            outline: none;
+        }
+        .preset-field-row .sf-type {
+            width: 85px;
+            height: 26px;
+            padding: 0 4px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            font-size: 11px;
+            outline: none;
+        }
+        .preset-field-row .sf-note {
+            flex: 1.5;
+            min-width: 150px;
+            height: 26px;
+            padding: 2px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            font-size: 11px;
+            outline: none;
+            color: #475569;
+        }
+        .preset-field-row input:focus, .preset-field-row select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 1px rgba(37,99,235,0.15);
+        }
+        .preset-sec-add-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            justify-content: center;
+            width: 100%;
+            padding: 6px;
+            margin-top: 6px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 2px;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.15s ease;
         }
-        .sec-add-field:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+        .preset-sec-add-field:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+            background: #eff6ff;
+        }
 
         /* Drag handles */
         .sec-drag, .f-drag {
-            color: #94a3b8; cursor: grab; background: none; border: none; padding: 0;
-            display: inline-flex; align-items: center; justify-content: center;
+            color: #94a3b8;
+            cursor: grab;
+            background: none;
+            border: none;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .sec-drag:active, .f-drag:active { cursor: grabbing; }
 
@@ -1437,35 +1564,77 @@
         </div>
     </div>
 
-    <!-- ═══ 8. Preset Drawer (프리셋 관리 드로어) ═══ -->
-    <div id="drawerOverlay" class="drawer-overlay"></div>
-    <div id="presetDrawer" class="preset-drawer">
-        <div class="drawer-header">
-            <h2><i class='bx bx-slider-alt'></i> 필드 프리셋 관리</h2>
-            <button type="button" class="btn-close" id="closeDrawerBtn"></button>
-        </div>
-        <div class="drawer-cat-bar">
-            <div id="drawerCatList" style="display:flex;gap:4px;flex:1;overflow-x:auto;"></div>
-            <button type="button" class="drawer-cat-add" id="addDrawerCatBtn"><i class='bx bx-plus'></i> 추가</button>
-        </div>
-        <div class="drawer-body">
-            <div id="drawerNoSelection" class="text-center text-muted py-5">
-                <i class='bx bx-pointer' style="font-size:28px;"></i><br>
-                상단에서 분류를 선택하세요
-            </div>
-            <div id="drawerEditorContent" style="display:none;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h3 id="drawerEditorTitle" style="font-size:12.5px; font-weight:700; margin:0;">필드 설정</h3>
+    <!-- ═══ 8. Preset Modal (필드 프리셋 관리 모달) ═══ -->
+    <div id="presetModal" class="modal">
+        <div class="modal-dialog modal-xl" style="max-width: 1060px !important;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class='bx bx-slider-alt text-primary'></i> 자재 사양 필드 프리셋 관리</h2>
+                    <span class="text-white-50 ms-2" style="font-size:11px;">(분류별 기본 기술 규격 및 섹션 템플릿 관리)</span>
+                    <button type="button" class="btn-close" id="closePresetModalBtn"></button>
                 </div>
-                <div id="drawerSectionList"></div>
-                <button type="button" class="btn-erp btn-erp-primary w-100 justify-content-center mt-2" id="addDrawerSectionBtn">
-                    <i class='bx bx-plus-circle'></i> 섹션 추가
-                </button>
+                <div class="preset-modal-layout">
+                    <!-- 좌측: 자재 분류 목록 사이드바 (가로 스크롤 없는 깔끔한 세로 리스트) -->
+                    <div class="preset-cat-sidebar">
+                        <div class="preset-cat-sidebar-header">
+                            <span class="fw-bold" style="font-size:11.5px; color:#1e293b;">
+                                <i class='bx bx-category-alt text-primary'></i> 자재 분류 (<span id="presetCatCount">0</span>)
+                            </span>
+                            <button type="button" class="btn-erp btn-erp-primary btn-erp-sm" id="addPresetCatBtn" title="새로운 자재 분류 추가">
+                                <i class='bx bx-plus'></i> 분류 추가
+                            </button>
+                        </div>
+                        <div class="preset-cat-search-box">
+                            <input type="text" id="presetCatSearchInput" class="form-control form-control-sm" placeholder="분류 검색...">
+                        </div>
+                        <div class="preset-cat-list" id="presetCatList">
+                            <!-- 분류 목록 렌더링 -->
+                        </div>
+                    </div>
+
+                    <!-- 우측: 사양 필드 에디터 영역 (넓은 공간, 쾌적한 사양 필드 편집) -->
+                    <div class="preset-editor-area">
+                        <div class="preset-editor-header" id="presetEditorHeader" style="display:none;">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="erp-badge erp-badge-cat" id="presetActiveCatBadge" style="font-size:12px; padding:3px 8px;">분류명</span>
+                                <span class="fw-bold" style="font-size:12.5px; color:#1e293b;">사양 템플릿 구성</span>
+                            </div>
+                            <button type="button" class="btn-erp btn-erp-danger btn-erp-sm" id="deletePresetCatBtn" title="현재 선택된 자재 분류 프리셋 전체 삭제">
+                                <i class='bx bx-trash'></i> 분류 삭제
+                            </button>
+                        </div>
+
+                        <div class="preset-editor-body">
+                            <div id="presetNoSelection" class="text-center text-muted py-5 my-auto">
+                                <i class='bx bx-category' style="font-size:42px; color:#94a3b8;"></i>
+                                <div class="mt-2 fw-bold" style="font-size:13.5px; color:#475569;">좌측에서 자재 분류를 선택해 주세요</div>
+                                <div class="text-muted mt-1" style="font-size:11.5px;">해당 분류의 기본 기술 사양 항목과 섹션을 자유롭게 추가/수정/순서변경할 수 있습니다.</div>
+                            </div>
+                            <div id="presetEditorContent" style="display:none;">
+                                <div class="alert alert-light border py-1 px-2 mb-2 d-flex align-items-center gap-2 text-muted" style="font-size:11px;">
+                                    <i class='bx bx-info-circle text-primary'></i>
+                                    <span>좌측 드래그 핸들(<i class='bx bx-grid-vertical'></i>)을 이용해 섹션 및 항목 순서를 자유롭게 재배치할 수 있습니다.</span>
+                                </div>
+                                <div id="presetSectionList"></div>
+                                <button type="button" class="btn-erp btn-erp-primary w-100 justify-content-center mt-3 py-1" id="addPresetSectionBtn">
+                                    <i class='bx bx-plus-circle'></i> 섹션 그룹 추가
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex align-items-center justify-content-between">
+                    <span class="text-muted" style="font-size:11px;">
+                        <i class='bx bx-check-circle text-success'></i> 저장 시 이후 등록 및 수정되는 자재에 이 사양 프리셋이 기본 적용됩니다.
+                    </span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" id="closePresetModalBtn2">닫기</button>
+                        <button type="button" class="btn-erp btn-erp-primary" id="savePresetBtn">
+                            <i class='bx bx-save'></i> 프리셋 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="drawer-footer">
-            <button type="button" class="btn-erp" id="closeDrawerBtn2">닫기</button>
-            <button type="button" class="btn-erp btn-erp-primary" id="saveDrawerBtn" onclick="window.saveCurrentPreset ? window.saveCurrentPreset() : false;"><i class='bx bx-save'></i> 저장</button>
         </div>
     </div>
 
@@ -1496,6 +1665,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_14"></script>
+    <script src="tbm-material.js?v=20260928_15"></script>
 </body>
 </html>
