@@ -1114,8 +1114,8 @@ function addIncotermToGroup(groupEl, term, price, currency) {
     const row = document.createElement('div');
     row.className = 'd-flex align-items-center gap-1 mt-1';
     row.innerHTML = `
-        <select class="form-select form-select-sm it-term" style="width:75px;height:26px;font-size:11px;">${INCOTERMS_LIST.map(t => `<option value="${t}"${t === term ? ' selected' : ''}>${t}</option>`).join('')}</select>
-        <select class="form-select form-select-sm it-currency" style="width:85px;height:26px;font-size:11px;">${CURRENCY_LIST.map(c => `<option value="${c.code}"${c.code === (currency || 'USD') ? ' selected' : ''}>${c.label}</option>`).join('')}</select>
+        <select class="form-select form-select-sm it-term" style="width:80px;height:26px;font-size:11px;padding:2px 20px 2px 8px;">${INCOTERMS_LIST.map(t => `<option value="${t}"${t === term ? ' selected' : ''}>${t}</option>`).join('')}</select>
+        <select class="form-select form-select-sm it-currency" style="width:115px;height:26px;font-size:11px;padding:2px 22px 2px 8px;">${CURRENCY_LIST.map(c => `<option value="${c.code}"${c.code === (currency || 'USD') ? ' selected' : ''}>${c.label}</option>`).join('')}</select>
         <input type="number" class="form-control form-control-sm it-price" placeholder="가격" min="0" step="any" value="${price || ''}" style="height:26px;font-size:11px;">
         <button type="button" class="btn-grid-action btn-grid-action-danger it-del" title="삭제"><i class='bx bx-x'></i></button>`;
     row.querySelector('.it-del').addEventListener('click', () => row.remove());
