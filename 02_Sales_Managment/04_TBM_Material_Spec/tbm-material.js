@@ -547,7 +547,7 @@ function renderGrid() {
 
         // 메인 데이터 행
         html += `
-        <tr class="erp-main-row" data-id="${d.id}" id="row_${d.id}">
+        <tr class="erp-main-row" data-id="${d.id}" id="row_${d.id}" ondblclick="window.onRowDblClick('${d.id}', event)">
             <td class="text-center user-select-none">
                 <input type="checkbox" class="row-check form-check-input mt-0 cursor-pointer" value="${d.id}" onchange="updateFloatingBar(event)">
                 <span class="text-muted ms-1" style="font-size:10.5px;">${num}</span>
@@ -794,6 +794,22 @@ function buildAccordionContentHtml(d, thumbUrl, filesArr) {
         </div>
     </div>`;
 }
+
+// ── 행 더블클릭 시 자재 수정 모달 호출 ──
+window.onRowDblClick = function(id, event) {
+    if (!id) return;
+    if (event && event.target) {
+        // 체크박스, 펼치기/접기 버튼, 액션 버튼(수정/복사/삭제), 링크 등 내부 상호작용 요소 클릭 시에는 무시
+        if (event.target.closest('input[type="checkbox"], button, .btn-grid-action, .btn-expand, a')) {
+            return;
+        }
+    }
+    // 더블클릭 시 브라우저 텍스트 블록 선택 해제
+    if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+    }
+    openModal(id);
+};
 
 // ── 7. 아코디언 토글 & 호버 팝오버 ──
 window.toggleAccordion = function(id, event) {
