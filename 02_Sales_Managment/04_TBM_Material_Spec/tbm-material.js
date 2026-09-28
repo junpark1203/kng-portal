@@ -1319,9 +1319,22 @@ function openPresetDrawer() {
     $('presetDrawer').classList.add('open');
     document.body.style.overflow = 'hidden';
     renderDrawerCategories();
-    selectedPresetId = null;
-    $('drawerNoSelection').style.display = '';
-    $('drawerEditorContent').style.display = 'none';
+
+    let targetPreset = null;
+    if (activeCategoryFilter && activeCategoryFilter !== 'all') {
+        targetPreset = presetsData.find(p => p.category === activeCategoryFilter);
+    }
+    if (!targetPreset && presetsData.length > 0) {
+        targetPreset = presetsData[0];
+    }
+
+    if (targetPreset) {
+        selectDrawerPreset(targetPreset.id);
+    } else {
+        selectedPresetId = null;
+        $('drawerNoSelection').style.display = '';
+        $('drawerEditorContent').style.display = 'none';
+    }
 }
 
 function closePresetDrawer() {
@@ -1490,31 +1503,58 @@ function flattenSections() {
 }
 
 async function saveCurrentPreset() {
-    if (!selectedPresetId) return;
+    if (!selectedPresetId) {
+        showToast('설정할 자재 분류를 먼저 선택해 주세요.', 'warning');
+        return;
+    }
     const preset = presetsData.find(x => x.id === selectedPresetId);
-    if (!preset) return;
+    if (!preset) {
+        showToast('선택된 프리셋 정보를 찾을 수 없습니다.', 'warning');
+        return;
+    }
+
+    const saveBtn = $('saveDrawerBtn');
+    const origHtml = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 저장 중...";
+    }
 
     const fields = flattenSections();
     const payload = { ...preset, fields };
 
     try {
-        const res = await authFetch(`${API}/presets/${selectedPresetId}`, {
-            method: 'PUT',
+        const res = await authFetch(`${API}/presets`, {
+            method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         });
         if (res.ok) {
-            showToast('프리셋이 저장되었습니다.', 'success');
+            showToast(`"${preset.category}" 프리셋이 저장되었습니다.`, 'success');
             await loadPresets();
+            renderDrawerCategories();
+            selectDrawerPreset(selectedPresetId);
             renderCategoryTabs();
             applyFiltersAndSort();
         } else {
-            showToast('저장 실패', 'error');
+            let errMsg = '저장 실패';
+            try {
+                const err = await res.json();
+                if (err && err.error) errMsg += ': ' + err.error;
+            } catch(e) {}
+            showToast(errMsg, 'error');
         }
     } catch(e) {
-        showToast('서버 오류', 'error');
+        console.error('saveCurrentPreset error:', e);
+        showToast('서버 오류: ' + (e.message || ''), 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHtml || "<i class='bx bx-save'></i> 저장";
+        }
     }
 }
+window.saveCurrentPreset = saveCurrentPreset;
 
 function addPresetCategory() {
     const name = prompt('새 자재 분류명을 입력하세요:');

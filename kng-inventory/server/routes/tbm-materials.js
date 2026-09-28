@@ -295,6 +295,24 @@ router.post('/presets', async (req, res) => {
     }
 });
 
+// 프리셋 수정 (PUT 지원)
+router.put('/presets/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const p = req.body;
+        p.id = id;
+        const now = new Date().toISOString();
+        await dbRun(`
+            INSERT INTO tbm_field_presets (id, data, updatedAt)
+            VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET data = excluded.data, updatedAt = excluded.updatedAt
+        `, [id, JSON.stringify(p), now]);
+        res.json({ message: '저장 성공', id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 프리셋 삭제
 router.delete('/presets/:id', async (req, res) => {
     try {
