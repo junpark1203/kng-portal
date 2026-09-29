@@ -72,33 +72,6 @@
 
                 <!-- ═══ PAGE: 상품 등록 ═══ -->
                 <div class="page-view" id="pageRegister">
-                    <!-- ECOUNT ERP 서브 탭 & 퀵 점프 바 -->
-                    <div class="erp-register-tabs-bar" id="erpRegisterTabsBar">
-                        <div class="erp-tab-group">
-                            <button type="button" class="erp-sub-tab active" data-step="all" onclick="switchRegisterTab('all')">
-                                <i class='bx bx-list-check'></i> 전체 보기
-                            </button>
-                            <button type="button" class="erp-sub-tab" data-step="1" onclick="switchRegisterTab(1)">
-                                <i class='bx bx-box'></i> 1. 기본정보
-                            </button>
-                            <button type="button" class="erp-sub-tab" data-step="2" onclick="switchRegisterTab(2)">
-                                <i class='bx bx-won'></i> 2. 가격 / 배송
-                            </button>
-                            <button type="button" class="erp-sub-tab" data-step="3" onclick="switchRegisterTab(3)">
-                                <i class='bx bx-list-plus'></i> 3. 옵션 / 재고
-                            </button>
-                            <button type="button" class="erp-sub-tab" data-step="4" onclick="switchRegisterTab(4)">
-                                <i class='bx bx-image'></i> 4. 이미지
-                            </button>
-                            <button type="button" class="erp-sub-tab" data-step="5" onclick="switchRegisterTab(5)">
-                                <i class='bx bx-detail'></i> 5. 상세 / 고시
-                            </button>
-                        </div>
-                        <div class="erp-tab-info">
-                            <span class="erp-density-hint"><i class='bx bx-slider-alt text-primary'></i> ECOUNT ERP 전표 모드</span>
-                        </div>
-                    </div>
-
                     <div class="registration-layout">
                         <div class="registration-content" id="registrationContent">
                             <!-- Step 1: 상품 기본 -->
@@ -117,7 +90,7 @@
                                         <tr>
                                             <th>관리번호</th>
                                             <td>
-                                                <input type="text" id="fldCode" readonly class="font-mono form-control"
+                                                <input type="text" id="fldCode" readonly class="form-control"
                                                     style="background:#f1f5f9; color: var(--erp-primary); font-weight:700;">
                                             </td>
                                             <th>상품상태</th>
@@ -189,7 +162,7 @@
                                                     <input type="text" id="fldProductName" class="form-control" placeholder="SEO 최적화된 스토어 표시용 상품명 (최대 100자)"
                                                         maxlength="100" style="padding-right:60px;">
                                                     <span id="nameCounter"
-                                                        style="position:absolute; right:8px; font-size:11px; font-weight:600; color:var(--gray-400); font-family:'SF Mono',monospace; pointer-events:none;">0/100</span>
+                                                        style="position:absolute; right:8px; font-size:11px; font-weight:600; color:var(--gray-400); pointer-events:none;">0/100</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -229,85 +202,140 @@
                                                 <select id="fldReturnAddress" class="form-select"><option value="">주소 선택</option></select>
                                             </td>
                                         </tr>
-                                        <!-- 배송 프리셋 오버라이드 (프리셋 선택 시 노출) -->
+                                        <!-- 배송 프리셋 세부 설정 (프리셋 선택 시 노출 — 깔끔한 ECOUNT ERP 서브 테이블) -->
                                         <tr id="presetSummaryTableRow" style="display:none;">
                                             <td colspan="6" style="padding:4px 6px; background:#f8fafc;">
                                                 <div id="presetSummaryWrap" style="display:none;">
-                                                    <div id="presetSummaryHeader" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                                                        <i class='bx bx-package text-primary' style="font-size:15px;"></i>
-                                                        <strong id="presetSummaryName" style="font-size:11.5px;color:var(--on-surface);"></strong>
+                                                    <div id="presetSummaryHeader" style="display:flex;align-items:center;gap:8px;padding:3px 6px;background:#eff6ff;border:1px solid #bfdbfe;border-bottom:none;border-radius:2px 2px 0 0;">
+                                                        <i class='bx bx-check-circle text-primary' style="font-size:14px;"></i>
+                                                        <span style="font-size:11px;font-weight:700;color:#1e40af;">적용 프리셋:</span>
+                                                        <strong id="presetSummaryName" style="font-size:11.5px;color:#1e293b;"></strong>
                                                         <span id="presetOverrideBadge" class="preset-override-badge hidden">수정됨</span>
+                                                        <span style="font-size:10px;color:#64748b;margin-left:4px;">(필요시 아래 표에서 본 상품에만 적용될 배송 설정을 직접 수정할 수 있습니다)</span>
                                                         <button type="button" class="btn-outline btn-xs" id="btnResetAllOverrides" style="margin-left:auto;font-size:10px;display:none;" title="프리셋 원본으로 전체 되돌리기"><i class='bx bx-reset'></i> 전체 되돌리기</button>
                                                     </div>
-                                                    <div class="preset-override-panel" id="presetOverrideFields" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:4px 8px;">
-                                                        <div class="fg override-field" data-field="method">
-                                                            <label>배송방법 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <select id="fldOverrideMethod">
-                                                                <option value="택배, 소포, 등기">택배, 소포, 등기</option>
-                                                                <option value="직접배송(화물배달)">직접배송(화물배달)</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="fg override-field" data-field="courierCode">
-                                                            <label>택배사 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <select id="fldOverrideCourierCode">
-                                                                <option value="">택배사 선택</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="fg override-field" data-field="feeType">
-                                                            <label>배송비 유형 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <select id="fldOverrideFeeType">
-                                                                <option value="무료">무료</option>
-                                                                <option value="조건부 무료">조건부 무료</option>
-                                                                <option value="유료">유료</option>
-                                                                <option value="수량별">수량별</option>
-                                                                <option value="구간별">구간별</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-base" data-field="fee">
-                                                            <label>기본 배송비 (원) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideFee" min="0">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-base" data-field="payMethod">
-                                                            <label>결제방식 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <select id="fldOverridePayMethod">
-                                                                <option value="선결제">선결제</option>
-                                                                <option value="착불">착불</option>
-                                                                <option value="착불 또는 선결제">착불 또는 선결제</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-condition-free hidden" data-field="freeCondition">
-                                                            <label>조건부무료 금액 (원) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideFreeCondition" min="0">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-quantity hidden" data-field="qty">
-                                                            <label>수량별 부과수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideQuantity" min="1">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section2Qty">
-                                                            <label>2구간수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideSection2Qty" min="1">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="addFee">
-                                                            <label>추가배송비 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideAddFee" min="10">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section3Qty">
-                                                            <label>3구간수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideSection3Qty" min="1" placeholder="미입력시 2구간">
-                                                        </div>
-                                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section3Fee">
-                                                            <label>3구간배송비 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideSection3Fee" min="10">
-                                                        </div>
-                                                        <div class="fg override-field" data-field="returnFee">
-                                                            <label>반품배송비 (편도) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideReturnFee" min="0">
-                                                        </div>
-                                                        <div class="fg override-field" data-field="exchangeFee">
-                                                            <label>교환배송비 (왕복) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
-                                                            <input type="number" id="fldOverrideExchangeFee" min="0">
-                                                        </div>
-                                                    </div>
+                                                    <table class="erp-form-table erp-sub-table" id="presetOverrideFields">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width:14%;">배송방법</th>
+                                                                <th style="width:16%;">택배사</th>
+                                                                <th style="width:11%;">배송비 유형</th>
+                                                                <th style="width:11%;">기본 배송비(원)</th>
+                                                                <th style="width:11%;">결제방식</th>
+                                                                <th style="width:17%;">조건 / 부과수량</th>
+                                                                <th style="width:10%;">반품배송비 (편도)</th>
+                                                                <th style="width:10%;">교환배송비 (왕복)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <!-- 배송방법 -->
+                                                                <td class="override-field" data-field="method">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <select id="fldOverrideMethod">
+                                                                            <option value="택배, 소포, 등기">택배, 소포, 등기</option>
+                                                                            <option value="직접배송(화물배달)">직접배송(화물배달)</option>
+                                                                        </select>
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 택배사 -->
+                                                                <td class="override-field" data-field="courierCode">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <select id="fldOverrideCourierCode">
+                                                                            <option value="">택배사 선택</option>
+                                                                        </select>
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 배송비 유형 -->
+                                                                <td class="override-field" data-field="feeType">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <select id="fldOverrideFeeType">
+                                                                            <option value="무료">무료</option>
+                                                                            <option value="조건부 무료">조건부 무료</option>
+                                                                            <option value="유료">유료</option>
+                                                                            <option value="수량별">수량별</option>
+                                                                            <option value="구간별">구간별</option>
+                                                                        </select>
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 기본 배송비 -->
+                                                                <td class="override-field" data-field="fee">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <input type="number" id="fldOverrideFee" min="0" class="text-end" placeholder="0">
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 결제방식 -->
+                                                                <td class="override-field" data-field="payMethod">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <select id="fldOverridePayMethod">
+                                                                            <option value="선결제">선결제</option>
+                                                                            <option value="착불">착불</option>
+                                                                            <option value="착불 또는 선결제">착불/선결제</option>
+                                                                        </select>
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 조건부/수량별/구간별 조건 입력 셀 -->
+                                                                <td style="padding:1px 4px;">
+                                                                    <!-- 조건부무료 금액 -->
+                                                                    <div class="override-field override-fee-cond override-cond-condition-free hidden erp-cell-wrap" data-field="freeCondition">
+                                                                        <span class="cell-prefix">기준금액:</span>
+                                                                        <input type="number" id="fldOverrideFreeCondition" min="0" class="text-end" placeholder="원">
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                    <!-- 수량별 부과수량 -->
+                                                                    <div class="override-field override-fee-cond override-cond-quantity hidden erp-cell-wrap" data-field="qty">
+                                                                        <span class="cell-prefix">반복수량:</span>
+                                                                        <input type="number" id="fldOverrideQuantity" min="1" class="text-end" placeholder="개">
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                    <!-- 구간별: 2구간 수량 + 추가배송비 및 3구간 -->
+                                                                    <div class="override-fee-cond override-cond-section hidden" style="display:flex; flex-direction:column; gap:2px;">
+                                                                        <div class="override-field erp-cell-wrap" data-field="section2Qty">
+                                                                            <span class="cell-prefix">2구간:</span>
+                                                                            <input type="number" id="fldOverrideSection2Qty" min="1" class="text-end" placeholder="수량">
+                                                                            <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                        </div>
+                                                                        <div class="override-field erp-cell-wrap" data-field="addFee">
+                                                                            <span class="cell-prefix">추가비:</span>
+                                                                            <input type="number" id="fldOverrideAddFee" min="10" class="text-end" placeholder="원">
+                                                                            <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                        </div>
+                                                                        <div class="override-field erp-cell-wrap" data-field="section3Qty">
+                                                                            <span class="cell-prefix">3구간:</span>
+                                                                            <input type="number" id="fldOverrideSection3Qty" min="1" class="text-end" placeholder="수량(선택)">
+                                                                            <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                        </div>
+                                                                        <div class="override-field erp-cell-wrap" data-field="section3Fee">
+                                                                            <span class="cell-prefix">3구간비:</span>
+                                                                            <input type="number" id="fldOverrideSection3Fee" min="10" class="text-end" placeholder="원">
+                                                                            <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <!-- 무료 / 유료 시 안내 -->
+                                                                    <div class="override-fee-cond override-cond-none" id="fldOverrideNoCondMsg" style="text-align:center; font-size:11px; color:#94a3b8; line-height:22px;">-</div>
+                                                                </td>
+                                                                <!-- 반품배송비 -->
+                                                                <td class="override-field" data-field="returnFee">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <input type="number" id="fldOverrideReturnFee" min="0" class="text-end" placeholder="0">
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                                <!-- 교환배송비 -->
+                                                                <td class="override-field" data-field="exchangeFee">
+                                                                    <div class="erp-cell-wrap">
+                                                                        <input type="number" id="fldOverrideExchangeFee" min="0" class="text-end" placeholder="0">
+                                                                        <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </td>
                                         </tr>
@@ -490,12 +518,14 @@
                                 <div class="image-manager" id="imageManager">
                                     <!-- 3열 반응형 이미지 그리드 (대표, 추가, 상세페이지) -->
                                     <div class="image-sections-row">
-                                        <!-- 대표 이미지 -->
-                                        <div class="image-section">
+                                        <!-- 대표 이미지 (1장 구성이므로 고정폭 350px 내 타이틀 한줄 표기 유지) -->
+                                        <div class="image-section image-section-main">
                                             <div class="image-section-title">
-                                                <i class='bx bx-camera'></i> 대표 이미지
-                                                <span class="label-required">필수</span>
-                                                <span class="image-guide-hint">1000×1000</span>
+                                                <div class="image-section-title-left">
+                                                    <i class='bx bx-camera'></i> <span>대표 이미지</span>
+                                                    <span class="label-required">필수</span>
+                                                    <span class="image-guide-hint">1000×1000</span>
+                                                </div>
                                                 <div class="image-section-actions">
                                                     <button type="button" class="btn-section-action" id="btnMainImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL</button>
                                                     <button type="button" class="btn-section-action" id="btnPasteMain" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>
@@ -510,12 +540,14 @@
                                             </div>
                                         </div>
 
-                                        <!-- 추가 이미지 -->
-                                        <div class="image-section">
+                                        <!-- 추가 이미지 (최대 9장이므로 가장 넓은 가로 공간 할당) -->
+                                        <div class="image-section image-section-add">
                                             <div class="image-section-title">
-                                                <i class='bx bx-images'></i> 추가 이미지
-                                                <span class="image-guide-hint">1000×1000</span>
-                                                <span class="label-count" id="addImageCount">0/9</span>
+                                                <div class="image-section-title-left">
+                                                    <i class='bx bx-images'></i> <span>추가 이미지</span>
+                                                    <span class="image-guide-hint">1000×1000</span>
+                                                    <span class="label-count" id="addImageCount">0/9</span>
+                                                </div>
                                                 <div class="image-section-actions">
                                                     <button type="button" class="btn-section-action" id="btnAddImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL</button>
                                                     <button type="button" class="btn-section-action" id="btnPasteAdd" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>
@@ -530,12 +562,14 @@
                                             </div>
                                         </div>
 
-                                        <!-- 상세 이미지 -->
-                                        <div class="image-section">
+                                        <!-- 상세 이미지 (세로로 긴 상세페이지 특성 반영) -->
+                                        <div class="image-section image-section-detail">
                                             <div class="image-section-title">
-                                                <i class='bx bx-detail'></i> 상세페이지 이미지
-                                                <span class="image-guide-hint">폭 860px 권장</span>
-                                                <span class="label-count" id="detailImageCount">0장</span>
+                                                <div class="image-section-title-left">
+                                                    <i class='bx bx-detail'></i> <span>상세페이지 이미지</span>
+                                                    <span class="image-guide-hint">폭 860px 권장</span>
+                                                    <span class="label-count" id="detailImageCount">0장</span>
+                                                </div>
                                                 <div class="image-section-actions">
                                                     <button type="button" class="btn-section-action" id="btnDetailImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL</button>
                                                     <button type="button" class="btn-section-action" id="btnPasteDetail" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>

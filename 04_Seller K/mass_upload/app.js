@@ -290,57 +290,18 @@ function initWizard() {
     }
 }
 
-// ── ECOUNT ERP 서브 탭 전환 및 퀵 점프 ──
-var _activeRegisterTab = 'all';
-
+// ── 섹션 퀵 점프 (서브 탭 제거 후 직접 스크롤) ──
 function switchRegisterTab(step) {
-    _activeRegisterTab = step;
-    
-    // Update sub-tab buttons
-    document.querySelectorAll('.erp-sub-tab').forEach(function(btn) {
-        if (btn.getAttribute('data-step') === String(step)) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-
-    var panels = [1, 2, 3, 4, 5];
-    if (step === 'all') {
-        panels.forEach(function(n) {
-            var p = document.getElementById('step' + n);
-            if (p) p.classList.remove('tab-hidden');
-        });
-    } else {
-        var targetNum = parseInt(step);
-        panels.forEach(function(n) {
-            var p = document.getElementById('step' + n);
-            if (p) {
-                if (n === targetNum) {
-                    p.classList.remove('tab-hidden');
-                } else {
-                    p.classList.add('tab-hidden');
-                }
-            }
-        });
-        var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
-        if (pageBody) pageBody.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // 하위 호환용 no-op
 }
 
 function goToStep(n) {
-    var num = parseInt(n);
-    if (!isNaN(num) && typeof switchRegisterTab === 'function') {
-        if (_activeRegisterTab !== 'all') {
-            switchRegisterTab(num);
-        }
-    }
     var panel = document.getElementById('step' + n);
     var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
     if (panel && pageBody) {
         var targetRect = panel.getBoundingClientRect();
         var containerRect = pageBody.getBoundingClientRect();
-        var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 40;
+        var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 10;
         pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
     }
 }

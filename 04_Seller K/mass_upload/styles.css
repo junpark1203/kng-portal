@@ -88,6 +88,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
 }
 
 html {
@@ -692,7 +693,6 @@ h1, h2, h3, h4, h5, h6, .font-headline {
 .data-table td[style*="text-align:right"],
 .data-table td[style*="text-align: right"] {
     text-align: right !important;
-    font-family: 'Consolas', 'SF Mono', monospace, sans-serif !important;
     font-variant-numeric: tabular-nums;
 }
 
@@ -819,8 +819,8 @@ h1, h2, h3, h4, h5, h6, .font-headline {
     font-size: 20px;
     font-weight: 800;
     color: var(--erp-primary);
-    font-family: 'Consolas', 'SF Mono', monospace;
     line-height: 1.1;
+    font-variant-numeric: tabular-nums;
 }
 
 .export-card-label {
@@ -1121,6 +1121,6 @@ h1, h2, h3, h4, h5, h6, .font-headline {
 .text-danger { color: var(--erp-danger) !important; }
 .text-warning { color: var(--erp-warning) !important; }
 .text-muted { color: var(--gray-500) !important; }
-.font-mono { font-family: 'Consolas', 'SF Mono', monospace !important; }
+.font-mono { font-variant-numeric: tabular-nums; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cursor-pointer { cursor: pointer !important; }

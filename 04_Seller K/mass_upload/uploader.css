@@ -103,77 +103,7 @@
     display: none !important;
 }
 
-.erp-register-tabs-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #ffffff;
-    border: 1px solid var(--erp-border, #cbd5e1);
-    border-radius: 2px;
-    padding: 3px 6px;
-    margin-bottom: 8px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
 
-.erp-tab-group {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    overflow-x: auto;
-}
-
-.erp-sub-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 10px;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #475569;
-    background: #f8fafc;
-    border: 1px solid var(--erp-border, #cbd5e1);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    height: 25px;
-}
-
-.erp-sub-tab:hover {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-
-.erp-sub-tab.active {
-    background: var(--erp-primary, #2563eb);
-    border-color: var(--erp-primary, #2563eb);
-    color: #ffffff;
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
-}
-
-.erp-tab-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: #64748b;
-    margin-left: 12px;
-}
-
-.erp-density-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10.5px;
-    color: #64748b;
-    background: #f1f5f9;
-    padding: 2px 8px;
-    border-radius: 2px;
-    font-weight: 600;
-}
 
 .registration-content {
     width: 100%;
@@ -289,6 +219,82 @@
 .erp-form-table th .required {
     color: var(--danger, #dc2626);
     margin-left: 2px;
+}
+
+/* ── 4-1. ECOUNT ERP 서브 테이블 (.erp-sub-table) ── */
+.erp-sub-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid var(--erp-border, #cbd5e1);
+    margin-top: 0;
+}
+
+.erp-sub-table th {
+    background-color: #f1f5f9 !important;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 4px;
+    border: 1px solid var(--erp-border, #cbd5e1);
+    text-align: center;
+    white-space: nowrap;
+    height: 24px;
+    box-sizing: border-box;
+}
+
+.erp-sub-table td {
+    padding: 1px 4px;
+    border: 1px solid var(--erp-border, #cbd5e1);
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 26px;
+    box-sizing: border-box;
+}
+
+.erp-sub-table .erp-cell-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+}
+
+.erp-sub-table .erp-cell-wrap select,
+.erp-sub-table .erp-cell-wrap input {
+    flex: 1;
+    min-width: 0;
+    height: 22px !important;
+    font-size: 11px !important;
+    padding: 1px 4px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: #1e293b;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.erp-sub-table td:focus-within {
+    background-color: #eff6ff !important;
+    box-shadow: inset 0 0 0 1.5px var(--erp-primary, #2563eb) !important;
+}
+
+.erp-sub-table .cell-prefix {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #64748b;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.erp-sub-table td.override-field.modified {
+    background-color: #fefce8 !important;
+}
+
+.erp-sub-table td.override-field.modified select,
+.erp-sub-table td.override-field.modified input {
+    font-weight: 700;
+    color: #1d4ed8;
 }
 
 /* ── 5. 카테고리 & 원산지 검색창 및 드롭다운 ── */
@@ -419,7 +425,7 @@
 .category-item .cat-code {
     font-size: 10px;
     color: #94a3b8;
-    font-family: 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ── 6. 이미지 매니저 (Image Manager) — 고밀도 3열 그리드 ── */
@@ -431,12 +437,19 @@
 
 .image-sections-row {
     display: grid;
-    grid-template-columns: minmax(260px, 300px) 1fr 1fr;
+    /* 대표이미지 1장은 타이틀 한줄 유지에 필요한 고정폭(350px), 추가이미지는 최대 9장이 들어가므로 가장 넓게(1.8fr), 상세페이지는 세로로 긴 특성에 맞춘 너비(1.2fr) */
+    grid-template-columns: 350px 1.8fr 1.2fr;
     gap: 8px;
     align-items: stretch;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
+    .image-sections-row {
+        grid-template-columns: 350px 1.3fr 1fr;
+    }
+}
+
+@media (max-width: 992px) {
     .image-sections-row {
         grid-template-columns: 1fr;
     }
@@ -458,9 +471,20 @@
     margin-bottom: 6px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 4px;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--erp-border-light, #e2e8f0);
+    white-space: nowrap;
+    flex-wrap: nowrap;
+}
+
+.image-section-title-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .image-section-title i {
@@ -576,7 +600,7 @@
     gap: 4px;
     padding: 2.5px 8px;
     font-size: 11px;
-    font-family: var(--font-mono, monospace);
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
     border-radius: 2px;
     margin-top: 4px;
@@ -672,7 +696,7 @@
     background: rgba(15, 23, 42, 0.85);
     color: #ffffff;
     font-size: 8.5px;
-    font-family: var(--font-mono, monospace);
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
     border-radius: 2px;
     pointer-events: none;
@@ -911,7 +935,7 @@
     cursor: pointer;
     color: var(--erp-primary);
     font-weight: 600;
-    font-family: 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
 }
 
 .option-comb-table td.editable:hover {
@@ -929,7 +953,7 @@
     background: #ffffff;
     color: #1e293b;
     outline: none;
-    font-family: 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
 }
 
 .option-bulk-bar {

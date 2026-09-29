@@ -736,15 +736,15 @@ function refreshProductList() {
 
         html += '<tr class="hoverable" onclick="editProduct(\'' + p.id + '\')" style="border-bottom:1px solid var(--surface-container-high); cursor:pointer;">' +
             '<td style="text-align:center;"><input type="checkbox" class="product-row-check" data-id="' + p.id + '" style="margin:0;" onclick="event.stopPropagation();"></td>' +
-            '<td style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
+            '<td style="font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
             '<td style="font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.productName || p.internalName || '-') + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice || 0) + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);">' + formatCurrency(commission) + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:700;color:' + profitColor + ';">' + formatCurrency(profit) + '</td>' +
-            '<td style="text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:' + profitColor + ';">' + profitRate + '%</td>' +
+            '<td style="text-align:right;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice || 0) + '</td>' +
+            '<td style="text-align:right;font-size:12px;color:var(--gray-500);">' + formatCurrency(commission) + '</td>' +
+            '<td style="text-align:right;font-size:13px;font-weight:700;color:' + profitColor + ';">' + formatCurrency(profit) + '</td>' +
+            '<td style="text-align:center;font-size:12px;font-weight:600;color:' + profitColor + ';">' + profitRate + '%</td>' +
             '<td style="text-align:center;">' + lowestPriceHtml + '</td>' +
             '<td style="text-align:center;"><span class="badge ' + (p.isDraft ? 'badge-gray' : 'badge-primary') + '">' + (p.isDraft ? '임시' : '완료') + '</span></td>' +
-            '<td style="text-align:center;font-size:11.5px;font-family:\'Inter\',sans-serif;color:var(--gray-500);">' + (p.createdAt ? p.createdAt.slice(0, 10).replace(/-/g, '.') : '-') + '</td>' +
+            '<td style="text-align:center;font-size:11.5px;color:var(--gray-500);">' + (p.createdAt ? p.createdAt.slice(0, 10).replace(/-/g, '.') : '-') + '</td>' +
             '<td style="text-align:center;"><i class="bx bx-edit" style="font-size:16px;color:var(--gray-400);"></i></td>' +
             '</tr>';
     });
@@ -875,10 +875,10 @@ function renderExportCart() {
     mapped.forEach(function(p) {
         html += '<tr style="border-bottom:1px solid var(--surface-container-high);">' +
             '<td style="text-align:center;"><input type="checkbox" class="cart-row-check" data-id="' + p.id + '" style="margin:0;" checked></td>' +
-            '<td style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
+            '<td style="font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
             '<td style="font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.productName || p.internalName || '-') + '</td>' +
             '<td style="font-size:11.5px;color:var(--gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + (p.categoryName || '-') + '">' + (p.categoryName || '-') + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice) + '</td>' +
+            '<td style="text-align:right;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice) + '</td>' +
             '</tr>';
     });
     tbody.innerHTML = html;
@@ -1738,19 +1738,48 @@ function _populateCourierSelect() {
 }
 
 function _updateOverrideFeeVisibility() {
-    var val = document.getElementById('fldOverrideFeeType').value;
+    var feeTypeEl = document.getElementById('fldOverrideFeeType');
+    if (!feeTypeEl) return;
+    var val = feeTypeEl.value;
+
     // 모든 조건부 필드 숨김
     document.querySelectorAll('.override-fee-cond').forEach(function(el) { el.classList.add('hidden'); });
-    // 유형에 따라 표시
-    if (val !== '무료') {
-        document.querySelectorAll('.override-cond-base').forEach(function(el) { el.classList.remove('hidden'); });
+
+    // 기본 배송비 및 결제방식 활성/비활성 제어 (테이블 열 정렬 유지를 위해 셀 자체는 항상 노출)
+    var feeEl = document.getElementById('fldOverrideFee');
+    var payMethodEl = document.getElementById('fldOverridePayMethod');
+    if (feeEl) {
+        if (val === '무료') {
+            feeEl.value = '0';
+            feeEl.disabled = true;
+            feeEl.style.opacity = '0.5';
+        } else {
+            feeEl.disabled = false;
+            feeEl.style.opacity = '1';
+        }
     }
+    if (payMethodEl) {
+        if (val === '무료') {
+            payMethodEl.disabled = true;
+            payMethodEl.style.opacity = '0.5';
+        } else {
+            payMethodEl.disabled = false;
+            payMethodEl.style.opacity = '1';
+        }
+    }
+
+    var noCondMsg = document.getElementById('fldOverrideNoCondMsg');
     if (val === '조건부 무료') {
         document.querySelectorAll('.override-cond-condition-free').forEach(function(el) { el.classList.remove('hidden'); });
+        if (noCondMsg) noCondMsg.style.display = 'none';
     } else if (val === '수량별') {
         document.querySelectorAll('.override-cond-quantity').forEach(function(el) { el.classList.remove('hidden'); });
+        if (noCondMsg) noCondMsg.style.display = 'none';
     } else if (val === '구간별') {
         document.querySelectorAll('.override-cond-section').forEach(function(el) { el.classList.remove('hidden'); });
+        if (noCondMsg) noCondMsg.style.display = 'none';
+    } else {
+        if (noCondMsg) noCondMsg.style.display = 'block';
     }
 }
 
