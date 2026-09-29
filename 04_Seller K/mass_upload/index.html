@@ -339,23 +339,23 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                        <!-- 2행: 매입가, 매입배송비, 부가세 -->
+                                        <!-- 2행: 매입 배송비, 매입가, 부가세 구분 -->
                                         <tr>
-                                            <th>매입가</th>
-                                            <td>
-                                                <div style="display:flex;align-items:center;width:100%;">
-                                                    <input type="number" id="fldBuyPrice" min="0" placeholder="0" class="form-control text-end" style="flex:1;">
-                                                    <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:4px;" title="매입가에 부가세가 포함되어 있는 경우 체크하세요 (기본값: 공급가)">
-                                                        <input type="checkbox" id="fldBuyPriceVat" style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> VAT포함
-                                                    </label>
-                                                </div>
-                                            </td>
                                             <th>매입 배송비</th>
                                             <td>
                                                 <div style="display:flex;align-items:center;width:100%;">
                                                     <input type="number" id="fldBuyShippingFee" min="0" placeholder="0" value="0" class="form-control text-end" style="flex:1;">
                                                     <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:4px;" title="매입 배송비에 부가세가 포함되어 있는 경우 체크하세요 (기본값: 공급가)">
                                                         <input type="checkbox" id="fldBuyShippingFeeVat" style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> VAT포함
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <th>매입가</th>
+                                            <td>
+                                                <div style="display:flex;align-items:center;width:100%;">
+                                                    <input type="number" id="fldBuyPrice" min="0" placeholder="0" class="form-control text-end" style="flex:1;">
+                                                    <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:4px;" title="매입가에 부가세가 포함되어 있는 경우 체크하세요 (기본값: 공급가)">
+                                                        <input type="checkbox" id="fldBuyPriceVat" style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> VAT포함
                                                     </label>
                                                 </div>
                                             </td>
@@ -368,18 +368,8 @@
                                                 </select>
                                             </td>
                                         </tr>
-                                        <!-- 3행: 판매가, 판매배송비, 미성년자구매 -->
+                                        <!-- 3행: 판매 배송비, 판매가, 미성년자구매 -->
                                         <tr>
-                                            <th>판매가 <span class="required">*</span></th>
-                                            <td>
-                                                <div style="display:flex;align-items:center;width:100%;">
-                                                    <input type="number" id="fldSalePrice" min="0" placeholder="0" class="form-control text-end" style="flex:1;font-weight:700;color:var(--erp-primary);">
-                                                    <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:4px;" title="스마트스토어 판매가 기준 부가세 포함 (기본값)">
-                                                        <input type="checkbox" id="fldSalePriceVat" checked style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> VAT포함
-                                                    </label>
-                                                    <span id="recommendedPriceLabel" style="font-size:10.5px;color:var(--erp-primary);font-weight:600;margin-left:4px;white-space:nowrap;display:none;"></span>
-                                                </div>
-                                            </td>
                                             <th>판매 배송비</th>
                                             <td>
                                                 <div style="display:flex;align-items:center;width:100%;">
@@ -390,6 +380,16 @@
                                                     <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:6px;">
                                                         <input type="checkbox" id="fldLowestPrice" style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> 최저가
                                                     </label>
+                                                </div>
+                                            </td>
+                                            <th>판매가 <span class="required">*</span></th>
+                                            <td>
+                                                <div style="display:flex;align-items:center;width:100%;">
+                                                    <input type="number" id="fldSalePrice" min="0" placeholder="0" class="form-control text-end" style="flex:1;font-weight:700;color:var(--erp-primary);">
+                                                    <label style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray-600);cursor:pointer;white-space:nowrap;margin-left:4px;" title="스마트스토어 판매가 기준 부가세 포함 (기본값)">
+                                                        <input type="checkbox" id="fldSalePriceVat" checked style="width:12px;height:12px;accent-color:var(--erp-primary);cursor:pointer;"> VAT포함
+                                                    </label>
+                                                    <span id="recommendedPriceLabel" style="font-size:10.5px;color:var(--erp-primary);font-weight:600;margin-left:4px;white-space:nowrap;display:none;"></span>
                                                 </div>
                                             </td>
                                             <th>미성년자 구매</th>
