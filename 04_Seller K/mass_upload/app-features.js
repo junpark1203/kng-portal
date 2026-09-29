@@ -300,21 +300,72 @@ function handleDetailImages(files) {
     });
 }
 
+// ── 이미지 원본 해상도(px) 측정 헬퍼 ──
+function _bindImageDimension(imgEl, callback) {
+    if (!imgEl) return;
+    function checkDim() {
+        if (imgEl.naturalWidth && imgEl.naturalHeight) {
+            callback(imgEl.naturalWidth, imgEl.naturalHeight);
+            return true;
+        }
+        return false;
+    }
+    if (!checkDim()) {
+        imgEl.addEventListener('load', function() { checkDim(); }, { once: true });
+    }
+}
+
 function renderImagePreviews() {
     var mainArea = document.getElementById('mainImageArea');
     if (mainArea && currentImages.main) {
         var imgSrc = currentImages.main.url || currentImages.main.dataUrl || '';
+        var w = currentImages.main.width;
+        var h = currentImages.main.height;
+        var hasDim = !!(w && h);
+        var isSq = hasDim && (w === h);
+        var isRec = hasDim && (w === 1000 && h === 1000);
+        var badgeCls = isRec ? 'dim-badge-good' : (isSq ? 'dim-badge-ok' : 'dim-badge-warn');
+        var dimText = hasDim
+            ? (w + ' × ' + h + ' px' + (isRec ? ' · 권장 규격(1000×1000)' : (isSq ? ' · 1:1 정방형' : ' · 1:1 정방형 권장')))
+            : '해상도 측정 중...';
+
         mainArea.innerHTML = '<div class="main-image-info">' +
-            '<div class="main-image-box"><img src="' + imgSrc + '" alt="대표이미지"></div>' +
-            '<div><div class="file-name">' + (currentImages.main.name || currentImages.main.filename || '') + '</div>' +
-            '<div class="auto-name">' + (currentImages.main.autoName || '') + '</div></div>' +
+            '<div class="main-image-box"><img src="' + imgSrc + '" id="mainImgPreview" alt="대표이미지"></div>' +
+            '<div class="main-image-meta">' +
+                '<div class="file-name">' + (currentImages.main.name || currentImages.main.filename || '') + '</div>' +
+                '<div class="auto-name">' + (currentImages.main.autoName || '') + '</div>' +
+                '<div class="image-dim-badge ' + badgeCls + '" id="mainDimBadge">' +
+                    '<i class="bx ' + (isSq ? 'bx-check-circle' : 'bx-info-circle') + '"></i> <span>' + dimText + '</span>' +
+                '</div>' +
+            '</div>' +
             '<button class="btn-outline btn-sm" onclick="removeMainImage()" style="margin-left:auto;"><i class="bx bx-trash"></i> 삭제</button></div>';
+
+        var mImg = document.getElementById('mainImgPreview');
+        if (mImg) {
+            _bindImageDimension(mImg, function(nw, nh) {
+                currentImages.main.width = nw;
+                currentImages.main.height = nh;
+                var b = document.getElementById('mainDimBadge');
+                if (b) {
+                    var sq = (nw === nh);
+                    var rec = (nw === 1000 && nh === 1000);
+                    var c = rec ? 'dim-badge-good' : (sq ? 'dim-badge-ok' : 'dim-badge-warn');
+                    var txt = nw + ' × ' + nh + ' px';
+                    if (rec) txt += ' · 권장 규격(1000×1000)';
+                    else if (sq) txt += ' · 1:1 정방형';
+                    else txt += ' · 1:1 정방형 권장';
+                    b.className = 'image-dim-badge ' + c;
+                    b.innerHTML = '<i class="bx ' + (sq ? 'bx-check-circle' : 'bx-info-circle') + '"></i> <span>' + txt + '</span>';
+                }
+            });
+        }
     } else if (mainArea) {
         mainArea.innerHTML = '<div class="image-upload-zone" id="mainImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
             '<input type="file" accept="image/*" id="mainImageInput"></div>';
         var ni = document.getElementById('mainImageInput');
         if (ni) ni.addEventListener('change', function (e) { if (e.target.files[0]) handleMainImage(e.target.files[0]); });
     }
+
     var addGrid = document.getElementById('addImageGrid');
     if (addGrid) {
         var ah = '';
@@ -326,17 +377,48 @@ function renderImagePreviews() {
             ah += '<div class="image-thumb-row">';
             currentImages.additional.forEach(function (img, idx) {
                 var thumbSrc = img.url || img.dataUrl || '';
-                ah += '<div class="image-thumb"><img src="' + thumbSrc + '"><div class="image-thumb-overlay">' +
-                    '<button class="delete-btn" onclick="removeAdditionalImage(' + idx + ')"><i class="bx bx-trash"></i></button></div>' +
+                var w = img.width;
+                var h = img.height;
+                var hasDim = !!(w && h);
+                var isSq = hasDim && (w === h);
+                var dimCls = isSq ? 'dim-ok' : (hasDim ? 'dim-warn' : '');
+                var dimStyle = hasDim ? 'display:inline-flex;' : 'display:none;';
+                var dimLabel = hasDim ? (w + '×' + h) : '';
+
+                ah += '<div class="image-thumb">' +
+                    '<img src="' + thumbSrc + '" id="addImg_' + idx + '">' +
+                    '<div class="image-thumb-dim ' + dimCls + '" id="addDim_' + idx + '" style="' + dimStyle + '">' + dimLabel + '</div>' +
+                    '<div class="image-thumb-overlay">' +
+                        '<button class="delete-btn" onclick="removeAdditionalImage(' + idx + ')" title="삭제"><i class="bx bx-trash"></i></button>' +
+                    '</div>' +
                     '<div class="image-thumb-name">' + (img.autoName || '') + '</div></div>';
             });
             ah += '</div>';
         }
         addGrid.innerHTML = ah;
+
+        currentImages.additional.forEach(function (img, idx) {
+            var imgEl = document.getElementById('addImg_' + idx);
+            if (imgEl) {
+                _bindImageDimension(imgEl, function(nw, nh) {
+                    img.width = nw;
+                    img.height = nh;
+                    var dEl = document.getElementById('addDim_' + idx);
+                    if (dEl) {
+                        var sq = (nw === nh);
+                        dEl.className = 'image-thumb-dim ' + (sq ? 'dim-ok' : 'dim-warn');
+                        dEl.textContent = nw + '×' + nh;
+                        dEl.style.display = 'inline-flex';
+                    }
+                });
+            }
+        });
+
         var ai = document.getElementById('addImageInput');
         if (ai) ai.addEventListener('change', function (e) { handleAdditionalImages(e.target.files); });
         document.getElementById('addImageCount').textContent = currentImages.additional.length + '/9';
     }
+
     var detailGrid = document.getElementById('detailImageGrid');
     if (detailGrid) {
         var dh = '';
@@ -346,13 +428,43 @@ function renderImagePreviews() {
             dh += '<div class="image-thumb-row">';
             currentImages.detail.forEach(function (img, idx) {
                 var thumbSrc = img.url || img.dataUrl || '';
-                dh += '<div class="image-thumb"><img src="' + thumbSrc + '"><div class="image-thumb-overlay">' +
-                    '<button class="delete-btn" onclick="removeDetailImage(' + idx + ')"><i class="bx bx-trash"></i></button></div>' +
+                var w = img.width;
+                var h = img.height;
+                var hasDim = !!(w && h);
+                var isStd = hasDim && (w === 860);
+                var dimCls = isStd ? 'dim-ok' : (hasDim ? 'dim-warn' : '');
+                var dimStyle = hasDim ? 'display:inline-flex;' : 'display:none;';
+                var dimLabel = hasDim ? (w + '×' + h) : '';
+
+                dh += '<div class="image-thumb">' +
+                    '<img src="' + thumbSrc + '" id="detImg_' + idx + '">' +
+                    '<div class="image-thumb-dim ' + dimCls + '" id="detDim_' + idx + '" style="' + dimStyle + '">' + dimLabel + '</div>' +
+                    '<div class="image-thumb-overlay">' +
+                        '<button class="delete-btn" onclick="removeDetailImage(' + idx + ')" title="삭제"><i class="bx bx-trash"></i></button>' +
+                    '</div>' +
                     '<div class="image-thumb-name">' + (img.autoName || '') + '</div></div>';
             });
             dh += '</div>';
         }
         detailGrid.innerHTML = dh;
+
+        currentImages.detail.forEach(function (img, idx) {
+            var imgEl = document.getElementById('detImg_' + idx);
+            if (imgEl) {
+                _bindImageDimension(imgEl, function(nw, nh) {
+                    img.width = nw;
+                    img.height = nh;
+                    var dEl = document.getElementById('detDim_' + idx);
+                    if (dEl) {
+                        var isStd = (nw === 860);
+                        dEl.className = 'image-thumb-dim ' + (isStd ? 'dim-ok' : 'dim-warn');
+                        dEl.textContent = nw + '×' + nh;
+                        dEl.style.display = 'inline-flex';
+                    }
+                });
+            }
+        });
+
         var di = document.getElementById('detailImageInput');
         if (di) di.addEventListener('change', function (e) { handleDetailImages(e.target.files); });
         document.getElementById('detailImageCount').textContent = currentImages.detail.length + '장';
