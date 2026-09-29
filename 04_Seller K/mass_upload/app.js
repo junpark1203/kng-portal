@@ -224,10 +224,52 @@ function initSidebar() {
 }
 
 // ════════════════════════════════════════
-// KEYBOARD SHORTCUTS (F8: 저장)
+// KEYBOARD SHORTCUTS (F2: 신규 등록, F8: 저장)
 // ════════════════════════════════════════
 function initKeyboardShortcuts() {
     window.addEventListener('keydown', function(e) {
+        // ── F2: 신규 등록 ──
+        if (e.key === 'F2' || e.keyCode === 113) {
+            e.preventDefault();
+
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            // 프리셋 관리 화면 등 서브 화면에 추가 버튼이 있는 경우
+            var hash = location.hash.replace('#', '') || 'register';
+            if (hash === 'marginPresets') {
+                var btnAddMarginPreset = document.getElementById('btnAddMarginPreset');
+                if (btnAddMarginPreset) { btnAddMarginPreset.click(); return; }
+            } else if (hash === 'presets') {
+                var btnAddPreset = document.getElementById('btnAddPreset');
+                if (btnAddPreset) { btnAddPreset.click(); return; }
+            } else if (hash === 'addresses') {
+                var btnAddAddress = document.getElementById('btnAddAddress');
+                if (btnAddAddress) { btnAddAddress.click(); return; }
+            }
+
+            // 상품 등록 화면으로 이동 및 신규 폼 초기화
+            if (location.hash !== '#register') {
+                location.hash = '#register';
+            }
+            if (typeof startNewProduct === 'function') {
+                startNewProduct();
+            }
+            showToast('새 상품 등록을 시작합니다. (F2)', 'info');
+
+            // 첫 번째 입력 필드(관리용 상품명 또는 스토어 상품명)로 자동 포커스
+            setTimeout(function() {
+                var firstInput = document.getElementById('fldInternalName') || document.getElementById('fldProductName');
+                if (firstInput) {
+                    firstInput.focus();
+                    try { firstInput.select(); } catch(err) {}
+                }
+            }, 80);
+            return;
+        }
+
+        // ── F8: 저장 / 수정완료 ──
         if (e.key === 'F8' || e.keyCode === 119) {
             e.preventDefault();
 
