@@ -11,8 +11,8 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Common Design Systems -->
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="styles.css?v=20260929_1">
-    <link rel="stylesheet" href="uploader.css?v=20260929_1">
+    <link rel="stylesheet" href="styles.css?v=20260929_2">
+    <link rel="stylesheet" href="uploader.css?v=20260929_2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -427,18 +427,18 @@
                                         <i class='bx bx-camera'></i> 대표 이미지
                                         <span class="label-required">필수</span>
                                         <span class="image-guide-hint">권장: 1000 × 1000 px (1:1)</span>
-                                        <button type="button" class="btn-paste-clipboard" id="btnPasteMain" title="클립보드에서 이미지 붙여넣기">
-                                            <i class='bx bx-paste'></i> 붙여넣기
-                                        </button>
+                                        <div class="image-section-actions">
+                                            <button type="button" class="btn-section-action" id="btnMainImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL 추가</button>
+                                            <button type="button" class="btn-section-action" id="btnPasteMain" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>
+                                        </div>
                                     </div>
-                                    <div class="main-image-preview" id="mainImageArea">
-                                        <div class="image-upload-zone" id="mainImageUpload">
+                                    <div class="image-grid" id="mainImageArea">
+                                        <div class="image-upload-small" id="mainImageUpload">
                                             <i class='bx bx-cloud-upload'></i>
                                             <span>클릭, 드래그 또는 Ctrl+V</span>
                                             <input type="file" accept="image/*" id="mainImageInput">
                                         </div>
                                     </div>
-                                    <button type="button" class="btn-url-add" id="btnMainImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
                                 </div>
 
                                 <!-- 추가 이미지 -->
@@ -447,9 +447,10 @@
                                         <i class='bx bx-images'></i> 추가 이미지
                                         <span class="image-guide-hint">권장: 1000 × 1000 px</span>
                                         <span class="label-count" id="addImageCount">0/9</span>
-                                        <button type="button" class="btn-paste-clipboard" id="btnPasteAdd" title="클립보드에서 이미지 붙여넣기">
-                                            <i class='bx bx-paste'></i> 붙여넣기
-                                        </button>
+                                        <div class="image-section-actions">
+                                            <button type="button" class="btn-section-action" id="btnAddImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL 추가</button>
+                                            <button type="button" class="btn-section-action" id="btnPasteAdd" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>
+                                        </div>
                                     </div>
                                     <div class="image-grid" id="addImageGrid">
                                         <div class="image-upload-small" id="addImageUpload">
@@ -458,7 +459,6 @@
                                             <input type="file" accept="image/*" multiple id="addImageInput">
                                         </div>
                                     </div>
-                                    <button type="button" class="btn-url-add" id="btnAddImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
                                 </div>
 
                                 <!-- 상세 이미지 -->
@@ -467,13 +467,11 @@
                                         <i class='bx bx-detail'></i> 상세페이지 이미지
                                         <span class="image-guide-hint">권장 가로폭: 860 px</span>
                                         <span class="label-count" id="detailImageCount">0장</span>
-                                        <button type="button" class="btn-paste-clipboard" id="btnPasteDetail" title="클립보드에서 이미지 붙여넣기">
-                                            <i class='bx bx-paste'></i> 붙여넣기
-                                        </button>
+                                        <div class="image-section-actions">
+                                            <button type="button" class="btn-section-action" id="btnDetailImageUrl" title="URL로 추가"><i class='bx bx-link'></i> URL 추가</button>
+                                            <button type="button" class="btn-section-action" id="btnPasteDetail" title="클립보드에서 이미지 붙여넣기"><i class='bx bx-paste'></i> 붙여넣기</button>
+                                        </div>
                                     </div>
-                                    <p class="form-help" style="margin-bottom:8px;">
-                                        상세페이지에 표시될 이미지입니다. 엑셀의 '상세설명' 컬럼에 &lt;img&gt; 태그로 자동 변환됩니다.
-                                    </p>
                                     <div class="image-grid" id="detailImageGrid">
                                         <div class="image-upload-small" id="detailImageUpload">
                                             <i class='bx bx-cloud-upload'></i>
@@ -481,7 +479,7 @@
                                             <input type="file" accept="image/*" multiple id="detailImageInput">
                                         </div>
                                     </div>
-                                    <button type="button" class="btn-url-add" id="btnDetailImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
+                                    <div class="image-section-note"><i class='bx bx-info-circle'></i> 엑셀의 '상세설명' 컬럼에 &lt;img&gt; 태그로 자동 변환됩니다.</div>
                                 </div>
 
                                 <!-- 공통 하단 이미지 (공지/동의서) -->
@@ -911,7 +909,7 @@
     <script src="utils.js"></script>
     <script src="option-builder.js"></script>
     <script src="app.js"></script>
-    <script src="app-features.js?v=20260929_1"></script>
+    <script src="app-features.js?v=20260929_2"></script>
     <script type="module" src="auth.js"></script>
 
 <!-- Preview Modal -->

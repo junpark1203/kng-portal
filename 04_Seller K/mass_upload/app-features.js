@@ -329,16 +329,23 @@ function renderImagePreviews() {
             ? (w + ' × ' + h + ' px' + (isRec ? ' · 권장 규격(1000×1000)' : (isSq ? ' · 1:1 정방형' : ' · 1:1 정방형 권장')))
             : '해상도 측정 중...';
 
-        mainArea.innerHTML = '<div class="main-image-info">' +
-            '<div class="main-image-box"><img src="' + imgSrc + '" id="mainImgPreview" alt="대표이미지"></div>' +
-            '<div class="main-image-meta">' +
-                '<div class="file-name">' + (currentImages.main.name || currentImages.main.filename || '') + '</div>' +
-                '<div class="auto-name">' + (currentImages.main.autoName || '') + '</div>' +
+        mainArea.innerHTML = '<div class="main-image-card-wrap">' +
+            '<div class="image-thumb">' +
+                '<img src="' + imgSrc + '" id="mainImgPreview" alt="대표이미지">' +
+                '<div class="image-thumb-dim ' + (isSq ? 'dim-ok' : 'dim-warn') + '" id="mainDimChip" style="' + (hasDim ? 'display:inline-flex;' : 'display:none;') + '">' + (hasDim ? (w + '×' + h) : '') + '</div>' +
+                '<div class="image-thumb-overlay">' +
+                    '<button class="delete-btn" onclick="removeMainImage()" title="삭제"><i class="bx bx-trash"></i></button>' +
+                '</div>' +
+                '<div class="image-thumb-name">' + (currentImages.main.autoName || '') + '</div>' +
+            '</div>' +
+            '<div class="main-image-meta-panel">' +
+                '<div class="file-name" title="' + (currentImages.main.name || currentImages.main.filename || '') + '">' + (currentImages.main.name || currentImages.main.filename || '') + '</div>' +
                 '<div class="image-dim-badge ' + badgeCls + '" id="mainDimBadge">' +
                     '<i class="bx ' + (isSq ? 'bx-check-circle' : 'bx-info-circle') + '"></i> <span>' + dimText + '</span>' +
                 '</div>' +
+                '<button type="button" class="btn-erp btn-sm" onclick="removeMainImage()" style="margin-top:6px;width:fit-content;"><i class="bx bx-trash"></i> 삭제</button>' +
             '</div>' +
-            '<button class="btn-outline btn-sm" onclick="removeMainImage()" style="margin-left:auto;"><i class="bx bx-trash"></i> 삭제</button></div>';
+        '</div>';
 
         var mImg = document.getElementById('mainImgPreview');
         if (mImg) {
@@ -346,9 +353,15 @@ function renderImagePreviews() {
                 currentImages.main.width = nw;
                 currentImages.main.height = nh;
                 var b = document.getElementById('mainDimBadge');
+                var chip = document.getElementById('mainDimChip');
+                var sq = (nw === nh);
+                var rec = (nw === 1000 && nh === 1000);
+                if (chip) {
+                    chip.className = 'image-thumb-dim ' + (sq ? 'dim-ok' : 'dim-warn');
+                    chip.textContent = nw + '×' + nh;
+                    chip.style.display = 'inline-flex';
+                }
                 if (b) {
-                    var sq = (nw === nh);
-                    var rec = (nw === 1000 && nh === 1000);
                     var c = rec ? 'dim-badge-good' : (sq ? 'dim-badge-ok' : 'dim-badge-warn');
                     var txt = nw + ' × ' + nh + ' px';
                     if (rec) txt += ' · 권장 규격(1000×1000)';
@@ -360,7 +373,7 @@ function renderImagePreviews() {
             });
         }
     } else if (mainArea) {
-        mainArea.innerHTML = '<div class="image-upload-zone" id="mainImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
+        mainArea.innerHTML = '<div class="image-upload-small" id="mainImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
             '<input type="file" accept="image/*" id="mainImageInput"></div>';
         var ni = document.getElementById('mainImageInput');
         if (ni) ni.addEventListener('change', function (e) { if (e.target.files[0]) handleMainImage(e.target.files[0]); });
