@@ -550,11 +550,31 @@ function getMassSortValue(p, field) {
     if (field === 'productName') return p.productName || p.internalName || '';
     if (field === 'salePrice') return p.salePrice || 0;
     if (field === 'commission' || field === 'profit' || field === 'profitRate') {
-        var totalSale = (p.salePrice || 0) + (p.saleShippingFee || 0);
-        var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
-        var vatType = p.vatType || '과세상품';
-        var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03)) / 1.1);
+        var vatType = p.vat || p.vatType || '과세상품';
+        var isTaxable = (vatType === '과세상품');
+        var salePrice = p.salePrice || 0;
+        var saleShip = p.saleShippingFee || 0;
+        var buyPrice = p.buyPrice || 0;
+        var buyShip = p.buyShippingFee || 0;
+
+        var buyPriceVat = (p.buyPriceVat !== undefined) ? p.buyPriceVat : false;
+        var buyShipVat = (p.buyShippingFeeVat !== undefined) ? p.buyShippingFeeVat : false;
+        var salePriceVat = (p.salePriceVat !== undefined) ? p.salePriceVat : true;
+        var saleShipVat = (p.saleShippingFeeVat !== undefined) ? p.saleShippingFeeVat : true;
+
+        var consumerSalePrice = (isTaxable && !salePriceVat) ? Math.round(salePrice * 1.1) : salePrice;
+        var consumerSaleShip  = (isTaxable && !saleShipVat)  ? Math.round(saleShip * 1.1)  : saleShip;
+        var totalSale = consumerSalePrice + consumerSaleShip;
+
+        var netSalePrice = (isTaxable && salePriceVat) ? Math.round(salePrice / 1.1) : salePrice;
+        var netSaleShip  = (isTaxable && saleShipVat)  ? Math.round(saleShip / 1.1)  : saleShip;
+        var netSale = netSalePrice + netSaleShip;
+
+        var netBuyPrice = (isTaxable && buyPriceVat) ? Math.round(buyPrice / 1.1) : buyPrice;
+        var netBuyShip  = (isTaxable && buyShipVat)  ? Math.round(buyShip / 1.1)  : buyShip;
+        var totalBuy = netBuyPrice + netBuyShip;
+
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round(consumerSalePrice * 0.03)) / 1.1);
         
         if (field === 'commission') return commission;
         var profit = netSale - totalBuy - commission;
@@ -723,11 +743,31 @@ function refreshProductList() {
     
     var html = '';
     products.forEach(function (p) {
-        var totalSale = (p.salePrice || 0) + (p.saleShippingFee || 0);
-        var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
-        var vatType = p.vatType || '과세상품';
-        var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03)) / 1.1);
+        var vatType = p.vat || p.vatType || '과세상품';
+        var isTaxable = (vatType === '과세상품');
+        var salePrice = p.salePrice || 0;
+        var saleShip = p.saleShippingFee || 0;
+        var buyPrice = p.buyPrice || 0;
+        var buyShip = p.buyShippingFee || 0;
+
+        var buyPriceVat = (p.buyPriceVat !== undefined) ? p.buyPriceVat : false;
+        var buyShipVat = (p.buyShippingFeeVat !== undefined) ? p.buyShippingFeeVat : false;
+        var salePriceVat = (p.salePriceVat !== undefined) ? p.salePriceVat : true;
+        var saleShipVat = (p.saleShippingFeeVat !== undefined) ? p.saleShippingFeeVat : true;
+
+        var consumerSalePrice = (isTaxable && !salePriceVat) ? Math.round(salePrice * 1.1) : salePrice;
+        var consumerSaleShip  = (isTaxable && !saleShipVat)  ? Math.round(saleShip * 1.1)  : saleShip;
+        var totalSale = consumerSalePrice + consumerSaleShip;
+
+        var netSalePrice = (isTaxable && salePriceVat) ? Math.round(salePrice / 1.1) : salePrice;
+        var netSaleShip  = (isTaxable && saleShipVat)  ? Math.round(saleShip / 1.1)  : saleShip;
+        var netSale = netSalePrice + netSaleShip;
+
+        var netBuyPrice = (isTaxable && buyPriceVat) ? Math.round(buyPrice / 1.1) : buyPrice;
+        var netBuyShip  = (isTaxable && buyShipVat)  ? Math.round(buyShip / 1.1)  : buyShip;
+        var totalBuy = netBuyPrice + netBuyShip;
+
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round(consumerSalePrice * 0.03)) / 1.1);
         var profit = netSale - totalBuy - commission;
         var profitRate = netSale > 0 ? ((profit / netSale) * 100).toFixed(1) : '0.0';
 
@@ -738,7 +778,7 @@ function refreshProductList() {
             '<td style="text-align:center;"><input type="checkbox" class="product-row-check" data-id="' + p.id + '" style="margin:0;" onclick="event.stopPropagation();"></td>' +
             '<td style="font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
             '<td style="font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.productName || p.internalName || '-') + '</td>' +
-            '<td style="text-align:right;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice || 0) + '</td>' +
+            '<td style="text-align:right;font-size:13px;font-weight:600;">' + formatCurrency(consumerSalePrice) + '</td>' +
             '<td style="text-align:right;font-size:12px;color:var(--gray-500);">' + formatCurrency(commission) + '</td>' +
             '<td style="text-align:right;font-size:13px;font-weight:700;color:' + profitColor + ';">' + formatCurrency(profit) + '</td>' +
             '<td style="text-align:center;font-size:12px;font-weight:600;color:' + profitColor + ';">' + profitRate + '%</td>' +
@@ -1020,7 +1060,11 @@ function downloadExcel() {
                 row[1]  = p.categoryId || '';                       // B: 카테고리코드
                 row[2]  = p.productName || '';                      // C: 상품명
                 row[3]  = p.productStatus || '신상품';               // D: 상품상태
-                row[4]  = p.salePrice || '';                        // E: 판매가
+                var exportSalePrice = p.salePrice || '';
+                if (exportSalePrice && (p.vat || '과세상품') === '과세상품' && p.salePriceVat === false) {
+                    exportSalePrice = Math.round(Number(p.salePrice) * 1.1);
+                }
+                row[4]  = exportSalePrice;                          // E: 판매가
                 row[5]  = p.unitPriceRequired ? 'Y' : '';            // F: 단위가격 사용여부
                 row[6]  = p.displayVolume || '';                      // G: 표시용량
                 row[7]  = p.displayUnit || '';                        // H: 표시단위

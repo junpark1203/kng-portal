@@ -432,16 +432,24 @@ function initStep1Extras() {
         });
     }
 
-    // VAT checkbox sync
+    // 부가세 구분 및 VAT 포함 체크박스 이벤트 바인딩
     var vatSelect = document.getElementById('fldVat');
-    var vatCheckbox = document.getElementById('fldVatIncluded');
-    if (vatSelect && vatCheckbox) {
+    if (vatSelect) {
         vatSelect.addEventListener('change', function() {
-            vatCheckbox.checked = (vatSelect.value === '과세상품');
             updateMarginDisplay();
             calculateRecommendedPrice();
         });
     }
+
+    ['fldBuyPriceVat', 'fldBuyShippingFeeVat', 'fldSalePriceVat', 'fldSaleShippingFeeVat'].forEach(function(id) {
+        var cb = document.getElementById(id);
+        if (cb) {
+            cb.addEventListener('change', function() {
+                calculateRecommendedPrice();
+                updateMarginDisplay();
+            });
+        }
+    });
 
     // Margin calculator
     var saleInput = document.getElementById('fldSalePrice');
@@ -491,44 +499,54 @@ function calculateRecommendedPrice() {
     var buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
     var buyShip = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
     var saleShip = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
+
+    var buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
+    var buyShipVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
+    var salePriceVat = document.getElementById('fldSalePriceVat') ? document.getElementById('fldSalePriceVat').checked : true;
+    var saleShipVat = document.getElementById('fldSaleShippingFeeVat') ? document.getElementById('fldSaleShippingFeeVat').checked : true;
     
-    var totalCost = buyPrice + buyShip;
     var vatType = document.getElementById('fldVat') ? document.getElementById('fldVat').value : '과세상품';
     var isTaxable = (vatType === '과세상품');
     var taxDivider = isTaxable ? 1.1 : 1.0;
+
+    // 순매입원가 계산 (공급가액 기준)
+    var buyPriceNet = (isTaxable && buyPriceVat) ? Math.round(buyPrice / 1.1) : buyPrice;
+    var buyShipNet = (isTaxable && buyShipVat) ? Math.round(buyShip / 1.1) : buyShip;
+    var totalCost = buyPriceNet + buyShipNet;
     
     function calcPrice(target, type) {
         // 목표 마진을 얻기 위한 역산 수식 (플랫폼 수수료 반영)
         // 수익(Margin) = 순매출 - 총매입 - 수수료(VAT제외)
-        // 순매출 = (판매가 + 배송비) / taxDivider
-        // 수수료(VAT제외) = ((판매가 + 배송비)*0.0363 + 판매가*0.03) / 1.1
-        //                ≈ (판매가 + 배송비)*0.033 + 판매가*0.02727
-        // 합산 수수료율(VAT제외) = 0.033 + 0.02727 = 0.06027
         var commRate = 0.033;       // 주문매출연동 3.63% / 1.1
         var salesRate = 0.02727;    // 판매수수료 3% / 1.1
         var totalRate = commRate + salesRate; // 0.06027
-        var S = 0; // 추천 판매가
+        var S = 0; // 추천 소비자 판매가 (VAT 포함 기준)
         
+        // 소비자 결제 판매배송비
+        var consumerSaleShip = (isTaxable && !saleShipVat) ? Math.round(saleShip * 1.1) : saleShip;
+
         if (type === '원') {
-            var num = target + totalCost - saleShip * (1/taxDivider - commRate);
+            var num = target + totalCost - consumerSaleShip * (1/taxDivider - commRate);
             var den = 1/taxDivider - totalRate;
             S = num / den;
         } else if (type === '%') {
             var m = target / 100;
-            // 극단적으로 높은 마진율 입력 시 분모가 음수가 되는 것을 방지 (수수료 때문에 한계 존재)
             var maxM = 1 - (taxDivider * totalRate) - 0.01; 
             if (m > maxM) m = maxM;
             
-            var num = totalCost - saleShip * ((1 - m)/taxDivider - commRate);
+            var num = totalCost - consumerSaleShip * ((1 - m)/taxDivider - commRate);
             var den = (1 - m)/taxDivider - totalRate;
             S = num / den;
         }
         
         if (S < 0) S = 0;
         
-        // 100원 단위 올림(Math.ceil)
-        // ex) 15312 -> 15400
-        return Math.ceil(S / 100) * 100;
+        var recPrice = Math.ceil(S / 100) * 100;
+        // 만약 판매가를 VAT 미포함(공급가)으로 입력하도록 체크 해제된 경우 공급가로 변환
+        if (isTaxable && !salePriceVat) {
+            recPrice = Math.ceil(Math.round(recPrice / 1.1) / 100) * 100;
+        }
+        return recPrice;
     }
     
     var minSale = calcPrice(p.minTarget, p.type);
@@ -547,7 +565,6 @@ function calculateRecommendedPrice() {
     if (saleInput && (!saleInput.value || saleInput.value === '0' || parseInt(saleInput.value) === window._lastRecommendedSalePrice)) {
         saleInput.value = minSale;
         window._lastRecommendedSalePrice = minSale;
-        // 판매가 자동 갱신 후 마진 표시도 즉시 반영
         updateMarginDisplay();
     }
 }
@@ -557,21 +574,45 @@ function updateMarginDisplay() {
     var buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
     var saleShip = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
     var buyShip = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
+
+    var buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
+    var buyShipVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
+    var salePriceVat = document.getElementById('fldSalePriceVat') ? document.getElementById('fldSalePriceVat').checked : true;
+    var saleShipVat = document.getElementById('fldSaleShippingFeeVat') ? document.getElementById('fldSaleShippingFeeVat').checked : true;
+
     var wrap = document.getElementById('marginDisplayWrap');
     var amountEl = document.getElementById('marginAmount');
     var rateEl = document.getElementById('marginRate');
     var commEl = document.getElementById('commissionAmount');
     if (!wrap || !amountEl || !rateEl) return;
+
     if (salePrice > 0 && buyPrice > 0) {
         wrap.style.display = 'block';
-        var vatType = document.getElementById('fldVat').value;
-        var totalSale = salePrice + saleShip;
-        var totalBuy = buyPrice + buyShip;
-        var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        // 수수료: 주문매출연동 3.63% + 판매수수료 3% (VAT 제외)
-        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round(salePrice * 0.03)) / 1.1);
+        var vatType = document.getElementById('fldVat') ? document.getElementById('fldVat').value : '과세상품';
+        var isTaxable = (vatType === '과세상품');
+
+        // 1. 소비자 결제 금액 (스마트스토어 노출 기준 - 네이버 수수료 부과 기준)
+        var consumerSalePrice = (isTaxable && !salePriceVat) ? Math.round(salePrice * 1.1) : salePrice;
+        var consumerSaleShip  = (isTaxable && !saleShipVat)  ? Math.round(saleShip * 1.1)  : saleShip;
+        var totalSale = consumerSalePrice + consumerSaleShip;
+
+        // 2. 순매출 (공급가액 기준)
+        var netSalePrice = (isTaxable && salePriceVat) ? Math.round(salePrice / 1.1) : salePrice;
+        var netSaleShip  = (isTaxable && saleShipVat)  ? Math.round(saleShip / 1.1)  : saleShip;
+        var netSale = netSalePrice + netSaleShip;
+
+        // 3. 순매입비용 (공급가액 기준)
+        var netBuyPrice = (isTaxable && buyPriceVat) ? Math.round(buyPrice / 1.1) : buyPrice;
+        var netBuyShip  = (isTaxable && buyShipVat)  ? Math.round(buyShip / 1.1)  : buyShip;
+        var totalBuy = netBuyPrice + netBuyShip;
+
+        // 4. 네이버 수수료: 주문매출연동(3.63%) + 판매수수료(3%) (VAT 제외 금액으로 차감)
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round(consumerSalePrice * 0.03)) / 1.1);
+
+        // 5. 마진 및 마진율 (순매출 - 순매입 - 수수료)
         var margin = netSale - totalBuy - commission;
-        var marginRate = ((margin / netSale) * 100).toFixed(1);
+        var marginRate = netSale > 0 ? ((margin / netSale) * 100).toFixed(1) : '0.0';
+
         amountEl.textContent = formatCurrency(margin) + '원';
         amountEl.style.color = margin >= 0 ? 'var(--primary)' : 'var(--danger)';
         rateEl.textContent = marginRate + '%';
@@ -615,6 +656,10 @@ function collectStepData(step) {
         currentProduct.buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
         currentProduct.saleShippingFee = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
         currentProduct.buyShippingFee = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
+        currentProduct.buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
+        currentProduct.buyShippingFeeVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
+        currentProduct.salePriceVat = document.getElementById('fldSalePriceVat') ? document.getElementById('fldSalePriceVat').checked : true;
+        currentProduct.saleShippingFeeVat = document.getElementById('fldSaleShippingFeeVat') ? document.getElementById('fldSaleShippingFeeVat').checked : true;
         currentProduct.stock = parseInt(document.getElementById('fldStock').value) || 0;
         currentProduct.vat = document.getElementById('fldVat').value;
         currentProduct.minorPurchase = document.getElementById('fldMinorPurchase').value;
@@ -673,6 +718,18 @@ function populateForm() {
     document.getElementById('fldBuyPrice').value = currentProduct.buyPrice || 0;
     document.getElementById('fldSaleShippingFee').value = currentProduct.saleShippingFee || 0;
     document.getElementById('fldBuyShippingFee').value = currentProduct.buyShippingFee || 0;
+    if (document.getElementById('fldBuyPriceVat')) {
+        document.getElementById('fldBuyPriceVat').checked = (currentProduct.buyPriceVat !== undefined) ? currentProduct.buyPriceVat : false;
+    }
+    if (document.getElementById('fldBuyShippingFeeVat')) {
+        document.getElementById('fldBuyShippingFeeVat').checked = (currentProduct.buyShippingFeeVat !== undefined) ? currentProduct.buyShippingFeeVat : false;
+    }
+    if (document.getElementById('fldSalePriceVat')) {
+        document.getElementById('fldSalePriceVat').checked = (currentProduct.salePriceVat !== undefined) ? currentProduct.salePriceVat : true;
+    }
+    if (document.getElementById('fldSaleShippingFeeVat')) {
+        document.getElementById('fldSaleShippingFeeVat').checked = (currentProduct.saleShippingFeeVat !== undefined) ? currentProduct.saleShippingFeeVat : true;
+    }
     document.getElementById('fldStock').value = currentProduct.stock || '';
     if (currentProduct.stock && currentProduct.stock > 0) {
         document.getElementById('fldStock').style.color = 'var(--on-surface)';
@@ -681,9 +738,6 @@ function populateForm() {
     }
     document.getElementById('fldVat').value = currentProduct.vat || '과세상품';
     document.getElementById('fldMinorPurchase').value = currentProduct.minorPurchase || 'Y';
-    // Sync VAT checkbox and margin display
-    var vatCb = document.getElementById('fldVatIncluded');
-    if (vatCb) vatCb.checked = (currentProduct.vat === '과세상품' || !currentProduct.vat);
     var nameCounter = document.getElementById('nameCounter');
     if (nameCounter) {
         var len = (currentProduct.productName || '').length;
