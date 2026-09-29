@@ -717,6 +717,12 @@ h6,
     font-variant-numeric: tabular-nums;
 }
 
+.text-left,
+.text-start {
+    text-align: left !important;
+    font-variant-numeric: tabular-nums;
+}
+
 /* 체크박스 전용 셀 */
 .col-check,
 .data-table th:first-child,

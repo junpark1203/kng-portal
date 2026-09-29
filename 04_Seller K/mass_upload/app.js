@@ -588,7 +588,7 @@ function initStep1Extras() {
     });
 }
 
-// 숫자 필드 포커스 시 0 자동 클리어 및 덮어쓰기 편의 기능
+// 숫자 필드 포커스 시 0 자동 클리어, 입력 시 세 자리마다 콤마 포맷팅, 블러 시 복원
 function setupZeroClearingInput(input, defaultValue) {
     if (!input) return;
     var defVal = (defaultValue !== undefined) ? String(defaultValue) : '0';
@@ -596,7 +596,8 @@ function setupZeroClearingInput(input, defaultValue) {
     // 포커스 시: 값이 0 또는 기본값이면 즉시 비워서 플레이스홀더("0")만 노출,
     // 사용자가 입력할 때 기존 '0' 뒤에 숫자가 이어붙어 자리수가 늘어나는 실수 방지
     input.addEventListener('focus', function() {
-        if (this.value === '0' || this.value === defVal) {
+        var rawDigits = this.value.replace(/\D/g, '');
+        if (rawDigits === '0' || rawDigits === defVal || this.value.trim() === '0') {
             this.value = '';
         } else if (this.value !== '') {
             // 이미 다른 숫자가 입력되어 있는 경우 전체 선택하여 즉시 덮어쓰기 지원
@@ -607,19 +608,51 @@ function setupZeroClearingInput(input, defaultValue) {
         }
     });
 
-    // 입력 중 앞자리에 불필요한 '0'이 붙는 경우 자동 제거 (예: 03000 -> 3000)
+    // 실시간 세자리 콤마 포맷팅 (커서 위치 정밀 유지)
     input.addEventListener('input', function() {
-        if (this.value.length > 1 && this.value.startsWith('0') && this.value[1] !== '.') {
-            this.value = this.value.replace(/^0+/, '') || '0';
+        var rawVal = this.value;
+        var cursorPos = this.selectionStart || 0;
+        var digitsBeforeCursor = rawVal.slice(0, cursorPos).replace(/\D/g, '').length;
+
+        var cleanDigits = rawVal.replace(/\D/g, '');
+        if (!cleanDigits) {
+            this.value = '';
+            return;
         }
+
+        // 선행 0 정리 (예: 03000 -> 3000)
+        if (cleanDigits.length > 1 && cleanDigits.startsWith('0')) {
+            cleanDigits = cleanDigits.replace(/^0+/, '') || '0';
+        }
+
+        var formatted = cleanDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        this.value = formatted;
+
+        // 커서 위치 재계산
+        var newCursorPos = 0;
+        var digitsCounted = 0;
+        for (var i = 0; i < formatted.length; i++) {
+            if (/\d/.test(formatted[i])) digitsCounted++;
+            if (digitsCounted === digitsBeforeCursor) {
+                newCursorPos = i + 1;
+                break;
+            }
+        }
+        if (cursorPos === rawVal.length) newCursorPos = formatted.length;
+        try {
+            this.setSelectionRange(newCursorPos, newCursorPos);
+        } catch (e) {}
     });
 
     // 블러 시: 빈칸인 채로 벗어나면 기본값(0)으로 복원
     input.addEventListener('blur', function() {
         if (this.value.trim() === '') {
-            this.value = defVal;
+            this.value = defVal === '0' ? '0' : formatCurrency(defVal);
             if (typeof updateMarginDisplay === 'function') updateMarginDisplay();
             if (typeof calculateRecommendedPrice === 'function') calculateRecommendedPrice();
+        } else {
+            var num = parseInt(this.value.replace(/,/g, ''), 10) || 0;
+            this.value = formatCurrency(num);
         }
     });
 }
@@ -639,9 +672,9 @@ function calculateRecommendedPrice() {
         return;
     }
     
-    var buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
-    var buyShip = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
-    var saleShip = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
+    var buyPrice = getNumericValue('fldBuyPrice');
+    var buyShip = getNumericValue('fldBuyShippingFee');
+    var saleShip = getNumericValue('fldSaleShippingFee');
 
     var buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
     var buyShipVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
@@ -705,18 +738,18 @@ function calculateRecommendedPrice() {
     
     // 사용자가 프리셋을 고르거나 원가를 입력할 때, 판매가가 비어있거나 기존 추천가와 동일했다면 자동 갱신
     var saleInput = document.getElementById('fldSalePrice');
-    if (saleInput && (!saleInput.value || saleInput.value === '0' || parseInt(saleInput.value) === window._lastRecommendedSalePrice)) {
-        saleInput.value = minSale;
+    if (saleInput && (!saleInput.value || saleInput.value === '0' || getNumericValue(saleInput) === window._lastRecommendedSalePrice)) {
+        saleInput.value = formatCurrency(minSale);
         window._lastRecommendedSalePrice = minSale;
         updateMarginDisplay();
     }
 }
 
 function updateMarginDisplay() {
-    var salePrice = parseInt(document.getElementById('fldSalePrice').value) || 0;
-    var buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
-    var saleShip = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
-    var buyShip = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
+    var salePrice = getNumericValue('fldSalePrice');
+    var buyPrice = getNumericValue('fldBuyPrice');
+    var saleShip = getNumericValue('fldSaleShippingFee');
+    var buyShip = getNumericValue('fldBuyShippingFee');
 
     var buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
     var buyShipVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
@@ -795,10 +828,10 @@ function collectStepData(step) {
         currentProduct.productName = document.getElementById('fldProductName').value.trim();
         currentProduct.totalVolume = document.getElementById('fldTotalVolume').value;
     } else if (step === 2) {
-        currentProduct.salePrice = parseInt(document.getElementById('fldSalePrice').value) || 0;
-        currentProduct.buyPrice = parseInt(document.getElementById('fldBuyPrice').value) || 0;
-        currentProduct.saleShippingFee = parseInt(document.getElementById('fldSaleShippingFee').value) || 0;
-        currentProduct.buyShippingFee = parseInt(document.getElementById('fldBuyShippingFee').value) || 0;
+        currentProduct.salePrice = getNumericValue('fldSalePrice');
+        currentProduct.buyPrice = getNumericValue('fldBuyPrice');
+        currentProduct.saleShippingFee = getNumericValue('fldSaleShippingFee');
+        currentProduct.buyShippingFee = getNumericValue('fldBuyShippingFee');
         currentProduct.buyPriceVat = document.getElementById('fldBuyPriceVat') ? document.getElementById('fldBuyPriceVat').checked : false;
         currentProduct.buyShippingFeeVat = document.getElementById('fldBuyShippingFeeVat') ? document.getElementById('fldBuyShippingFeeVat').checked : false;
         currentProduct.salePriceVat = document.getElementById('fldSalePriceVat') ? document.getElementById('fldSalePriceVat').checked : true;
@@ -857,10 +890,10 @@ function populateForm() {
     document.getElementById('fldStatus').value = currentProduct.productStatus || '신상품';
     document.getElementById('fldInternalName').value = currentProduct.internalName || '';
     document.getElementById('fldProductName').value = currentProduct.productName || '';
-    document.getElementById('fldSalePrice').value = currentProduct.salePrice || 0;
-    document.getElementById('fldBuyPrice').value = currentProduct.buyPrice || 0;
-    document.getElementById('fldSaleShippingFee').value = currentProduct.saleShippingFee || 0;
-    document.getElementById('fldBuyShippingFee').value = currentProduct.buyShippingFee || 0;
+    document.getElementById('fldSalePrice').value = formatCurrency(currentProduct.salePrice || 0);
+    document.getElementById('fldBuyPrice').value = formatCurrency(currentProduct.buyPrice || 0);
+    document.getElementById('fldSaleShippingFee').value = formatCurrency(currentProduct.saleShippingFee || 0);
+    document.getElementById('fldBuyShippingFee').value = formatCurrency(currentProduct.buyShippingFee || 0);
     if (document.getElementById('fldBuyPriceVat')) {
         document.getElementById('fldBuyPriceVat').checked = (currentProduct.buyPriceVat !== undefined) ? currentProduct.buyPriceVat : false;
     }

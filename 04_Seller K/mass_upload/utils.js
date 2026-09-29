@@ -33,6 +33,21 @@ function formatCurrency(num) {
     return Number(num).toLocaleString('ko-KR');
 }
 
+function getNumericValue(elOrVal) {
+    if (elOrVal == null) return 0;
+    if (typeof elOrVal === 'number') return isNaN(elOrVal) ? 0 : elOrVal;
+    var str = '';
+    if (typeof elOrVal === 'string') {
+        str = elOrVal;
+        var el = document.getElementById(elOrVal);
+        if (el && typeof el.value !== 'undefined') str = el.value;
+    } else if (elOrVal && typeof elOrVal.value !== 'undefined') {
+        str = elOrVal.value;
+    }
+    str = String(str).replace(/,/g, '').trim();
+    return parseInt(str, 10) || 0;
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return '-';
     var d = new Date(dateStr);
