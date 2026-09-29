@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initRouter();
         initSidebar();
         initWizard();
+        initKeyboardShortcuts();
         initStep1Extras();
         initCategorySearch();
         initOriginSearch();
@@ -69,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initRouter();
         initSidebar();
         initWizard();
+        initKeyboardShortcuts();
         initStep1Extras();
         initCategorySearch();
         initOriginSearch();
@@ -219,6 +221,59 @@ function updateExportSummary() {
 // ════════════════════════════════════════
 function initSidebar() {
     // 사이드바 제거됨 — 탭 네비게이션은 hashchange로 자동 동작
+}
+
+// ════════════════════════════════════════
+// KEYBOARD SHORTCUTS (F8: 저장)
+// ════════════════════════════════════════
+function initKeyboardShortcuts() {
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'F8' || e.keyCode === 119) {
+            e.preventDefault();
+
+            // 활성 입력 필드가 있다면 blur 처리하여 타이핑 중이던 값 DOM 동기화
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            // 배송 프리셋 폼이 열려 있는 경우
+            var presetForm = document.getElementById('presetForm');
+            if (presetForm && !presetForm.classList.contains('hidden') && presetForm.style.display !== 'none') {
+                var btnSavePreset = document.getElementById('btnSavePreset');
+                if (btnSavePreset) { btnSavePreset.click(); return; }
+            }
+
+            // 마진 프리셋 폼이 열려 있는 경우
+            var marginPresetForm = document.getElementById('marginPresetForm');
+            if (marginPresetForm && !marginPresetForm.classList.contains('hidden') && marginPresetForm.style.display !== 'none') {
+                var btnSaveMarginPreset = document.getElementById('btnSaveMarginPreset');
+                if (btnSaveMarginPreset) { btnSaveMarginPreset.click(); return; }
+            }
+
+            // 주소 폼이 열려 있는 경우
+            var addressForm = document.getElementById('addressForm');
+            if (addressForm && !addressForm.classList.contains('hidden') && addressForm.style.display !== 'none') {
+                var btnSaveAddress = document.getElementById('btnSaveAddress');
+                if (btnSaveAddress) { btnSaveAddress.click(); return; }
+            }
+
+            // 상품 등록 / 수정 화면
+            var regView = document.getElementById('pageRegister');
+            var isRegActive = (location.hash === '#register' || location.hash === '') ||
+                              (regView && !regView.classList.contains('hidden') && regView.style.display !== 'none');
+
+            if (isRegActive) {
+                if (_editMode) {
+                    saveFromEditMode();
+                } else if (typeof saveProduct === 'function') {
+                    saveProduct();
+                } else {
+                    var btnSave = document.getElementById('btnSave');
+                    if (btnSave) btnSave.click();
+                }
+            }
+        }
+    });
 }
 
 // ════════════════════════════════════════
@@ -479,6 +534,52 @@ function initStep1Extras() {
             stockInput.style.color = stockInput.value ? 'var(--on-surface)' : 'var(--gray-400)';
         });
     }
+
+    // 숫자 필드 포커스 시 0 자동 클리어 및 덮어쓰기 편의 기능 일괄 적용
+    var numFieldIds = [
+        'fldBuyShippingFee', 'fldSaleShippingFee', 'fldBuyPrice', 'fldSalePrice', 'fldNoOptionStock',
+        'fldOverrideFee', 'fldOverrideReturnFee', 'fldOverrideExchangeFee', 'fldOverrideFreeCondition', 
+        'fldOverrideQuantity', 'fldOverrideAddFee', 'fldOverrideSection3Fee'
+    ];
+    numFieldIds.forEach(function(id) {
+        setupZeroClearingInput(document.getElementById(id), '0');
+    });
+}
+
+// 숫자 필드 포커스 시 0 자동 클리어 및 덮어쓰기 편의 기능
+function setupZeroClearingInput(input, defaultValue) {
+    if (!input) return;
+    var defVal = (defaultValue !== undefined) ? String(defaultValue) : '0';
+
+    // 포커스 시: 값이 0 또는 기본값이면 즉시 비워서 플레이스홀더("0")만 노출,
+    // 사용자가 입력할 때 기존 '0' 뒤에 숫자가 이어붙어 자리수가 늘어나는 실수 방지
+    input.addEventListener('focus', function() {
+        if (this.value === '0' || this.value === defVal) {
+            this.value = '';
+        } else if (this.value !== '') {
+            // 이미 다른 숫자가 입력되어 있는 경우 전체 선택하여 즉시 덮어쓰기 지원
+            var el = this;
+            setTimeout(function() {
+                try { el.select(); } catch(e) {}
+            }, 0);
+        }
+    });
+
+    // 입력 중 앞자리에 불필요한 '0'이 붙는 경우 자동 제거 (예: 03000 -> 3000)
+    input.addEventListener('input', function() {
+        if (this.value.length > 1 && this.value.startsWith('0') && this.value[1] !== '.') {
+            this.value = this.value.replace(/^0+/, '') || '0';
+        }
+    });
+
+    // 블러 시: 빈칸인 채로 벗어나면 기본값(0)으로 복원
+    input.addEventListener('blur', function() {
+        if (this.value.trim() === '') {
+            this.value = defVal;
+            if (typeof updateMarginDisplay === 'function') updateMarginDisplay();
+            if (typeof calculateRecommendedPrice === 'function') calculateRecommendedPrice();
+        }
+    });
 }
 
 function calculateRecommendedPrice() {
