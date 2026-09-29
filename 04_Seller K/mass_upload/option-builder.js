@@ -12,20 +12,11 @@ function initOptionBuilder() {
     var btnOff = document.getElementById('btnOptionOff');
 
     if (btnOn) btnOn.addEventListener('click', function() {
-        optionEnabled = true;
-        btnOn.classList.add('active');
-        btnOff.classList.remove('active');
-        document.getElementById('optionBuilderSection').classList.remove('hidden');
-        document.getElementById('noOptionSection').classList.add('hidden');
-        if (document.getElementById('optionRows').children.length === 0) addOptionRow();
+        setOptionEnabled(true, true);
     });
 
     if (btnOff) btnOff.addEventListener('click', function() {
-        optionEnabled = false;
-        btnOff.classList.add('active');
-        btnOn.classList.remove('active');
-        document.getElementById('optionBuilderSection').classList.add('hidden');
-        document.getElementById('noOptionSection').classList.remove('hidden');
+        setOptionEnabled(false, true);
     });
 
     var applyBtn = document.getElementById('btnApplyOptions');
@@ -273,11 +264,7 @@ function collectOptionData() {
 // Restore option state from loaded product
 function restoreOptionState(product) {
     if (product.optionType && product.optionNames && product.optionNames.length > 0) {
-        optionEnabled = true;
-        document.getElementById('btnOptionOn').classList.add('active');
-        document.getElementById('btnOptionOff').classList.remove('active');
-        document.getElementById('optionBuilderSection').classList.remove('hidden');
-        document.getElementById('noOptionSection').classList.add('hidden');
+        setOptionEnabled(true, false);
 
         // Rebuild option rows
         var container = document.getElementById('optionRows');
@@ -296,11 +283,68 @@ function restoreOptionState(product) {
             document.getElementById('optionTableWrap').classList.remove('hidden');
         }
     } else {
-        optionEnabled = false;
-        document.getElementById('btnOptionOff').classList.add('active');
-        document.getElementById('btnOptionOn').classList.remove('active');
-        document.getElementById('optionBuilderSection').classList.add('hidden');
-        document.getElementById('noOptionSection').classList.remove('hidden');
+        setOptionEnabled(false, false);
         document.getElementById('fldNoOptionStock').value = product.stock || 0;
     }
 }
+
+// Option On/Off Programmatic Setter & Toggle (F4 shortcut & clicks)
+function setOptionEnabled(enabled, autoFocus) {
+    optionEnabled = !!enabled;
+    var btnOn = document.getElementById('btnOptionOn');
+    var btnOff = document.getElementById('btnOptionOff');
+    var optionBuilderSection = document.getElementById('optionBuilderSection');
+    var noOptionSection = document.getElementById('noOptionSection');
+
+    if (optionEnabled) {
+        if (btnOn) btnOn.classList.add('active');
+        if (btnOff) btnOff.classList.remove('active');
+        if (optionBuilderSection) optionBuilderSection.classList.remove('hidden');
+        if (noOptionSection) noOptionSection.classList.add('hidden');
+
+        var container = document.getElementById('optionRows');
+        if (container && container.querySelectorAll('.option-row').length === 0) {
+            addOptionRow();
+        }
+
+        if (autoFocus) {
+            var step3 = document.getElementById('step3');
+            if (step3) {
+                step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            setTimeout(function() {
+                var firstInput = container ? container.querySelector('.option-name-input') : null;
+                if (firstInput) {
+                    firstInput.focus();
+                    try { firstInput.select(); } catch(err) {}
+                }
+            }, 100);
+        }
+    } else {
+        if (btnOff) btnOff.classList.add('active');
+        if (btnOn) btnOn.classList.remove('active');
+        if (optionBuilderSection) optionBuilderSection.classList.add('hidden');
+        if (noOptionSection) noOptionSection.classList.remove('hidden');
+
+        if (autoFocus) {
+            var step3 = document.getElementById('step3');
+            if (step3) {
+                step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            var stockInput = document.getElementById('fldNoOptionStock');
+            if (stockInput) {
+                stockInput.focus();
+                try { stockInput.select(); } catch(err) {}
+            }
+        }
+    }
+}
+
+function toggleOptionEnabled(autoFocus) {
+    var targetState = !optionEnabled;
+    setOptionEnabled(targetState, autoFocus !== undefined ? autoFocus : true);
+    return targetState;
+}
+
+window.setOptionEnabled = setOptionEnabled;
+window.toggleOptionEnabled = toggleOptionEnabled;

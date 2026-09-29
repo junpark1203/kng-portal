@@ -224,7 +224,7 @@ function initSidebar() {
 }
 
 // ════════════════════════════════════════
-// KEYBOARD SHORTCUTS (F2: 신규 등록, F8: 저장)
+// KEYBOARD SHORTCUTS (F2: 신규 등록, F3: 상품 목록, F4: 옵션 토글, F8: 저장, F9: 엑셀 생성)
 // ════════════════════════════════════════
 function initKeyboardShortcuts() {
     window.addEventListener('keydown', function(e) {
@@ -266,6 +266,44 @@ function initKeyboardShortcuts() {
                     try { firstInput.select(); } catch(err) {}
                 }
             }, 80);
+            return;
+        }
+
+        // ── F3: 상품 목록 ──
+        if (e.key === 'F3' || e.keyCode === 114) {
+            e.preventDefault();
+
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            if (location.hash === '#products') {
+                if (typeof refreshProductList === 'function') refreshProductList();
+            } else {
+                location.hash = '#products';
+            }
+            return;
+        }
+
+        // ── F4: 선택형 옵션 설정 토글 ──
+        if (e.key === 'F4' || e.keyCode === 115) {
+            e.preventDefault();
+
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            // 등록 화면이 아니면 등록 화면으로 이동
+            if (location.hash !== '#register' && location.hash !== '') {
+                location.hash = '#register';
+            }
+
+            if (typeof toggleOptionEnabled === 'function') {
+                var isEnabled = toggleOptionEnabled(true);
+                if (typeof showToast === 'function') {
+                    showToast(isEnabled ? '선택형 옵션: 설정함 (F4)' : '선택형 옵션: 설정안함 (F4)', 'info');
+                }
+            }
             return;
         }
 
@@ -314,6 +352,23 @@ function initKeyboardShortcuts() {
                     if (btnSave) btnSave.click();
                 }
             }
+            return;
+        }
+
+        // ── F9: 엑셀 생성 ──
+        if (e.key === 'F9' || e.keyCode === 120) {
+            e.preventDefault();
+
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+
+            if (location.hash === '#export') {
+                if (typeof renderExportCart === 'function') renderExportCart();
+            } else {
+                location.hash = '#export';
+            }
+            return;
         }
     });
 }
