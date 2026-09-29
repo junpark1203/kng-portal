@@ -83,6 +83,12 @@ const formatNum = (num, decimals = 0) => {
     return Number(num).toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 };
 
+const formatCurrency = (amount, currency, decimals = null) => {
+    const isKrw = (!currency || String(currency).toUpperCase() === 'KRW');
+    const targetDecimals = decimals !== null ? decimals : (isKrw ? 0 : 2);
+    return formatNum(amount || 0, targetDecimals);
+};
+
 const showToast = (msg, isError = false) => {
     const container = document.getElementById('toastContainer');
     if (!container) return alert(msg);
@@ -897,7 +903,7 @@ function renderList() {
         if (item.exchangeRates) {
             const arr = [];
             ['USD', 'CNY', 'EUR', 'JPY'].forEach(c => {
-                if (item.exchangeRates[c]) arr.push(`<b>${c}</b> ${formatNum(item.exchangeRates[c], 1)}`);
+                if (item.exchangeRates[c]) arr.push(`<b>${c}</b> ${formatNum(item.exchangeRates[c], 2)}`);
             });
             if (arr.length > 0) ratesHtml = `<div style="font-size:11px; color:#475569; white-space:nowrap;">${arr.join(' | ')}</div>`;
         }
@@ -1369,7 +1375,7 @@ function renderItemFooter() {
 
     state.doc.incoterms.forEach(term => {
         const currs = Object.keys(totalsByTerm[term]).filter(c => totalsByTerm[term][c] > 0);
-        let str = currs.map(c => `${c} ${formatNum(totalsByTerm[term][c])}`).join('<br>') || '0';
+        let str = currs.map(c => `${c} ${formatCurrency(totalsByTerm[term][c], c)}`).join('<br>') || '0';
         fHtml += `<td class="col-num" style="font-size:0.9rem;">${str}</td>`;
     });
     
@@ -1577,7 +1583,7 @@ function renderForwarderContent() {
                             </select>
                         </td>
                         <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="0" step="0.001" oninput="updateCost(${idx}, 'unitQty', this.value)" ${((state.doc.shipmentType==='FCL' && c.unit==='per Container') || (state.doc.shipmentType==='LCL' && (c.unit==='per R/T' || c.unit==='per CBM'))) ? 'readonly style="background:#f0f0f0; border-color:#ddd;" title="화물 수량/부피와 연동되어 자동 계산됩니다."' : ''}></td>
-                        <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
+                        <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatCurrency((c.amount||0)*(c.unitQty||0), c.currency)}</td>
                 `;
                 
                 state.doc.incoterms.forEach(term => {
@@ -1617,9 +1623,12 @@ window.updateCost = function(idx, field, val) {
     const fw = state.doc.forwarders[state.activeForwarderIdx];
     if (field === 'amount' || field === 'unitQty') {
         fw.costs[idx][field] = parseFloat(val) || 0;
-        document.getElementById(`fwCostSum_${idx}`).innerText = formatNum(fw.costs[idx].amount * fw.costs[idx].unitQty);
     } else {
         fw.costs[idx][field] = val;
+    }
+    const costEl = document.getElementById(`fwCostSum_${idx}`);
+    if (costEl && fw.costs[idx]) {
+        costEl.innerText = formatCurrency((fw.costs[idx].amount || 0) * (fw.costs[idx].unitQty || 0), fw.costs[idx].currency);
     }
     renderAllCalculations();
 };
@@ -1979,7 +1988,7 @@ function renderSummaryTable() {
                     const cData = dRow.cols[i];
                     if (cData && cData.amt > 0) {
                         bHtml += `<td style="border-right: 1px solid #eee; font-weight:500;">
-                            ${cData.curr} ${formatNum(cData.amt)} ${cData.qty !== 1 ? `<span style="color:#999;font-size:0.8em;font-weight:normal;">×${formatNum(cData.qty,2)}</span>` : ''}
+                            ${cData.curr} ${formatCurrency(cData.amt, cData.curr)} ${cData.qty !== 1 ? `<span style="color:#999;font-size:0.8em;font-weight:normal;">×${formatNum(cData.qty,2)}</span>` : ''}
                         </td>`;
                     } else {
                         bHtml += `<td style="border-right: 1px solid #eee; text-align:center; color:#ccc;">-</td>`;
@@ -2349,10 +2358,10 @@ function generatePrintHTML() {
                 sumPerTerm[term] += total;
                 html += `
                     <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-size:8.5px;">
-                        ${p.currency} ${formatNum(p.unitPrice, 2)}
+                        ${p.currency} ${formatCurrency(p.unitPrice, p.currency)}
                     </td>
                     <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-size:8.5px; font-weight:500;">
-                        ${p.currency} ${formatNum(total, 1)}
+                        ${p.currency} ${formatCurrency(total, p.currency)}
                     </td>
                 `;
             } else {
@@ -2393,7 +2402,7 @@ function generatePrintHTML() {
         html += `
             <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">—</td>
             <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-size:8.5px;">
-                ${currency ? currency + ' ' : ''}${formatNum(sumVal, 1)}<br>
+                ${currency ? currency + ' ' : ''}${formatCurrency(sumVal, currency)}<br>
                 <span style="color:#64748b; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
             </td>
         `;
@@ -2586,7 +2595,7 @@ function generatePrintHTML() {
                 const costNo = `${catNo}-${groupCounters[catNo]}`;
 
                 const isKrw = (c.currency === 'KRW');
-                const exRateDisplay = isKrw ? '<span style="color:#94a3b8;">-</span>' : `₩${formatNum(exRate, 1)}`;
+                const exRateDisplay = isKrw ? '<span style="color:#94a3b8;">-</span>' : `₩${formatNum(exRate, 2)}`;
                 const exRateAlign = isKrw ? 'center' : 'right';
 
                 html += `
@@ -3473,16 +3482,16 @@ function generateExcelHTML() {
                 <tr>
                     <td style="border:1px solid #ccc; padding:6px; text-align:center;">${groupName}</td>
                     <td style="border:1px solid #ccc; padding:6px;">${c.label}</td>
-                    <td style="border:1px solid #ccc; padding:6px; text-align:right;">${c.amount}</td>
+                    <td style="border:1px solid #ccc; padding:6px; text-align:right;">${formatCurrency(c.amount, c.currency)}</td>
                     <td style="border:1px solid #ccc; padding:6px; text-align:center;">${c.currency}</td>
                     <td style="border:1px solid #ccc; padding:6px; text-align:center;">${c.unit}</td>
                     <td style="border:1px solid #ccc; padding:6px; text-align:right;">${c.unitQty}</td>
-                    <td style="border:1px solid #ccc; padding:6px; text-align:right;">${totalFC}</td>
+                    <td style="border:1px solid #ccc; padding:6px; text-align:right;">${formatCurrency(totalFC, c.currency)}</td>
             `;
             
             state.doc.incoterms.forEach(term => {
                 if (c.applyTo[term]) {
-                    html += `<td style="border:1px solid #ccc; padding:6px; text-align:right; font-weight:bold; color:#0369a1;">${Math.round(totalKrwBase)}</td>`;
+                    html += `<td style="border:1px solid #ccc; padding:6px; text-align:right; font-weight:bold; color:#0369a1;">${formatNum(Math.round(totalKrwBase))}</td>`;
                 } else {
                     html += `<td style="border:1px solid #ccc; padding:6px; text-align:center; color:#aaa;">-</td>`;
                 }
@@ -3511,11 +3520,11 @@ function generateExcelHTML() {
                     <tr>
                         <td style="border:1px solid #ccc; padding:6px; text-align:center;">기타비용</td>
                         <td style="border:1px solid #ccc; padding:6px;">${oc.name}</td>
-                        <td style="border:1px solid #ccc; padding:6px; text-align:right;">${oc.amount || 0}</td>
+                        <td style="border:1px solid #ccc; padding:6px; text-align:right;">${formatNum(oc.amount || 0)}</td>
                         <td style="border:1px solid #ccc; padding:6px; text-align:center;">KRW</td>
                         <td style="border:1px solid #ccc; padding:6px; text-align:center;">Lump Sum</td>
                         <td style="border:1px solid #ccc; padding:6px; text-align:right;">1</td>
-                        <td style="border:1px solid #ccc; padding:6px; text-align:right;">${oc.amount || 0}</td>
+                        <td style="border:1px solid #ccc; padding:6px; text-align:right;">${formatNum(oc.amount || 0)}</td>
                 `;
                 
                 state.doc.incoterms.forEach(term => {
@@ -3531,7 +3540,7 @@ function generateExcelHTML() {
                         const principal = invKrw + subKrw;
                         costToApply = principal * (avgMonths / 12) * (rate / 100);
                     }
-                    html += `<td style="border:1px solid #ccc; padding:6px; text-align:right; font-weight:bold; color:#0369a1;">${Math.round(costToApply)}</td>`;
+                    html += `<td style="border:1px solid #ccc; padding:6px; text-align:right; font-weight:bold; color:#0369a1;">${formatNum(Math.round(costToApply))}</td>`;
                 });
                 
                 if (emptyCols > 0) {
