@@ -290,14 +290,57 @@ function initWizard() {
     }
 }
 
+// ── ECOUNT ERP 서브 탭 전환 및 퀵 점프 ──
+var _activeRegisterTab = 'all';
+
+function switchRegisterTab(step) {
+    _activeRegisterTab = step;
+    
+    // Update sub-tab buttons
+    document.querySelectorAll('.erp-sub-tab').forEach(function(btn) {
+        if (btn.getAttribute('data-step') === String(step)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    var panels = [1, 2, 3, 4, 5];
+    if (step === 'all') {
+        panels.forEach(function(n) {
+            var p = document.getElementById('step' + n);
+            if (p) p.classList.remove('tab-hidden');
+        });
+    } else {
+        var targetNum = parseInt(step);
+        panels.forEach(function(n) {
+            var p = document.getElementById('step' + n);
+            if (p) {
+                if (n === targetNum) {
+                    p.classList.remove('tab-hidden');
+                } else {
+                    p.classList.add('tab-hidden');
+                }
+            }
+        });
+        var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+        if (pageBody) pageBody.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
 function goToStep(n) {
-    // Compatibility function for legacy calls
+    var num = parseInt(n);
+    if (!isNaN(num) && typeof switchRegisterTab === 'function') {
+        if (_activeRegisterTab !== 'all') {
+            switchRegisterTab(num);
+        }
+    }
     var panel = document.getElementById('step' + n);
     var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
     if (panel && pageBody) {
         var targetRect = panel.getBoundingClientRect();
         var containerRect = pageBody.getBoundingClientRect();
-        var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 20;
+        var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 40;
         pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
     }
 }
@@ -909,14 +952,16 @@ function checkUnitPriceCategory(categoryId) {
     var volumeWrap = document.getElementById('unitPriceTotalVolumeWrap');
     var infoEl = document.getElementById('unitPriceInfo');
     var helpEl = document.getElementById('totalVolumeHelp');
+    var row = document.getElementById('unitPriceRow');
     if (!alertWrap || !volumeWrap) return;
 
     if (categoryId && typeof UNIT_PRICE_CATEGORIES !== 'undefined' && UNIT_PRICE_CATEGORIES[categoryId]) {
         var info = UNIT_PRICE_CATEGORIES[categoryId];
         alertWrap.classList.remove('hidden');
         volumeWrap.classList.remove('hidden');
+        if (row) row.classList.remove('hidden');
         infoEl.textContent = '표시용량: ' + info.v + ' / 표시단위: ' + info.u;
-        helpEl.textContent = '단위: ' + info.u + ' (예: 500' + info.u + '이면 500 입력)';
+        helpEl.textContent = '단위: ' + info.u;
         if (currentProduct) {
             currentProduct.displayVolume = info.v;
             currentProduct.displayUnit = info.u;
@@ -925,6 +970,7 @@ function checkUnitPriceCategory(categoryId) {
     } else {
         alertWrap.classList.add('hidden');
         volumeWrap.classList.add('hidden');
+        if (row) row.classList.add('hidden');
         document.getElementById('fldTotalVolume').value = '';
         if (currentProduct) {
             currentProduct.displayVolume = '';

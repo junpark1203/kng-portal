@@ -1878,10 +1878,12 @@ var _overrideListenersInitialized = false;
 
 function renderPresetSummary(presetId) {
     var wrap = document.getElementById('presetSummaryWrap');
+    var pRow = document.getElementById('presetSummaryTableRow');
     if (!wrap) return;
 
     if (!presetId) {
         wrap.style.display = 'none';
+        if (pRow) pRow.style.display = 'none';
         _currentPresetOriginal = null;
         return;
     }
@@ -1890,6 +1892,7 @@ function renderPresetSummary(presetId) {
     var sp = presets.find(function(p) { return p.id === presetId; });
     if (!sp) {
         wrap.style.display = 'none';
+        if (pRow) pRow.style.display = 'none';
         _currentPresetOriginal = null;
         return;
     }
@@ -1939,6 +1942,7 @@ function renderPresetSummary(presetId) {
     _checkOverrideStatus();
 
     wrap.style.display = 'block';
+    if (pRow) pRow.style.display = 'table-row';
 }
 
 // ════════════════════════════════════════
