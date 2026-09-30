@@ -665,6 +665,7 @@ const app = {
     recalcTotals: function() {
         const items = this.currentQuote.items || [];
         const vatType = document.getElementById('vatTypeSelect')?.value || 'exclusive';
+        this.currentQuote.vat_type = vatType;
 
         let sumSupply = 0;
         let sumVat = 0;
@@ -688,6 +689,14 @@ const app = {
                 it.total_price = it.supply_price;
             }
 
+            // [DOM 셀 즉시 반영 - 과세 구분 변경 시에도 품목 테이블 각 행 즉각 동기화]
+            const cellS = document.getElementById(`cellSupply_${idx}`);
+            const cellV = document.getElementById(`cellVat_${idx}`);
+            const cellT = document.getElementById(`cellTotal_${idx}`);
+            if (cellS) cellS.textContent = fmtWon(it.supply_price);
+            if (cellV) cellV.textContent = fmtWon(it.vat);
+            if (cellT) cellT.textContent = fmtWon(it.total_price);
+
             sumSupply += it.supply_price;
             sumVat += it.vat;
             sumTotal += it.total_price;
@@ -697,11 +706,43 @@ const app = {
         this.currentQuote.total_vat = sumVat;
         this.currentQuote.total_amount = sumTotal;
 
-        document.getElementById('sumSupplyPrice').textContent = fmtWon(sumSupply);
-        document.getElementById('sumVat').textContent = fmtWon(sumVat);
-        document.getElementById('sumTotalAmount').textContent = fmtWon(sumTotal);
-        const vatLabel = (vatType === 'none') ? '(면세)' : '(부가세 포함)';
-        document.getElementById('amountKoreanText').textContent = `${fmtNum(sumTotal)}원 ${vatLabel}`;
+        const elSupply = document.getElementById('sumSupplyPrice');
+        const elVat = document.getElementById('sumVat');
+        const elTotal = document.getElementById('sumTotalAmount');
+        const elKorean = document.getElementById('amountKoreanText');
+
+        if (elSupply) elSupply.textContent = fmtWon(sumSupply);
+        if (elVat) elVat.textContent = fmtWon(sumVat);
+        if (elTotal) elTotal.textContent = fmtWon(sumTotal);
+
+        if (elKorean) {
+            let label = '';
+            if (vatType === 'exclusive') {
+                label = `합계: ${fmtNum(sumTotal)}원 (공급가액 + VAT 10%)`;
+            } else if (vatType === 'inclusive') {
+                label = `합계: ${fmtNum(sumTotal)}원 (VAT 10% 포함)`;
+            } else {
+                label = `합계: ${fmtNum(sumTotal)}원 (영세 / 면세)`;
+            }
+            elKorean.textContent = label;
+        }
+
+        // 하단 기본 특기사항의 VAT 안내 문구 자동 연동
+        const notesEl = document.getElementById('notesInstructions');
+        if (notesEl && notesEl.value) {
+            let currentNotes = notesEl.value;
+            const targetLine = (vatType === 'exclusive')
+                ? '1. 상기 견적금액은 부가세(VAT) 별도 기준입니다.'
+                : ((vatType === 'inclusive')
+                    ? '1. 상기 견적금액은 부가세(VAT) 포함 기준입니다.'
+                    : '1. 상기 견적금액은 영세/면세 기준입니다.');
+
+            if (/1\.\s*상기\s*견적금액은\s*[^.\n]+기준입니다\./.test(currentNotes)) {
+                currentNotes = currentNotes.replace(/1\.\s*상기\s*견적금액은\s*[^.\n]+기준입니다\./, targetLine);
+                notesEl.value = currentNotes;
+                this.currentQuote.notes_instructions = currentNotes;
+            }
+        }
     },
 
     // ── 수기 행 추가 ──
