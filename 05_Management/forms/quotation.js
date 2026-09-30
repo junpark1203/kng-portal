@@ -23,7 +23,7 @@ const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 
 let _authReady = null;
-function waitForAuth(timeout = 6000) {
+function waitForAuth(timeout = 1500) {
     if (_authReady) return _authReady;
     _authReady = new Promise((res) => {
         const s = Date.now();
@@ -32,22 +32,22 @@ function waitForAuth(timeout = 6000) {
                 if (window.parent && window.parent !== window && window.parent.getAuthToken) {
                     window.parent.getAuthToken().then(t => {
                         if (t) { res(t); }
-                        else if (Date.now() - s < timeout) { setTimeout(poll, 300); }
+                        else if (Date.now() - s < timeout) { setTimeout(poll, 200); }
                         else { _authReady = null; res(null); }
                     }).catch(() => {
-                        if (Date.now() - s < timeout) setTimeout(poll, 300);
+                        if (Date.now() - s < timeout) setTimeout(poll, 200);
                         else { _authReady = null; res(null); }
                     });
                 } else if (auth && auth.currentUser) {
                     auth.currentUser.getIdToken(true).then(res).catch(() => res(null));
                 } else if (Date.now() - s < timeout) {
-                    setTimeout(poll, 300);
+                    setTimeout(poll, 200);
                 } else {
                     _authReady = null;
                     res(null);
                 }
             } catch (e) {
-                if (Date.now() - s < timeout) setTimeout(poll, 300);
+                if (Date.now() - s < timeout) setTimeout(poll, 200);
                 else { _authReady = null; res(null); }
             }
         })();
@@ -365,6 +365,20 @@ const app = {
 
     // ── 견적서 보관함 목록 조회 (API 및 로컬 보관함 동기화) ──
     fetchQuotations: function() {
+        // [무한로딩 방지] 서버 응답 전 로컬 캐시를 0초 만에 즉시 렌더링
+        let cachedQuotes = [];
+        try {
+            cachedQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+        } catch(e) {}
+        if (cachedQuotes.length > 0 || this.quotations.length === 0) {
+            this.quotations = cachedQuotes;
+            this.renderQuoteList();
+            const badge = document.getElementById('quoteTotalCountBadge');
+            const summary = document.getElementById('listSummaryText');
+            if (badge) badge.textContent = this.quotations.length;
+            if (summary) summary.textContent = `총 ${this.quotations.length}건 조회됨`;
+        }
+
         const keyword = document.getElementById('searchKeyword')?.value.trim().toLowerCase() || '';
         const startDate = document.getElementById('filterStartDate')?.value || '';
         const endDate = document.getElementById('filterEndDate')?.value || '';
@@ -1574,4 +1588,9 @@ const app = {
 };
 
 window.app = app;
-document.addEventListener('DOMContentLoaded', () => app.init());
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => app.init());
+} else {
+    app.init();
+}
