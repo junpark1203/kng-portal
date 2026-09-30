@@ -334,6 +334,7 @@ body {
     user-select: none;
     height: 24px;
     position: relative;
+    overflow: visible !important;
 }
 
 .sk-table thead th:first-child {
@@ -659,20 +660,37 @@ td.profit-col {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── 컬럼 리사이저 핸들러 ── */
-.erp-table-col-resizer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 5px;
-    bottom: 0;
-    cursor: col-resize;
-    user-select: none;
-    z-index: 10;
+/* ── 엑셀식 마우스 열 너비 조절 핸들러 (Column Resizer) ── */
+body.erp-resizing,
+body.erp-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
 }
 
-.erp-table-col-resizer:hover,
-.erp-table-col-resizing {
-    background-color: var(--erp-primary);
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 9px;
+    height: 100%;
+    cursor: col-resize !important;
+    user-select: none;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.col-resizer::after {
+    content: '';
     width: 2px;
+    height: 100%;
+    background-color: transparent;
+    transition: background-color 0.12s ease;
+}
+
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after {
+    background-color: #2563eb;
+    box-shadow: 0 0 3px rgba(37, 99, 235, 0.5);
 }

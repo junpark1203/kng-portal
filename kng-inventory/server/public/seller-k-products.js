@@ -553,7 +553,9 @@ function renderTable() {
 
     // 열 너비 자동 리사이저 트리거
     if (window.setupErpGridResizer) {
-        window.setupErpGridResizer('skTable');
+        window.setupErpGridResizer('skTable', {
+            storageKey: 'kng_seller_k_grid_widths_v2'
+        });
     }
 }
 

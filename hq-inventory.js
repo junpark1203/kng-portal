@@ -385,6 +385,7 @@
 
         renderPagination(list.length);
         updateSelectedUI();
+        initGridResizer();
     }
 
     // ==========================================
