@@ -826,6 +826,54 @@
             });
         },
 
+        addSelectedToQuoteCart() {
+            if (selectedIds.size === 0) {
+                showToast('견적서에 담을 상품을 먼저 체크박스로 선택해주세요.', 'warning');
+                return;
+            }
+
+            let cart = [];
+            try {
+                cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
+                if (!Array.isArray(cart)) cart = [];
+            } catch (e) {
+                cart = [];
+            }
+
+            let addedCount = 0;
+            selectedIds.forEach(id => {
+                const p = products.find(item => String(item.id) === String(id));
+                if (!p) return;
+
+                const existing = cart.find(c => c.source_module === 'hq-inventory' && String(c.source_id) === String(p.id));
+                if (existing) {
+                    existing.qty = (Number(existing.qty) || 1) + 1;
+                } else {
+                    cart.push({
+                        source_module: 'hq-inventory',
+                        source_id: p.id,
+                        product_name: p.name || '',
+                        spec: p.spec || '',
+                        color: p.color || '',
+                        unit: p.unit || 'EA',
+                        qty: 1,
+                        cost_price: Number(p.cost_price || p.purchase_price || 0),
+                        unit_price: Number(p.selling_price || p.unit_price || p.cost_price || 0),
+                        image_url: p.image_url || p.image || '',
+                        remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
+                    });
+                }
+                addedCount++;
+            });
+
+            localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
+            showToast(`${addedCount}개 품목이 견적서 장바구니에 담겼습니다.`, 'success');
+
+            if (confirm(`${addedCount}개 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
+                location.href = './05_Management/forms/quotation.html';
+            }
+        },
+
         openNewModal,
         openEditModal,
         calcModalMargin,

@@ -57,6 +57,9 @@
             <button type="button" class="btn-erp btn-erp-danger" id="deleteBtn" onclick="app.handleDelete()" title="선택한 내역 일괄 삭제">
                 <i class='bx bx-trash'></i> 선택 삭제 (<span id="selectedCount">0</span>)
             </button>
+            <button type="button" class="btn-erp btn-erp-warning" onclick="app.addSelectedToQuoteCart()" title="선택한 내역 품목을 견적서 장바구니에 담기">
+                <i class='bx bx-file-blank'></i> 견적 담기
+            </button>
             <button type="button" class="btn-erp" onclick="app.exportExcel()" title="조회된 입출고 목록 엑셀 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
             </button>

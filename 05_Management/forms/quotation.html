@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>견적서 관리 (Quotation)</title>
+    <!-- Fonts & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
+    <link rel="stylesheet" href="./quotation.css?v=20260930_1">
+    <!-- SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바: 타이틀 + 뷰 모드 탭 + 바구니 배지 + 액션 버튼군 ── -->
+    <header class="erp-top-toolbar no-print mb-2">
+        <div class="toolbar-left d-flex align-items-center gap-2 flex-wrap">
+            <span class="erp-title-tag">
+                <i class='bx bx-calculator text-primary'></i> 견적서 관리
+            </span>
+
+            <!-- 뷰 전환 탭 (보관함 목록 / 작성기) -->
+            <div class="erp-tab-group" id="viewModeGroup">
+                <button type="button" class="erp-tab-btn active" id="btnViewList" onclick="app.switchView('list')">
+                    <i class='bx bx-archive'></i> 견적서 보관함 <span class="erp-tab-badge" id="quoteTotalCountBadge">0</span>
+                </button>
+                <button type="button" class="erp-tab-btn" id="btnViewEditor" onclick="app.switchView('editor')">
+                    <i class='bx bx-edit'></i> 견적서 작성기
+                </button>
+            </div>
+
+            <!-- 견적 바구니 배지 (다른 모듈에서 담긴 품목 수) -->
+            <button type="button" class="btn-quote-cart d-none" id="btnQuoteCartBadge" onclick="app.loadFromCartAndEdit()" title="다른 모듈에서 담은 품목으로 새 견적서를 작성합니다">
+                <i class='bx bx-cart-alt'></i> 견적 바구니 <span class="badge bg-danger rounded-pill" id="cartCountBadge">0</span>
+            </button>
+        </div>
+
+        <div class="toolbar-right d-flex align-items-center gap-1 flex-wrap">
+            <!-- 작성기 전용 버튼들 -->
+            <div id="editorActionBtns" class="d-none d-flex align-items-center gap-1">
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.saveQuotation()" title="견적서 저장 (F8)">
+                    <i class='bx bx-save'></i> 저장 <span class="key-shortcut-badge">F8</span>
+                </button>
+                <button type="button" class="btn-erp" onclick="app.printCurrentQuotation()" title="정규 A4 견적서 인쇄 / PDF 저장 (Ctrl+P)">
+                    <i class='bx bx-printer'></i> A4 인쇄 / PDF
+                </button>
+                <button type="button" class="btn-erp" onclick="app.exportCurrentExcel()" title="엑셀 파일로 다운로드">
+                    <i class='bx bx-download'></i> 엑셀
+                </button>
+                <button type="button" class="btn-erp text-muted" onclick="app.initNewQuotation()" title="입력 폼 비우고 새로 작성">
+                    <i class='bx bx-file'></i> 새로 작성
+                </button>
+            </div>
+
+            <!-- 목록 전용 버튼들 -->
+            <div id="listActionBtns" class="d-flex align-items-center gap-1">
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.openNewEditor()" title="새로운 견적서 작성 (F2)">
+                    <i class='bx bx-plus-circle'></i> 신규 견적 작성 <span class="key-shortcut-badge">F2</span>
+                </button>
+                <button type="button" class="btn-erp" onclick="app.exportListExcel()" title="견적서 목록 엑셀 다운로드">
+                    <i class='bx bx-download'></i> 목록 엑셀
+                </button>
+            </div>
+
+            <button type="button" class="btn-erp" onclick="app.openSupplierSettingsModal()" title="공급자 사업자 정보 및 직인(도장) 설정">
+                <i class='bx bx-cog'></i> 직인/공급자 설정
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         VIEW 1: 견적서 보관함 (목록 조회 & 과거 제안 이력 검색)
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="quotationListView" class="view-panel">
+        <!-- 2행 필터 리본 -->
+        <div class="erp-filter-ribbon no-print mb-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- 진행 상태 칩 필터 -->
+                <div class="erp-stock-filters me-1" id="statusFilterGroup">
+                    <button type="button" class="erp-filter-chip active" data-status="all" onclick="app.setStatusFilter('all')">전체</button>
+                    <button type="button" class="erp-filter-chip" data-status="작성중" onclick="app.setStatusFilter('작성중')">작성중</button>
+                    <button type="button" class="erp-filter-chip" data-status="제출완료" onclick="app.setStatusFilter('제출완료')">제출완료</button>
+                    <button type="button" class="erp-filter-chip" data-status="수주확정" onclick="app.setStatusFilter('수주확정')">수주확정</button>
+                </div>
+
+                <!-- 기간 조회 -->
+                <div class="d-flex align-items-center gap-1">
+                    <input type="date" class="form-control form-control-sm erp-input-date" id="filterStartDate" title="견적일 시작">
+                    <span class="text-muted" style="font-size: 11px;">~</span>
+                    <input type="date" class="form-control form-control-sm erp-input-date" id="filterEndDate" title="견적일 종료">
+                </div>
+
+                <!-- 검색창 -->
+                <div class="position-relative erp-search-box">
+                    <input type="text" class="form-control form-control-sm pe-4" id="searchKeyword" placeholder="고객사명, 건명, 견적번호 검색..." onkeyup="if(event.key==='Enter') app.fetchQuotations()">
+                    <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearch()" style="font-size: 0.8rem;">
+                        <i class='bx bx-x-circle'></i>
+                    </button>
+                </div>
+
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.fetchQuotations()"><i class='bx bx-search'></i> 조회</button>
+                <button type="button" class="btn-erp" onclick="app.resetFilters()"><i class='bx bx-reset'></i> 초기화</button>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small" id="listSummaryText">총 0건 조회됨</span>
+                <button type="button" class="btn-erp" onclick="app.resetListColWidths()" title="열 너비 초기화"><i class='bx bx-table'></i> 열 너비 초기화</button>
+            </div>
+        </div>
+
+        <!-- 견적서 보관함 그리드 -->
+        <div class="table-responsive erp-table-wrapper" style="height: calc(100vh - 125px);">
+            <table class="erp-table table-bordered" id="quoteListTable">
+                <colgroup>
+                    <col style="width: 40px;">
+                    <col style="width: 125px;">
+                    <col style="width: 85px;">
+                    <col style="width: 140px;">
+                    <col style="width: auto; min-width: 180px;">
+                    <col style="width: 65px;">
+                    <col style="width: 110px;">
+                    <col style="width: 80px;">
+                    <col style="width: 80px;">
+                    <col style="width: 150px;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="text-center">No.</th>
+                        <th class="text-center sortable" onclick="app.sortList('quote_number')">견적번호 <i class='bx bx-sort'></i></th>
+                        <th class="text-center sortable" onclick="app.sortList('issue_date')">견적일자 <i class='bx bx-sort'></i></th>
+                        <th class="text-start ps-2 sortable" onclick="app.sortList('customer_name')">수신처(거래처) <i class='bx bx-sort'></i></th>
+                        <th class="text-start ps-2 sortable" onclick="app.sortList('project_name')">견적 건명 / 품목 요약 <i class='bx bx-sort'></i></th>
+                        <th class="text-center">품목수</th>
+                        <th class="text-end pe-2 sortable" onclick="app.sortList('total_amount')">총 견적금액 <i class='bx bx-sort'></i></th>
+                        <th class="text-center">상태</th>
+                        <th class="text-center">작성자</th>
+                        <th class="text-center no-print">관리 / 출력</th>
+                    </tr>
+                </thead>
+                <tbody id="quoteListTbody">
+                    <tr><td colspan="10" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin fs-4 text-primary'></i><div class="mt-2">견적서 목록을 불러오는 중입니다...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         VIEW 2: 견적서 작성기 (에디터 & 실시간 미리보기)
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="quotationEditorView" class="view-panel d-none">
+        <form id="quotationForm" onsubmit="event.preventDefault(); app.saveQuotation();">
+            <input type="hidden" id="quoteId">
+
+            <!-- 견적서 기본정보 박스 (2단 레이아웃: 수신처 vs 공급자) -->
+            <div class="quote-header-box mb-3">
+                <div class="row g-2">
+                    <!-- 1. 수신자(고객사) 정보 -->
+                    <div class="col-lg-6">
+                        <div class="card h-100 shadow-none border">
+                            <div class="card-header py-1 px-3 bg-light d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-dark" style="font-size: 12px;"><i class='bx bx-user text-primary'></i> 수신처 (고객사 / 발주처)</span>
+                                <span class="badge bg-secondary" id="badgeQuoteNumber">신규 자동 채번</span>
+                            </div>
+                            <div class="card-body p-2">
+                                <table class="table table-bordered erp-form-table m-0">
+                                    <colgroup>
+                                        <col style="width: 26%; background: #f8fafc;">
+                                        <col style="width: 74%;">
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th>거래처명 <span class="text-danger">*</span></th>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm" id="custName" placeholder="예: (주)대한건설 또는 최가유통" required>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>담당자 / 직함</th>
+                                            <td>
+                                                <div class="d-flex gap-1">
+                                                    <input type="text" class="form-control form-control-sm" id="custAttn" placeholder="담당자 성명">
+                                                    <input type="text" class="form-control form-control-sm" id="custTel" placeholder="연락처">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>이메일</th>
+                                            <td>
+                                                <input type="email" class="form-control form-control-sm" id="custEmail" placeholder="quote@client.com">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>견적 건명</th>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm" id="projectName" placeholder="예: 본사 4분기 안전소모품 납품 건">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>견적일 / 유효기간</th>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <input type="date" class="form-control form-control-sm" id="issueDate" required>
+                                                    <span class="text-muted small">~</span>
+                                                    <input type="date" class="form-control form-control-sm" id="validUntil" title="견적 유효기간">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>납기일 / 납품장소</th>
+                                            <td>
+                                                <div class="d-flex gap-1">
+                                                    <input type="text" class="form-control form-control-sm" id="deliveryDate" placeholder="발주 후 3일 이내">
+                                                    <input type="text" class="form-control form-control-sm" id="deliveryPlace" placeholder="지정 현장 도착도">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>결제조건</th>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm" id="paymentTerms" placeholder="납품 후 익월 말일 현금결제">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 공급자(케이엔지) 정보 (고정/설정값) -->
+                    <div class="col-lg-6">
+                        <div class="card h-100 shadow-none border">
+                            <div class="card-header py-1 px-3 bg-light d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-dark" style="font-size: 12px;"><i class='bx bx-building text-primary'></i> 공급자 (K&G)</span>
+                                <span class="text-muted small" style="font-size: 10px;">우측 상단 [직인/공급자 설정]에서 변경 가능</span>
+                            </div>
+                            <div class="card-body p-2 position-relative">
+                                <table class="table table-bordered erp-form-table m-0">
+                                    <colgroup>
+                                        <col style="width: 26%; background: #f8fafc;">
+                                        <col style="width: 74%;">
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th>상호 / 대표자</th>
+                                            <td>
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <span class="fw-bold" id="dispSupplierName">주식회사 케이엔지</span>
+                                                    <span>대표이사 <strong id="dispSupplierCeo">박 준</strong> (인)</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>사업자등록번호</th>
+                                            <td id="dispSupplierBizNum">687-87-03314</td>
+                                        </tr>
+                                        <tr>
+                                            <th>사업장 소재지</th>
+                                            <td id="dispSupplierAddress" style="font-size: 11px;">경기도 김포시 통진읍 율마로 402-14</td>
+                                        </tr>
+                                        <tr>
+                                            <th>전화번호 / 이메일</th>
+                                            <td>
+                                                <span id="dispSupplierTel">031-987-1203</span> / <span id="dispSupplierEmail">contact@junparks.com</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>입금 계좌번호</th>
+                                            <td class="text-primary fw-semibold" id="dispSupplierBank" style="font-size: 11px;">기업은행 123-456789-01-012 (주식회사 케이엔지)</td>
+                                        </tr>
+                                        <tr>
+                                            <th>진행 상태</th>
+                                            <td>
+                                                <select class="form-select form-select-sm" id="quoteStatus" style="width: 120px;">
+                                                    <option value="작성중">작성중</option>
+                                                    <option value="제출완료">제출완료</option>
+                                                    <option value="수주확정">수주확정</option>
+                                                    <option value="반려">반려</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <!-- 직인 도장 오버랩 프리뷰 -->
+                                <img src="../../assets/images/stamp.png" class="quote-stamp-preview" id="dispSupplierStamp" alt="직인">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 총 견적금액 요약 리본 & 부가세 옵션 -->
+            <div class="quote-summary-ribbon mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 rounded">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="fw-bold" style="font-size: 12px;">과세 구분:</span>
+                        <select class="form-select form-select-sm" id="vatTypeSelect" style="width: 110px;" onchange="app.recalcTotals()">
+                            <option value="exclusive" selected>부가세 별도</option>
+                            <option value="inclusive">부가세 포함</option>
+                            <option value="none">영세 / 면세</option>
+                        </select>
+                    </div>
+                    <!-- 한글 금액 표기 -->
+                    <div class="quote-amount-korean fw-bold text-primary" id="amountKoreanText" style="font-size: 13px;">
+                        일금 영원정 (₩0)
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-end">
+                        <span class="text-muted" style="font-size: 11px;">공급가액:</span>
+                        <strong class="ms-1" id="sumSupplyPrice">₩0</strong>
+                    </div>
+                    <div class="text-end">
+                        <span class="text-muted" style="font-size: 11px;">세액(VAT):</span>
+                        <strong class="ms-1 text-danger" id="sumVat">₩0</strong>
+                    </div>
+                    <div class="text-end ps-2 border-start">
+                        <span class="text-muted" style="font-size: 11px;">총 견적금액:</span>
+                        <strong class="ms-1 text-primary fs-6" id="sumTotalAmount">₩0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 3. 견적 품목 그리드 (사진 썸네일 & 실시간 계산 & 품목 불러오기) ── -->
+            <div class="card shadow-none border mb-3">
+                <div class="card-header py-1 px-3 bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-dark" style="font-size: 12px;"><i class='bx bx-list-check text-primary'></i> 견적 품목 내역</span>
+                        <span class="badge bg-primary" id="itemCountBadge">0개 품목</span>
+                        
+                        <!-- 사진 포함 인쇄 토글 체크박스 [사용자 요구사항] -->
+                        <label class="form-check-label d-flex align-items-center gap-1 ms-3 cursor-pointer" style="font-size: 11.5px;">
+                            <input type="checkbox" class="form-check-input m-0" id="optShowImages" checked onchange="app.toggleImageColumn(this.checked)">
+                            <i class='bx bx-image text-success'></i> 품목 사진 표시 / 인쇄에 포함
+                        </label>
+
+                        <label class="form-check-label d-flex align-items-center gap-1 ms-2 cursor-pointer" style="font-size: 11.5px;">
+                            <input type="checkbox" class="form-check-input m-0" id="optIncludeSeal" checked>
+                            <i class='bx bx-check-shield text-danger'></i> 직인(도장) 날인 포함
+                        </label>
+                    </div>
+
+                    <!-- 품목 소싱 버튼군 -->
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.openItemImportModal('hq')" title="본사 실시간 재고에서 선택하여 추가">
+                            <i class='bx bx-box'></i> 본사 재고 불러오기
+                        </button>
+                        <button type="button" class="btn-erp" onclick="app.openItemImportModal('seller-k')" title="셀러K 스마트스토어 매입상품에서 선택하여 추가">
+                            <i class='bx bx-store-alt'></i> 셀러K 대장 불러오기
+                        </button>
+                        <button type="button" class="btn-erp" onclick="app.openItemImportModal('tx')" title="본사 입출고 내역 품목에서 선택하여 추가">
+                            <i class='bx bx-transfer'></i> 입출고내역 불러오기
+                        </button>
+                        <button type="button" class="btn-erp" onclick="app.loadItemsFromCartModal()" title="견적 바구니에 담아둔 품목 일괄 추가">
+                            <i class='bx bx-cart'></i> 바구니에서 추가
+                        </button>
+                        <button type="button" class="btn-erp" onclick="app.addManualRow()" title="새 빈 행 직접 추가">
+                            <i class='bx bx-plus'></i> 직접 추가
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive erp-table-wrapper" style="max-height: 480px;">
+                    <table class="erp-table sk-table table-bordered mb-0" id="quoteItemsTable">
+                        <colgroup>
+                            <col style="width: 36px;">
+                            <col class="col-item-img" style="width: 64px;">
+                            <col style="width: auto; min-width: 170px;">
+                            <col style="width: 110px;">
+                            <col style="width: 60px;">
+                            <col style="width: 55px;">
+                            <col class="col-cost" style="width: 85px;">
+                            <col style="width: 95px;">
+                            <col style="width: 100px;">
+                            <col style="width: 85px;">
+                            <col style="width: 105px;">
+                            <col style="width: 110px;">
+                            <col style="width: 40px;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th class="text-center">No.</th>
+                                <th class="col-item-img text-center">사진</th>
+                                <th class="text-start ps-2">품목명 / 상품명 <span class="text-danger">*</span></th>
+                                <th class="text-center">규격 / 사양</th>
+                                <th class="text-center">수량</th>
+                                <th class="text-center">단위</th>
+                                <th class="col-cost text-end pe-2 text-muted" title="화면에서만 보이며 인쇄 시는 숨겨집니다">참고원가</th>
+                                <th class="text-end pe-2">제안 단가 <span class="text-danger">*</span></th>
+                                <th class="text-end pe-2">공급가액</th>
+                                <th class="text-end pe-2">세액(VAT)</th>
+                                <th class="text-end pe-2 fw-bold text-primary">합계금액</th>
+                                <th class="text-start ps-2">비고</th>
+                                <th class="text-center no-print"><i class='bx bx-trash text-danger'></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="quoteItemsTbody">
+                            <!-- JS 동적 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 특이사항 / 안내 문구 -->
+            <div class="card shadow-none border mb-3">
+                <div class="card-header py-1 px-3 bg-light">
+                    <span class="fw-bold text-dark" style="font-size: 11.5px;"><i class='bx bx-note text-secondary'></i> 특이사항 및 거래조건 (A4 견적서 하단 인쇄 문구)</span>
+                </div>
+                <div class="card-body p-2">
+                    <textarea class="form-control form-control-sm" id="notesInstructions" rows="3" placeholder="1. 상기 견적금액은 부가세(VAT) 별도/포함 기준입니다.&#10;2. 견적 유효기간은 견적일로부터 15일간 유효합니다.&#10;3. 발주 후 3일 이내 지정 장소 납품 가능합니다."></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         모달 1: 외부 모듈 품목 불러오기 (통합 검색 팝업)
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="itemImportModal" class="modal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" style="font-size: 13px; font-weight: 700;">
+                        <i class='bx bx-import text-primary'></i> 견적 품목 불러오기
+                    </h5>
+                    <button type="button" class="btn-close" onclick="app.closeItemImportModal()"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- 소스 선택 탭 -->
+                    <ul class="nav nav-tabs mb-2" id="importSourceTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active py-1 px-3" data-source="hq" onclick="app.switchImportSource('hq')">
+                                <i class='bx bx-box'></i> 본사 실시간 재고
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-1 px-3" data-source="seller-k" onclick="app.switchImportSource('seller-k')">
+                                <i class='bx bx-store-alt'></i> 셀러K 스마트스토어 대장
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-1 px-3" data-source="tx" onclick="app.switchImportSource('tx')">
+                                <i class='bx bx-transfer'></i> 본사 입출고 내역
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- 검색창 및 필터 -->
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="position-relative flex-grow-1 erp-search-box">
+                            <input type="text" class="form-control form-control-sm" id="importSearchInput" placeholder="품목명, 브랜드, 규격 검색..." onkeyup="app.filterImportItems()">
+                        </div>
+                        <span class="text-muted small" id="importCountBadge">조회 0건</span>
+                    </div>
+
+                    <!-- 품목 선택 그리드 -->
+                    <div class="table-responsive erp-table-wrapper" style="height: 380px;">
+                        <table class="erp-table table-bordered mb-0">
+                            <colgroup>
+                                <col style="width: 36px;">
+                                <col style="width: 100px;">
+                                <col style="width: 110px;">
+                                <col style="width: auto; min-width: 180px;">
+                                <col style="width: 80px;">
+                                <col style="width: 70px;">
+                                <col style="width: 90px;">
+                                <col style="width: 95px;">
+                                <col style="width: 70px;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-center"><input type="checkbox" class="form-check-input m-0" id="importSelectAll" onchange="app.toggleImportSelectAll(this.checked)"></th>
+                                    <th class="text-center">공급사 / 매입처</th>
+                                    <th class="text-center">브랜드</th>
+                                    <th class="text-start ps-2">상품명 / 품목</th>
+                                    <th class="text-center">컬러</th>
+                                    <th class="text-center">규격(사이즈)</th>
+                                    <th class="text-end pe-2">매입단가(원가)</th>
+                                    <th class="text-end pe-2">기준판매가</th>
+                                    <th class="text-center">현재재고</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importItemsTbody">
+                                <tr><td colspan="9" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer erp-modal-footer py-2 px-3 d-flex justify-content-between">
+                    <span class="text-muted small" id="importSelectedInfo">선택된 품목: 0개</span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" onclick="app.closeItemImportModal()">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.applyImportedItems()">
+                            <i class='bx bx-check'></i> 견적서에 품목 추가 (<span id="importAddCount">0</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         모달 2: 사진 업로드 및 미리보기 모달 [사용자 요구사항]
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="imageUploadModal" class="modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" style="font-size: 12.5px; font-weight: 700;">
+                        <i class='bx bx-image text-primary'></i> 품목 사진 첨부
+                    </h5>
+                    <button type="button" class="btn-close" onclick="app.closeImageModal()"></button>
+                </div>
+                <div class="modal-body p-3 text-center">
+                    <!-- 이미지 드롭존 / 붙여넣기 안내 -->
+                    <div class="image-dropzone p-3 border rounded mb-3" id="imageDropzone">
+                        <div id="imagePreviewContainer" class="d-none mb-2">
+                            <img id="modalPreviewImg" src="" alt="미리보기" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 4px;">
+                        </div>
+                        <div id="imageEmptyPrompt">
+                            <i class='bx bx-cloud-upload fs-1 text-muted'></i>
+                            <div class="mt-2 fw-semibold" style="font-size: 12px;">사진 파일을 클릭하여 선택하거나 드래그하세요</div>
+                            <div class="text-muted mt-1" style="font-size: 11px;">또는 캡처 후 <b>Ctrl + V</b>를 누르면 바로 붙여넣어집니다</div>
+                        </div>
+                        <input type="file" id="modalFileInput" accept="image/*" class="d-none" onchange="app.handleModalFileSelect(event)">
+                    </div>
+
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text" style="font-size: 11px;">이미지 URL</span>
+                        <input type="text" class="form-control" id="modalImageUrlInput" placeholder="https://... 직접 이미지 링크 입력">
+                    </div>
+                </div>
+                <div class="modal-footer erp-modal-footer py-2 px-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.removeCurrentImage()">사진 삭제</button>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" onclick="app.closeImageModal()">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.applyModalImage()">적용</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         모달 3: 직인 및 공급자 설정 모달
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="supplierSettingsModal" class="modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" style="font-size: 12.5px; font-weight: 700;">
+                        <i class='bx bx-cog text-primary'></i> 직인 및 공급자 기본정보 설정
+                    </h5>
+                    <button type="button" class="btn-close" onclick="app.closeSupplierSettingsModal()"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <table class="table table-bordered erp-form-table mb-3">
+                        <colgroup>
+                            <col style="width: 32%; background: #f8fafc;">
+                            <col style="width: 68%;">
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>상호</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierName"></td>
+                            </tr>
+                            <tr>
+                                <th>사업자번호</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierBizNum"></td>
+                            </tr>
+                            <tr>
+                                <th>대표자 성명</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierCeo"></td>
+                            </tr>
+                            <tr>
+                                <th>사업장 주소</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierAddress"></td>
+                            </tr>
+                            <tr>
+                                <th>전화번호 / 팩스</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierTel"></td>
+                            </tr>
+                            <tr>
+                                <th>이메일</th>
+                                <td><input type="email" class="form-control form-control-sm" id="setSupplierEmail"></td>
+                            </tr>
+                            <tr>
+                                <th>입금 계좌번호</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierBank"></td>
+                            </tr>
+                            <tr>
+                                <th>대표 직인 도장</th>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img id="setSealPreview" src="../../assets/images/stamp.png" style="width: 44px; height: 44px; object-fit: contain; border: 1px dashed #cbd5e1; padding: 2px;">
+                                        <div>
+                                            <input type="file" id="setSealFileInput" accept="image/*" class="form-control form-control-sm" onchange="app.handleSealUpload(event)">
+                                            <div class="text-muted mt-1" style="font-size: 10px;">배경이 투명한 PNG 도장 권장</div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer erp-modal-footer py-2 px-3 d-flex justify-content-end gap-1">
+                    <button type="button" class="btn-erp" onclick="app.closeSupplierSettingsModal()">취소</button>
+                    <button type="button" class="btn-erp btn-erp-primary" onclick="app.saveSupplierSettings()">설정 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         정규 A4 인쇄 / PDF 전용 서식 영역 (@media print)
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="printArea" class="print-only">
+        <!-- JS에서 A4 규격에 맞춰 동적 렌더링 -->
+    </div>
+
+
+    <!-- 토스트 알림 컨테이너 -->
+    <div id="toastContainer" class="toast-container no-print position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../Common/js/erp-grid-resizer.js"></script>
+    <script type="module" src="./quotation.js?v=20260930_1"></script>
+</body>
+</html>

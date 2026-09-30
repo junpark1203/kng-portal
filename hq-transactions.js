@@ -1195,6 +1195,54 @@
         recalcEditModal,
         handleSaveEdit,
 
+        addSelectedToQuoteCart() {
+            if (selectedIds.size === 0) {
+                showToast('견적서에 담을 내역을 먼저 체크박스로 선택해주세요.', 'warning');
+                return;
+            }
+
+            let cart = [];
+            try {
+                cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
+                if (!Array.isArray(cart)) cart = [];
+            } catch (e) {
+                cart = [];
+            }
+
+            let addedCount = 0;
+            selectedIds.forEach(id => {
+                const tx = transactions.find(item => String(item.id) === String(id));
+                if (!tx) return;
+
+                const existing = cart.find(c => c.source_module === 'hq-transactions' && String(c.source_id) === String(tx.id));
+                if (existing) {
+                    existing.qty = (Number(existing.qty) || 1) + (Number(tx.qty) || 1);
+                } else {
+                    cart.push({
+                        source_module: 'hq-transactions',
+                        source_id: tx.id,
+                        product_name: tx.product_name || tx.name || '',
+                        spec: tx.spec || '',
+                        color: tx.color || '',
+                        unit: tx.unit || 'EA',
+                        qty: Number(tx.qty) || 1,
+                        cost_price: Number(tx.unit_price || 0),
+                        unit_price: Number(tx.unit_price || 0),
+                        image_url: tx.image_url || '',
+                        remarks: tx.supplier ? `[거래처: ${tx.supplier}]` : ''
+                    });
+                }
+                addedCount++;
+            });
+
+            localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
+            showToast(`${addedCount}개 품목이 견적서 장바구니에 담겼습니다.`, 'success');
+
+            if (confirm(`${addedCount}개 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
+                location.href = './05_Management/forms/quotation.html';
+            }
+        },
+
         handleDelete,
         exportExcel,
         printReport,

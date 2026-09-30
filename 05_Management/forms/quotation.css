@@ -1,0 +1,331 @@
+/* ==========================================================================
+   KNG ERP 견적서 관리 (Quotation) 전용 스타일시트
+   - ECOUNT ERP 고밀도 디자인 시스템
+   - 품목별 사진 썸네일 및 드롭존 스타일
+   - 정규 A4 인쇄 / PDF 최적화 (@media print)
+   ========================================================================== */
+
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-row-hover: #f1f5f9;
+}
+
+body {
+    font-family: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc;
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 견적 바구니 플로팅 / 툴바 버튼 ── */
+.btn-quote-cart {
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    border: none;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.15s ease;
+}
+
+.btn-quote-cart:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(234, 88, 12, 0.4);
+}
+
+/* ── 견적서 헤더 박스 & 직인 ── */
+.quote-header-box .card {
+    border-color: var(--erp-border) !important;
+}
+
+.quote-stamp-preview {
+    position: absolute;
+    right: 28px;
+    top: 22px;
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    opacity: 0.88;
+    pointer-events: none;
+    z-index: 5;
+    mix-blend-mode: multiply;
+}
+
+/* ── 총 견적금액 요약 리본 ── */
+.quote-summary-ribbon {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ── 품목 그리드 내 사진 셀 스타일 ── */
+.quote-item-thumb-box {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    margin: 0 auto;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+}
+
+.quote-item-thumb-box:hover {
+    border-color: var(--erp-primary);
+}
+
+.quote-item-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: #ffffff;
+}
+
+.quote-item-thumb-empty {
+    font-size: 10px;
+    color: #94a3b8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+}
+
+.quote-item-thumb-empty i {
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+/* ── 이미지 업로드 드롭존 ── */
+.image-dropzone {
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.image-dropzone:hover,
+.image-dropzone.dragover {
+    border-color: var(--erp-primary);
+    background: #eff6ff;
+}
+
+/* ── 인쇄 전용 영역 초기 숨김 ── */
+.print-only {
+    display: none;
+}
+
+/* ==========================================================================
+   A4 정규 견적서 인쇄 / PDF 전용 스타일 (@media print)
+   ========================================================================== */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm 10mm 12mm 10mm;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: 'Pretendard', 'Noto Sans KR', sans-serif !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 11pt !important;
+    }
+
+    .no-print,
+    .erp-top-toolbar,
+    .erp-filter-ribbon,
+    .modal,
+    .toast-container {
+        display: none !important;
+    }
+
+    #quotationListView,
+    #quotationEditorView {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    /* ── A4 정규 견적서 서식 레이아웃 ── */
+    .a4-quote-page {
+        width: 100%;
+        max-width: 190mm;
+        margin: 0 auto;
+        color: #111111;
+        line-height: 1.35;
+        box-sizing: border-box;
+    }
+
+    /* 타이틀 */
+    .a4-quote-header {
+        text-align: center;
+        margin-bottom: 16px;
+        position: relative;
+    }
+
+    .a4-quote-title {
+        font-size: 24pt;
+        font-weight: 800;
+        letter-spacing: 12px;
+        margin: 0;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #111111;
+        display: inline-block;
+    }
+
+    /* 상단 정보 블록 (수신처 vs 공급자 테이블) */
+    .a4-meta-grid {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .a4-customer-box {
+        flex: 1;
+        border: 1px solid #333333;
+        padding: 8px 12px;
+        font-size: 9.5pt;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .a4-customer-title {
+        font-size: 13pt;
+        font-weight: 800;
+        border-bottom: 1px solid #666666;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+    }
+
+    .a4-total-highlight {
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        padding: 6px 8px;
+        margin-top: 6px;
+        font-size: 10pt;
+    }
+
+    .a4-supplier-box {
+        flex: 1.15;
+        position: relative;
+    }
+
+    .a4-supplier-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8.5pt;
+    }
+
+    .a4-supplier-table th,
+    .a4-supplier-table td {
+        border: 1px solid #333333;
+        padding: 3px 5px;
+        vertical-align: middle;
+    }
+
+    .a4-supplier-table th {
+        background-color: #f8fafc;
+        font-weight: 700;
+        text-align: center;
+        width: 22%;
+    }
+
+    /* 인쇄 직인 도장 날인 */
+    .a4-seal-stamp {
+        position: absolute;
+        right: 18px;
+        top: 24px;
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+        opacity: 0.9;
+        mix-blend-mode: multiply;
+        z-index: 10;
+    }
+
+    /* 본문 품목 테이블 */
+    .a4-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+
+    .a4-items-table th,
+    .a4-items-table td {
+        border: 1px solid #333333;
+        padding: 4px 5px;
+        vertical-align: middle;
+    }
+
+    .a4-items-table thead th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        text-align: center;
+        height: 26px;
+    }
+
+    .a4-items-table tbody tr {
+        page-break-inside: avoid;
+    }
+
+    /* 인쇄 사진 스타일 [사용자 요구사항 완벽 반영] */
+    .a4-item-img {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        background: #ffffff;
+    }
+
+    .a4-items-table tfoot th,
+    .a4-items-table tfoot td {
+        background-color: #f8fafc;
+        font-weight: 700;
+        border-top: 2px solid #111111;
+    }
+
+    /* 하단 특이사항 및 결제 안내 */
+    .a4-footer-notes {
+        border: 1px solid #666666;
+        padding: 8px 10px;
+        font-size: 8.5pt;
+        margin-top: 8px;
+        background-color: #ffffff;
+        page-break-inside: avoid;
+    }
+
+    .a4-footer-notes-title {
+        font-weight: 700;
+        margin-bottom: 4px;
+        color: #111111;
+    }
+}

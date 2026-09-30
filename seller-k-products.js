@@ -1158,6 +1158,62 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 8-1. 견적서 장바구니 담기
+    var quoteCartBtn = document.getElementById('quoteCartBtn');
+    if (quoteCartBtn) {
+        quoteCartBtn.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.sk-checkbox:checked');
+            if (checked.length === 0) {
+                showToast('견적서에 담을 상품을 먼저 체크박스로 선택해주세요.', 'warning');
+                return;
+            }
+
+            var cart = [];
+            try {
+                cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
+                if (!Array.isArray(cart)) cart = [];
+            } catch (e) {
+                cart = [];
+            }
+
+            var addedCount = 0;
+            checked.forEach(function(cb) {
+                var p = products.find(function(item) { return String(item.id) === String(cb.value); });
+                if (!p) return;
+
+                var existing = cart.find(function(c) {
+                    return c.source_module === 'seller-k' && String(c.source_id) === String(p.id);
+                });
+
+                if (existing) {
+                    existing.qty = (Number(existing.qty) || 1) + 1;
+                } else {
+                    cart.push({
+                        source_module: 'seller-k',
+                        source_id: p.id,
+                        product_name: p.name || '',
+                        spec: p.size || '',
+                        color: p.color || '',
+                        unit: 'EA',
+                        qty: 1,
+                        cost_price: Number(p._buyTotal || p.buyPrice || 0),
+                        unit_price: Number(p._sellTotal || p.sellPrice || 0),
+                        image_url: p.imageUrl || p.image_url || p.product_image || '',
+                        remarks: p.supplier ? '[매입처: ' + p.supplier + ']' : ''
+                    });
+                }
+                addedCount++;
+            });
+
+            localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
+            showToast(addedCount + '개 품목이 견적서 장바구니에 담겼습니다.', 'success');
+
+            if (confirm(addedCount + '개 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ' + cart.length + '개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?')) {
+                location.href = './05_Management/forms/quotation.html';
+            }
+        });
+    }
+
     // 9. 일괄 수정 모달 열기/닫기
     var bulkEditModal = document.getElementById('bulkEditSkModal');
     var bulkEditBtn = document.getElementById('bulkEditSkBtn');
