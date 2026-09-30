@@ -567,79 +567,110 @@ body {
         box-sizing: border-box;
     }
 
-    /* 타이틀 */
-    .a4-quote-header {
-        text-align: center;
-        margin-bottom: 16px;
-        position: relative;
-    }
-
-    .a4-quote-title {
-        font-size: 24pt;
-        font-weight: 800;
-        letter-spacing: 12px;
-        margin: 0;
-        padding-bottom: 6px;
-        border-bottom: 2px solid #111111;
-        display: inline-block;
-    }
-
-    /* 상단 정보 블록 (수신처 vs 공급자 테이블) */
-    .a4-meta-grid {
+    /* ── 입출고내역 거래명세서 동일 상단 헤더 ── */
+    .header-container {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 12px;
+        margin-bottom: 6px;
+        align-items: flex-end;
+        width: 100%;
     }
-
-    .a4-customer-box {
+    .header-left {
         flex: 1;
-        font-size: 9.5pt;
-        line-height: 1.45;
+        text-align: center;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        align-items: center;
+        justify-content: center;
     }
-
-    .a4-customer-title {
-        font-size: 14pt;
+    .title-box {
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+    }
+    .title-box h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: 6px;
         font-weight: 800;
-        text-decoration: underline;
+        white-space: nowrap;
+        color: #000000;
+    }
+    .recipient-box {
         margin-bottom: 6px;
     }
-
-    .a4-total-highlight {
-        margin-top: 10px;
-        background-color: #f1f5f9;
-        border: 1.5px solid #111111;
-        padding: 6px 10px;
-        border-radius: 2px;
+    .recipient-name {
+        font-size: 18px;
+        font-weight: bold;
+        color: #000000;
+    }
+    .date-info {
+        font-size: 12px;
+        color: #333333;
     }
 
-    .a4-supplier-box {
-        width: 95mm;
+    /* ── 공급자 표 (정산장부/거래명세서 380px 표준) ── */
+    .supplier-table {
+        border-collapse: collapse;
+        border: 2px solid black;
+        width: 380px;
+        font-size: 11px;
+        margin-left: auto;
+    }
+    .supplier-table th, .supplier-table td {
+        border: 1px solid black;
+        padding: 3px 4px;
+        text-align: center;
+        height: 24px;
+        white-space: nowrap;
+    }
+    .supplier-table th {
+        background-color: #f9f9f9 !important;
+        font-weight: bold;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color: #000000;
+    }
+    .vertical-th {
+        width: 22px;
+        writing-mode: vertical-lr;
+        letter-spacing: 6px;
+        padding-top: 6px !important;
+        text-align: center;
+    }
+    .stamp-cell {
         position: relative;
     }
-
-    .a4-supplier-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 8pt;
+    .stamp {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 42px;
+        height: 42px;
+        opacity: 0.92;
+        mix-blend-mode: multiply;
+    }
+    .address-cell {
+        white-space: normal !important;
+        text-align: left !important;
+        padding-left: 6px !important;
+        font-size: 10px;
+        line-height: 1.2;
     }
 
-    .a4-supplier-table th,
-    .a4-supplier-table td {
-        border: 1px solid #333333;
-        padding: 3px 5px;
-        vertical-align: middle;
-    }
-
-    .a4-supplier-table th {
-        background-color: #f8fafc;
-        font-weight: 700;
-        text-align: center;
-        width: 22%;
+    /* ── 금액란 (사용자 요청: 합 계 금 액 : ₩ 3,410,880) ── */
+    .amount-box {
+        border: 2px solid black;
+        padding: 6px 14px;
+        margin-top: 8px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        font-size: 14px;
+        font-weight: 800;
+        background: #ffffff;
+        letter-spacing: 1px;
     }
 
     /* 인쇄 직인 도장 날인 */

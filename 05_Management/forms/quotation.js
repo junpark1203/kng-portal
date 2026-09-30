@@ -117,12 +117,14 @@ const app = {
     currentQuote: null,
     editingItemIndexForImage: null,
 
-    // 공급자 기본 설정 (localStorage 보관)
+    // 공급자 기본 설정 (거래명세서 표준 100% 일치)
     supplierSettings: {
         name: '주식회사 케이엔지',
-        bizNum: '687-87-03314',
-        ceo: '박 준',
-        address: '경기도 김포시 통진읍 율마로 402-14',
+        bizNum: '845-88-00551',
+        ceo: '윤종',
+        address: '서울시 강동구 구천면로 159, 1층 2호, 3호',
+        bizType: '도소매/임대업',
+        bizItem: '건설자재, 용품외',
         tel: '031-987-1203',
         email: 'contact@junparks.com',
         bank: '기업은행 123-456789-01-012 (예금주: 주식회사 케이엔지)',
@@ -1223,6 +1225,99 @@ const app = {
         }, 100);
     },
 
+    // ═══════════════════════════════════════════════════════════════
+    // A4 인쇄 / PDF 출력 옵션 모달 및 거래명세서 표준 서식 렌더링
+    // ═══════════════════════════════════════════════════════════════
+    targetQuoteForPrint: null,
+
+    openPrintOptionsModal: function(quote) {
+        this.targetQuoteForPrint = quote || this.currentQuote;
+        if (!this.targetQuoteForPrint) {
+            showToast('인쇄할 견적서 데이터가 없습니다.', 'warning');
+            return;
+        }
+
+        let lastOpt = {};
+        try {
+            lastOpt = JSON.parse(localStorage.getItem('kng_last_print_options') || '{}');
+        } catch(e) {}
+
+        const title = lastOpt.title || '견  적  서';
+        if (document.getElementById('printCustomTitle')) {
+            document.getElementById('printCustomTitle').value = title;
+        }
+
+        document.querySelectorAll('#printPresetChips .print-preset-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.trim() === title.replace(/\s+/g, ''));
+        });
+
+        const priceMode = lastOpt.priceMode || 'all';
+        const radio = document.querySelector(`input[name="printPriceMode"][value="${priceMode}"]`);
+        if (radio) radio.checked = true;
+
+        if (document.getElementById('printOptShowImages')) {
+            document.getElementById('printOptShowImages').checked = (lastOpt.showImages !== false);
+        }
+        if (document.getElementById('printOptIncludeSeal')) {
+            document.getElementById('printOptIncludeSeal').checked = (lastOpt.includeSeal !== false);
+        }
+        if (document.getElementById('printOptIncludeNotes')) {
+            document.getElementById('printOptIncludeNotes').checked = (lastOpt.includeNotes !== false);
+        }
+
+        const modal = document.getElementById('printOptionsModal');
+        if (modal) modal.style.display = 'block';
+    },
+
+    closePrintOptionsModal: function() {
+        const modal = document.getElementById('printOptionsModal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    selectPrintTitlePreset: function(title) {
+        if (document.getElementById('printCustomTitle')) {
+            document.getElementById('printCustomTitle').value = title;
+        }
+        document.querySelectorAll('#printPresetChips .print-preset-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.trim() === title.replace(/\s+/g, ''));
+        });
+    },
+
+    executePrintWithOptions: function() {
+        const q = this.targetQuoteForPrint || this.currentQuote;
+        if (!q) return;
+
+        const title = document.getElementById('printCustomTitle')?.value.trim() || '견  적  서';
+        const priceMode = document.querySelector('input[name="printPriceMode"]:checked')?.value || 'all';
+        const showImages = document.getElementById('printOptShowImages')?.checked !== false;
+        const includeSeal = document.getElementById('printOptIncludeSeal')?.checked !== false;
+        const includeNotes = document.getElementById('printOptIncludeNotes')?.checked !== false;
+
+        const options = {
+            title: title,
+            priceMode: priceMode,
+            showImages: showImages,
+            includeSeal: includeSeal,
+            includeNotes: includeNotes
+        };
+
+        try {
+            localStorage.setItem('kng_last_print_options', JSON.stringify(options));
+        } catch(e) {}
+
+        this.closePrintOptionsModal();
+
+        this.renderPrintArea(q, options);
+        setTimeout(() => {
+            window.print();
+        }, 150);
+    },
+
+    printCurrentQuotation: function() {
+        if (!this.currentQuote) return;
+        this.openPrintOptionsModal(this.currentQuote);
+    },
+
     printQuotationById: function(id) {
         showToast('인쇄 데이터를 준비하는 중입니다...', 'info');
         authFetch(`${API_BASE}/${id}`)
@@ -1231,10 +1326,7 @@ const app = {
                 return res.json();
             })
             .then(quote => {
-                this.renderPrintArea(quote);
-                setTimeout(() => {
-                    window.print();
-                }, 100);
+                this.openPrintOptionsModal(quote);
             })
             .catch(err => {
                 let localQuotes = [];
@@ -1243,37 +1335,60 @@ const app = {
                 } catch(e) {}
                 const found = localQuotes.find(q => String(q.id) === String(id));
                 if (found) {
-                    this.renderPrintArea(found);
-                    setTimeout(() => { window.print(); }, 100);
+                    this.openPrintOptionsModal(found);
                 } else {
                     showToast('인쇄 데이터 조회 실패: ' + err.message, 'error');
                 }
             });
     },
 
-    renderPrintArea: function(q) {
+    renderPrintArea: function(q, options = {}) {
         const printArea = document.getElementById('printArea');
         if (!printArea) return;
 
         const s = this.supplierSettings;
-        const showImg = (q.show_images !== 0);
-        const includeSeal = (q.include_seal !== 0);
+        const title = options.title || '견  적  서';
+        const priceMode = options.priceMode || 'all'; // 'all' | 'unit' | 'none'
+        const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
+        const includeSeal = (typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0);
+        const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
         const items = q.items || [];
-        const vatText = (q.vat_type === 'none') ? '(면세)' : '(부가세 포함)';
-        const totalAmountText = `${fmtNum(q.total_amount)}원 ${vatText}`;
 
         // 직인 이미지 HTML
         const sealHtml = (includeSeal && s.sealUrl)
-            ? `<img src="${s.sealUrl}" class="a4-seal-stamp" alt="직인">`
+            ? `<img src="${s.sealUrl}" class="stamp" alt="직인" onerror="this.style.display='none'">`
             : '';
+
+        // 금액란 HTML [사용자 요청: 합 계 금 액 : ₩ 3,410,880]
+        let amountBoxHtml = '';
+        if (priceMode !== 'none') {
+            amountBoxHtml = `
+                <div class="amount-box">
+                    <span>합 계 금 액 : ₩ ${fmtNum(q.total_amount)}</span>
+                </div>
+            `;
+        }
 
         // 품목 테이블 행 HTML
         const itemRowsHtml = items.map((it, idx) => {
             const imgCell = showImg
-                ? `<td class="text-center p-1" style="width: 54px;">
+                ? `<td class="text-center p-1" style="width: 50px;">
                      ${it.image_url ? `<img src="${escHtml(it.image_url)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
+
+            let priceCells = '';
+            if (priceMode === 'all') {
+                priceCells = `
+                    <td class="text-end pe-2">${fmtWon(it.unit_price)}</td>
+                    <td class="text-end pe-2">${fmtWon(it.supply_price)}</td>
+                    <td class="text-end pe-2">${fmtWon(it.vat)}</td>
+                `;
+            } else if (priceMode === 'unit') {
+                priceCells = `
+                    <td class="text-end pe-2 fw-bold">${fmtWon(it.unit_price)}</td>
+                `;
+            }
 
             return `
                 <tr>
@@ -1283,109 +1398,42 @@ const app = {
                     <td class="text-center" style="font-size: 8.5pt;">${escHtml(it.spec || '-')}</td>
                     <td class="text-center">${fmtNum(it.qty)}</td>
                     <td class="text-center">${escHtml(it.unit || 'EA')}</td>
-                    <td class="text-end pe-2">${fmtWon(it.unit_price)}</td>
-                    <td class="text-end pe-2">${fmtWon(it.supply_price)}</td>
-                    <td class="text-end pe-2">${fmtWon(it.vat)}</td>
+                    ${priceCells}
                     <td class="text-start ps-2" style="font-size: 8pt;">${escHtml(it.remarks || '')}</td>
                 </tr>
             `;
         }).join('');
 
-        const html = `
-            <div class="a4-quote-page">
-                <!-- 타이틀 -->
-                <div class="a4-quote-header">
-                    <h1 class="a4-quote-title">견 적 서</h1>
-                    <div style="position: absolute; right: 0; top: 10px; font-size: 9pt; color: #555;">
-                        견적번호: <b>${escHtml(q.quote_number || '-')}</b>
-                    </div>
-                </div>
+        // 품목 테이블 헤더 및 푸터 구성
+        let priceHeaders = '';
+        let tfootHtml = '';
+        if (priceMode === 'all') {
+            priceHeaders = `
+                <th style="width: 75px;">단가</th>
+                <th style="width: 85px;">공급가액</th>
+                <th style="width: 70px;">세액</th>
+            `;
+            const leadCols = showImg ? 7 : 6;
+            tfootHtml = `
+                <tfoot>
+                    <tr>
+                        <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">합계(공급가액+세액)</th>
+                        <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
+                        <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_vat)}</td>
+                        <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
+                    </tr>
+                </tfoot>
+            `;
+        } else if (priceMode === 'unit') {
+            priceHeaders = `<th style="width: 85px;">단가</th>`;
+        }
 
-                <!-- 상단 수신자 & 공급자 블록 -->
-                <div class="a4-meta-grid">
-                    <!-- 수신자 정보 -->
-                    <div class="a4-customer-box">
-                        <div>
-                            <div class="a4-customer-title">${escHtml(q.customer_name)} 귀하</div>
-                            ${q.project_name ? `<div style="margin-bottom: 4px; font-size: 9.5pt;"><b>견적건명</b>: ${escHtml(q.project_name)}</div>` : ''}
-                            ${q.customer_attn ? `<div style="margin-bottom: 3px; font-size: 9pt;"><b>담당자</b>: ${escHtml(q.customer_attn)} ${q.customer_tel ? `(${escHtml(q.customer_tel)})` : ''}</div>` : ''}
-                            ${q.customer_email ? `<div style="margin-bottom: 3px; font-size: 8.5pt; color: #555;"><b>이메일</b>: ${escHtml(q.customer_email)}</div>` : ''}
-                        </div>
-
-                        <!-- 총 견적금액 심플 표기 [사용자 요청: OOO,OOO원 (부가세 포함)] -->
-                        <div class="a4-total-highlight">
-                            <div style="font-size: 8.5pt; color: #555; margin-bottom: 2px;">합계금액</div>
-                            <div style="font-size: 13pt; font-weight: 800; color: #111;">
-                                ${totalAmountText}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 공급자 정보 (직인 날인) -->
-                    <div class="a4-supplier-box">
-                        ${sealHtml}
-                        <table class="a4-supplier-table">
-                            <tr>
-                                <th rowspan="5" style="width: 22px; padding: 2px; font-weight: bold; background: #f1f5f9; letter-spacing: 2px;">공<br>급<br>자</th>
-                                <th>등록번호</th>
-                                <td colspan="3" style="font-weight: bold; font-size: 9pt;">${escHtml(s.bizNum)}</td>
-                            </tr>
-                            <tr>
-                                <th>상호</th>
-                                <td>${escHtml(s.name)}</td>
-                                <th style="width: 50px;">대표자</th>
-                                <td>${escHtml(s.ceo)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</td>
-                            </tr>
-                            <tr>
-                                <th>사업장주소</th>
-                                <td colspan="3" style="font-size: 7.5pt;">${escHtml(s.address)}</td>
-                            </tr>
-                            <tr>
-                                <th>전화번호</th>
-                                <td>${escHtml(s.tel)}</td>
-                                <th>이메일</th>
-                                <td style="font-size: 7.5pt;">${escHtml(s.email)}</td>
-                            </tr>
-                            <tr>
-                                <th>입금계좌</th>
-                                <td colspan="3" style="font-weight: bold; font-size: 8pt;">${escHtml(s.bank)}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 견적 품목 테이블 -->
-                <table class="a4-items-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 32px;">No.</th>
-                            ${showImg ? '<th style="width: 54px;">사진</th>' : ''}
-                            <th>품목명 및 사양</th>
-                            <th style="width: 90px;">규격</th>
-                            <th style="width: 45px;">수량</th>
-                            <th style="width: 40px;">단위</th>
-                            <th style="width: 75px;">단가</th>
-                            <th style="width: 85px;">공급가액</th>
-                            <th style="width: 70px;">세액</th>
-                            <th style="width: 80px;">비고</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemRowsHtml}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="${showImg ? 7 : 6}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">합계(공급가액+세액)</th>
-                            <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
-                            <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_vat)}</td>
-                            <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
-                        </tr>
-                    </tfoot>
-                </table>
-
-                <!-- 하단 특기사항 및 납품조건 (견적일자 및 유효기간 포함) [사용자 요청 반영] -->
-                <div class="a4-footer-notes">
-                    <div class="a4-footer-notes-title">[ 특기사항 및 납품조건 ]</div>
+        // 하단 특기사항 영역
+        let notesHtml = '';
+        if (includeNotes) {
+            notesHtml = `
+                <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
+                    <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
                     <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
                         <span>• <b>견적일자</b>: ${escHtml(q.issue_date || '-')}</span>
                         <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
@@ -1395,6 +1443,80 @@ const app = {
                     </div>
                     <div style="white-space: pre-wrap; line-height: 1.45;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
                 </div>
+            `;
+        }
+
+        const html = `
+            <div class="a4-quote-page">
+                <!-- 1. 거래명세서와 100% 동일한 상단 헤더 컨테이너 -->
+                <div class="header-container">
+                    <div class="header-left">
+                        <div class="title-box">
+                            <h1 id="printTitle">${escHtml(title)}</h1>
+                        </div>
+                        <div class="recipient-box">
+                            <span class="recipient-name">${escHtml(q.customer_name || '거래처')}</span> 貴中
+                        </div>
+                        <div class="date-info">
+                            견적일자 : ${escHtml(q.issue_date || '-')}
+                            ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;견적건명 : <b>${escHtml(q.project_name)}</b>` : ''}
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <table class="supplier-table">
+                            <tr>
+                                <th rowspan="4" class="vertical-th">공<br>급<br>자</th>
+                                <th style="width: 55px;">등록번호</th>
+                                <td colspan="3">${escHtml(s.bizNum || '845-88-00551')}</td>
+                            </tr>
+                            <tr>
+                                <th>상 호</th>
+                                <td style="width: 110px;">${escHtml(s.name || '주식회사 케이엔지')}</td>
+                                <th style="width: 45px;">대표자</th>
+                                <td class="stamp-cell" style="width: 70px;">
+                                    ${escHtml(s.ceo || '윤종')}
+                                    ${sealHtml}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>주 소</th>
+                                <td colspan="3" class="address-cell">${escHtml(s.address || '서울시 강동구 구천면로 159, 1층 2호, 3호')}</td>
+                            </tr>
+                            <tr>
+                                <th>업 태</th>
+                                <td>${escHtml(s.bizType || '도소매/임대업')}</td>
+                                <th>종 목</th>
+                                <td>${escHtml(s.bizItem || '건설자재, 용품외')}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. 금액란 (사용자 요청: 합 계 금 액 : ₩ 3,410,880) -->
+                ${amountBoxHtml}
+
+                <!-- 3. 견적 품목 테이블 -->
+                <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                    <thead>
+                        <tr>
+                            <th style="width: 32px;">No.</th>
+                            ${showImg ? '<th style="width: 50px;">사진</th>' : ''}
+                            <th>품목명 및 사양</th>
+                            <th style="width: 90px;">규격</th>
+                            <th style="width: 45px;">수량</th>
+                            <th style="width: 40px;">단위</th>
+                            ${priceHeaders}
+                            <th style="width: 80px;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemRowsHtml}
+                    </tbody>
+                    ${tfootHtml}
+                </table>
+
+                <!-- 4. 하단 특기사항 및 납품조건 -->
+                ${notesHtml}
             </div>
         `;
 

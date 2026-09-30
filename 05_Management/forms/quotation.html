@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="./quotation.css?v=20260930_5">
+    <link rel="stylesheet" href="./quotation.css?v=20260930_8">
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -583,6 +583,14 @@
                                 <td><input type="text" class="form-control form-control-sm" id="setSupplierAddress"></td>
                             </tr>
                             <tr>
+                                <th>업태</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierBizType" placeholder="도소매/임대업"></td>
+                            </tr>
+                            <tr>
+                                <th>종목</th>
+                                <td><input type="text" class="form-control form-control-sm" id="setSupplierBizItem" placeholder="건설자재, 용품외"></td>
+                            </tr>
+                            <tr>
                                 <th>전화번호 / 팩스</th>
                                 <td><input type="text" class="form-control form-control-sm" id="setSupplierTel"></td>
                             </tr>
@@ -619,6 +627,82 @@
 
 
     <!-- ═══════════════════════════════════════════════════════════════
+         모달 4: A4 인쇄 / PDF 출력 옵션 설정 모달
+         ═══════════════════════════════════════════════════════════════ -->
+    <div id="printOptionsModal" class="modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" style="font-size: 13px; font-weight: 700;">
+                        <i class='bx bx-printer text-primary'></i> A4 인쇄 / PDF 서식 설정
+                    </h5>
+                    <button type="button" class="btn-close" onclick="app.closePrintOptionsModal()"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- 1. 문서 제목 프리셋 & 직접 입력 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark mb-1 d-block">1. 문서 대제목 (출력 서식 제목)</label>
+                        <div class="d-flex flex-wrap gap-1 mb-2" id="printPresetChips">
+                            <button type="button" class="print-preset-chip active" onclick="app.selectPrintTitlePreset('견  적  서')">견적서</button>
+                            <button type="button" class="print-preset-chip" onclick="app.selectPrintTitlePreset('예 상  견 적 서')">예상 견적서</button>
+                            <button type="button" class="print-preset-chip" onclick="app.selectPrintTitlePreset('거 래  명 세 서')">거래명세서</button>
+                            <button type="button" class="print-preset-chip" onclick="app.selectPrintTitlePreset('상 품  제 안 서')">상품 제안서</button>
+                            <button type="button" class="print-preset-chip" onclick="app.selectPrintTitlePreset('동 복  제 안  리 스 트')">동복 제안 리스트</button>
+                            <button type="button" class="print-preset-chip" onclick="app.selectPrintTitlePreset('단  가  표')">단가표</button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm fw-bold" id="printCustomTitle" placeholder="문서 제목 직접 입력" value="견  적  서">
+                    </div>
+
+                    <!-- 2. 금액 표시 모드 (전체 / 단가만 / 금액 숨김) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark mb-1 d-block">2. 금액 표시 모드</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check" style="font-size: 12px;">
+                                <input class="form-check-input" type="radio" name="printPriceMode" id="priceModeAll" value="all" checked>
+                                <label class="form-check-label cursor-pointer" for="priceModeAll"><b>전체 금액 표시</b> (단가+공급가+세액+합계)</label>
+                            </div>
+                            <div class="form-check" style="font-size: 12px;">
+                                <input class="form-check-input" type="radio" name="printPriceMode" id="priceModeUnitOnly" value="unit">
+                                <label class="form-check-label cursor-pointer" for="priceModeUnitOnly"><b>단가만 표시</b> (공급가/세액 숨김)</label>
+                            </div>
+                            <div class="form-check" style="font-size: 12px;">
+                                <input class="form-check-input" type="radio" name="printPriceMode" id="priceModeNone" value="none">
+                                <label class="form-check-label cursor-pointer" for="priceModeNone"><b>금액 숨김</b> (카탈로그/품목 소개용)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 세부 출력 항목 토글 -->
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-dark mb-1 d-block">3. 출력 세부 옵션</label>
+                        <div class="d-flex flex-column gap-1" style="font-size: 12px;">
+                            <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptShowImages" checked>
+                                <span>품목별 사진 첨부 포함 출력</span>
+                            </label>
+                            <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeSeal" checked>
+                                <span>공급자 대표 직인(도장) 날인 포함</span>
+                            </label>
+                            <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeNotes" checked>
+                                <span>하단 [특기사항 및 납품조건] 영역 포함</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer erp-modal-footer py-2 px-3 d-flex justify-content-between">
+                    <button type="button" class="btn-erp" onclick="app.closePrintOptionsModal()">취소</button>
+                    <button type="button" class="btn-erp btn-erp-primary" onclick="app.executePrintWithOptions()">
+                        <i class='bx bx-printer'></i> 🖨️ 인쇄 / PDF 시작
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════
          정규 A4 인쇄 / PDF 전용 서식 영역 (@media print)
          ═══════════════════════════════════════════════════════════════ -->
     <div id="printArea" class="print-only">
@@ -632,6 +716,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20260930_6"></script>
+    <script src="./quotation.js?v=20260930_8"></script>
 </body>
 </html>
