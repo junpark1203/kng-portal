@@ -847,6 +847,120 @@ app.post('/api/seller-k/products/bulk', (req, res) => {
     });
 });
 
+// 5-1. 상품 대량 일괄 수정 (Bulk Update - 트랜잭션 고속 처리)
+app.post('/api/seller-k/products/bulk-update', (req, res) => {
+    const { ids, changes, author } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '수정할 상품 ID 배열이 필요합니다.' });
+    }
+    if (!changes || typeof changes !== 'object') {
+        return res.status(400).json({ error: '수정할 항목 정보(changes)가 필요합니다.' });
+    }
+
+    const now = new Date().toISOString();
+    const updater = author || req.user?.name || req.user?.email || '관리자';
+    const placeholders = ids.map(() => '?').join(',');
+
+    // 1. 기존 레코드 일괄 조회
+    db.all(`SELECT * FROM seller_k_products WHERE id IN (${placeholders})`, ids, (getErr, oldRows) => {
+        if (getErr) return res.status(500).json({ error: getErr.message });
+        if (!oldRows || oldRows.length === 0) return res.status(404).json({ error: '수정할 상품을 찾을 수 없습니다.' });
+
+        const oldMap = new Map();
+        oldRows.forEach(r => oldMap.set(r.id, r));
+
+        // 업데이트할 필드 동적 구성
+        const setClauses = [];
+        const updateParamsBase = [];
+
+        if (changes.uploadDate !== undefined && changes.uploadDate !== '') {
+            setClauses.push('uploadDate = ?');
+            updateParamsBase.push(changes.uploadDate);
+        }
+        if (changes.supplier !== undefined && changes.supplier !== '') {
+            setClauses.push('supplier = ?');
+            updateParamsBase.push(changes.supplier);
+        }
+        if (changes.brand !== undefined && changes.brand !== '') {
+            setClauses.push('brand = ?');
+            updateParamsBase.push(changes.brand);
+        }
+        if (changes.shippingBasis !== undefined && changes.shippingBasis !== '') {
+            setClauses.push('shippingBasis = ?');
+            updateParamsBase.push(changes.shippingBasis);
+            if (changes.shippingBasis === '수량별' && changes.shippingQty !== undefined) {
+                setClauses.push('shippingQty = ?');
+                updateParamsBase.push(Number(changes.shippingQty) || 1);
+            }
+        }
+        if (changes.remarks !== undefined && changes.remarks !== '') {
+            setClauses.push('remarks = ?');
+            updateParamsBase.push(changes.remarks);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ error: '수정할 항목이 지정되지 않았습니다.' });
+        }
+
+        setClauses.push('updatedAt = ?');
+        updateParamsBase.push(now);
+
+        const updateSql = `UPDATE seller_k_products SET ${setClauses.join(', ')} WHERE id = ?`;
+        const logSql = `INSERT INTO seller_k_product_logs (id, productId, summary, logText, diffData, author, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            let updatedCount = 0;
+            const updateStmt = db.prepare(updateSql);
+            const logStmt = db.prepare(logSql);
+
+            oldRows.forEach(oldRow => {
+                const targetId = oldRow.id;
+                // 가상의 newRow 생성하여 diff 감지
+                const newRow = Object.assign({}, oldRow);
+                if (changes.uploadDate !== undefined && changes.uploadDate !== '') newRow.uploadDate = changes.uploadDate;
+                if (changes.supplier !== undefined && changes.supplier !== '') newRow.supplier = changes.supplier;
+                if (changes.brand !== undefined && changes.brand !== '') newRow.brand = changes.brand;
+                if (changes.shippingBasis !== undefined && changes.shippingBasis !== '') {
+                    newRow.shippingBasis = changes.shippingBasis;
+                    if (changes.shippingBasis === '수량별' && changes.shippingQty !== undefined) {
+                        newRow.shippingQty = Number(changes.shippingQty) || 1;
+                    }
+                }
+                if (changes.remarks !== undefined && changes.remarks !== '') newRow.remarks = changes.remarks;
+
+                const diffs = detectProductChanges(oldRow, newRow);
+
+                updateStmt.run([...updateParamsBase, targetId], function(err) {
+                    if (!err && this.changes > 0) updatedCount++;
+                });
+
+                if (diffs.length > 0) {
+                    const logId = 'sk_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+                    const summary = '[일괄수정] ' + generateChangeSummary(diffs);
+                    const logText = diffs.map(c => '• ' + c.text).join('\n');
+                    logStmt.run([logId, targetId, summary, logText, JSON.stringify(diffs), updater, now]);
+                }
+            });
+
+            updateStmt.finalize();
+            logStmt.finalize();
+
+            db.run('COMMIT', (commitErr) => {
+                if (commitErr) {
+                    return res.status(500).json({ error: '일괄 수정 커밋 실패: ' + commitErr.message });
+                }
+                res.json({
+                    message: '일괄 수정 완료',
+                    updatedCount: updatedCount,
+                    updatedAt: now
+                });
+            });
+        });
+    });
+});
+
 // ==========================================
 // 유류소모품 단가 API (V2)
 // ==========================================

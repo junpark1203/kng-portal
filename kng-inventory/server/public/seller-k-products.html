@@ -4,318 +4,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="K&G 셀러K 스마트스토어 매입상품 리스트 - 매입/매출/정산 관리">
-    <title>K&G 셀러K — 매입상품 리스트</title>
+    <meta name="description" content="K&G 셀러K 스마트스토어 매입상품 리스트 - ECOUNT ERP Style High-Density Grid">
+    <title>K&G 셀러K — 매입 상품 대장</title>
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2">
-    <link rel="stylesheet" href="seller-k-products.css?v=2">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Common ERP Design System -->
+    <link rel="stylesheet" href="./Common/css/erp-grid.css">
+    <link rel="stylesheet" href="seller-k-products.css?v=20260930_1">
+    <!-- SheetJS for Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* 포털 전용: 사이드바 없이 전체 너비 사용 */
-        .main-content { margin-left: 0; }
+        /* 포털 전용: 사이드바 없이 전체 화면 고밀도 사용 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
     </style>
 </head>
 
 <body>
-    <!-- 메인 앱 (포털 iframe 전용) -->
     <div class="app-container" id="mainApp">
-        <main class="main-content">
-            <div class="page-body">
-                <!-- Products Table Section -->
-                <section class="section-block" id="productsSection">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <h2><i class='bx bx-receipt'></i> 매입상품 리스트 (스마트스토어) <span class="product-count-text" id="skTotalCount">0건</span></h2>
-                            <div class="header-actions">
-                                <div class="table-search-wrap">
-                                    <select id="skSearchField" class="search-field-select">
-                                        <option value="all">통합검색</option>
-                                        <option value="supplier">매입처</option>
-                                        <option value="brand">브랜드</option>
-                                        <option value="name">상품명</option>
-                                        <option value="color">컬러</option>
-                                        <option value="size">사이즈</option>
-                                    </select>
-                                    <div class="table-search-input">
-                                        <i class='bx bx-search'></i>
-                                        <input type="text" id="skSearchInput" placeholder="검색어 입력...">
-                                    </div>
-                                </div>
-                                <button id="deleteSkBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
-                                <button id="bulkEditSkBtn" class="btn-outline btn-outline-warning" style="margin-left:8px;"><i class='bx bx-edit-alt'></i> 일괄 수정</button>
-                                <button id="exportSkBtn" class="btn-outline btn-outline-success" style="margin-left:8px;"><i class='bx bx-download'></i> 엑셀</button>
-                                <button id="downloadTemplateBtn" class="btn-outline" style="margin-left:8px;" title="엑셀 일괄 등록용 양식 다운로드"><i class='bx bx-layer'></i> 양식 다운로드</button>
-                                <button id="bulkUploadBtn" class="btn-outline" style="margin-left:4px;" title="작성하신 엑셀 파일을 업로드합니다"><i class='bx bx-upload'></i> 엑셀 업로드</button>
-                                <input type="file" id="bulkUploadFile" accept=".xlsx, .xls" style="display:none;">
-                                <button id="addProductBtn" class="btn-primary" style="margin-left:8px;"><i class='bx bx-plus-circle'></i> 신규 추가</button>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="data-table sk-table" id="skTable">
-                                <colgroup>
-                                    <col class="col-check">
-                                    <col class="col-date">
-                                    <col class="col-updated">
-                                    <col class="col-supplier">
-                                    <col class="col-brand">
-                                    <col class="col-name">
-                                    <col class="col-color">
-                                    <!-- 매입 -->
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                    <!-- 매출 -->
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                    <col class="col-basis">
-                                    <col class="col-num">
-                                    <!-- 정산 -->
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                </colgroup>
-                                <thead>
-                                    <!-- Group header row -->
-                                    <tr>
-                                        <th rowspan="2" class="col-check"><input type="checkbox" id="selectAllSk"></th>
-                                        <th rowspan="2" class="col-date sortable" data-sort="uploadDate">날짜 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-updated sortable" data-sort="updatedAt">최종수정일 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-supplier sortable" data-sort="supplier">매입처 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-brand sortable" data-sort="brand">브랜드 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-name sortable" data-sort="name">상품명 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-color sortable" data-sort="color">컬러 <i class='bx bx-sort'></i></th>
-                                        <th colspan="3" class="th-group-label th-group-purchase">매입 <span style="font-size:10px; font-weight:normal; opacity:0.8;">(공급가 기준)</span></th>
-                                        <th colspan="4" class="th-group-label th-group-sales">매출 <span style="font-size:10px; font-weight:normal; opacity:0.8;">(부가세 포함)</span></th>
-                                        <th colspan="3" class="th-group-label th-group-settle">정산 <span style="font-size:10px; font-weight:normal; opacity:0.8;">(공급가 기준)</span></th>
-                                    </tr>
-                                    <!-- Sub-header row -->
-                                    <tr id="skSortHeaders">
-                                        <th class="col-num th-group-purchase sortable" data-sort="buyPrice">매입가 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-purchase sortable" data-sort="buyShipping">운임 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-purchase sortable" data-sort="buyTotal">합계 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-sales sortable" data-sort="sellPrice">판매가 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-sales sortable" data-sort="sellShipping">운임 <i class='bx bx-sort'></i></th>
-                                        <th class="col-basis th-group-sales" style="font-size:9px;">운임기준</th>
-                                        <th class="col-num th-group-sales sortable" data-sort="sellTotal">합계 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-settle sortable" data-sort="commission">수수료 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-settle sortable" data-sort="profit">이익 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num th-group-settle sortable" data-sort="profitRate">수익률 <i class='bx bx-sort'></i></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="skTableBody">
-                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
-                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="skPagination"></div>
-                    </div>
-                </section>
+        <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (타이틀 + 공급사 탭 + 액션 버튼) [KPI 배지 제외] ── -->
+        <header class="erp-top-toolbar no-print">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="erp-title-tag">
+                    <i class='bx bx-receipt text-primary'></i> 매입 상품 대장
+                </span>
+                <span class="erp-stat-badge badge-dark" id="skTotalCount" title="현재 조회된 상품 건수">0건</span>
+
+                <!-- 공급사 퀵 필터 탭 (전체 / 최가유통 등 동적 생성) -->
+                <div class="erp-tab-group ms-2" id="supplierTabGroup">
+                    <button type="button" class="erp-tab-btn active" data-supplier="">
+                        전체 <span class="erp-tab-badge" id="tabCountAll">0</span>
+                    </button>
+                </div>
             </div>
+
+            <!-- 우측 액션 버튼 그룹 -->
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                <button type="button" class="btn-erp btn-erp-primary" id="addProductBtn" title="신규 매입상품 등록 (단축키: F2)">
+                    <i class='bx bx-plus-circle'></i> 신규 등록 <span class="key-shortcut-badge">F2</span>
+                </button>
+                <button type="button" class="btn-erp btn-erp-warning" id="bulkEditSkBtn" title="선택한 상품 일괄 수정">
+                    <i class='bx bx-edit-alt'></i> 일괄 수정
+                </button>
+                <button type="button" class="btn-erp btn-erp-danger" id="deleteSkBtn" title="선택한 상품 일괄 삭제">
+                    <i class='bx bx-trash'></i> 선택 삭제 (<span id="selectedCount">0</span>)
+                </button>
+                <div class="erp-toolbar-divider"></div>
+                <button type="button" class="btn-erp" id="exportSkBtn" title="엑셀 파일로 다운로드">
+                    <i class='bx bx-download'></i> 엑셀
+                </button>
+                <button type="button" class="btn-erp" id="bulkUploadBtn" title="엑셀 파일 대량 등록">
+                    <i class='bx bx-upload'></i> 엑셀 업로드
+                </button>
+                <input type="file" id="bulkUploadFile" accept=".xlsx, .xls" style="display:none;">
+                <button type="button" class="btn-erp text-muted" id="downloadTemplateBtn" title="엑셀 일괄 등록용 표준 양식 다운로드">
+                    <i class='bx bx-file'></i> 양식
+                </button>
+                <button type="button" class="btn-erp" id="refreshBtn" title="데이터 새로고침" onclick="window.refreshData && window.refreshData()">
+                    <i class='bx bx-refresh'></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- ── 2. ECOUNT ERP 2행 필터 리본 (상태 필터 + 다중 검색 + 페이지 크기 + 그리드 맞춤) ── -->
+        <nav class="erp-filter-ribbon no-print">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- 상태 퀵 필터 칩 -->
+                <div class="erp-stock-filters me-1" id="statusFilterGroup">
+                    <button type="button" class="erp-filter-chip active" data-status="all">전체</button>
+                    <button type="button" class="erp-filter-chip" data-status="normal">정상</button>
+                    <button type="button" class="erp-filter-chip" data-status="sold_out">품절</button>
+                    <button type="button" class="erp-filter-chip" data-status="lowest_price">최저가</button>
+                </div>
+
+                <!-- 검색 대상 선택 -->
+                <select id="skSearchField" class="form-select erp-select-target">
+                    <option value="all">통합검색</option>
+                    <option value="supplier">매입처</option>
+                    <option value="brand">브랜드</option>
+                    <option value="name">상품명</option>
+                    <option value="color">컬러</option>
+                    <option value="size">규격</option>
+                    <option value="remarks">비고</option>
+                </select>
+
+                <!-- 스마트 다중 검색창 (공백 구분 AND) -->
+                <div class="position-relative erp-search-box">
+                    <input type="text" class="form-control form-control-sm" id="skSearchInput" placeholder="스마트 다중 검색 (공백 구분)..." autocomplete="off" title="공백으로 여러 단어를 입력하면 교집합(AND) 검색이 지원됩니다">
+                    <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" title="검색어 지우기" style="font-size: 0.75rem;">
+                        <i class='bx bx-x-circle'></i>
+                    </button>
+                </div>
+
+                <button type="button" class="btn-erp btn-erp-primary" id="searchSubmitBtn"><i class='bx bx-search'></i> 검색</button>
+                <button type="button" class="btn-erp" id="searchResetBtn"><i class='bx bx-reset'></i> 초기화</button>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <!-- 페이지당 표시 건수 -->
+                <div class="d-flex align-items-center gap-1 text-muted" style="font-size: 11px;">
+                    <span>보기:</span>
+                    <select class="form-select form-select-sm erp-pagesize-select" id="pageSizeSelect" style="width: 75px; font-size: 11px; padding: 2px 6px;">
+                        <option value="30">30건</option>
+                        <option value="50" selected>50건</option>
+                        <option value="100">100건</option>
+                        <option value="0">전체</option>
+                    </select>
+                </div>
+                <!-- 열 너비 맞춤 도구 -->
+                <button type="button" class="btn-erp" id="autoFitColsBtn" title="헤더 더블클릭 시 자동 맞춤, 클릭 시 초기화"><i class='bx bx-table'></i> 열 너비 초기화</button>
+                <span id="firebaseStatus" class="connection-status ms-1"><i class='bx bx-loader-alt bx-spin'></i> 연결 중...</span>
+            </div>
+        </nav>
+
+        <!-- ── 3. ECOUNT ERP 초고밀도 2단 그리드 본문 ── -->
+        <main class="erp-grid-container flex-grow-1">
+            <div class="table-responsive erp-table-wrapper" style="height: 100%;">
+                <table class="erp-table sk-table table-bordered" id="skTable">
+                    <colgroup>
+                        <col class="col-check" style="width: 32px;">
+                        <col class="col-date" style="width: 68px;">
+                        <col class="col-updated" style="width: 76px;">
+                        <col class="col-supplier" style="width: 88px;">
+                        <col class="col-brand" style="width: 110px;">
+                        <col class="col-name" style="width: auto; min-width: 180px;">
+                        <col class="col-color" style="width: 75px;">
+                        <col class="col-size" style="width: 65px;">
+                        <!-- 매입 (3열) -->
+                        <col class="col-num buy-col" style="width: 85px;">
+                        <col class="col-num buy-col" style="width: 75px;">
+                        <col class="col-num buy-col" style="width: 88px;">
+                        <!-- 매출 (4열) -->
+                        <col class="col-num sell-col" style="width: 88px;">
+                        <col class="col-num sell-col" style="width: 75px;">
+                        <col class="col-basis sell-col" style="width: 60px;">
+                        <col class="col-num sell-col" style="width: 90px;">
+                        <!-- 정산 (3열) -->
+                        <col class="col-num profit-col" style="width: 78px;">
+                        <col class="col-num profit-col" style="width: 85px;">
+                        <col class="col-num profit-col" style="width: 70px;">
+                    </colgroup>
+                    <thead>
+                        <!-- 1단 그룹 헤더 -->
+                        <tr class="erp-header-row-1">
+                            <th rowspan="2" class="col-check text-center align-middle"><input type="checkbox" id="selectAllSk" class="form-check-input m-0"></th>
+                            <th rowspan="2" class="col-date sortable text-center align-middle" data-sort="uploadDate">날짜 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-updated sortable text-center align-middle" data-sort="updatedAt">최종수정 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-supplier sortable text-center align-middle" data-sort="supplier">매입처 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-brand sortable text-center align-middle" data-sort="brand">브랜드 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-name sortable text-center align-middle" data-sort="name">상품명 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-color sortable text-center align-middle" data-sort="color">컬러 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-size sortable text-center align-middle" data-sort="size">규격 <i class='bx bx-sort'></i></th>
+                            <th colspan="3" class="th-group-label th-group-purchase text-center">매입 <span class="group-subtext">(공급가)</span></th>
+                            <th colspan="4" class="th-group-label th-group-sales text-center">매출 <span class="group-subtext">(VAT포함)</span></th>
+                            <th colspan="3" class="th-group-label th-group-settle text-center">정산 <span class="group-subtext">(공급가)</span></th>
+                        </tr>
+                        <!-- 2단 컬럼 헤더 -->
+                        <tr class="erp-header-row-2" id="skSortHeaders">
+                            <th class="col-num th-group-purchase sortable text-end" data-sort="buyPrice">매입가 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-purchase sortable text-end" data-sort="buyShipping">운임 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-purchase sortable text-end fw-bold" data-sort="buyTotal">합계 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-sales sortable text-end" data-sort="sellPrice">판매가 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-sales sortable text-end" data-sort="sellShipping">운임 <i class='bx bx-sort'></i></th>
+                            <th class="col-basis th-group-sales text-center" style="font-size:10px;">운임기준</th>
+                            <th class="col-num th-group-sales sortable text-end fw-bold" data-sort="sellTotal">합계 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-settle sortable text-end" data-sort="commission">수수료 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-settle sortable text-end fw-bold" data-sort="profit">이익 <i class='bx bx-sort'></i></th>
+                            <th class="col-num th-group-settle sortable text-center" data-sort="profitRate">수익률 <i class='bx bx-sort'></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="skTableBody">
+                        <tr class="loading-row"><td colspan="18" class="text-center py-4"><i class='bx bx-loader-alt bx-spin fs-4 text-primary'></i><div class="mt-2 text-muted" style="font-size:12px;">데이터를 불러오는 중입니다...</div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 하단 바 (페이지네이션) -->
+            <footer class="erp-table-footer no-print d-flex align-items-center justify-content-between px-3 py-1">
+                <div class="footer-info text-muted" id="skFooterInfo" style="font-size: 11px;">
+                    총 0건 조회됨
+                </div>
+                <div class="pagination-container" id="skPagination"></div>
+            </footer>
         </main>
     </div>
 
-    <!-- Add/Edit Product Modal -->
+    <!-- ── 4. 단일 매입상품 등록/수정 모달 (ECOUNT ERP Form Style) ── -->
     <div id="skModal" class="modal">
-        <div class="modal-content" style="max-width:720px;">
-            <div class="modal-header">
-                <h2 id="skModalTitle">매입상품 등록</h2>
-                <button type="button" class="btn-close" id="closeSkModalBtn"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="skForm" autocomplete="off">
-                    <input type="hidden" id="skEditId">
-                    <div class="modal-form-grid">
-                        <!-- 기본 정보 -->
-                        <div class="modal-section-title section-purchase fg-full">📦 기본 정보</div>
-                        <div class="fg">
-                            <label for="skSupplier">매입처</label>
-                            <input type="text" id="skSupplier" placeholder="최가유통">
-                        </div>
-                        <div class="fg">
-                            <label for="skBrand">브랜드</label>
-                            <input type="text" id="skBrand" placeholder="K2 세이프티">
-                        </div>
-                        <div class="fg fg-full">
-                            <label for="skName">상품명</label>
-                            <input type="text" id="skName" placeholder="에어윈드베스트 선풍기조끼">
-                        </div>
-                        <div class="fg">
-                            <label for="skColor">컬러</label>
-                            <input type="text" id="skColor" placeholder="블랙">
-                        </div>
-                        <div class="fg">
-                            <label for="skSize">사이즈</label>
-                            <input type="text" id="skSize" placeholder="FREE">
-                        </div>
-                        <div class="fg">
-                            <label for="skUploadDate">스마트스토어 업로드일</label>
-                            <input type="date" id="skUploadDate">
-                        </div>
-                        <div class="fg">
-                            <label>상태</label>
-                            <label style="display:flex; align-items:center; cursor:pointer; margin-top:8px; font-size:14px; color:var(--danger); font-weight:600;">
-                                <input type="checkbox" id="skIsSoldOut" style="width:16px; height:16px; margin:0 8px 0 0; accent-color:var(--danger)">
-                                품절 처리
-                            </label>
-                        </div>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 780px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" id="skModalTitle" style="font-size: 13px; font-weight: 700;">
+                        <i class='bx bx-receipt text-primary'></i> 매입상품 등록
+                    </h5>
+                    <button type="button" class="btn-close" id="closeSkModalBtn" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <form id="skForm" autocomplete="off">
+                        <input type="hidden" id="skEditId">
+                        
+                        <!-- ECOUNT ERP 폼 테이블 양식 -->
+                        <table class="table table-bordered erp-form-table mb-3">
+                            <colgroup>
+                                <col style="width: 15%; background: #f8fafc;">
+                                <col style="width: 35%;">
+                                <col style="width: 15%; background: #f8fafc;">
+                                <col style="width: 35%;">
+                            </colgroup>
+                            <tbody>
+                                <!-- 기본 정보 섹션 -->
+                                <tr class="erp-section-row">
+                                    <th colspan="4" class="py-1 px-2 text-primary" style="background: #eef2ff; font-size: 11.5px; font-weight: 700;">
+                                        📦 기본 품목 정보
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>매입처 <span class="text-danger">*</span></th>
+                                    <td><input type="text" id="skSupplier" class="form-control form-control-sm" placeholder="예: 최가유통" required></td>
+                                    <th>브랜드</th>
+                                    <td><input type="text" id="skBrand" class="form-control form-control-sm" placeholder="예: K2 세이프티"></td>
+                                </tr>
+                                <tr>
+                                    <th>상품명 <span class="text-danger">*</span></th>
+                                    <td colspan="3"><input type="text" id="skName" class="form-control form-control-sm" placeholder="상품명 입력" required></td>
+                                </tr>
+                                <tr>
+                                    <th>컬러</th>
+                                    <td><input type="text" id="skColor" class="form-control form-control-sm" placeholder="예: 블랙"></td>
+                                    <th>규격(사이즈)</th>
+                                    <td><input type="text" id="skSize" class="form-control form-control-sm" placeholder="예: 260, L, FREE"></td>
+                                </tr>
+                                <tr>
+                                    <th>스마트스토어 등록일</th>
+                                    <td><input type="date" id="skUploadDate" class="form-control form-control-sm"></td>
+                                    <th>품절 여부</th>
+                                    <td>
+                                        <label class="form-check-label d-flex align-items-center gap-2 cursor-pointer text-danger fw-bold m-0" style="font-size: 12px;">
+                                            <input type="checkbox" id="skIsSoldOut" class="form-check-input m-0"> 품절 처리 (재고 없음)
+                                        </label>
+                                    </td>
+                                </tr>
 
-                        <!-- 매입 정보 -->
-                        <div class="modal-section-title section-purchase fg-full">💰 매입 정보 <span class="vat-inline">VAT별도</span></div>
-                        <div class="fg">
-                            <label for="skBuyPrice">매입가 (공급가)</label>
-                            <input type="number" id="skBuyPrice" min="0" placeholder="0">
-                        </div>
-                        <div class="fg">
-                            <label for="skBuyShipping">매입 운임</label>
-                            <input type="number" id="skBuyShipping" min="0" placeholder="0">
-                        </div>
-                        <div class="fg">
-                            <label>매입 합계 (자동계산)</label>
-                            <input type="text" id="skBuyTotal" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
+                                <!-- 매입 정보 섹션 -->
+                                <tr class="erp-section-row">
+                                    <th colspan="4" class="py-1 px-2 text-primary" style="background: rgba(79, 110, 247, 0.08); font-size: 11.5px; font-weight: 700;">
+                                        💰 매입 정보 <span class="text-muted fw-normal" style="font-size: 10px;">(공급가 기준 / VAT 별도)</span>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>매입가</th>
+                                    <td><input type="number" id="skBuyPrice" class="form-control form-control-sm text-end" min="0" placeholder="0"></td>
+                                    <th>매입 운임</th>
+                                    <td><input type="number" id="skBuyShipping" class="form-control form-control-sm text-end" min="0" placeholder="0"></td>
+                                </tr>
+                                <tr>
+                                    <th>매입 합계</th>
+                                    <td colspan="3">
+                                        <input type="text" id="skBuyTotal" class="form-control form-control-sm text-end fw-bold bg-light" readonly placeholder="자동 계산">
+                                    </td>
+                                </tr>
 
-                        <!-- 매출 정보 -->
-                        <div class="modal-section-title section-sales fg-full">🛒 매출 정보 <span class="vat-inline vat-included">VAT포함</span></div>
-                        <div class="fg">
-                            <label for="skShippingBasis">운임기준</label>
-                            <select id="skShippingBasis">
-                                <option value="수량별">수량별</option>
-                                <option value="무료">무료</option>
-                                <option value="조건부">조건부</option>
-                                <option value="유료">유료</option>
-                            </select>
-                        </div>
-                        <div class="fg" id="shippingQtyWrap">
-                            <label for="skShippingQty">수량별 기준 (몇 개당)</label>
-                            <input type="number" id="skShippingQty" min="1" value="1" placeholder="1">
-                        </div>
-                        <div class="fg">
-                            <label for="skSellPrice">판매가 (소비자가)</label>
-                            <input type="number" id="skSellPrice" min="0" placeholder="0">
-                        </div>
-                        <div class="fg">
-                            <label for="skSellShipping">판매 운임 (배송비)</label>
-                            <input type="number" id="skSellShipping" min="0" placeholder="0">
-                        </div>
-                        <div class="fg">
-                            <label>매출 합계 (자동계산)</label>
-                            <input type="text" id="skSellTotal" class="calc-preview" readonly placeholder="자동계산">
-                            <label style="display:flex; align-items:center; cursor:pointer; margin-top:8px; font-size:12px; color:#555;">
-                                <input type="checkbox" id="skIsLowestPrice" style="width:14px; margin:0 6px 0 0;">
-                                온라인 최저가 설정됨
-                            </label>
-                        </div>
+                                <!-- 매출 정보 섹션 -->
+                                <tr class="erp-section-row">
+                                    <th colspan="4" class="py-1 px-2 text-success" style="background: rgba(34, 197, 94, 0.08); font-size: 11.5px; font-weight: 700;">
+                                        🛒 스마트스토어 매출 정보 <span class="text-muted fw-normal" style="font-size: 10px;">(소비자가 / VAT 포함)</span>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>운임 기준</th>
+                                    <td>
+                                        <select id="skShippingBasis" class="form-select form-select-sm">
+                                            <option value="수량별">수량별</option>
+                                            <option value="무료">무료</option>
+                                            <option value="조건부">조건부</option>
+                                            <option value="유료">유료</option>
+                                        </select>
+                                    </td>
+                                    <th>수량별 기준</th>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1" id="shippingQtyWrap">
+                                            <input type="number" id="skShippingQty" class="form-control form-control-sm text-center" min="1" value="1" style="width: 70px;">
+                                            <span style="font-size: 11px; color:#64748b;">개마다 부과</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>판매가 (소비자가)</th>
+                                    <td><input type="number" id="skSellPrice" class="form-control form-control-sm text-end" min="0" placeholder="0"></td>
+                                    <th>판매 배송비</th>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="number" id="skSellShipping" class="form-control form-control-sm text-end" min="0" placeholder="0">
+                                            <label class="d-flex align-items-center gap-1 text-nowrap m-0" style="font-size: 11px;">
+                                                <input type="checkbox" id="skIsLowestPrice" class="form-check-input m-0"> 최저가
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>매출 합계</th>
+                                    <td colspan="3">
+                                        <input type="text" id="skSellTotal" class="form-control form-control-sm text-end fw-bold bg-light" readonly placeholder="자동 계산">
+                                    </td>
+                                </tr>
 
-                        <!-- 정산 정보 (자동계산) -->
-                        <div class="modal-section-title section-settle fg-full">📊 정산 미리보기 (자동계산)</div>
-                        <div class="fg">
-                            <label>매출수수료</label>
-                            <input type="text" id="skPreviewCommission" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
-                        <div class="fg">
-                            <label>정산이익</label>
-                            <input type="text" id="skPreviewProfit" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
-                        <div class="fg">
-                            <label>수익률</label>
-                            <input type="text" id="skPreviewRate" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
-                        <div class="fg">
-                            <label>손익분기가격</label>
-                            <input type="text" id="skPreviewBreakEven" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
+                                <!-- 정산 및 마진 분석 -->
+                                <tr class="erp-section-row">
+                                    <th colspan="4" class="py-1 px-2 text-warning" style="background: rgba(245, 158, 11, 0.08); font-size: 11.5px; font-weight: 700;">
+                                        📊 정산 및 손익 분석 <span class="text-muted fw-normal" style="font-size: 10px;">(스마트스토어 수수료율 및 VAT 반영 자동계산)</span>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>스마트스토어 수수료</th>
+                                    <td><input type="text" id="skPreviewCommission" class="form-control form-control-sm text-end text-danger bg-light" readonly placeholder="자동 계산"></td>
+                                    <th>손익분기 판매가</th>
+                                    <td><input type="text" id="skPreviewBreakEven" class="form-control form-control-sm text-end bg-light" readonly placeholder="자동 계산"></td>
+                                </tr>
+                                <tr>
+                                    <th>정산 이익</th>
+                                    <td><input type="text" id="skPreviewProfit" class="form-control form-control-sm text-end fw-bold bg-light" readonly placeholder="자동 계산"></td>
+                                    <th>수익률(마진율)</th>
+                                    <td><input type="text" id="skPreviewRate" class="form-control form-control-sm text-center fw-bold bg-light" readonly placeholder="자동 계산"></td>
+                                </tr>
 
-                        <!-- 추가 정보 -->
-                        <div class="modal-section-title section-info fg-full" style="margin-top:10px;">📝 추가 사항</div>
-                        <div class="fg fg-full">
-                            <label for="skRemarks">비고</label>
-                            <textarea id="skRemarks" rows="2" placeholder="기타 확인사항 입력"></textarea>
-                        </div>
-                        </div>
-                    </div>
-                    <!-- 타임스탬프 정보 바 (최초등록 / 최종수정) -->
-                    <div id="skTimestampDisplay" class="timestamp-bar" style="display:none;"></div>
+                                <!-- 비고 -->
+                                <tr>
+                                    <th>비고</th>
+                                    <td colspan="3">
+                                        <textarea id="skRemarks" class="form-control form-control-sm" rows="2" placeholder="기타 확인사항이나 특이 메모 입력"></textarea>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                    <!-- 변경 히스토리 섹션 (타임라인 카드) -->
-                    <div id="skLogsSection" class="logs-section" style="display:none;">
-                        <div class="logs-header" id="skLogsHeader">
-                            <div class="logs-title">
-                                <i class='bx bx-history'></i> 변경 히스토리 <span id="skLogsCount" class="logs-count-badge">0건</span>
+                        <!-- 타임스탬프 정보 바 (최초등록 / 최종수정) -->
+                        <div id="skTimestampDisplay" class="timestamp-bar mb-2" style="display:none; font-size: 11px; color:#64748b; background:#f8fafc; padding:4px 8px; border-radius:4px; border:1px solid #e2e8f0;"></div>
+
+                        <!-- 변경 히스토리 섹션 (타임라인 카드) -->
+                        <div id="skLogsSection" class="logs-section mb-2" style="display:none;">
+                            <div class="logs-header d-flex align-items-center justify-content-between p-2 rounded" id="skLogsHeader" style="background:#f1f5f9; cursor:pointer;">
+                                <div class="logs-title fw-bold" style="font-size: 11.5px;">
+                                    <i class='bx bx-history text-primary'></i> 변경 히스토리 <span id="skLogsCount" class="badge bg-secondary">0건</span>
+                                </div>
+                                <button type="button" id="skLogsToggleBtn" class="btn btn-sm btn-link p-0 text-muted" title="히스토리 접기/펼치기">
+                                    <i class='bx bx-chevron-down' id="skLogsToggleIcon"></i>
+                                </button>
                             </div>
-                            <button type="button" id="skLogsToggleBtn" class="btn-logs-toggle" title="히스토리 접기/펼치기">
-                                <i class='bx bx-chevron-down' id="skLogsToggleIcon"></i>
-                            </button>
+                            <div id="skLogsContent" class="logs-content p-2" style="max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-top: none;">
+                                <div id="skLogsList" class="logs-list" style="font-size: 11px;"></div>
+                            </div>
                         </div>
-                        <div id="skLogsContent" class="logs-content">
-                            <div id="skLogsList" class="logs-list"></div>
+
+                        <div class="modal-footer erp-modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-1">
+                            <button type="button" class="btn-erp" id="cancelSkBtn">취소 (ESC)</button>
+                            <button type="submit" class="btn-erp btn-erp-primary" id="saveSkBtn"><i class='bx bx-save'></i> 저장 (F8)</button>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-outline" id="cancelSkBtn">취소</button>
-                        <button type="submit" class="btn-primary" id="saveSkBtn"><i class='bx bx-save'></i> 등록</button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
+    </div>
 
-    <!-- Bulk Edit Modal -->
+    <!-- ── 5. 선택 항목 일괄 수정 모달 (High-Performance Bulk Edit) ── -->
     <div id="bulkEditSkModal" class="modal">
-        <div class="modal-content" style="max-width:400px;">
-            <div class="modal-header">
-                <h2>선택 항목 일괄 수정</h2>
-                <button type="button" class="btn-close" id="closeBulkEditSkModalBtn"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="bulkEditSkForm" autocomplete="off">
-                    <div style="background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 10px; border-radius: 6px; font-size: 11px; margin-bottom: 15px; border: 1px solid rgba(245, 158, 11, 0.3);">
-                        <i class='bx bx-info-circle'></i> <b>입력하신 항목만</b> 수정됩니다.<br>빈칸으로 남겨둔 항목은 기존 값이 유지됩니다.
-                    </div>
-                    <div class="modal-form-grid" style="grid-template-columns: 1fr;">
-                        <div class="fg">
-                            <label for="bulkSkDate" style="color:var(--gray-800)">날짜</label>
-                            <input type="date" id="bulkSkDate">
-                        </div>
-                        <div class="fg" style="position:relative;">
-                            <label for="bulkSkSupplier" style="color:var(--gray-800)">매입처</label>
-                            <input type="text" id="bulkSkSupplier" placeholder="예) 최가유통">
-                            <div id="bulkSkSupplierList" class="autocomplete-list" style="display:none; z-index:1001;"></div>
-                        </div>
-                        <div class="fg" style="position:relative;">
-                            <label for="bulkSkBrand" style="color:var(--gray-800)">브랜드</label>
-                            <input type="text" id="bulkSkBrand" placeholder="예) K2 세이프티">
-                            <div id="bulkSkBrandList" class="autocomplete-list" style="display:none; z-index:1001;"></div>
-                        </div>
-                        <div class="fg">
-                            <label for="bulkSkShippingBasis" style="color:var(--gray-800)">운임기준</label>
-                            <select id="bulkSkShippingBasis">
-                                <option value="">(변경 안함)</option>
-                                <option value="무료">무료</option>
-                                <option value="수량별">수량별</option>
-                                <option value="개별">개별</option>
-                                <option value="고정값">고정값</option>
-                            </select>
-                            <div class="shipping-aux" id="bulkSkShippingQtyWrapper" style="display:none; margin-top:5px;">
-                                <input type="number" id="bulkSkShippingQty" min="1" value="1" placeholder="1">
-                                <span>개마다 부과</span>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3">
+                    <h5 class="modal-title" style="font-size: 13px; font-weight: 700;">
+                        <i class='bx bx-edit text-warning'></i> 선택 항목 일괄 수정
+                    </h5>
+                    <button type="button" class="btn-close" id="closeBulkEditSkModalBtn" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <form id="bulkEditSkForm" autocomplete="off">
+                        <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 11px; margin-bottom: 12px;">
+                            <i class='bx bx-info-circle fs-5'></i>
+                            <div>
+                                <b>입력/선택하신 항목만</b> 일괄 반영됩니다.<br>
+                                빈칸으로 남겨둔 항목은 기존 값이 유지됩니다.
                             </div>
                         </div>
-                    </div>
-                    <div class="modal-footer" style="margin-top:20px;">
-                        <button type="button" class="btn-outline" id="cancelBulkEditSkBtn">취소</button>
-                        <button type="submit" class="btn-primary" id="saveBulkEditSkBtn"><i class='bx bx-save'></i> 일괄 적용</button>
-                    </div>
-                </form>
+
+                        <table class="table table-bordered erp-form-table mb-3">
+                            <colgroup>
+                                <col style="width: 32%; background: #f8fafc;">
+                                <col style="width: 68%;">
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <th>스마트스토어 등록일</th>
+                                    <td><input type="date" id="bulkSkDate" class="form-control form-control-sm"></td>
+                                </tr>
+                                <tr>
+                                    <th>매입처</th>
+                                    <td>
+                                        <input type="text" id="bulkSkSupplier" class="form-control form-control-sm" placeholder="예: 최가유통">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>브랜드</th>
+                                    <td>
+                                        <input type="text" id="bulkSkBrand" class="form-control form-control-sm" placeholder="예: K2 세이프티">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>운임 기준</th>
+                                    <td>
+                                        <select id="bulkSkShippingBasis" class="form-select form-select-sm mb-1">
+                                            <option value="">(변경 안 함)</option>
+                                            <option value="무료">무료</option>
+                                            <option value="수량별">수량별</option>
+                                            <option value="조건부">조건부</option>
+                                            <option value="유료">유료</option>
+                                        </select>
+                                        <div class="d-flex align-items-center gap-1" id="bulkSkShippingQtyWrapper" style="display:none;">
+                                            <input type="number" id="bulkSkShippingQty" class="form-control form-control-sm text-center" min="1" value="1" style="width: 70px;">
+                                            <span style="font-size: 11px; color:#64748b;">개마다 부과</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="modal-footer erp-modal-footer px-0 pb-0 pt-2 d-flex justify-content-end gap-1">
+                            <button type="button" class="btn-erp" id="cancelBulkEditSkBtn">취소</button>
+                            <button type="submit" class="btn-erp btn-erp-warning" id="saveBulkEditSkBtn"><i class='bx bx-check'></i> 일괄 적용</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-    </div>
 
-    <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="seller-k-products.js"></script>
+    <!-- 토스트 알림 컨테이너 -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+    <!-- 컬럼 너비 리사이저 & 메인 스크립트 모듈 -->
+    <script src="./Common/js/erp-grid-resizer.js"></script>
+    <script type="module" src="seller-k-products.js?v=20260930_1"></script>
 </body>
 
 </html>
