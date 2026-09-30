@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="./quotation.css?v=20260930_11">
+    <link rel="stylesheet" href="./quotation.css?v=20260930_12">
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -315,7 +315,7 @@
                     </div>
                     <div class="text-end">
                         <span class="text-muted" style="font-size: 11px;">세액(VAT):</span>
-                        <strong class="ms-1 text-danger" id="sumVat">₩0</strong>
+                        <strong class="ms-1 text-dark" id="sumVat">₩0</strong>
                     </div>
                     <div class="text-end ps-2 border-start">
                         <span class="text-muted" style="font-size: 11px;">총 견적금액:</span>
@@ -672,17 +672,25 @@
                         </div>
                     </div>
 
-                    <!-- 3. 세부 출력 항목 토글 -->
+                    <!-- 3. 세부 출력 항목 토글 (사용자 선택 옵션: 수신처/공급자/직인/사진/특기사항) -->
                     <div class="mb-2">
                         <label class="form-label fw-bold small text-dark mb-1 d-block">3. 출력 세부 옵션</label>
                         <div class="d-flex flex-column gap-1" style="font-size: 12px;">
                             <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
-                                <input type="checkbox" class="form-check-input m-0" id="printOptShowImages" checked>
-                                <span>품목별 사진 첨부 포함 출력</span>
+                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeRecipient" checked>
+                                <span><b>수신처(고객사 / 발주처) 정보 포함</b> (해제 시 상단 거래처명 숨김)</span>
                             </label>
                             <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeSupplier" checked onchange="app.togglePrintSupplierOption(this.checked)">
+                                <span><b>공급자(케이엔지) 정보 표 포함</b> (해제 시 상단 헤더 중앙 정렬)</span>
+                            </label>
+                            <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer ms-3" id="wrapPrintOptIncludeSeal">
                                 <input type="checkbox" class="form-check-input m-0" id="printOptIncludeSeal" checked>
                                 <span>공급자 대표 직인(도장) 날인 포함</span>
+                            </label>
+                            <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptShowImages" checked>
+                                <span>품목별 사진 첨부 포함 출력</span>
                             </label>
                             <label class="form-check-label d-flex align-items-center gap-1 cursor-pointer">
                                 <input type="checkbox" class="form-check-input m-0" id="printOptIncludeNotes" checked>
@@ -716,6 +724,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20260930_11"></script>
+    <script src="./quotation.js?v=20260930_12"></script>
 </body>
 </html>

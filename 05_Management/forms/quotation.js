@@ -728,7 +728,7 @@ const app = {
                     <!-- 공급가액 -->
                     <td class="text-end pe-2 fw-semibold" id="cellSupply_${idx}">${fmtWon(it.supply_price || 0)}</td>
                     <!-- 세액 -->
-                    <td class="text-end pe-2 text-danger" id="cellVat_${idx}">${fmtWon(it.vat || 0)}</td>
+                    <td class="text-end pe-2 text-dark" id="cellVat_${idx}">${(this.currentQuote?.vat_type === 'exclusive') ? '별도' : fmtWon(it.vat || 0)}</td>
                     <!-- 합계 -->
                     <td class="text-end pe-2 fw-bold text-dark" id="cellTotal_${idx}">${fmtWon(it.total_price || 0)}</td>
                     <!-- 비고 -->
@@ -1435,6 +1435,13 @@ const app = {
         const radio = document.querySelector(`input[name="printPriceMode"][value="${priceMode}"]`);
         if (radio) radio.checked = true;
 
+        if (document.getElementById('printOptIncludeRecipient')) {
+            document.getElementById('printOptIncludeRecipient').checked = (lastOpt.includeRecipient !== false);
+        }
+        if (document.getElementById('printOptIncludeSupplier')) {
+            document.getElementById('printOptIncludeSupplier').checked = (lastOpt.includeSupplier !== false);
+            this.togglePrintSupplierOption(lastOpt.includeSupplier !== false);
+        }
         if (document.getElementById('printOptShowImages')) {
             document.getElementById('printOptShowImages').checked = (lastOpt.showImages !== false);
         }
@@ -1447,6 +1454,18 @@ const app = {
 
         const modal = document.getElementById('printOptionsModal');
         if (modal) modal.style.display = 'block';
+    },
+
+    togglePrintSupplierOption: function(enabled) {
+        const sealInput = document.getElementById('printOptIncludeSeal');
+        const sealWrap = document.getElementById('wrapPrintOptIncludeSeal');
+        if (sealInput) {
+            sealInput.disabled = !enabled;
+        }
+        if (sealWrap) {
+            sealWrap.style.opacity = enabled ? '1' : '0.4';
+            sealWrap.style.pointerEvents = enabled ? 'auto' : 'none';
+        }
     },
 
     closePrintOptionsModal: function() {
@@ -1469,13 +1488,17 @@ const app = {
 
         const title = document.getElementById('printCustomTitle')?.value.trim() || '견  적  서';
         const priceMode = document.querySelector('input[name="printPriceMode"]:checked')?.value || 'all';
+        const includeRecipient = document.getElementById('printOptIncludeRecipient')?.checked !== false;
+        const includeSupplier = document.getElementById('printOptIncludeSupplier')?.checked !== false;
         const showImages = document.getElementById('printOptShowImages')?.checked !== false;
-        const includeSeal = document.getElementById('printOptIncludeSeal')?.checked !== false;
+        const includeSeal = includeSupplier && (document.getElementById('printOptIncludeSeal')?.checked !== false);
         const includeNotes = document.getElementById('printOptIncludeNotes')?.checked !== false;
 
         const options = {
             title: title,
             priceMode: priceMode,
+            includeRecipient: includeRecipient,
+            includeSupplier: includeSupplier,
             showImages: showImages,
             includeSeal: includeSeal,
             includeNotes: includeNotes
@@ -1529,10 +1552,17 @@ const app = {
         const s = this.supplierSettings;
         const title = options.title || '견  적  서';
         const priceMode = options.priceMode || 'all'; // 'all' | 'unit' | 'none'
+        const includeRecipient = (typeof options.includeRecipient === 'boolean') ? options.includeRecipient : true;
+        const includeSupplier = (typeof options.includeSupplier === 'boolean') ? options.includeSupplier : true;
         const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
-        const includeSeal = (typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0);
+        const includeSeal = includeSupplier && ((typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0));
         const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
         const items = q.items || [];
+
+        // 일자 및 건명 라벨 (견적서 계열은 '견적일자', 그 외 제안서/명세서/리스트/단가표 등은 '작성일자')
+        const isQuote = title.replace(/\s+/g, '').includes('견적');
+        const dateLabel = isQuote ? '견적일자' : '작성일자';
+        const projectLabel = isQuote ? '견적건명' : '건명';
 
         // 직인 이미지 HTML
         const sealHtml = (includeSeal && s.sealUrl)
@@ -1563,7 +1593,7 @@ const app = {
                 priceCells = `
                     <td class="text-end pe-2">${fmtWon(it.unit_price)}</td>
                     <td class="text-end pe-2">${fmtWon(it.supply_price)}</td>
-                    <td class="text-end pe-2">${vatText}</td>
+                    <td class="text-end pe-2" style="color: #111;">${vatText}</td>
                 `;
             } else if (priceMode === 'unit') {
                 priceCells = `
@@ -1595,14 +1625,13 @@ const app = {
                 <th style="width: 70px;">세액</th>
             `;
             const leadCols = showImg ? 7 : 6;
-            const tfootTitle = (q.vat_type === 'exclusive') ? '합계(부가세 별도)' : '합계(공급가액+세액)';
             const tfootVat = (q.vat_type === 'exclusive') ? '별도 (0원)' : fmtWon(q.total_vat);
             tfootHtml = `
                 <tfoot>
                     <tr>
-                        <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">${tfootTitle}</th>
+                        <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 2px;">합계</th>
                         <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
-                        <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${tfootVat}</td>
+                        <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc; color: #111;">${tfootVat}</td>
                         <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
                     </tr>
                 </tfoot>
@@ -1618,7 +1647,7 @@ const app = {
                 <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
                     <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
                     <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
-                        <span>• <b>견적일자</b>: ${escHtml(q.issue_date || '-')}</span>
+                        <span>• <b>${dateLabel}</b>: ${escHtml(q.issue_date || '-')}</span>
                         <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
                         ${q.delivery_date ? `<span>• <b>납기일</b>: ${escHtml(q.delivery_date)}</span>` : ''}
                         ${q.delivery_place ? `<span>• <b>납품장소</b>: ${escHtml(q.delivery_place)}</span>` : ''}
@@ -1629,21 +1658,33 @@ const app = {
             `;
         }
 
-        const html = `
-            <div class="a4-quote-page">
-                <!-- 1. 거래명세서와 100% 동일한 상단 헤더 컨테이너 -->
+        // 수신처 정보 블록 (선택 여부에 따라 출력)
+        const recipientHtml = includeRecipient ? `
+            <div class="recipient-box">
+                <span class="recipient-name">${escHtml(q.customer_name || '거래처')}</span> 貴中
+            </div>
+        ` : '';
+
+        // 일자 및 건명 블록
+        const dateInfoHtml = `
+            <div class="date-info">
+                ${dateLabel} : ${escHtml(q.issue_date || '-')}
+                ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;${projectLabel} : <b>${escHtml(q.project_name)}</b>` : ''}
+            </div>
+        `;
+
+        // 상단 헤더 컨테이너 HTML (공급자 포함 여부에 따른 레이아웃 분기)
+        let headerContainerHtml = '';
+        if (includeSupplier) {
+            // [공급자 포함]: 기존 좌측(제목/수신처/일자) + 우측(4행 공급자 테이블)
+            headerContainerHtml = `
                 <div class="header-container">
                     <div class="header-left">
                         <div class="title-box">
                             <h1 id="printTitle">${escHtml(title)}</h1>
                         </div>
-                        <div class="recipient-box">
-                            <span class="recipient-name">${escHtml(q.customer_name || '거래처')}</span> 貴中
-                        </div>
-                        <div class="date-info">
-                            견적일자 : ${escHtml(q.issue_date || '-')}
-                            ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;견적건명 : <b>${escHtml(q.project_name)}</b>` : ''}
-                        </div>
+                        ${recipientHtml}
+                        ${dateInfoHtml}
                     </div>
                     <div class="header-right">
                         <table class="supplier-table">
@@ -1674,6 +1715,24 @@ const app = {
                         </table>
                     </div>
                 </div>
+            `;
+        } else {
+            // [공급자 미포함]: 제목 및 수신처/일자 중앙 정렬 레이아웃 (간단한 제안 리스트/단가표 전용)
+            headerContainerHtml = `
+                <div class="header-container no-supplier">
+                    <div class="title-box">
+                        <h1 id="printTitle">${escHtml(title)}</h1>
+                    </div>
+                    ${recipientHtml}
+                    ${dateInfoHtml}
+                </div>
+            `;
+        }
+
+        const html = `
+            <div class="a4-quote-page">
+                <!-- 1. 상단 헤더 컨테이너 (공급자/수신처 옵션에 따른 가변 레이아웃) -->
+                ${headerContainerHtml}
 
                 <!-- 2. 금액란 (사용자 요청: 합 계 금 액 : ₩ 3,410,880) -->
                 ${amountBoxHtml}
