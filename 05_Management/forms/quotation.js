@@ -32,6 +32,21 @@ async function authFetch(url, options = {}) {
 }
 
 // ==========================================
+// API 엔드포인트 설정 (로컬 / 원격 자동 감지)
+// ==========================================
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+    ? 'http://localhost:3000/api/quotations'
+    : 'https://kng.junparks.com/api/quotations';
+
+const API_BASE_HQ = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+    ? 'http://localhost:3000/api/hq'
+    : 'https://kng.junparks.com/api/hq';
+
+const API_BASE_SELLER_K = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+    ? 'http://localhost:3000/api/seller-k/products'
+    : 'https://kng.junparks.com/api/seller-k/products';
+
+// ==========================================
 // 유틸리티
 // ==========================================
 function fmtWon(n) {
@@ -314,33 +329,61 @@ const app = {
         this.toggleImageColumn(q.show_images !== 0);
     },
 
-    // ── 견적서 보관함 목록 조회 (API) ──
+    // ── 견적서 보관함 목록 조회 (API 및 로컬 보관함 동기화) ──
     fetchQuotations: function() {
-        const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
+        const keyword = document.getElementById('searchKeyword')?.value.trim().toLowerCase() || '';
         const startDate = document.getElementById('filterStartDate')?.value || '';
         const endDate = document.getElementById('filterEndDate')?.value || '';
         const status = document.querySelector('#statusFilterGroup .erp-filter-chip.active')?.dataset.status || 'all';
 
-        let url = `/api/quotations?`;
+        let url = `${API_BASE}?`;
         if (keyword) url += `keyword=${encodeURIComponent(keyword)}&`;
         if (status && status !== 'all') url += `status=${encodeURIComponent(status)}&`;
         if (startDate) url += `startDate=${startDate}&`;
         if (endDate) url += `endDate=${endDate}&`;
 
         authFetch(url)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                this.quotations = data || [];
+                this.quotations = Array.isArray(data) ? data : [];
+                // 서버 정상 응답 시 로컬 캐시 갱신
+                try {
+                    localStorage.setItem('kng_quotations_cache', JSON.stringify(this.quotations));
+                } catch(e) {}
                 this.renderQuoteList();
                 document.getElementById('quoteTotalCountBadge').textContent = this.quotations.length;
                 document.getElementById('listSummaryText').textContent = `총 ${this.quotations.length}건 조회됨`;
             })
             .catch(err => {
-                console.error('견적서 목록 로딩 실패:', err);
-                const tbody = document.getElementById('quoteListTbody');
-                if (tbody) {
-                    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-danger"><i class='bx bx-error-circle'></i> 견적서 목록을 불러오지 못했습니다.</td></tr>`;
+                console.warn('견적서 서버 조회 불가, 로컬 캐시 및 보관함 조회:', err);
+                let localQuotes = [];
+                try {
+                    localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                } catch(e) {}
+
+                // 필터링 적용
+                if (keyword || status !== 'all' || startDate || endDate) {
+                    localQuotes = localQuotes.filter(q => {
+                        if (status !== 'all' && q.status !== status) return false;
+                        if (startDate && q.issue_date && q.issue_date < startDate) return false;
+                        if (endDate && q.issue_date && q.issue_date > endDate) return false;
+                        if (keyword) {
+                            const match = (q.customer_name || '').toLowerCase().includes(keyword) ||
+                                          (q.project_name || '').toLowerCase().includes(keyword) ||
+                                          (q.quote_number || '').toLowerCase().includes(keyword);
+                            if (!match) return false;
+                        }
+                        return true;
+                    });
                 }
+
+                this.quotations = localQuotes;
+                this.renderQuoteList();
+                document.getElementById('quoteTotalCountBadge').textContent = this.quotations.length;
+                document.getElementById('listSummaryText').textContent = `총 ${this.quotations.length}건 조회됨`;
             });
     },
 
@@ -349,7 +392,11 @@ const app = {
         if (!tbody) return;
 
         if (this.quotations.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted"><i class='bx bx-folder-open fs-3'></i><div class="mt-2">등록된 견적서가 없습니다.</div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
+                <i class='bx bx-folder-open fs-3 text-secondary'></i>
+                <div class="mt-2 fw-semibold" style="font-size: 13px;">등록된 견적서가 없습니다.</div>
+                <div class="small text-muted mt-1">상단 <button type="button" class="btn-erp btn-erp-primary py-0 px-2" style="height:22px; font-size:10.5px;" onclick="app.openNewEditor()"><i class='bx bx-plus-circle'></i> 신규 견적 작성</button> 버튼을 눌러 첫 견적서를 작성해보세요.</div>
+            </td></tr>`;
             return;
         }
 
@@ -364,20 +411,20 @@ const app = {
                     <td class="text-center text-muted">${escHtml(q.issue_date || '-')}</td>
                     <td class="text-start ps-2 fw-semibold" title="${escHtml(q.customer_name)}">${escHtml(q.customer_name || '-')}</td>
                     <td class="text-start ps-2" title="${escHtml(summary)}">${escHtml(summary)}</td>
-                    <td class="text-center">${fmtNum(q.item_count || 0)}개</td>
+                    <td class="text-center">${fmtNum(q.item_count || (q.items ? q.items.length : 0))}개</td>
                     <td class="text-end pe-2 fw-bold text-dark">${fmtWon(q.total_amount)}</td>
                     <td class="text-center"><span class="badge ${statusBadge}">${escHtml(q.status || '작성중')}</span></td>
-                    <td class="text-center text-muted">${escHtml(q.author || '-')}</td>
+                    <td class="text-center text-muted">${escHtml(q.author || '관리자')}</td>
                     <td class="text-center no-print" onclick="event.stopPropagation()">
                         <div class="d-flex justify-content-center gap-1">
-                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 4px;" onclick="app.loadQuotationDetail('${escHtml(q.id)}')" title="상세보기 / 수정">
-                                <i class='bx bx-edit-alt'></i>
+                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.loadQuotationDetail('${escHtml(q.id)}')" title="상세보기 / 수정">
+                                <i class='bx bx-edit-alt'></i> 수정
                             </button>
-                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 4px;" onclick="app.duplicateQuotation('${escHtml(q.id)}')" title="복사하여 재견적 작성">
-                                <i class='bx bx-copy'></i>
+                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.duplicateQuotation('${escHtml(q.id)}')" title="복사하여 재견적 작성">
+                                <i class='bx bx-copy'></i> 복사
                             </button>
-                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 4px;" onclick="app.printQuotationById('${escHtml(q.id)}')" title="A4 인쇄">
-                                <i class='bx bx-printer'></i>
+                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.printQuotationById('${escHtml(q.id)}')" title="A4 인쇄 / PDF">
+                                <i class='bx bx-printer'></i> 인쇄
                             </button>
                             <button type="button" class="btn-erp btn-erp-danger" style="height:20px; font-size:10px; padding:0 4px;" onclick="app.deleteQuotation('${escHtml(q.id)}')" title="삭제">
                                 <i class='bx bx-trash'></i>
@@ -393,8 +440,12 @@ const app = {
 
     // ── 견적서 상세 로드 ──
     loadQuotationDetail: function(id) {
-        authFetch(`/api/quotations/${id}`)
-            .then(res => res.json())
+        showToast('견적서 상세를 불러오는 중입니다...', 'info');
+        authFetch(`${API_BASE}/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(quote => {
                 this.currentQuote = quote;
                 this.bindEditorFields();
@@ -403,50 +454,88 @@ const app = {
                 this.switchView('editor');
             })
             .catch(err => {
-                showToast('견적서 상세 로딩 실패: ' + err.message, 'error');
+                console.warn('서버 상세 조회 실패, 로컬 조회 시도:', err);
+                let localQuotes = [];
+                try {
+                    localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                } catch(e) {}
+                const found = localQuotes.find(q => String(q.id) === String(id));
+                if (found) {
+                    this.currentQuote = found;
+                    this.bindEditorFields();
+                    this.renderEditorItems();
+                    this.recalcTotals();
+                    this.switchView('editor');
+                } else {
+                    showToast('견적서 정보를 불러오지 못했습니다: ' + err.message, 'error');
+                }
             });
     },
 
     // ── 과거 견적서 복사하여 재견적 작성 (Re-Quote) ──
     duplicateQuotation: function(id) {
-        authFetch(`/api/quotations/${id}`)
-            .then(res => res.json())
-            .then(quote => {
-                const todayStr = new Date().toISOString().split('T')[0];
-                const validDate = new Date();
-                validDate.setDate(validDate.getDate() + 15);
+        const proceedWithQuote = (quote) => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const validDate = new Date();
+            validDate.setDate(validDate.getDate() + 15);
 
-                this.currentQuote = Object.assign({}, quote, {
-                    id: '', // 새 견적 ID로 생성
-                    quote_number: '', // 새 번호 자동 채번
-                    issue_date: todayStr,
-                    valid_until: validDate.toISOString().split('T')[0],
-                    status: '작성중',
-                    items: (quote.items || []).map((it, idx) => Object.assign({}, it, {
-                        id: 'qi_' + Date.now() + '_' + idx,
-                        quote_id: ''
-                    }))
-                });
+            this.currentQuote = Object.assign({}, quote, {
+                id: '', // 새 견적 ID로 생성
+                quote_number: '', // 새 번호 자동 채번
+                issue_date: todayStr,
+                valid_until: validDate.toISOString().split('T')[0],
+                status: '작성중',
+                items: (quote.items || []).map((it, idx) => Object.assign({}, it, {
+                    id: 'qi_' + Date.now() + '_' + idx,
+                    quote_id: ''
+                }))
+            });
 
-                this.bindEditorFields();
-                this.renderEditorItems();
-                this.recalcTotals();
-                this.switchView('editor');
-                showToast('과거 견적서가 복사되었습니다. 단가/수량 수정 후 저장하세요.', 'info');
+            this.bindEditorFields();
+            this.renderEditorItems();
+            this.recalcTotals();
+            this.switchView('editor');
+            showToast('과거 견적서가 복사되었습니다. 단가/수량 수정 후 저장하세요.', 'info');
+        };
+
+        authFetch(`${API_BASE}/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
             })
-            .catch(err => showToast('복사 실패: ' + err.message, 'error'));
+            .then(proceedWithQuote)
+            .catch(err => {
+                let localQuotes = [];
+                try {
+                    localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                } catch(e) {}
+                const found = localQuotes.find(q => String(q.id) === String(id));
+                if (found) proceedWithQuote(found);
+                else showToast('복사 실패: ' + err.message, 'error');
+            });
     },
 
     // ── 견적서 삭제 ──
     deleteQuotation: function(id) {
         if (!confirm('이 견적서를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
-        authFetch(`/api/quotations/${id}`, { method: 'DELETE' })
-            .then(res => res.json())
+
+        // 로컬 보관함에서 우선 삭제
+        try {
+            let localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+            localQuotes = localQuotes.filter(q => String(q.id) !== String(id));
+            localStorage.setItem('kng_quotations_cache', JSON.stringify(localQuotes));
+            localStorage.setItem('kng_quotations_local', JSON.stringify(localQuotes));
+        } catch(e) {}
+
+        authFetch(`${API_BASE}/${id}`, { method: 'DELETE' })
             .then(() => {
                 showToast('견적서가 삭제되었습니다.', 'success');
                 this.fetchQuotations();
             })
-            .catch(err => showToast('삭제 실패: ' + err.message, 'error'));
+            .catch(err => {
+                showToast('견적서가 로컬에서 삭제되었습니다.', 'info');
+                this.fetchQuotations();
+            });
     },
 
     // ── 품목 그리드 렌더링 ──
@@ -728,17 +817,27 @@ const app = {
     uploadImageFile: function(file) {
         const formData = new FormData();
         formData.append('image', file);
-        showToast('사진을 업로드하는 중입니다...', 'info');
+        showToast('사진을 등록하는 중입니다...', 'info');
 
-        authFetch('/api/quotations/upload', {
+        authFetch(`${API_BASE}/upload`, {
             method: 'POST',
             body: formData
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
         .then(result => {
             if (result.url) {
-                document.getElementById('modalImageUrlInput').value = result.url;
-                document.getElementById('modalPreviewImg').src = result.url;
+                let fullUrl = result.url;
+                if (!fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
+                    const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+                        ? 'http://localhost:3000'
+                        : 'https://kng.junparks.com';
+                    fullUrl = host + fullUrl;
+                }
+                document.getElementById('modalImageUrlInput').value = fullUrl;
+                document.getElementById('modalPreviewImg').src = fullUrl;
                 document.getElementById('imagePreviewContainer').classList.remove('d-none');
                 document.getElementById('imageEmptyPrompt').classList.add('d-none');
                 showToast('사진이 등록되었습니다!', 'success');
@@ -746,7 +845,19 @@ const app = {
                 throw new Error(result.error || '업로드 실패');
             }
         })
-        .catch(err => showToast('업로드 오류: ' + err.message, 'error'));
+        .catch(err => {
+            console.warn('서버 업로드 실패, 로컬 이미지(Base64)로 대체:', err);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target.result;
+                document.getElementById('modalImageUrlInput').value = base64;
+                document.getElementById('modalPreviewImg').src = base64;
+                document.getElementById('imagePreviewContainer').classList.remove('d-none');
+                document.getElementById('imageEmptyPrompt').classList.add('d-none');
+                showToast('로컬 사진으로 등록되었습니다.', 'success');
+            };
+            reader.readAsDataURL(file);
+        });
     },
 
     applyModalImage: function() {
@@ -788,9 +899,9 @@ const app = {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 조회하는 중...</td></tr>`;
 
         let url = '';
-        if (source === 'hq') url = '/api/hq/products';
-        else if (source === 'seller-k') url = '/api/seller-k/products';
-        else if (source === 'tx') url = '/api/hq/transactions';
+        if (source === 'hq') url = `${API_BASE_HQ}/products`;
+        else if (source === 'seller-k') url = API_BASE_SELLER_K;
+        else if (source === 'tx') url = `${API_BASE_HQ}/transactions`;
 
         authFetch(url)
             .then(res => res.json())
@@ -980,8 +1091,23 @@ const app = {
         });
 
         const isUpdate = !!payload.id;
+        if (!payload.id) {
+            payload.id = 'qt_' + Date.now();
+            payload.quote_number = 'Q-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-' + String(Math.floor(Math.random() * 900) + 100);
+        }
+
+        // 1. 로컬스토리지 백업 저장 (무중단 보존)
+        try {
+            let localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+            const exIdx = localQuotes.findIndex(q => String(q.id) === String(payload.id));
+            if (exIdx >= 0) localQuotes[exIdx] = payload;
+            else localQuotes.unshift(payload);
+            localStorage.setItem('kng_quotations_cache', JSON.stringify(localQuotes));
+            localStorage.setItem('kng_quotations_local', JSON.stringify(localQuotes));
+        } catch(e) {}
+
         const method = isUpdate ? 'PUT' : 'POST';
-        const url = isUpdate ? `/api/quotations/${payload.id}` : `/api/quotations`;
+        const url = isUpdate ? `${API_BASE}/${payload.id}` : API_BASE;
 
         showToast('견적서를 저장하는 중입니다...', 'info');
 
@@ -990,18 +1116,26 @@ const app = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
         .then(result => {
-            if (result.error) throw new Error(result.error);
             showToast('견적서가 안전하게 저장되었습니다!', 'success');
             if (result.id) payload.id = result.id;
             if (result.quote_number) payload.quote_number = result.quote_number;
             this.currentQuote = payload;
             document.getElementById('quoteId').value = payload.id;
             document.getElementById('badgeQuoteNumber').textContent = payload.quote_number;
+            this.fetchQuotations();
         })
         .catch(err => {
-            showToast('저장 실패: ' + err.message, 'error');
+            console.warn('서버 저장 실패, 로컬 보관함에 보존됨:', err);
+            showToast('로컬 보관함에 저장되었습니다.', 'success');
+            this.currentQuote = payload;
+            document.getElementById('quoteId').value = payload.id;
+            document.getElementById('badgeQuoteNumber').textContent = payload.quote_number;
+            this.fetchQuotations();
         });
     },
 
@@ -1017,15 +1151,31 @@ const app = {
     },
 
     printQuotationById: function(id) {
-        authFetch(`/api/quotations/${id}`)
-            .then(res => res.json())
+        showToast('인쇄 데이터를 준비하는 중입니다...', 'info');
+        authFetch(`${API_BASE}/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(quote => {
                 this.renderPrintArea(quote);
                 setTimeout(() => {
                     window.print();
                 }, 100);
             })
-            .catch(err => showToast('인쇄 데이터 조회 실패: ' + err.message, 'error'));
+            .catch(err => {
+                let localQuotes = [];
+                try {
+                    localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                } catch(e) {}
+                const found = localQuotes.find(q => String(q.id) === String(id));
+                if (found) {
+                    this.renderPrintArea(found);
+                    setTimeout(() => { window.print(); }, 100);
+                } else {
+                    showToast('인쇄 데이터 조회 실패: ' + err.message, 'error');
+                }
+            });
     },
 
     renderPrintArea: function(q) {
