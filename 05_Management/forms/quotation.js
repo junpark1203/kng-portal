@@ -6,79 +6,38 @@
  * - 과거 견적서 이력 보관함 & 복사 재발행(Re-Quote) 지원
  */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+// --- 서버 URL 및 API 설정 ---
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://kng.junparks.com';
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDqdzlXTddvoBYWaVbTM7_ERO_rUGWjIgE",
-    authDomain: "kng-inventory.firebaseapp.com",
-    projectId: "kng-inventory",
-    storageBucket: "kng-inventory.firebasestorage.app",
-    messagingSenderId: "647181899026",
-    appId: "1:647181899026:web:7cd3b62a7a10771b204fcb",
-    measurementId: "G-5VYMDB59XD"
-};
+const API_BASE = `${SERVER_URL}/api/quotations`;
+const API_BASE_HQ = `${SERVER_URL}/api/hq`;
+const API_BASE_SELLER_K = `${SERVER_URL}/api/seller-k/products`;
 
-const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-
-let _authReady = null;
-function waitForAuth(timeout = 1500) {
-    if (_authReady) return _authReady;
-    _authReady = new Promise((res) => {
-        const s = Date.now();
-        (function poll() {
-            try {
-                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
-                    window.parent.getAuthToken().then(t => {
-                        if (t) { res(t); }
-                        else if (Date.now() - s < timeout) { setTimeout(poll, 200); }
-                        else { _authReady = null; res(null); }
-                    }).catch(() => {
-                        if (Date.now() - s < timeout) setTimeout(poll, 200);
-                        else { _authReady = null; res(null); }
-                    });
-                } else if (auth && auth.currentUser) {
-                    auth.currentUser.getIdToken(true).then(res).catch(() => res(null));
-                } else if (Date.now() - s < timeout) {
-                    setTimeout(poll, 200);
-                } else {
-                    _authReady = null;
-                    res(null);
-                }
-            } catch (e) {
-                if (Date.now() - s < timeout) setTimeout(poll, 200);
-                else { _authReady = null; res(null); }
-            }
-        })();
-    });
-    return _authReady;
-}
-
+// --- authFetch 래퍼 (KNG ERP 표준 - 부모 창 토큰 연동) ---
 async function authFetch(url, options = {}) {
     let token = null;
     try {
         if (window.parent && window.parent.getAuthToken) {
             token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 3) {
+                await new Promise(r => setTimeout(r, 150));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
         }
     } catch (e) {}
-    if (!token && typeof auth !== 'undefined' && auth.currentUser) {
-        try { token = await auth.currentUser.getIdToken(); } catch(e){}
-    }
-    if (!token) {
-        try { token = await waitForAuth(); } catch(e){}
-    }
-    if (!options.headers) options.headers = {};
-    if (token) options.headers['Authorization'] = 'Bearer ' + token;
-    return fetch(url, options);
-}
 
-// ==========================================
-// API 엔드포인트 설정 (KNG 공식 운영 백엔드 API 연결)
-// ==========================================
-const API_BASE = 'https://kng.junparks.com/api/quotations';
-const API_BASE_HQ = 'https://kng.junparks.com/api/hq';
-const API_BASE_SELLER_K = 'https://kng.junparks.com/api/seller-k/products';
+    if (!options.headers) options.headers = {};
+    if (token && !options.headers['Authorization']) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    const targetUrl = (url.startsWith('/api/')) ? `${SERVER_URL}${url}` : url;
+    return fetch(targetUrl, options);
+}
 
 // ==========================================
 // 유틸리티
@@ -382,7 +341,7 @@ const app = {
         const keyword = document.getElementById('searchKeyword')?.value.trim().toLowerCase() || '';
         const startDate = document.getElementById('filterStartDate')?.value || '';
         const endDate = document.getElementById('filterEndDate')?.value || '';
-        const status = document.querySelector('#statusFilterGroup .erp-filter-chip.active')?.dataset.status || 'all';
+        const status = document.querySelector('#statusFilterGroup .erp-filter-chip.active')?.getAttribute('data-status') || document.querySelector('#statusFilterGroup .erp-filter-chip.active')?.dataset?.status || 'all';
 
         let url = `${API_BASE}?`;
         if (keyword) url += `keyword=${encodeURIComponent(keyword)}&`;
@@ -1127,7 +1086,6 @@ const app = {
             this.recalcTotals();
         }
 
-        const custName = document.getElementById('custName').value.trim();
         if (!custName) {
             showToast('수신처(거래처명)를 입력해주세요.', 'warning');
             document.getElementById('custName').focus();
