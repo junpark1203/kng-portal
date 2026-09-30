@@ -1,0 +1,655 @@
+/* ==========================================================================
+   본사 매입 현황 — 입출고 내역 (HQ Transactions) ECOUNT ERP 고밀도 스타일시트
+   통합 물류 및 영업관리 ECOUNT ERP 디자인 시스템 완벽 동기화
+   ========================================================================== */
+
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-success: #10b981;
+    --erp-warning: #f59e0b;
+    --erp-danger: #ef4444;
+    --erp-dark: #1e293b;
+    --erp-header-bg: #1e293b;
+    --erp-th-bg: #f8fafc;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-row-hover: #f1f5f9;
+    --erp-row-active: #eff6ff;
+    --erp-row-focused: #e0e7ff;
+    --erp-row-height: 28px;
+    --erp-font-size: 12px;
+}
+
+/* 기본 레이아웃 */
+body {
+    font-family: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    background-color: #f8fafc;
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: var(--erp-font-size);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar) ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+/* 실시간 통계 배지 */
+.erp-badge-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.erp-stat-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.3;
+}
+
+.erp-stat-badge.badge-dark {
+    background: #1e293b;
+    color: #ffffff;
+}
+
+.erp-stat-badge.badge-blue {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.erp-stat-badge.badge-amber {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.erp-stat-badge.badge-emerald {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+/* 탭 버튼 그룹 (구분 퀵 필터: 전체/매입/출고) */
+.erp-tab-group {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.erp-tab-btn {
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+    user-select: none;
+}
+
+.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.erp-tab-btn.active {
+    background: #ffffff !important;
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-border) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.erp-tab-badge {
+    font-size: 9.5px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #e2e8f0;
+    color: #475569;
+}
+.erp-tab-btn.active .erp-tab-badge {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* ── 2. ECOUNT ERP 2행 필터 리본 (.erp-filter-ribbon) ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* 날짜 프리셋 버튼 그룹 */
+.erp-date-presets {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.erp-preset-btn {
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    line-height: 18px;
+}
+.erp-preset-btn:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: #0f172a;
+}
+.erp-preset-btn.active {
+    background: #ffffff;
+    border-color: var(--erp-border);
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.erp-date-input {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    width: 118px !important;
+    background-color: #ffffff;
+    color: #1e293b;
+}
+
+.erp-select-target {
+    width: 105px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 18px 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer;
+}
+
+.erp-search-box {
+    width: 200px;
+    position: relative;
+}
+.erp-search-box .form-control {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding-left: 7px;
+    padding-right: 22px;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+}
+
+.erp-subsearch-group {
+    width: 150px;
+}
+.erp-subsearch-group .input-group-text {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 5px;
+    background: #f8fafc;
+    border-color: var(--erp-border);
+}
+.erp-subsearch-group .form-control {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px;
+    border-color: var(--erp-border);
+}
+
+/* ── 3. ECOUNT ERP 버튼 시스템 ── */
+.btn-erp {
+    height: 26px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 0 9px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+}
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.btn-erp-primary {
+    background: var(--erp-primary);
+    border-color: var(--erp-primary);
+    color: #ffffff;
+}
+.btn-erp-primary:hover {
+    background: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
+    color: #ffffff;
+}
+.btn-erp-danger {
+    background: #ffffff;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+.btn-erp-danger:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.erp-tool-btn {
+    height: 24px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 7px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border-light);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.erp-tool-btn:hover {
+    background: #f1f5f9;
+    border-color: var(--erp-border);
+    color: #0f172a;
+}
+
+/* ── 4. ERP 고밀도 시트 그리드 (.erp-sheet-table) ── */
+.erp-grid-wrapper {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 280px;
+    max-height: calc(100vh - 138px);
+    box-sizing: border-box;
+    position: relative;
+}
+
+.erp-sheet-table {
+    width: 100%;
+    max-width: none;
+    border-collapse: collapse !important;
+    font-size: 11.5px;
+    table-layout: fixed !important;
+    margin: 0 !important;
+    border: 1px solid var(--erp-border) !important;
+    background-color: #ffffff !important;
+}
+
+.erp-sheet-table thead th {
+    background-color: var(--erp-th-bg) !important;
+    background-clip: padding-box !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--erp-border) !important;
+    white-space: nowrap !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 6;
+    height: 28px !important;
+    box-sizing: border-box !important;
+    user-select: none;
+}
+.erp-sheet-table thead th.sortable { cursor: pointer; }
+.erp-sheet-table thead th.sortable:hover { background-color: #e2e8f0 !important; }
+.erp-sheet-table thead th .sort-icon { font-size: 11px; color: #94a3b8; margin-left: 2px; }
+.erp-sheet-table thead th.sorted .sort-icon { color: var(--erp-primary); }
+
+.erp-sheet-table tbody td {
+    padding: 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    vertical-align: middle !important;
+    background-color: #ffffff;
+    height: 28px !important;
+    font-size: 11.5px;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.erp-sheet-table tbody tr:hover td { background-color: var(--erp-row-hover) !important; }
+.erp-sheet-table tbody tr.focused-row td { background-color: var(--erp-row-focused) !important; }
+.erp-sheet-table tbody tr.checked-row td { background-color: #f0fdf4 !important; }
+
+/* 체크박스 & No */
+.erp-sheet-table .col-check { width: 32px !important; text-align: center !important; padding: 0 !important; }
+.erp-sheet-table .col-check input[type="checkbox"] { cursor: pointer; width: 14px; height: 14px; accent-color: var(--erp-primary); margin: 0; }
+.erp-sheet-table .col-no { width: 40px !important; text-align: center !important; color: var(--erp-text-muted); font-weight: 600; background-color: #f8fafc !important; }
+.col-num { text-align: right !important; font-variant-numeric: tabular-nums !important; }
+
+/* 입출고 구분 뱃지 */
+.tx-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 3px;
+    text-align: center;
+    line-height: 1.3;
+}
+.tx-badge.in {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+.tx-badge.out {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+/* 하단 합계 푸터 */
+.erp-sheet-table tfoot td {
+    padding: 3px 6px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid var(--erp-border) !important;
+    font-size: 11.5px;
+    font-weight: 700;
+    height: 28px !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ── 5. 하단 상태바 및 페이지네이션 ── */
+.erp-bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-top: none;
+    font-size: 11px;
+    color: var(--erp-text-muted);
+}
+.erp-page-select {
+    height: 22px;
+    font-size: 11px;
+    padding: 0 4px;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+}
+.erp-pagination { display: inline-flex; gap: 2px; align-items: center; }
+.erp-page-btn {
+    height: 22px;
+    min-width: 22px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    cursor: pointer;
+}
+.erp-page-btn.active {
+    background: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+}
+
+/* ── 6. ECOUNT ERP 전표 테이블 양식 (.erp-form-table) ── */
+.erp-form-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+}
+.erp-form-table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 6px;
+    border: 1px solid var(--erp-border);
+    white-space: nowrap;
+    text-align: center;
+    height: 30px;
+}
+.erp-form-table td {
+    padding: 0;
+    border: 1px solid var(--erp-border);
+    height: 30px;
+    background: #ffffff;
+    position: relative;
+}
+.erp-form-table .form-control,
+.erp-form-table .form-select {
+    width: 100%;
+    height: 30px !important;
+    font-size: 11.5px !important;
+    padding: 2px 6px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.erp-form-table td:focus-within {
+    box-shadow: inset 0 0 0 2px #2563eb !important;
+    background-color: #eff6ff !important;
+    z-index: 5;
+}
+.erp-form-table input[type=number]::-webkit-inner-spin-button,
+.erp-form-table input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.erp-form-table input[type=number] { -moz-appearance: textfield; }
+
+/* 전표 다건 등록 그리드 래퍼 */
+.voucher-grid-wrapper {
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid var(--erp-border);
+}
+
+/* 자동완성 드롭다운 */
+.erp-autocomplete-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 1050;
+}
+.erp-autocomplete-item {
+    padding: 4px 8px;
+    font-size: 11.5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+}
+.erp-autocomplete-item:hover,
+.erp-autocomplete-item.active {
+    background-color: #eff6ff;
+}
+
+/* 모달 헤더 */
+.modal-header.erp-modal-header {
+    background: #1e293b;
+    color: #ffffff;
+    padding: 8px 14px;
+    border-bottom: 1px solid #0f172a;
+}
+.modal-header.erp-modal-header.out-mode {
+    background: #9a3412;
+}
+.modal-header.erp-modal-header .modal-title {
+    font-size: 13px;
+    font-weight: 700;
+}
+.modal-footer.erp-modal-footer {
+    background: #f8fafc;
+    border-top: 1px solid var(--erp-border);
+    padding: 6px 12px;
+}
+
+/* 토글 세그먼트 (전표 상단 매입/출고) */
+.voucher-mode-toggle {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid var(--erp-border);
+}
+.voucher-mode-btn {
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.voucher-mode-btn.active.mode-in {
+    background: #2563eb;
+    color: #ffffff;
+}
+.voucher-mode-btn.active.mode-out {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+/* 키 단축키 배지 */
+.key-shortcut-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.08);
+    margin-left: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.btn-erp-primary .key-shortcut-badge {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 토스트 */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e293b;
+    color: #ffffff;
+    padding: 8px 14px;
+    border-radius: 3px;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.toast-success { background: #065f46; border-left: 4px solid #34d399; }
+.toast.toast-error   { background: #991b1b; border-left: 4px solid #f87171; }
+.toast.toast-warning { background: #92400e; border-left: 4px solid #fbbf24; }
+.toast.toast-info    { background: #1e3a8a; border-left: 4px solid #60a5fa; }
+
+/* 인쇄 */
+@media print {
+    .no-print, .erp-top-toolbar, .erp-filter-ribbon, .erp-bottom-bar, .col-check, .col-action { display: none !important; }
+    body { padding: 0 !important; background: #fff !important; }
+    .erp-grid-wrapper { border: none !important; max-height: none !important; overflow: visible !important; }
+    .erp-sheet-table { border: 1px solid #000 !important; font-size: 9pt !important; }
+    .erp-sheet-table th, .erp-sheet-table td { border: 1px solid #444 !important; height: 22px !important; padding: 2px 4px !important; }
+    .print-report-header { display: block !important; margin-bottom: 12px; text-align: center; }
+}
+.print-report-header { display: none; }

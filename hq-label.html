@@ -1,105 +1,233 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>라벨 출력</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>본사 라벨 출력 디자이너</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
-body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-content{margin-left:0;padding:0;display:flex;flex-direction:column}
-.hdr{padding:14px 24px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
-.hdr h2{font-size:17px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.tabs{display:flex;gap:2px;background:rgba(255,255,255,.15);padding:3px;border-radius:8px}
-.tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;color:rgba(255,255,255,.7);transition:all .2s;display:flex;align-items:center;gap:4px;background:none;border:none}
-.tab.active{background:#fff;color:#7c3aed;box-shadow:0 2px 6px rgba(0,0,0,.15)}.tab:hover:not(.active){color:#fff;background:rgba(255,255,255,.1)}
-.body{display:flex;flex:1;overflow:hidden}
-.left{width:400px;min-width:320px;border-right:1px solid var(--border);overflow-y:auto;background:var(--gray-50);display:flex;flex-direction:column}
-.right{flex:1;overflow-y:auto;padding:20px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center}
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-dark: #1e293b;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+}
+
+body{background:#f8fafc;margin:0;padding:6px 10px;font-family:'Pretendard','Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+.app-container{min-height:auto}.main-content{margin-left:0;padding:0;display:flex;flex-direction:column}
+
+/* ── ECOUNT ERP 1행 탑 툴바 ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+.erp-tab-group {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.tab.erp-tab-btn {
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+    user-select: none;
+}
+.tab.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+.tab.erp-tab-btn.active {
+    background: #ffffff !important;
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-border) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-erp {
+    height: 26px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 0 9px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+}
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.btn-erp-primary {
+    background: var(--erp-primary);
+    border-color: var(--erp-primary);
+    color: #ffffff;
+}
+.btn-erp-primary:hover {
+    background: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
+    color: #ffffff;
+}
+
+/* 본문 레이아웃 */
+.body{display:flex;flex:1;overflow:hidden;background:#fff;border:1px solid var(--erp-border);border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.03);}
+.left{width:380px;min-width:320px;border-right:1px solid var(--erp-border);overflow-y:auto;background:#f8fafc;display:flex;flex-direction:column}
+.right{flex:1;overflow-y:auto;padding:16px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center}
 .tp{display:none}.tp.active{display:flex;flex-direction:column;flex:1}
-.sec{padding:14px 20px;border-bottom:1px solid var(--border)}
-.sec-title{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sec{padding:12px 16px;border-bottom:1px solid var(--erp-border)}
+.sec-title{font-size:11px;font-weight:700;color:var(--erp-text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .fg{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}.fg:last-child{margin-bottom:0}
-.fg label{font-size:11px;font-weight:600;color:var(--gray-500)}.fg input,.fg textarea,.fg select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);outline:none;transition:all .15s;color:var(--gray-800);font-family:inherit}
-.fg input:focus,.fg select:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.12)}.fg textarea{resize:vertical;min-height:36px}
+.fg label{font-size:11px;font-weight:600;color:var(--gray-600)}.fg input,.fg textarea,.fg select{padding:6px 8px;border:1px solid var(--erp-border);border-radius:2px;font-size:12px;background:#ffffff;outline:none;transition:all .15s;color:var(--erp-text);font-family:inherit}
+.fg input:focus,.fg select:focus{border-color:var(--erp-primary);box-shadow:0 0 0 2px rgba(37,99,235,.15)}.fg textarea{resize:vertical;min-height:36px}
 .fr{display:flex;gap:8px}.fr>.fg{flex:1}
 .logo-area{display:flex;gap:10px;align-items:center}
-.logo-box{width:68px;height:68px;border:2px dashed var(--gray-200);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;cursor:pointer;flex-shrink:0}.logo-box:hover{border-color:#7c3aed}
-.logo-box img{max-width:100%;max-height:100%;object-fit:contain}.logo-box .ph{color:var(--gray-300);font-size:24px}
-.b{padding:6px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;display:flex;align-items:center;gap:4px;transition:all .15s}
-.bp{background:#7c3aed;color:#fff}.bp:hover{background:#6d28d9}
-.bo{background:transparent;color:var(--gray-500);border:1px solid var(--border)}.bo:hover{border-color:var(--gray-400)}
-.ba{padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;border:none}
-.actions{padding:14px 20px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:6px}
+.logo-box{width:64px;height:64px;border:2px dashed var(--erp-border);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;cursor:pointer;flex-shrink:0}.logo-box:hover{border-color:var(--erp-primary)}
+.logo-box img{max-width:100%;max-height:100%;object-fit:contain}.logo-box .ph{color:var(--gray-400);font-size:24px}
+.b{padding:5px 8px;border-radius:2px;font-size:11px;font-weight:600;cursor:pointer;border:none;display:flex;align-items:center;gap:4px;transition:all .15s}
+.bp{background:var(--erp-primary);color:#fff}.bp:hover{background:var(--erp-primary-hover)}
+.bo{background:transparent;color:var(--erp-text-muted);border:1px solid var(--erp-border)}.bo:hover{border-color:#94a3b8;color:#0f172a}
+.ba{padding:6px 12px;border-radius:2px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;border:none}
+.actions{padding:12px 16px;border-top:1px solid var(--erp-border);background:#ffffff;display:flex;gap:6px}
+
 /* List */
-.lbl-list{padding:10px 20px;flex:1;overflow-y:auto}
-.lbl-row{padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;display:flex;align-items:center;gap:8px;transition:all .15s}
-.lbl-row:hover{border-color:#7c3aed}.lbl-row input[type=checkbox]{width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0}
-.lbl-row .name{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--gray-800);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lbl-row .detail{font-size:11px;color:var(--gray-400);white-space:nowrap}
-.lbl-row input[type=number]{width:50px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;text-align:center}
+.lbl-list{padding:8px 12px;flex:1;overflow-y:auto}
+.lbl-row{padding:6px 8px;background:#ffffff;border:1px solid var(--erp-border);border-radius:2px;margin-bottom:4px;display:flex;align-items:center;gap:8px;transition:all .15s}
+.lbl-row:hover{border-color:var(--erp-primary);background:#f8fafc;}.lbl-row input[type=checkbox]{width:14px;height:14px;accent-color:var(--erp-primary);cursor:pointer;flex-shrink:0}
+.lbl-row .name{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--erp-text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbl-row .detail{font-size:10.5px;color:var(--erp-text-muted);white-space:nowrap}
+.lbl-row input[type=number]{width:46px;padding:3px 4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11.5px;text-align:center}
 .lbl-row .del{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:15px;padding:2px}.lbl-row .del:hover{color:var(--danger)}
-.print-bar{padding:12px 20px;border-top:1px solid var(--border);background:var(--surface)}
-.print-bar .fr{margin-bottom:8px}
-.print-info{font-size:11px;color:var(--gray-500);padding:4px 8px;background:var(--gray-50);border-radius:var(--radius);margin-bottom:8px}
+.print-bar{padding:10px 14px;border-top:1px solid var(--erp-border);background:#ffffff}
+.print-bar .fr{margin-bottom:6px}
+.print-info{font-size:11px;color:var(--erp-text-muted);padding:4px 8px;background:#f8fafc;border-radius:2px;margin-bottom:6px;border:1px solid var(--erp-border-light)}
 .empty{text-align:center;padding:30px 20px;color:var(--gray-400)}.empty i{font-size:32px;display:block;margin-bottom:4px}.empty p{font-size:12px}
+
 /* Spec */
-.sp-item{padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px}.sp-item:hover{border-color:#7c3aed}
+.sp-item{padding:8px 10px;background:#ffffff;border:1px solid var(--erp-border);border-radius:2px;margin-bottom:4px}.sp-item:hover{border-color:var(--erp-primary)}
 .sp-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-.sp-nm{font-weight:600;font-size:13px;color:var(--gray-800);display:flex;align-items:center;gap:5px}
-.sp-badge{font-size:9px;padding:1px 5px;border-radius:8px;background:rgba(124,58,237,.1);color:#7c3aed;font-weight:700}
-.sp-dt{font-size:11px;color:var(--gray-400);display:flex;gap:10px;flex-wrap:wrap}
-.sp-act button{background:transparent;border:none;color:var(--gray-400);cursor:pointer;font-size:15px;padding:3px;border-radius:4px}
-.btn-add{width:calc(100% - 40px);margin:0 20px 10px;padding:7px;background:transparent;color:var(--gray-500);border:2px dashed var(--gray-200);border-radius:var(--radius);font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}.btn-add:hover{border-color:#7c3aed;color:#7c3aed}
+.sp-nm{font-weight:600;font-size:12px;color:var(--erp-text);display:flex;align-items:center;gap:5px}
+.sp-badge{font-size:9.5px;padding:1px 5px;border-radius:2px;background:var(--erp-primary-light);color:var(--erp-primary);font-weight:700}
+.sp-dt{font-size:10.5px;color:var(--erp-text-muted);display:flex;gap:8px;flex-wrap:wrap}
+.sp-act button{background:transparent;border:none;color:var(--gray-400);cursor:pointer;font-size:14px;padding:2px;border-radius:2px}
+.btn-add{width:calc(100% - 24px);margin:0 12px 10px;padding:6px;background:transparent;color:var(--erp-text-muted);border:1px dashed var(--erp-border);border-radius:2px;font-weight:600;font-size:11.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}.btn-add:hover{border-color:var(--erp-primary);color:var(--erp-primary);background:#fff}
+
 /* Preview */
-.pv-title{font-size:12px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.pv-hint{font-size:10px;color:var(--gray-400);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 10px;box-sizing:border-box}
+.pv-title{font-size:11.5px;font-weight:700;color:var(--erp-text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px;width:100%}
+.pv-hint{font-size:10.5px;color:var(--erp-text-muted);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 4px;box-sizing:border-box}
 .pv-hint i{font-size:13px}
-.btn-rst{padding:3px 8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-weight:600;color:var(--gray-500);cursor:pointer;margin-left:8px}.btn-rst:hover{color:var(--danger);border-color:var(--danger)}
-.btn-align{padding:3px 6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--gray-500);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.btn-align:hover{color:#7c3aed;border-color:#7c3aed;background:rgba(124,58,237,.05)}
-.pv-sheet{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);position:relative;overflow:hidden}
-.pv-label{border:1px dashed var(--gray-200);position:relative;overflow:hidden;box-sizing:border-box}
+.btn-rst{padding:2px 7px;background:#ffffff;border:1px solid var(--erp-border);border-radius:2px;font-size:10.5px;font-weight:600;color:var(--erp-text-muted);cursor:pointer;margin-left:6px}.btn-rst:hover{color:var(--danger);border-color:var(--danger)}
+.btn-align{padding:2px 5px;background:#ffffff;border:1px solid var(--erp-border);border-radius:2px;color:var(--erp-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-align:hover{color:var(--erp-primary);border-color:var(--erp-primary);background:var(--erp-primary-light)}
+.pv-sheet{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);position:relative;overflow:hidden;border:1px solid #cbd5e1}
+.pv-label{border:1px dashed var(--erp-border);position:relative;overflow:hidden;box-sizing:border-box}
 .pv-label .el{position:absolute;cursor:move;user-select:none;transition:box-shadow .15s;padding:1px 2px;border-radius:2px;transform-origin:center center}
-.pv-label .el:hover{box-shadow:0 0 0 1px #7c3aed;z-index:10}
-.pv-label .el.dragging{box-shadow:0 0 0 2px #7c3aed;opacity:.85;z-index:20}
-.pv-label .el.selected{box-shadow:0 0 0 2px #3b82f6;z-index:15}
+.pv-label .el:hover{box-shadow:0 0 0 1px var(--erp-primary);z-index:10}
+.pv-label .el.dragging{box-shadow:0 0 0 2px var(--erp-primary);opacity:.85;z-index:20}
+.pv-label .el.selected{box-shadow:0 0 0 2px #2563eb;z-index:15}
 .pv-label .el.key-object{box-shadow:0 0 0 2px #ef4444;z-index:16}
 .pv-label .el.key-object .resizer{background:#ef4444}
-.pv-label .el .resizer{display:none;position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b82f6;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:30}
+.pv-label .el .resizer{display:none;position:absolute;right:-5px;bottom:-5px;width:9px;height:9px;background:#2563eb;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:30}
 .pv-label .el.selected .resizer{display:block}
-.pv-label .marquee{position:absolute;border:1px dashed #3b82f6;background:rgba(59,130,246,.08);z-index:50;pointer-events:none}
+.pv-label .marquee{position:absolute;border:1px dashed #2563eb;background:rgba(37,99,235,.08);z-index:50;pointer-events:none}
 .pv-label .lbl-table{border-collapse:collapse;width:100%}
 .pv-label .lbl-table td{padding:2px 4px;vertical-align:top;border:none;line-height:1.3;white-space:nowrap}
-.pv-label .p-nm{font-weight:700;text-align:center;line-height:1.2;color:var(--gray-800);white-space:nowrap}
-.pv-label .p-mfr{font-size:85%;color:var(--gray-500);text-align:center}
-.pv-label .p-prc{font-weight:800;color:#7c3aed;text-align:center}
-.pv-label .p-info{font-size:75%;color:var(--gray-400);text-align:center;white-space:nowrap}
+.pv-label .p-nm{font-weight:700;text-align:center;line-height:1.2;color:var(--erp-text);white-space:nowrap}
+.pv-label .p-mfr{font-size:85%;color:var(--erp-text-muted);text-align:center}
+.pv-label .p-prc{font-weight:800;color:var(--erp-primary);text-align:center}
+.pv-label .p-info{font-size:75%;color:var(--erp-text-muted);text-align:center;white-space:nowrap}
+
 /* Modal */
 .sp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-.sp-modal{background:#fff;border-radius:12px;width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;z-index:10000;display:block}
-.sp-modal .modal-hd{padding:14px 20px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;display:flex;justify-content:space-between;align-items:center}
-.sp-modal .modal-hd h3{font-size:14px;font-weight:700;margin:0}.sp-modal .modal-hd .x{background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:4px;border-radius:4px}.sp-modal .modal-hd .x:hover{color:#fff}
-.sp-modal .modal-bd{padding:16px 20px;display:flex;flex-direction:column;gap:10px;background:#fff}
-.sp-modal .modal-ft{padding:10px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:6px;background:#fff}
+.sp-modal{background:#fff;border-radius:2px;width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;z-index:10000;display:block;border:1px solid var(--erp-border)}
+.sp-modal .modal-hd{padding:10px 16px;background:#1e293b;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.sp-modal .modal-hd h3{font-size:13px;font-weight:700;margin:0}.sp-modal .modal-hd .x{background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:4px;border-radius:2px}.sp-modal .modal-hd .x:hover{color:#fff}
+.sp-modal .modal-bd{padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:#fff}
+.sp-modal .modal-ft{padding:8px 16px;border-top:1px solid var(--erp-border);display:flex;justify-content:flex-end;gap:6px;background:#f8fafc}
+
 @page{margin:0;size:auto}
 @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:fixed;top:0;left:0;z-index:99999}.ps{page-break-after:always;margin:0;padding:0;box-shadow:none}.ps:last-child{page-break-after:auto}.lbl-table{border-collapse:collapse;width:100%}.lbl-table td{padding:2px 4px;vertical-align:top;border:none;line-height:1.3;white-space:nowrap}}
 </style>
 </head>
 <body>
 <div class="app-container"><main class="main-content">
-<div class="hdr"><h2><i class='bx bx-purchase-tag-alt'></i> 라벨 출력</h2>
-<div class="tabs">
-<button class="tab active" data-tab="editor"><i class='bx bx-edit'></i> 편집</button>
-<button class="tab" data-tab="list"><i class='bx bx-list-check'></i> 라벨 목록</button>
-<button class="tab" data-tab="specs"><i class='bx bx-ruler'></i> 라벨 규격</button>
-</div></div>
-<div class="body" style="height:calc(100vh - 52px)">
+
+<!-- ── ECOUNT ERP 1행 탑 툴바 ── -->
+<div class="erp-top-toolbar no-print">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="erp-title-tag">
+            <i class='bx bx-purchase-tag-alt text-primary'></i> 본사 라벨 디자이너 & 출력
+        </span>
+        <div class="erp-tab-group tabs">
+            <button class="tab erp-tab-btn active" data-tab="editor"><i class='bx bx-edit'></i> 라벨 편집</button>
+            <button class="tab erp-tab-btn" data-tab="list"><i class='bx bx-list-check'></i> 라벨 목록</button>
+            <button class="tab erp-tab-btn" data-tab="specs"><i class='bx bx-ruler'></i> 라벨 규격</button>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-1 flex-wrap">
+        <a href="hq-inventory.html" class="btn-erp" title="실시간 재고 화면으로 이동">
+            <i class='bx bx-box'></i> 실시간 재고
+        </a>
+        <a href="hq-transactions.html" class="btn-erp" title="입출고 내역 화면으로 이동">
+            <i class='bx bx-transfer'></i> 입출고 내역
+        </a>
+    </div>
+</div>
+
+<div class="body" style="height:calc(100vh - 56px)">
 <div class="left">
 <!-- Editor -->
 <div class="tp active" id="pEditor">
-<div id="editIndicator" style="display:none;padding:8px 20px;background:linear-gradient(90deg,rgba(124,58,237,.08),transparent);border-bottom:1px solid rgba(124,58,237,.15);font-size:12px;color:#7c3aed;font-weight:600;display:flex;align-items:center;gap:6px"><i class='bx bx-edit-alt'></i> <span id="editIndicatorText"></span></div>
+<div id="editIndicator" style="display:none;padding:6px 16px;background:rgba(37,99,235,.08);border-bottom:1px solid rgba(37,99,235,.15);font-size:11.5px;color:var(--erp-primary);font-weight:600;display:flex;align-items:center;gap:6px"><i class='bx bx-edit-alt'></i> <span id="editIndicatorText"></span></div>
 <div class="sec">
-<div class="sec-title"><i class='bx bx-image'></i> 로고</div>
+<div class="sec-title"><i class='bx bx-image'></i> 로고 설정</div>
 <div class="logo-area">
 <div class="logo-box" id="logoPv"><i class='bx bx-image-add ph' id="logoPh"></i><img id="logoImg" src="" style="display:none"></div>
 <div style="display:flex;flex-direction:column;gap:4px;flex:1">
@@ -107,20 +235,20 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <button class="b bo" id="btnClrLogo">제거</button><input type="file" id="logoFI" accept="image/*" style="display:none">
 </div></div>
 <div style="margin-top:6px;display:flex;gap:4px;align-items:center">
-<select id="logoTplSel" style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px"><option value="">— 로고 템플릿 —</option></select>
+<select id="logoTplSel" style="flex:1;min-width:0;padding:4px 6px;border:1px solid var(--erp-border);border-radius:2px;font-size:11px"><option value="">— 로고 템플릿 —</option></select>
 <button class="b bp" id="btnSaveTpl" title="템플릿 저장"><i class='bx bx-save'></i></button>
 <button class="b bo" id="btnDelTpl" title="삭제"><i class='bx bx-trash'></i></button>
 </div></div>
 <div class="sec">
-<div class="sec-title"><i class='bx bx-detail'></i> 라벨 정보</div>
+<div class="sec-title"><i class='bx bx-detail'></i> 라벨 품목 정보</div>
 <div class="fg"><label>라벨 이름 (저장용)</label><input id="fName" placeholder="예: K2 안전화 라벨"></div>
-<div class="fg"><label>인쇄 규격</label><select id="fLabelSpecId" style="padding:4px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:#f8fafc"><option value="">기본 (63.5 x 38.1)</option></select></div>
+<div class="fg"><label>인쇄 규격</label><select id="fLabelSpecId" style="padding:4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11.5px;background:#f8fafc"><option value="">기본 (63.5 x 38.1)</option></select></div>
 <div class="fg"><label>품명</label><input id="fProd" placeholder="에어윈드베스트 선풍기조끼"></div>
 <div class="fr"><div class="fg"><label>컬러</label><input id="fColor" placeholder="블랙"></div><div class="fg"><label>사이즈</label><input id="fSize" placeholder="105"></div></div>
 <div class="fr"><div class="fg"><label>제조사</label><input id="fMfr" placeholder="K2 세이프티"></div><div class="fg"><label>가격</label><input id="fPrice" placeholder="₩45,000"></div></div>
 <div class="fr"><div class="fg"><label>브랜드</label><input id="fOrigin" placeholder="K2"></div><div class="fg"><label>포장규격</label><input id="fSpec" placeholder="FREE"></div></div>
 <div class="fg" style="display:none"><label>바코드</label><input id="fBarcode" placeholder="8801234567890"></div>
-<div class="fg"><div style="display:flex;justify-content:space-between;align-items:center"><label>비고</label><button id="btnUpMemoImg" style="border:none;background:none;color:#7c3aed;font-size:11px;cursor:pointer;padding:0"><i class='bx bx-image-add'></i> 이미지 첨부</button></div><textarea id="fMemo" placeholder="메모"></textarea><div id="memoImgWrapper" style="display:none;margin-top:4px;position:relative"><img id="memoImg" src="" style="max-height:80px;border-radius:4px;border:1px solid #ddd"><button id="btnClrMemoImg" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class='bx bx-x'></i></button></div><input type="file" id="memoFI" accept="image/*" style="display:none"></div>
+<div class="fg"><div style="display:flex;justify-content:space-between;align-items:center"><label>비고</label><button id="btnUpMemoImg" style="border:none;background:none;color:var(--erp-primary);font-size:11px;cursor:pointer;padding:0"><i class='bx bx-image-add'></i> 이미지 첨부</button></div><textarea id="fMemo" placeholder="메모"></textarea><div id="memoImgWrapper" style="display:none;margin-top:4px;position:relative"><img id="memoImg" src="" style="max-height:80px;border-radius:2px;border:1px solid #ddd"><button id="btnClrMemoImg" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class='bx bx-x'></i></button></div><input type="file" id="memoFI" accept="image/*" style="display:none"></div>
 </div>
 <div class="actions">
 <button class="ba bp" id="btnSave"><i class='bx bx-save'></i> 저장</button>
@@ -129,52 +257,52 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </div></div>
 <!-- List -->
 <div class="tp" id="pList">
-<div style="padding: 12px 20px 0 20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px;">
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer; color:var(--gray-800); white-space:nowrap">
-        <input type="checkbox" id="chkAllLabels" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;"> 전체
+<div style="padding: 10px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--erp-border); background:#fff;">
+    <label style="display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; cursor:pointer; color:var(--erp-text); white-space:nowrap">
+        <input type="checkbox" id="chkAllLabels" style="width:14px;height:14px;accent-color:var(--erp-primary);cursor:pointer;"> 전체
     </label>
     <div style="flex:1;position:relative">
-        <i class='bx bx-search' style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:14px"></i>
-        <input type="text" id="lblSearch" placeholder="라벨 검색..." style="width:100%;padding:5px 8px 5px 28px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;box-sizing:border-box" autocomplete="off">
+        <i class='bx bx-search' style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--erp-text-muted);font-size:13px"></i>
+        <input type="text" id="lblSearch" placeholder="저장된 라벨 검색..." style="width:100%;padding:4px 6px 4px 26px;border:1px solid var(--erp-border);border-radius:2px;font-size:11.5px;outline:none;box-sizing:border-box" autocomplete="off">
     </div>
 </div>
 <div class="lbl-list" id="lblList"></div>
 <div class="print-bar">
-<div class="fg" style="margin-bottom:8px"><label>출력 용지</label><select id="selPaper"><option value="A4">A4</option><option value="A3">A3</option></select></div>
+<div class="fg" style="margin-bottom:6px"><label>출력 용지 규격</label><select id="selPaper"><option value="A4">A4</option><option value="A3">A3</option></select></div>
 <div class="print-info" id="calcInfo"></div>
-<button class="ba" style="background:#059669;color:#fff;width:100%;justify-content:center" id="btnPrint"><i class='bx bx-printer'></i> 선택 라벨 인쇄</button>
+<button class="ba" style="background:#059669;color:#fff;width:100%;justify-content:center" id="btnPrint"><i class='bx bx-printer'></i> 선택 라벨 시트 인쇄</button>
 </div></div>
 <!-- Specs -->
 <div class="tp" id="pSpecs">
 <div class="lbl-list" id="specList"></div>
-<button class="btn-add" id="btnAddSp"><i class='bx bx-plus'></i> 새 라벨 규격</button>
+<button class="btn-add" id="btnAddSp"><i class='bx bx-plus'></i> 새 라벨 규격 등록</button>
 </div>
 </div>
 <div class="right">
-<div class="pv-title"><i class='bx bx-show'></i> 미리보기 <label style="margin-left:auto;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkTableMode"> 테이블 모드</label><select id="pvZoom" style="margin-left:8px; margin-right:8px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; font-size:11px; font-weight:normal; outline:none"><option value="1">100%</option><option value="1.2">120%</option><option value="1.5" selected>150%</option><option value="2">200%</option></select><button class="btn-rst" id="btnUndo" title="실행 취소 (Ctrl+Z)"><i class='bx bx-undo'></i> 되돌리기</button><button class="btn-rst" id="btnRst" style="margin-left:4px"><i class='bx bx-reset'></i> 위치 초기화</button></div>
+<div class="pv-title"><i class='bx bx-show'></i> 인쇄 미리보기 <label style="margin-left:auto;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkTableMode"> 테이블 모드</label><select id="pvZoom" style="margin-left:8px; margin-right:8px; padding:2px 6px; border:1px solid var(--erp-border); border-radius:2px; font-size:11px; outline:none"><option value="1">100%</option><option value="1.2">120%</option><option value="1.5" selected>150%</option><option value="2">200%</option></select><button class="btn-rst" id="btnUndo" title="실행 취소 (Ctrl+Z)"><i class='bx bx-undo'></i> 되돌리기</button><button class="btn-rst" id="btnRst" style="margin-left:4px"><i class='bx bx-reset'></i> 위치 초기화</button></div>
 <div class="pv-hint">
-  <div style="display:flex;align-items:center;gap:4px"><i class='bx bx-move'></i> 요소를 드래그하여 위치 변경</div>
-  <div id="pvToolbar" style="display:none;align-items:center;gap:4px;margin-right:auto;margin-left:8px;padding-left:8px;border-left:1px solid var(--border)">
+  <div style="display:flex;align-items:center;gap:4px"><i class='bx bx-move'></i> 요소를 드래그하여 자유롭게 위치를 변경할 수 있습니다</div>
+  <div id="pvToolbar" style="display:none;align-items:center;gap:4px;margin-right:auto;margin-left:8px;padding-left:8px;border-left:1px solid var(--erp-border)">
     <button class="btn-align" id="btnTBold" style="font-weight:bold" title="굵게(B)">B</button>
     <button class="btn-align" id="btnTAlignL" title="텍스트 왼쪽 정렬"><i class='bx bx-align-left'></i></button>
     <button class="btn-align" id="btnTAlignC" title="텍스트 가운데 정렬"><i class='bx bx-align-middle'></i></button>
     <button class="btn-align" id="btnTAlignR" title="텍스트 오른쪽 정렬"><i class='bx bx-align-right'></i></button>
-    <input type="number" id="inTSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
-    <input type="number" id="inTScale" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
+    <input type="number" id="inTSize" style="width:46px;padding:2px 4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
+    <input type="number" id="inTScale" style="width:55px;padding:2px 4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
     <button id="btnTWrap" class="btn-align" title="줄바꿈 금지"><i class='bx bx-minus'></i></button>
     <button class="btn-align" id="btnTDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
   </div>
-  <div style="display:flex;gap:4px">
+  <div style="display:flex;gap:3px">
     <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
     <button class="btn-align" data-align="center" title="수평 중앙 정렬"><i class='bx bx-align-middle'></i></button>
     <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
-    <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
+    <div style="width:1px;height:14px;background:var(--erp-border);margin:0 3px"></div>
     <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
     <button class="btn-align" data-align="middle" title="수직 중앙 정렬"><i class='bx bx-vertical-center'></i></button>
     <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
-    <div style="width:1px;background:var(--border);margin:0 2px"></div>
+    <div style="width:1px;background:var(--erp-border);margin:0 2px"></div>
     <button class="btn-align" data-align="distribute" title="세로 간격 동일하게"><i class='bx bx-sort'></i></button>
-    <div style="width:1px;background:var(--border);margin:0 2px"></div>
+    <div style="width:1px;background:var(--erp-border);margin:0 2px"></div>
     <button class="btn-align" id="btnTGroup" title="그룹 (Ctrl+G)"><i class='bx bx-group'></i></button>
     <button class="btn-align" id="btnTUngroup" title="그룹 해제 (Ctrl+Shift+G)"><i class='bx bx-ungroup'></i></button>
   </div>
@@ -182,8 +310,8 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div id="pvC"></div>
 </div></div>
 <!-- Spec Modal -->
-<div class="sp-modal-bg" id="mSpec" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(2px)"><div class="sp-modal">
-<div class="modal-hd"><h3 id="mSpTitle">라벨 규격</h3><button class="x" id="mSpX"><i class='bx bx-x'></i></button></div>
+<div class="sp-modal-bg" id="mSpec"><div class="sp-modal">
+<div class="modal-hd"><h3 id="mSpTitle">라벨 규격 설정</h3><button class="x" id="mSpX"><i class='bx bx-x'></i></button></div>
 <div class="modal-bd">
 <div class="fg"><label>이름</label><input id="sName"></div>
 <div class="fr"><div class="fg"><label>가로(mm)</label><input type="number" id="sLW" value="63.5" step="0.1"></div><div class="fg"><label>세로(mm)</label><input type="number" id="sLH" value="38.1" step="0.1"></div></div>
@@ -196,47 +324,47 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </main></div>
 <!-- Sheet Editor Overlay -->
 <div class="sp-modal-bg" id="sheetEditor" style="display:none;position:fixed;inset:0;background:#f1f5f9;z-index:10000;flex-direction:column">
-    <div style="height:50px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-        <h2 style="margin:0;font-size:16px;font-weight:700"><i class='bx bx-layer'></i> 인쇄 시트 에디터</h2>
-        <div style="font-size:12px;color:var(--gray-500);margin-right:auto">마우스 드래그로 빈 칸 이동, 요소 다중 선택 및 정렬 가능</div>
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);cursor:pointer;margin-right:10px">
-            <input type="checkbox" id="chkCutLines" checked style="accent-color:#7c3aed"> 절취선(십자)
+    <div style="height:48px;background:#fff;border-bottom:1px solid var(--erp-border);display:flex;align-items:center;padding:0 16px;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <h2 style="margin:0;font-size:14px;font-weight:700"><i class='bx bx-layer text-primary'></i> 인쇄 시트 에디터</h2>
+        <div style="font-size:11.5px;color:var(--erp-text-muted);margin-right:auto">마우스 드래그로 빈 칸 이동, 요소 다중 선택 및 정렬 지원</div>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--erp-text);cursor:pointer;margin-right:10px">
+            <input type="checkbox" id="chkCutLines" checked style="accent-color:var(--erp-primary)"> 절취선(십자)
         </label>
         
-        <div id="shToolbar" style="display:none;align-items:center;gap:4px;border-right:1px solid var(--border);padding-right:12px;margin-right:4px">
+        <div id="shToolbar" style="display:none;align-items:center;gap:4px;border-right:1px solid var(--erp-border);padding-right:10px;margin-right:4px">
             <button class="btn-align" id="btnShBold" style="font-weight:bold" title="굵게(B)">B</button>
             <button class="btn-align" id="btnShAlignL" title="텍스트 왼쪽 정렬"><i class='bx bx-align-left'></i></button>
             <button class="btn-align" id="btnShAlignC" title="텍스트 가운데 정렬"><i class='bx bx-align-middle'></i></button>
             <button class="btn-align" id="btnShAlignR" title="텍스트 오른쪽 정렬"><i class='bx bx-align-right'></i></button>
-            <input type="number" id="inShSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
-            <input type="number" id="inShScale" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
+            <input type="number" id="inShSize" style="width:46px;padding:2px 4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
+            <input type="number" id="inShScale" style="width:55px;padding:2px 4px;border:1px solid var(--erp-border);border-radius:2px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
             <button class="btn-align" id="btnShWrap" title="줄바꿈 금지"><i class='bx bx-minus'></i></button>
             <button class="btn-align" id="btnShDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
-            <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
+            <div style="width:1px;height:14px;background:var(--erp-border);margin:0 4px"></div>
             <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
             <button class="btn-align" data-align="center" title="수평 중앙 정렬"><i class='bx bx-align-middle'></i></button>
             <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
             <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
             <button class="btn-align" data-align="middle" title="수직 중앙 정렬"><i class='bx bx-vertical-center'></i></button>
             <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
-            <div style="width:1px;background:var(--border);margin:0 2px"></div>
+            <div style="width:1px;background:var(--erp-border);margin:0 2px"></div>
             <button class="btn-align" data-align="distribute" title="세로 간격 동일하게"><i class='bx bx-sort'></i></button>
-            <div style="width:1px;background:var(--border);margin:0 2px"></div>
+            <div style="width:1px;background:var(--erp-border);margin:0 2px"></div>
             <button class="btn-align" id="btnShGroup" title="그룹 (Ctrl+G)"><i class='bx bx-group'></i></button>
             <button class="btn-align" id="btnShUngroup" title="그룹 해제 (Ctrl+Shift+G)"><i class='bx bx-ungroup'></i></button>
         </div>
         
         <button class="btn-rst" id="btnShUndo" title="실행 취소 (Ctrl+Z)"><i class='bx bx-undo'></i> 되돌리기</button>
-        <button class="btn" id="btnShCancel" style="background:#fff;color:var(--text);border:1px solid var(--border)">취소</button>
-        <button class="btn" id="btnShSaveLayout" style="background:#f59e0b;color:#fff;border-color:#d97706"><i class='bx bx-save'></i> 레이아웃 원본 저장</button>
-        <button class="btn btn-primary" id="btnShPrint"><i class='bx bx-printer'></i> 최종 인쇄</button>
+        <button class="b bo" id="btnShCancel">취소</button>
+        <button class="b" id="btnShSaveLayout" style="background:#f59e0b;color:#fff;border-color:#d97706"><i class='bx bx-save'></i> 레이아웃 원본 저장</button>
+        <button class="b bp" id="btnShPrint"><i class='bx bx-printer'></i> 최종 인쇄</button>
     </div>
-    <div id="sheetCanvasWrap" style="flex:1;overflow:auto;padding:30px;display:flex;flex-direction:column;align-items:center;gap:30px;position:relative">
+    <div id="sheetCanvasWrap" style="flex:1;overflow:auto;padding:24px;display:flex;flex-direction:column;align-items:center;gap:24px;position:relative">
         <div id="sheetCanvas" style="position:relative"></div>
     </div>
 </div>
 
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=36"></script>
+<script src="hq-label.js?v=20260930_1"></script>
 </body></html>

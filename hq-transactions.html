@@ -3,397 +3,433 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="K&G 본사 매입 현황 — 입출고 내역">
-    <title>입출고 내역</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="./Common/css/search-engine.css">
-    <style>.main-content { margin-left: 0; }</style>
-    <style>
-        /* ═══════════════════════════════════════
-           Drawer Styles
-           ═══════════════════════════════════════ */
-        .drawer-backdrop {
-            position: fixed; inset: 0; background: rgba(0,0,0,.3);
-            backdrop-filter: blur(2px); z-index: 499;
-            opacity: 0; visibility: hidden; transition: all .3s ease;
-        }
-        .drawer-backdrop.active { opacity: 1; visibility: visible; }
-
-        .drawer-panel {
-            position: fixed; top: 0; right: 0; bottom: 0;
-            width: 500px; max-width: 100vw;
-            background: var(--surface); z-index: 500;
-            display: flex; flex-direction: column;
-            box-shadow: -8px 0 32px rgba(0,0,0,.12);
-            transform: translateX(100%);
-            transition: transform .3s cubic-bezier(.4,0,.2,1);
-        }
-        .drawer-panel.active { transform: translateX(0); }
-
-        /* Drawer Header */
-        .drawer-header {
-            padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: linear-gradient(135deg, var(--primary) 0%, #1a2d7a 100%); color: #fff;
-            flex-shrink: 0;
-        }
-        .drawer-header.out-mode { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); }
-        .drawer-header h3 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-        .drawer-close {
-            background: rgba(255,255,255,.15); border: none; color: #fff; width: 32px; height: 32px;
-            border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; transition: background .2s;
-        }
-        .drawer-close:hover { background: rgba(255,255,255,.3); }
-
-        /* Mode Toggle in Drawer */
-        .drawer-toggle-group {
-            display: flex; gap: 2px; background: rgba(255,255,255,.15);
-            padding: 3px; border-radius: 8px; backdrop-filter: blur(4px);
-        }
-        .drawer-toggle-label {
-            padding: 6px 14px; border-radius: 6px; cursor: pointer;
-            font-weight: 600; font-size: 12px; color: rgba(255,255,255,.7);
-            transition: all .2s; display: flex; align-items: center; gap: 4px;
-        }
-        .drawer-toggle-group input[type="radio"] { display: none; }
-        .drawer-toggle-group input[type="radio"]:checked + .drawer-toggle-label {
-            background: #fff; color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,.15);
-        }
-        .drawer-header.out-mode .drawer-toggle-group input[type="radio"]:checked + .drawer-toggle-label {
-            color: #92400e;
-        }
-
-        /* Drawer Step Bar */
-        .drawer-step-bar {
-            padding: 12px 16px; display: flex; gap: 10px;
-            border-bottom: 1px solid var(--border); background: var(--gray-50);
-            flex-wrap: wrap; align-items: flex-end; flex-shrink: 0;
-        }
-        .drawer-fg {
-            display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 100px;
-        }
-        .drawer-fg label {
-            font-size: 10px; font-weight: 700; color: var(--gray-500);
-            text-transform: uppercase; letter-spacing: .5px;
-        }
-        .drawer-fg input {
-            padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
-            font-size: 12px; background: var(--surface); outline: none; transition: all .15s; color: var(--gray-800);
-        }
-        .drawer-fg input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-muted); }
-
-        /* Drawer Body (scrollable) */
-        .drawer-body {
-            flex: 1; overflow-y: auto; padding: 0;
-        }
-
-        /* VAT Settings Bar */
-        .drawer-vat-bar {
-            display: flex; gap: 12px; padding: 8px 16px;
-            border-bottom: 1px solid var(--border); background: var(--gray-50);
-        }
-        .drawer-vat-chip {
-            font-size: 11px; font-weight: 600; color: var(--gray-500);
-            display: flex; align-items: center; gap: 4px; cursor: pointer;
-        }
-        .drawer-vat-chip input {
-            margin: 0; width: 13px; height: 13px; accent-color: var(--primary); cursor: pointer;
-        }
-
-        /* Card-based Rows */
-        .drawer-cards { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
-        .drawer-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 10px; padding: 12px; position: relative;
-            transition: box-shadow .15s;
-        }
-        .drawer-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-        .drawer-card-num {
-            position: absolute; top: 8px; left: 12px;
-            font-size: 10px; font-weight: 800; color: var(--gray-300);
-        }
-        .drawer-card-remove {
-            position: absolute; top: 6px; right: 6px; z-index: 2;
-            background: transparent; border: none; color: var(--gray-400); cursor: pointer;
-            font-size: 16px; padding: 4px; border-radius: 4px; transition: all .15s;
-        }
-        .drawer-card-remove:hover { color: var(--danger); background: var(--danger-muted); }
-
-        /* Card Grid — IN mode */
-        .drawer-card-grid {
-            display: grid; gap: 6px 8px; margin-top: 2px;
-        }
-        .drawer-card-grid.in-mode {
-            grid-template-columns: 1fr 1fr;
-        }
-        .drawer-card-grid.out-mode {
-            grid-template-columns: 1fr;
-        }
-        .drawer-card-field {
-            display: flex; flex-direction: column; gap: 2px;
-        }
-        .drawer-card-field.full { grid-column: 1 / -1; }
-        .drawer-card-field label {
-            font-size: 10px; font-weight: 700; color: var(--gray-400);
-            text-transform: uppercase; letter-spacing: .3px;
-        }
-        .drawer-card-field input {
-            padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
-            font-size: 12px; background: var(--surface); outline: none;
-            transition: all .15s; color: var(--gray-800); width: 100%; box-sizing: border-box;
-        }
-        .drawer-card-field input:focus {
-            border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-muted);
-        }
-        .drawer-card-field input:hover { border-color: var(--gray-300); }
-        .drawer-card-field input.readonly-input {
-            color: var(--gray-500); cursor: not-allowed; background: var(--gray-50);
-        }
-
-        /* Price row — 3-col for IN, 1-col for OUT */
-        .drawer-card-prices {
-            display: grid; gap: 6px 8px; margin-top: 6px;
-            padding-top: 6px; border-top: 1px dashed var(--gray-200);
-        }
-        .drawer-card-prices.in-mode { grid-template-columns: repeat(3, 1fr); }
-        .drawer-card-prices.out-mode { grid-template-columns: repeat(2, 1fr); }
-
-        /* OUT mode search */
-        .drawer-autocomplete-wrapper { position: relative; }
-        .drawer-autocomplete-list {
-            position: absolute; top: 100%; left: 0; right: 0;
-            min-width: 260px; background: var(--surface);
-            border: 1px solid var(--border); border-radius: var(--radius);
-            box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 600;
-            max-height: 200px; overflow-y: auto; display: none;
-        }
-        .drawer-autocomplete-item {
-            padding: 8px 12px; cursor: pointer; font-size: 11px;
-            border-bottom: 1px solid var(--gray-100); text-align: left;
-            display: flex; justify-content: space-between; align-items: center;
-            transition: background .1s;
-        }
-        .drawer-autocomplete-item:last-child { border-bottom: none; }
-        .drawer-autocomplete-item:hover,
-        .drawer-autocomplete-item.active { background: var(--primary-muted); }
-        .drawer-ac-name { font-weight: 600; color: var(--gray-800); }
-        .drawer-ac-detail { font-size: 10px; color: var(--gray-500); }
-        .drawer-ac-stock {
-            font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px;
-            background: var(--success-muted); color: var(--success);
-        }
-
-        /* Stock Badge in drawer */
-        .drawer-stock-badge {
-            display: inline-block; font-size: 11px; font-weight: 700; text-align: center;
-            padding: 3px 8px; border-radius: 4px;
-        }
-        .drawer-stock-badge.ok { color: var(--success); background: var(--success-muted); }
-        .drawer-stock-badge.low { color: var(--warning); background: var(--warning-muted); }
-        .drawer-stock-badge.zero { color: var(--danger); background: var(--danger-muted); }
-
-        /* New Entry Button */
-        .btn-new-entry {
-            padding: 8px 16px; background: var(--primary); color: white; border: none;
-            border-radius: var(--radius); font-size: 13px; font-weight: 600;
-            cursor: pointer; display: flex; align-items: center; gap: 6px;
-            transition: all .2s; letter-spacing: -.2px;
-        }
-        .btn-new-entry:hover {
-            background: var(--primary-hover); transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(44,62,143,.25);
-        }
-        .btn-new-entry i { font-size: 16px; }
-
-        @media (max-width: 640px) {
-            .drawer-panel { width: 100vw; }
-            .drawer-invoice-table { display: block; overflow-x: auto; white-space: nowrap; }
-        }
-    </style>
+    <meta name="description" content="K&G 본사 매입 현황 — 입출고 내역 (ECOUNT ERP Style)">
+    <title>본사 입출고 내역</title>
+    <!-- Bootstrap 5 & Boxicons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Common Design Systems -->
+    <link rel="stylesheet" href="./Common/css/erp-grid.css">
+    <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
+    <link rel="stylesheet" href="hq-transactions.css?v=20260930_1">
 </head>
 <body>
-    <div class="app-container" id="mainApp">
-        <main class="main-content">
-            <div class="page-body">
-                <section class="section-block">
-                    <div class="panel">
-                        <div class="panel-header complex-header">
-                            <div class="header-top">
-                                <h2><i class='bx bx-list-ul'></i> 입출고 내역 <span class="product-count-text" id="totalCount">0건</span></h2>
-                                <div class="header-controls">
-                                    <div class="toggle-group" style="margin-right: 12px;">
-                                        <button class="source-tab active" data-filter="all">전체</button>
-                                        <button class="source-tab" data-filter="IN">매입</button>
-                                        <button class="source-tab" data-filter="OUT">출고</button>
-                                    </div>
-                                    <button id="newEntryBtn" class="btn-new-entry"><i class='bx bx-plus-circle'></i> 신규 내역 입력</button>
-                                    <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Search -->
-                        <div class="search-strip" style="padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface-container-lowest);">
-                            <div class="si-search-container">
-                                <div class="si-search-bar" id="search-conditions" style="margin-bottom: 0;">
-                                    <div class="si-condition-row">
-                                        <select class="si-field-select" data-role="field" id="searchField">
-                                            <option value="all">통합검색</option>
-                                            <option value="timestamp">일시</option>
-                                            <option value="type">구분</option>
-                                            <option value="supplier">공급사</option>
-                                            <option value="productName">상품명</option>
-                                            <option value="qty">수량</option>
-                                            <option value="price">단가</option>
-                                            <option value="remarks">비고</option>
-                                        </select>
-                                        <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력..." id="searchInput">
-                                        <div style="display:flex; gap:6px; align-items:center; margin-left: 8px;">
-                                            <label style="font-size:12px; color:var(--gray-500);">기간</label>
-                                            <input type="date" id="startDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
-                                            <span style="color:var(--gray-400);">~</span>
-                                            <input type="date" id="endDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
+    <!-- 인쇄 전용 헤더 -->
+    <div class="print-report-header">
+        <h3 style="font-size: 16pt; font-weight: bold; margin-bottom: 4px;">본사 매입 현황 — 입출고 거래 내역서</h3>
+        <p id="printMetaInfo" style="font-size: 9pt; color: #64748b; margin: 0;"></p>
+    </div>
+
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (타이틀 + 통계 + 구분 탭 + 액션 버튼) ── -->
+    <div class="erp-top-toolbar no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="erp-title-tag">
+                <i class='bx bx-transfer text-primary'></i> 본사 입출고 내역
+            </span>
+
+            <!-- 실시간 KPI 요약 배지 -->
+            <div class="erp-badge-group">
+                <span class="erp-stat-badge badge-dark" id="statTotalCountBadge">전체 0건</span>
+                <span class="erp-stat-badge badge-blue" id="statInBadge">매입: 0건 (₩0)</span>
+                <span class="erp-stat-badge badge-amber" id="statOutBadge">출고: 0건 (₩0)</span>
+                <span class="erp-stat-badge badge-emerald" id="statNetQtyBadge">순 수량: 0개</span>
+            </div>
+
+            <!-- 구분 퀵 필터 탭 (전체/매입/출고) -->
+            <div class="erp-tab-group ms-1" id="typeTabGroup">
+                <button type="button" class="erp-tab-btn active" data-type="all" onclick="app.setTypeFilter('all')">
+                    전체 <span class="erp-tab-badge" id="tabCountAll">0</span>
+                </button>
+                <button type="button" class="erp-tab-btn" data-type="IN" onclick="app.setTypeFilter('IN')">
+                    매입(입고) <span class="erp-tab-badge" id="tabCountIn">0</span>
+                </button>
+                <button type="button" class="erp-tab-btn" data-type="OUT" onclick="app.setTypeFilter('OUT')">
+                    출고 <span class="erp-tab-badge" id="tabCountOut">0</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openVoucherModal()" title="새 입출고 전표 작성 (단축키: F2)">
+                <i class='bx bx-plus-circle'></i> 신규 내역 입력 <span class="key-shortcut-badge">F2</span>
+            </button>
+            <button type="button" class="btn-erp btn-erp-danger" id="deleteBtn" onclick="app.handleDelete()" title="선택한 내역 일괄 삭제">
+                <i class='bx bx-trash'></i> 선택 삭제 (<span id="selectedCount">0</span>)
+            </button>
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="조회된 입출고 목록 엑셀 다운로드">
+                <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
+            <button type="button" class="btn-erp text-muted" onclick="app.printReport()" title="A4 인쇄 출력">
+                <i class='bx bx-printer'></i> 인쇄
+            </button>
+            <a href="hq-inventory.html" class="btn-erp" title="실시간 재고 화면으로 이동">
+                <i class='bx bx-box'></i> 실시간 재고
+            </a>
+            <a href="hq-label.html" class="btn-erp" title="라벨 출력 디자이너로 이동">
+                <i class='bx bx-purchase-tag-alt'></i> 라벨 출력
+            </a>
+        </div>
+    </div>
+
+    <!-- ── 2. ECOUNT ERP 2행 필터 리본 (날짜 프리셋 + 기간 + 다중검색 + 그리드도구) ── -->
+    <div class="erp-filter-ribbon no-print">
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 날짜 프리셋 -->
+            <div class="erp-date-presets me-1">
+                <button type="button" class="erp-preset-btn" onclick="app.setDatePreset('today')">오늘</button>
+                <button type="button" class="erp-preset-btn" onclick="app.setDatePreset('week')">1주일</button>
+                <button type="button" class="erp-preset-btn active" onclick="app.setDatePreset('month')">당월</button>
+                <button type="button" class="erp-preset-btn" onclick="app.setDatePreset('3months')">3개월</button>
+                <button type="button" class="erp-preset-btn" onclick="app.setDatePreset('all')">전체</button>
+            </div>
+
+            <!-- 날짜 범위 인풋 -->
+            <div class="d-flex align-items-center gap-1">
+                <input type="date" class="form-control erp-date-input" id="startDate" onchange="app.onDateRangeChange()">
+                <span class="text-muted small">~</span>
+                <input type="date" class="form-control erp-date-input" id="endDate" onchange="app.onDateRangeChange()">
+            </div>
+
+            <!-- 검색 대상 선택 -->
+            <select class="form-select erp-select-target ms-1" id="searchTarget" onchange="app.onSearchTargetChange()">
+                <option value="all">통합 검색</option>
+                <option value="supplier">공급사/처</option>
+                <option value="brand">브랜드</option>
+                <option value="productName">상품명</option>
+                <option value="remarks">비고</option>
+            </select>
+
+            <!-- 스마트 다중 검색창 (공백 구분 AND) -->
+            <div class="position-relative erp-search-box">
+                <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="스마트 다중 검색 (공백 구분)..." onkeyup="app.onSearchInputKeyup(event)">
+                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()">
+                    <i class='bx bx-x-circle'></i>
+                </button>
+            </div>
+
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.search()"><i class='bx bx-search'></i> 검색</button>
+            <button type="button" class="btn-erp" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 결과 내 재검색 -->
+            <div class="input-group input-group-sm erp-subsearch-group">
+                <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
+                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)">
+                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
+            </div>
+
+            <!-- 열 너비 조절 유틸 -->
+            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('txTable')" title="데이터 길이에 맞춰 열 너비를 자동으로 맞춥니다">
+                <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
+            </button>
+            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.resetWidths('txTable')" title="열 너비를 기본값으로 초기화합니다">
+                <i class='bx bx-reset text-secondary'></i> 기본값 초기화
+            </button>
+        </div>
+    </div>
+
+    <!-- ── 3. ERP 고밀도 시트 그리드 (입출고 내역 테이블) ── -->
+    <div class="erp-grid-wrapper shadow-sm" id="txGridWrapper">
+        <table id="txTable" class="erp-sheet-table">
+            <thead>
+                <tr>
+                    <th class="col-check no-print" style="width: 32px;"><input type="checkbox" id="selectAll" onchange="app.toggleSelectAll(this.checked)"></th>
+                    <th class="col-no" style="width: 42px;">No.</th>
+                    <th class="sortable text-center" data-sort="txDate" style="width: 85px;">일시 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable text-center" data-sort="type" style="width: 65px;">구분 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable text-center" data-sort="supplier" style="width: 105px;">공급사/출고처 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable text-start ps-2" data-sort="brand" style="width: 95px;">브랜드 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable text-start ps-2" data-sort="productName" style="min-width: 200px;">상품명 / 규격 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable col-num pe-2" data-sort="qty" style="width: 70px;">수량 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable col-num pe-2" data-sort="basePrice" style="width: 90px;">상품가 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable col-num pe-2" data-sort="freight" style="width: 80px;">운임 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable col-num pe-2" data-sort="price" style="width: 95px;">단가(공급가) <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable col-num pe-2" data-sort="totalAmount" style="width: 110px;">총 금액(공급가) <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="sortable text-start ps-2" data-sort="remarks" style="width: 130px;">비고 <i class='bx bx-sort sort-icon'></i></th>
+                    <th class="col-action text-center no-print" style="width: 60px;">관리</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="14" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 거래 내역을 불러오는 중입니다...</td></tr>
+            </tbody>
+            <tfoot id="tableFoot" class="d-none">
+                <tr>
+                    <td class="col-check no-print"></td>
+                    <td class="col-no text-center">합계</td>
+                    <td colspan="5" class="ps-2" id="footSummaryText">총 0건 거래</td>
+                    <td class="col-num pe-2" style="font-weight: 800; color: var(--erp-primary);" id="footTotalQty">0</td>
+                    <td class="col-num pe-2" id="footAvgBasePrice">-</td>
+                    <td class="col-num pe-2" id="footAvgFreight">-</td>
+                    <td class="col-num pe-2" id="footAvgPrice">-</td>
+                    <td class="col-num pe-2" style="font-weight: 800; color: #047857;" id="footTotalAmount">₩0</td>
+                    <td></td>
+                    <td class="col-action no-print"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- ── 4. 하단 상태바 및 페이지네이션 (.erp-bottom-bar) ── -->
+    <div class="erp-bottom-bar no-print">
+        <div class="d-flex align-items-center gap-2">
+            <span>선택: <strong id="bottomSelectedCount" class="text-primary">0</strong>건</span>
+            <span class="text-muted">|</span>
+            <span id="bottomPageInfo">총 0건 조회됨</span>
+            <span class="text-muted">|</span>
+            <label class="d-flex align-items-center gap-1">
+                <span>표시:</span>
+                <select class="erp-page-select" id="pageSizeSelect" onchange="app.changePageSize(this.value)">
+                    <option value="20">20개</option>
+                    <option value="50" selected>50개</option>
+                    <option value="100">100개</option>
+                    <option value="all">전체보기</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="erp-pagination" id="pagination">
+            <!-- JS 렌더링 -->
+        </div>
+    </div>
+
+    <!-- ── 5. ECOUNT ERP 입출고 일괄 등록 전표 모달 (#voucherModal) ── -->
+    <div class="modal fade" id="voucherModal" tabindex="-1" aria-labelledby="voucherModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center" id="voucherModalHeader">
+                    <div class="d-flex align-items-center gap-3">
+                        <h6 class="modal-title m-0">
+                            <i class='bx bx-receipt text-primary'></i> 입출고 전표 일괄 등록
+                        </h6>
+                        <!-- 매입 / 출고 모드 세그먼트 -->
+                        <div class="voucher-mode-toggle">
+                            <button type="button" class="voucher-mode-btn active mode-in" id="btnModeIn" onclick="app.setVoucherMode('IN')">
+                                <i class='bx bx-down-arrow-circle'></i> 매입(입고) 전표
+                            </button>
+                            <button type="button" class="voucher-mode-btn" id="btnModeOut" onclick="app.setVoucherMode('OUT')">
+                                <i class='bx bx-up-arrow-circle'></i> 출고 전표
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 bg-light">
+                    <!-- 마스터 기본 정보 테이블 -->
+                    <div class="border shadow-sm mb-2">
+                        <table class="erp-form-table">
+                            <colgroup>
+                                <col style="width: 80px;">
+                                <col style="width: 140px;">
+                                <col style="width: 90px;">
+                                <col style="width: 180px;">
+                                <col style="width: 80px;">
+                                <col>
+                                <col style="width: 180px;">
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <th>일자 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <input type="date" class="form-control text-center" id="vTxDate" required>
+                                    </td>
+                                    <th id="lblVSupplier">공급사 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <input type="text" class="form-control" id="vSupplier" placeholder="공급사/거래처 입력" value="최가유통">
+                                    </td>
+                                    <th>공통 비고</th>
+                                    <td>
+                                        <input type="text" class="form-control" id="vRemarks" placeholder="전표 전체 공통 메모 (선택)">
+                                    </td>
+                                    <td class="p-1 px-2 bg-white" id="voucherVatSettings">
+                                        <!-- VAT 옵션 -->
+                                        <div class="d-flex align-items-center gap-2" id="inVatOptions">
+                                            <label class="d-flex align-items-center gap-1 small text-muted" style="cursor:pointer;">
+                                                <input type="checkbox" id="chkBaseVat" checked onchange="app.recalcAllVoucherRows()"> 상품가 VAT별도
+                                            </label>
+                                            <label class="d-flex align-items-center gap-1 small text-muted" style="cursor:pointer;">
+                                                <input type="checkbox" id="chkFreightVat" checked onchange="app.recalcAllVoucherRows()"> 운임 VAT별도
+                                            </label>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="si-search-actions" style="margin-top: 8px;">
-                                    <button type="button" class="si-btn-reset" id="btn-clear-search"><i class="bx bx-reset"></i> 초기화</button>
-                                    <button type="button" class="si-btn-search" id="btn-do-search"><i class="bx bx-search"></i> 검색</button>
-                                </div>
+                                        <div class="d-flex align-items-center gap-2 d-none" id="outVatOptions">
+                                            <label class="d-flex align-items-center gap-1 small text-muted" style="cursor:pointer;">
+                                                <input type="checkbox" id="chkOutVat" onchange="app.recalcAllVoucherRows()"> 출고가 VAT별도
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 품목 명세서 그리드 래퍼 -->
+                    <div class="voucher-grid-wrapper bg-white shadow-sm mb-2">
+                        <table class="erp-form-table w-100" id="voucherItemTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35px;">No.</th>
+                                    <th style="min-width: 220px;" class="text-start ps-2">상품명 검색 / 선택 <span class="text-danger">*</span></th>
+                                    <th style="width: 100px;">브랜드</th>
+                                    <th style="width: 80px;">컬러</th>
+                                    <th style="width: 70px;">사이즈</th>
+                                    <th style="width: 70px;">수량 <span class="text-danger">*</span></th>
+                                    <th style="width: 90px;" class="col-price-in">상품가</th>
+                                    <th style="width: 80px;" class="col-price-in">운임</th>
+                                    <th style="width: 95px;" id="thVPrice">단가(공급가)</th>
+                                    <th style="width: 110px;">합계금액</th>
+                                    <th style="width: 40px;" class="text-center">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="voucherTbody">
+                                <!-- JS 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 전표 요약 및 행추가 바 -->
+                    <div class="p-2 px-3 bg-white border rounded-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn-erp" onclick="app.addVoucherRow()">
+                                <i class='bx bx-plus text-primary'></i> 행 추가 (Alt+A)
+                            </button>
+                            <button type="button" class="btn-erp text-muted" onclick="app.clearVoucherRows()">
+                                <i class='bx bx-reset'></i> 행 초기화
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div>
+                                <span class="text-muted me-1">품목:</span>
+                                <strong id="vSummaryCount" class="text-dark">0</strong>건
+                            </div>
+                            <div>
+                                <span class="text-muted me-1">총 수량:</span>
+                                <strong id="vSummaryQty" class="text-primary">0</strong>개
+                            </div>
+                            <div>
+                                <span class="text-muted me-1">전표 총액:</span>
+                                <strong id="vSummaryAmount" class="text-success fs-6">₩0</strong>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between">
+                    <span class="text-muted small">
+                        <i class='bx bx-info-circle'></i> <kbd>F8</kbd> 키를 누르면 바로 일괄 등록됩니다.
+                    </span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
+                        <button type="button" class="btn-erp btn-erp-primary" id="btnSubmitVoucher" onclick="app.submitVoucher()">
+                            <i class='bx bx-save'></i> 전표 일괄 저장 <span class="key-shortcut-badge">F8</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                        <!-- Table -->
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
+    <!-- ── 6. ECOUNT ERP 단일 내역 수정 모달 (#editModal) ── -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title m-0">
+                        <i class='bx bx-edit text-primary'></i> 입출고 내역 상세 수정
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 bg-light">
+                    <form id="editForm" onsubmit="app.handleSaveEdit(event)" autocomplete="off">
+                        <input type="hidden" id="editId">
+                        <div class="border shadow-sm mb-2">
+                            <table class="erp-form-table">
+                                <colgroup>
+                                    <col style="width: 100px;">
+                                    <col style="width: 40%;">
+                                    <col style="width: 100px;">
+                                    <col style="width: 40%;">
+                                </colgroup>
+                                <tbody>
                                     <tr>
-                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th class="sortable" data-sort="txDate">일시 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="type" style="text-align:center;">구분 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="supplier">공급사 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="productName">상품명/내역 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="basePrice">상품가 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="freight">운임 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="price">단가 <br><span style="font-size:10px;color:var(--gray-400);font-weight:400">(공급가)</span> <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="totalAmount">총 금액 <br><span style="font-size:10px;color:var(--gray-400);font-weight:400">(공급가)</span> <i class='bx bx-sort'></i></th>
-                                        <th>비고</th>
-                                        <th class="col-action">관리</th>
+                                        <th>일자 <span class="text-danger">*</span></th>
+                                        <td><input type="date" class="form-control" id="eTxDate" required></td>
+                                        <th>구분</th>
+                                        <td><input type="text" class="form-control text-muted fw-bold" id="eTxType" readonly style="background:#f1f5f9 !important;"></td>
                                     </tr>
-                                </thead>
-                                <tbody id="tableBody">
-                                    <tr class="loading-row"><td colspan="12"><div class="skeleton"></div></td></tr>
+                                    <tr>
+                                        <th>공급사/출고처</th>
+                                        <td><input type="text" class="form-control" id="eSupplier"></td>
+                                        <th>브랜드</th>
+                                        <td><input type="text" class="form-control" id="eBrand"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>상품명 <span class="text-danger">*</span></th>
+                                        <td colspan="3"><input type="text" class="form-control" id="eName" required></td>
+                                    </tr>
+                                    <tr>
+                                        <th>컬러</th>
+                                        <td><input type="text" class="form-control" id="eColor"></td>
+                                        <th>사이즈</th>
+                                        <td><input type="text" class="form-control" id="eSize"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>수량 <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="eQty" min="1" required oninput="app.recalcEditModal()">
+                                        </td>
+                                        <th>단가(공급가) <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2 fw-bold" id="ePrice" required oninput="app.formatMoneyInput(this); app.recalcEditModal()">
+                                        </td>
+                                    </tr>
+                                    <tr id="eRowInDetails">
+                                        <th>상품가 (VAT별도)</th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2" id="eBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
+                                        </td>
+                                        <th>운임 (VAT별도)</th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2" id="eFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>총 합계 금액</th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2 text-success fw-bold fs-6" id="eTotalAmount" readonly style="background:#f8fafc !important;">
+                                        </td>
+                                        <th>비고</th>
+                                        <td>
+                                            <input type="text" class="form-control" id="eRemarks" placeholder="메모">
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <div class="pagination" id="pagination"></div>
+                        <div class="d-none"><button type="submit" id="hiddenEditSubmitBtn"></button></div>
+                    </form>
+                </div>
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between">
+                    <span class="text-muted small">
+                        <i class='bx bx-info-circle'></i> <kbd>F8</kbd> 키를 누르면 수정사항이 저장됩니다.
+                    </span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="document.getElementById('hiddenEditSubmitBtn').click()">
+                            <i class='bx bx-save'></i> 수정 저장 <span class="key-shortcut-badge">F8</span>
+                        </button>
                     </div>
-                </section>
-            </div>
-        </main>
-    </div>
-
-    <!-- Edit Modal -->
-    <div id="editModal" class="modal">
-        <div class="modal-content" style="max-width: 640px;">
-            <div class="modal-header">
-                <h2>입출고 내역 수정</h2>
-                <button type="button" class="btn-close" id="closeEditModal"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="editForm" autocomplete="off">
-                    <input type="hidden" id="editId">
-                    <div class="form-row fr-row1">
-                        <div class="fg"><label for="eTxDate">일자</label><input type="date" id="eTxDate" required></div>
-                        <div class="fg"><label for="eTxType">구분</label><input type="text" id="eTxType" readonly class="readonly-input"></div>
-                        <div class="fg"><label for="eSupplier">공급사</label><input type="text" id="eSupplier"></div>
-                    </div>
-                    <div class="form-row fr-row2">
-                        <div class="fg"><label for="eBrand">브랜드</label><input type="text" id="eBrand"></div>
-                        <div class="fg"><label for="eName">상품명</label><input type="text" id="eName"></div>
-                        <div class="fg"><label for="eColor">컬러</label><input type="text" id="eColor"></div>
-                        <div class="fg"><label for="eSize">사이즈</label><input type="text" id="eSize"></div>
-                    </div>
-                    <div class="form-row fr-row3" style="grid-template-columns: repeat(5, 1fr);">
-                        <div class="fg"><label for="eQty">수량</label><input type="number" id="eQty" min="1" required></div>
-                        <div class="fg" id="eBasePriceCol"><label for="eBasePrice">상품가</label>
-                            <div class="input-vat-group"><input type="number" id="eBasePrice" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eBaseVat" checked><span>VAT별도</span></label></div>
-                        </div>
-                        <div class="fg" id="eFreightCol"><label for="eFreight">운임</label>
-                            <div class="input-vat-group"><input type="number" id="eFreight" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eFreightVat" checked><span>VAT별도</span></label></div>
-                        </div>
-                        <div class="fg"><label id="eLblPrice" for="ePrice">단가 <span style="font-size:11px;color:var(--gray-400);font-weight:normal;">(공급가)</span></label>
-                            <input type="number" id="ePrice" min="0" required placeholder="자동계산" class="readonly-input">
-                        </div>
-                        <div class="fg"><label for="eTotalAmount">총 금액</label>
-                            <input type="text" id="eTotalAmount" class="readonly-input" readonly style="font-weight:700; color:var(--primary); font-size:16px;">
-                        </div>
-                    </div>
-                    <div class="form-row fr-row4">
-                        <div class="fg"><label for="eRemarks">비고</label><input type="text" id="eRemarks"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-outline" id="cancelEdit">취소</button>
-                        <button type="submit" class="btn-primary"><i class='bx bx-save'></i> 수정하기</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ Entry Drawer ═══ -->
-    <div class="drawer-backdrop" id="drawerBackdrop"></div>
-    <div class="drawer-panel" id="drawerPanel">
-        <div class="drawer-header" id="drawerHeader">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <h3><i class='bx bx-package'></i> 입출고 등록</h3>
-                <div class="drawer-toggle-group">
-                    <input type="radio" id="dTypeIn" name="dTxType" value="IN" checked>
-                    <label for="dTypeIn" class="drawer-toggle-label"><i class='bx bx-down-arrow-circle'></i> 매입</label>
-                    <input type="radio" id="dTypeOut" name="dTxType" value="OUT">
-                    <label for="dTypeOut" class="drawer-toggle-label"><i class='bx bx-up-arrow-circle'></i> 출고</label>
                 </div>
             </div>
-            <button class="drawer-close" id="drawerCloseBtn"><i class='bx bx-x'></i></button>
-        </div>
-
-        <div class="drawer-step-bar">
-            <div class="drawer-fg" style="flex:0 0 120px;"><label>일자</label><input type="date" id="dTxDate"></div>
-            <div class="drawer-fg" style="flex:0 0 140px;"><label>공급사 / 출고처</label><input type="text" id="dSupplier" placeholder="공급사명 입력"></div>
-            <div class="drawer-fg" style="flex:2;"><label>비고</label><input type="text" id="dRemarks" placeholder="전체 항목에 적용될 메모 (선택)"></div>
-        </div>
-
-        <div class="drawer-body">
-            <!-- VAT settings bar -->
-            <div class="drawer-vat-bar" id="dVatBar">
-                <label class="drawer-vat-chip"><input type="checkbox" class="d-col-vat" data-target="basePrice" checked> 상품가 VAT별도</label>
-                <label class="drawer-vat-chip"><input type="checkbox" class="d-col-vat" data-target="freight" checked> 운임 VAT별도</label>
-            </div>
-            <div class="drawer-cards" id="dItemsBody">
-                <!-- Cards will be added dynamically -->
-            </div>
-            <button type="button" class="drawer-btn-add-row" id="dBtnAddRow"><i class='bx bx-plus'></i> 상품 행 추가</button>
-        </div>
-
-        <div class="drawer-footer">
-            <div class="drawer-summary">
-                <div class="drawer-summary-chip"><i class='bx bx-box' style="font-size:16px;color:var(--gray-400)"></i> 등록 대기 <strong id="dSummaryRows">0</strong> 건</div>
-                <div class="drawer-summary-chip" id="dSummaryTotalWrap" style="display:none;">총액 <strong id="dSummaryTotal">0</strong> 원</div>
-            </div>
-            <div class="drawer-footer-actions">
-                <button type="button" class="drawer-btn-reset" id="dResetBtn"><i class='bx bx-reset'></i> 초기화</button>
-                <button type="button" class="drawer-btn-submit" id="dSubmitBtn"><i class='bx bx-check'></i> 일괄 등록</button>
-            </div>
         </div>
     </div>
 
-    <div id="toastContainer" class="toast-container"></div>
-    <script src="hq-transactions.js"></script>
-    <script src="hq-entry-drawer.js"></script>
+    <!-- 토스트 컨테이너 -->
+    <div id="toastContainer" class="toast-container no-print"></div>
+
+    <!-- 스크립트 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="./Common/js/erp-grid-resizer.js"></script>
+    <script src="hq-transactions.js?v=20260930_1"></script>
 </body>
 </html>
