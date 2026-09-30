@@ -1423,9 +1423,14 @@ const app = {
         } catch(e) {}
 
         const title = lastOpt.title || '견  적  서';
-        if (document.getElementById('printCustomTitle')) {
-            document.getElementById('printCustomTitle').value = title;
+        const titleInput = document.getElementById('printCustomTitle');
+        if (titleInput) {
+            titleInput.value = title;
+            titleInput.oninput = (e) => {
+                this.updateNotesOptionLabel(e.target.value);
+            };
         }
+        this.updateNotesOptionLabel(title);
 
         document.querySelectorAll('#printPresetChips .print-preset-chip').forEach(btn => {
             btn.classList.toggle('active', btn.textContent.trim() === title.replace(/\s+/g, ''));
@@ -1480,6 +1485,16 @@ const app = {
         document.querySelectorAll('#printPresetChips .print-preset-chip').forEach(btn => {
             btn.classList.toggle('active', btn.textContent.trim() === title.replace(/\s+/g, ''));
         });
+        this.updateNotesOptionLabel(title);
+    },
+
+    updateNotesOptionLabel: function(title) {
+        const lbl = document.getElementById('lblPrintOptNotes');
+        if (!lbl) return;
+        const isQuote = (title || '').replace(/\s+/g, '').includes('견적');
+        lbl.textContent = isQuote
+            ? '하단 [특기사항 및 납품조건] 영역 포함'
+            : '하단 [특기사항] 영역 포함 (납품조건 메타 제외)';
     },
 
     executePrintWithOptions: function() {
@@ -1640,22 +1655,33 @@ const app = {
             priceHeaders = `<th style="width: 85px;">단가</th>`;
         }
 
-        // 하단 특기사항 영역
+        // 하단 특기사항 영역 [사용자 요청: 견적서가 아닐 때는 납품조건 메타정보(작성일자, 유효기간, 납기일, 납품장소, 결제조건) 제외]
         let notesHtml = '';
         if (includeNotes) {
-            notesHtml = `
-                <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
-                    <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
-                    <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
-                        <span>• <b>${dateLabel}</b>: ${escHtml(q.issue_date || '-')}</span>
-                        <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
-                        ${q.delivery_date ? `<span>• <b>납기일</b>: ${escHtml(q.delivery_date)}</span>` : ''}
-                        ${q.delivery_place ? `<span>• <b>납품장소</b>: ${escHtml(q.delivery_place)}</span>` : ''}
-                        ${q.payment_terms ? `<span>• <b>결제조건</b>: ${escHtml(q.payment_terms)}</span>` : ''}
+            if (isQuote) {
+                // [견적서]: 특기사항 및 납품조건 타이틀 + 메타 정보 바(견적일자, 유효기간, 납기, 장소, 결제조건) + 메모 본문
+                notesHtml = `
+                    <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
+                        <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
+                        <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
+                            <span>• <b>견적일자</b>: ${escHtml(q.issue_date || '-')}</span>
+                            <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
+                            ${q.delivery_date ? `<span>• <b>납기일</b>: ${escHtml(q.delivery_date)}</span>` : ''}
+                            ${q.delivery_place ? `<span>• <b>납품장소</b>: ${escHtml(q.delivery_place)}</span>` : ''}
+                            ${q.payment_terms ? `<span>• <b>결제조건</b>: ${escHtml(q.payment_terms)}</span>` : ''}
+                        </div>
+                        <div style="white-space: pre-wrap; line-height: 1.45;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
                     </div>
-                    <div style="white-space: pre-wrap; line-height: 1.45;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
-                </div>
-            `;
+                `;
+            } else {
+                // [견적서 외(제안 리스트, 단가표, 거래명세서 등)]: 작성일자/유효기간/납기일/납품장소/결제조건 메타 제외, 순수 메모 본문만 깔끔하게 출력
+                notesHtml = `
+                    <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
+                        <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 ]</div>
+                        <div style="white-space: pre-wrap; line-height: 1.45;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
+                    </div>
+                `;
+            }
         }
 
         // 수신처 정보 블록 (선택 여부에 따라 출력)
