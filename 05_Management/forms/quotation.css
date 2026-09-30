@@ -778,3 +778,215 @@ body {
         color: #111111;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   인쇄 옵션 모달 전용 프리미엄 디자인
+   ═══════════════════════════════════════════════════════════════ */
+.print-modal-card {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+    overflow: hidden;
+}
+
+.print-modal-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 18px !important;
+}
+
+.print-modal-icon-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #eff6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--erp-primary, #2563eb);
+}
+
+.print-option-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.print-section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 1. 프리셋 칩 */
+.print-preset-chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.print-preset-chip {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    outline: none;
+    line-height: 1.3;
+}
+
+.print-preset-chip:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+}
+
+.print-preset-chip.active {
+    background: var(--erp-primary, #2563eb) !important;
+    color: #ffffff !important;
+    border-color: var(--erp-primary, #2563eb) !important;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+}
+
+.print-title-input {
+    font-size: 13.5px !important;
+    letter-spacing: 0.8px;
+    padding: 7px 12px !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+.print-title-input:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* 2. 금액 표시 모드 3분할 세그먼트 카드 */
+.print-mode-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.print-mode-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 9px 10px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    user-select: none;
+    margin: 0;
+}
+
+.print-mode-card:hover {
+    border-color: #93c5fd;
+    background: #f8fafc;
+}
+
+.print-mode-card:has(input:checked) {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px #2563eb;
+}
+
+.print-mode-card input[type="radio"] {
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #2563eb;
+}
+
+.print-mode-card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.print-mode-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.25;
+}
+
+.print-mode-card:has(input:checked) .print-mode-card-title {
+    color: #1d4ed8;
+}
+
+.print-mode-card-desc {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 3px;
+    line-height: 1.25;
+}
+
+/* 3. 출력 세부 옵션 박스 */
+.print-suboptions-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 11px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.print-suboption-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    margin: 0;
+    font-size: 12px;
+    color: #1e293b;
+    user-select: none;
+}
+
+.print-suboption-row input[type="checkbox"] {
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #2563eb;
+}
+
+.print-suboption-text {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.print-suboption-text .sub-hint {
+    font-size: 10.5px;
+    color: #64748b;
+    font-weight: 400;
+}
+
+.print-suboption-nested {
+    margin-left: 24px;
+    padding-left: 10px;
+    border-left: 2px solid #cbd5e1;
+    margin-top: -2px;
+    margin-bottom: 2px;
+    transition: all 0.2s ease;
+}
+
+.print-modal-footer {
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    padding: 10px 18px !important;
+}
+
