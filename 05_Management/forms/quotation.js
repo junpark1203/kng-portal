@@ -116,6 +116,8 @@ const app = {
     quotations: [],
     currentQuote: null,
     editingItemIndexForImage: null,
+    savedSnapshot: null,
+    isDirty: false,
 
     // 공급자 기본 설정 (거래명세서 표준 100% 일치)
     supplierSettings: {
@@ -143,11 +145,101 @@ const app = {
         this.fetchQuotations();
         this.setupKeyboardShortcuts();
         this.setupImageDropzone();
+        this.setupUnsavedChangesProtection();
 
         // 윈도우 포커스 시 견적 바구니 갱신 체크
         window.addEventListener('focus', () => {
             this.checkQuoteCart();
         });
+    },
+
+    // ── 미저장 변경사항 보호 엔진 ──
+    setupUnsavedChangesProtection: function() {
+        const editorView = document.getElementById('quotationEditorView');
+        if (editorView) {
+            editorView.addEventListener('input', () => { this.isDirty = true; });
+            editorView.addEventListener('change', () => { this.isDirty = true; });
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+            if (this.hasUnsavedChanges()) {
+                e.preventDefault();
+                e.returnValue = '작성 중이거나 변경된 견적서가 저장되지 않았습니다. 페이지를 벗어나시겠습니까?';
+                return e.returnValue;
+            }
+        });
+
+        window.hasUnsavedChanges = () => this.hasUnsavedChanges();
+    },
+
+    getFormSnapshot: function() {
+        const getVal = (id) => document.getElementById(id)?.value?.trim() || '';
+        const items = (this.currentQuote?.items || []).map(it => ({
+            name: it.product_name || '',
+            spec: it.spec || '',
+            qty: Number(it.qty) || 0,
+            unit: it.unit || '',
+            price: Number(it.unit_price) || 0,
+            remarks: it.remarks || '',
+            img: it.image_url || ''
+        }));
+
+        const rows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
+        rows.forEach(tr => {
+            const idx = parseInt(tr.dataset.index, 10);
+            if (items[idx]) {
+                const nameEl = tr.querySelector('input[placeholder*="품목명"]');
+                const specEl = tr.querySelector('input[placeholder*="규격"]');
+                const qtyEl = tr.querySelector('input[type="number"]');
+                const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
+                const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
+                const remarksEl = tr.querySelector('input[placeholder*="비고"]');
+
+                if (nameEl) items[idx].name = nameEl.value.trim();
+                if (specEl) items[idx].spec = specEl.value.trim();
+                if (qtyEl) items[idx].qty = Number(qtyEl.value) || 0;
+                if (unitEl) items[idx].unit = unitEl.value.trim();
+                if (priceEl) items[idx].price = Number(priceEl.value) || 0;
+                if (remarksEl) items[idx].remarks = remarksEl.value.trim();
+            }
+        });
+
+        return JSON.stringify({
+            id: document.getElementById('quoteId')?.value?.trim() || '',
+            custName: getVal('custName'),
+            custAttn: getVal('custAttn'),
+            custTel: getVal('custTel'),
+            custEmail: getVal('custEmail'),
+            projectName: getVal('projectName'),
+            issueDate: getVal('issueDate'),
+            validUntil: getVal('validUntil'),
+            deliveryDate: getVal('deliveryDate'),
+            deliveryPlace: getVal('deliveryPlace'),
+            paymentTerms: getVal('paymentTerms'),
+            status: getVal('quoteStatus'),
+            vatType: getVal('vatTypeSelect'),
+            notes: getVal('notesInstructions'),
+            showImages: document.getElementById('optShowImages')?.checked ? 1 : 0,
+            includeSeal: document.getElementById('optIncludeSeal')?.checked ? 1 : 0,
+            items: items
+        });
+    },
+
+    hasUnsavedChanges: function() {
+        if (this.currentView !== 'editor') return false;
+        if (!this.savedSnapshot) return false;
+
+        const currentSnapStr = this.getFormSnapshot();
+        if (currentSnapStr === this.savedSnapshot) return false;
+
+        try {
+            const snap = JSON.parse(currentSnapStr);
+            if (!snap.id && !snap.custName && snap.items.length === 0) {
+                return false;
+            }
+        } catch(e) {}
+
+        return true;
     },
 
     // ── 공급자 설정 로드 & 반영 ──
@@ -176,7 +268,15 @@ const app = {
     },
 
     // ── 뷰 모드 전환 ──
-    switchView: function(view) {
+    switchView: function(view, force = false) {
+        if (view === 'list') {
+            if (!force && this.currentView === 'editor' && this.hasUnsavedChanges()) {
+                if (!confirm('작성 중이거나 변경된 견적서가 저장되지 않았습니다.\n목록으로 이동하시겠습니까? (저장하지 않은 내용은 사라집니다)')) {
+                    return;
+                }
+            }
+        }
+
         this.currentView = view;
         const listView = document.getElementById('quotationListView');
         const editorView = document.getElementById('quotationEditorView');
@@ -201,7 +301,7 @@ const app = {
             editorActions.classList.remove('d-none');
             listActions.classList.add('d-none');
             if (!this.currentQuote) {
-                this.initNewQuotation();
+                this.initNewQuotation(true);
             }
         }
     },
@@ -267,7 +367,13 @@ const app = {
     },
 
     // ── 신규 견적서 폼 초기화 ──
-    initNewQuotation: function() {
+    initNewQuotation: function(force = false) {
+        if (!force && this.hasUnsavedChanges()) {
+            if (!confirm('현재 작성 중이거나 변경된 내용이 저장되지 않았습니다.\n입력 내용을 비우고 새로 작성하시겠습니까?')) {
+                return;
+            }
+        }
+
         const todayStr = new Date().toISOString().split('T')[0];
         const validDate = new Date();
         validDate.setDate(validDate.getDate() + 15);
@@ -300,6 +406,10 @@ const app = {
         this.bindEditorFields();
         this.renderEditorItems();
         this.recalcTotals();
+
+        // 초기 스냅샷 기록 (신규 상태)
+        this.savedSnapshot = this.getFormSnapshot();
+        this.isDirty = false;
     },
 
     bindEditorFields: function() {
@@ -449,6 +559,12 @@ const app = {
 
     // ── 견적서 상세 로드 ──
     loadQuotationDetail: function(id) {
+        if (this.currentView === 'editor' && this.hasUnsavedChanges()) {
+            if (!confirm('현재 작성 중이거나 변경된 견적서가 저장되지 않았습니다.\n저장하지 않고 다른 견적서를 불러오시겠습니까?')) {
+                return;
+            }
+        }
+
         showToast('견적서 상세를 불러오는 중입니다...', 'info');
         authFetch(`${API_BASE}/${id}`)
             .then(res => {
@@ -460,7 +576,9 @@ const app = {
                 this.bindEditorFields();
                 this.renderEditorItems();
                 this.recalcTotals();
-                this.switchView('editor');
+                this.switchView('editor', true);
+                this.savedSnapshot = this.getFormSnapshot();
+                this.isDirty = false;
             })
             .catch(err => {
                 console.warn('서버 상세 조회 실패, 로컬 조회 시도:', err);
@@ -474,7 +592,9 @@ const app = {
                     this.bindEditorFields();
                     this.renderEditorItems();
                     this.recalcTotals();
-                    this.switchView('editor');
+                    this.switchView('editor', true);
+                    this.savedSnapshot = this.getFormSnapshot();
+                    this.isDirty = false;
                 } else {
                     showToast('견적서 정보를 불러오지 못했습니다: ' + err.message, 'error');
                 }
@@ -483,6 +603,12 @@ const app = {
 
     // ── 과거 견적서 복사하여 재견적 작성 (Re-Quote) ──
     duplicateQuotation: function(id) {
+        if (this.currentView === 'editor' && this.hasUnsavedChanges()) {
+            if (!confirm('현재 작성 중이거나 변경된 견적서가 저장되지 않았습니다.\n저장하지 않고 과거 견적서를 복사하여 새로 작성하시겠습니까?')) {
+                return;
+            }
+        }
+
         const proceedWithQuote = (quote) => {
             const todayStr = new Date().toISOString().split('T')[0];
             const validDate = new Date();
@@ -1239,11 +1365,13 @@ const app = {
             } catch(e) {}
 
             showToast(`견적서가 안전하게 저장되었습니다! (${savedNumber})`, 'success');
+            this.savedSnapshot = this.getFormSnapshot();
+            this.isDirty = false;
             this.fetchQuotations();
 
             // 0.8초 후 견적서 보관함 목록 탭으로 자동 전환하여 저장된 내역 확인
             setTimeout(() => {
-                this.switchView('list');
+                this.switchView('list', true);
             }, 800);
         })
         .catch(err => {
@@ -1255,11 +1383,13 @@ const app = {
             document.getElementById('badgeQuoteNumber').textContent = localBackupQuoteNumber;
 
             showToast(`로컬 보관함에 안전하게 저장되었습니다! (${localBackupQuoteNumber})`, 'success');
+            this.savedSnapshot = this.getFormSnapshot();
+            this.isDirty = false;
             this.fetchQuotations();
 
             // 0.8초 후 견적서 보관함 목록 탭으로 자동 전환
             setTimeout(() => {
-                this.switchView('list');
+                this.switchView('list', true);
             }, 800);
         });
     },
@@ -1684,8 +1814,7 @@ const app = {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'F2') {
                 e.preventDefault();
-                this.switchView('editor');
-                this.initNewQuotation();
+                this.openNewEditor();
             } else if (e.key === 'F8') {
                 if (this.currentView === 'editor') {
                     e.preventDefault();
@@ -1715,8 +1844,13 @@ const app = {
     },
 
     openNewEditor: function() {
-        this.switchView('editor');
-        this.initNewQuotation();
+        if (this.currentView === 'editor' && this.hasUnsavedChanges()) {
+            if (!confirm('현재 작성 중이거나 변경된 견적서가 저장되지 않았습니다.\n새 견적서를 작성하시겠습니까?')) {
+                return;
+            }
+        }
+        this.switchView('editor', true);
+        this.initNewQuotation(true);
     }
 };
 

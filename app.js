@@ -1535,8 +1535,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 모든 메뉴 링크에 클릭 핸들러 연결
-    document.querySelectorAll('.menu a[data-nav]').forEach(function(link) {
+    document.querySelectorAll('a[data-nav]').forEach(function(link) {
         link.addEventListener('click', function(e) {
+            // [미저장 변경사항 보호] 현재 iframe 페이지에서 작성 중인 내용이 있는지 체크
+            if (appIframe && appIframe.contentWindow) {
+                try {
+                    if (typeof appIframe.contentWindow.hasUnsavedChanges === 'function' && appIframe.contentWindow.hasUnsavedChanges()) {
+                        if (!confirm('작성 중이거나 변경된 내용이 저장되지 않았습니다.\n저장하지 않고 다른 메뉴로 이동하시겠습니까?')) {
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+                } catch(err) {}
+            }
+
             e.preventDefault();
             var navType = link.getAttribute('data-nav');
             var href = link.getAttribute('href');
