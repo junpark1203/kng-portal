@@ -22,29 +22,63 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 
+let _authReady = null;
+function waitForAuth(timeout = 6000) {
+    if (_authReady) return _authReady;
+    _authReady = new Promise((res) => {
+        const s = Date.now();
+        (function poll() {
+            try {
+                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+                    window.parent.getAuthToken().then(t => {
+                        if (t) { res(t); }
+                        else if (Date.now() - s < timeout) { setTimeout(poll, 300); }
+                        else { _authReady = null; res(null); }
+                    }).catch(() => {
+                        if (Date.now() - s < timeout) setTimeout(poll, 300);
+                        else { _authReady = null; res(null); }
+                    });
+                } else if (auth && auth.currentUser) {
+                    auth.currentUser.getIdToken(true).then(res).catch(() => res(null));
+                } else if (Date.now() - s < timeout) {
+                    setTimeout(poll, 300);
+                } else {
+                    _authReady = null;
+                    res(null);
+                }
+            } catch (e) {
+                if (Date.now() - s < timeout) setTimeout(poll, 300);
+                else { _authReady = null; res(null); }
+            }
+        })();
+    });
+    return _authReady;
+}
+
 async function authFetch(url, options = {}) {
     let token = null;
-    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
-    if (!token && typeof auth !== 'undefined' && auth.currentUser) token = await auth.currentUser.getIdToken(true);
+    try {
+        if (window.parent && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+        }
+    } catch (e) {}
+    if (!token && typeof auth !== 'undefined' && auth.currentUser) {
+        try { token = await auth.currentUser.getIdToken(); } catch(e){}
+    }
+    if (!token) {
+        try { token = await waitForAuth(); } catch(e){}
+    }
     if (!options.headers) options.headers = {};
     if (token) options.headers['Authorization'] = 'Bearer ' + token;
     return fetch(url, options);
 }
 
 // ==========================================
-// API 엔드포인트 설정 (로컬 / 원격 자동 감지)
+// API 엔드포인트 설정 (KNG 공식 운영 백엔드 API 연결)
 // ==========================================
-const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
-    ? 'http://localhost:3000/api/quotations'
-    : 'https://kng.junparks.com/api/quotations';
-
-const API_BASE_HQ = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
-    ? 'http://localhost:3000/api/hq'
-    : 'https://kng.junparks.com/api/hq';
-
-const API_BASE_SELLER_K = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
-    ? 'http://localhost:3000/api/seller-k/products'
-    : 'https://kng.junparks.com/api/seller-k/products';
+const API_BASE = 'https://kng.junparks.com/api/quotations';
+const API_BASE_HQ = 'https://kng.junparks.com/api/hq';
+const API_BASE_SELLER_K = 'https://kng.junparks.com/api/seller-k/products';
 
 // ==========================================
 // 유틸리티
@@ -1053,6 +1087,32 @@ const app = {
     // ═══════════════════════════════════════════════════════════════
     saveQuotation: function() {
         const custName = document.getElementById('custName').value.trim();
+        // 0. 테이블 DOM의 최신 입력값 동기화
+        const itemRows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
+        if (itemRows.length > 0 && Array.isArray(this.currentQuote?.items)) {
+            itemRows.forEach(tr => {
+                const idx = parseInt(tr.dataset.index, 10);
+                const item = this.currentQuote.items[idx];
+                if (!item) return;
+
+                const nameEl = tr.querySelector('input[placeholder*="품목명"]');
+                const specEl = tr.querySelector('input[placeholder*="규격"]');
+                const qtyEl = tr.querySelector('input[type="number"]');
+                const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
+                const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
+                const remarksEl = tr.querySelector('input[placeholder*="비고"]');
+
+                if (nameEl && nameEl.value.trim()) item.product_name = nameEl.value.trim();
+                if (specEl) item.spec = specEl.value.trim();
+                if (qtyEl) item.qty = Number(qtyEl.value) || 1;
+                if (unitEl && unitEl.value.trim()) item.unit = unitEl.value.trim();
+                if (priceEl) item.unit_price = Number(priceEl.value) || 0;
+                if (remarksEl) item.remarks = remarksEl.value.trim();
+            });
+            this.recalcTotals();
+        }
+
+        const custName = document.getElementById('custName').value.trim();
         if (!custName) {
             showToast('수신처(거래처명)를 입력해주세요.', 'warning');
             document.getElementById('custName').focus();
@@ -1061,11 +1121,23 @@ const app = {
 
         const items = this.currentQuote.items || [];
         if (items.length === 0) {
-            showToast('견적 품목을 최소 하나 이상 추가해주세요.', 'warning');
+            showToast('견적 품목을 최소 하나 이상 추가해주세요. (직접 추가 또는 불러오기)', 'warning');
             return;
         }
 
+        // 품목명 필수 체크
+        for (let i = 0; i < items.length; i++) {
+            if (!items[i].product_name || !items[i].product_name.trim()) {
+                showToast(`${i + 1}번째 품목의 품목명을 입력해주세요.`, 'warning');
+                return;
+            }
+        }
+
+        const existingId = document.getElementById('quoteId')?.value.trim() || this.currentQuote.id;
+        const isUpdate = Boolean(existingId);
+
         const payload = Object.assign({}, this.currentQuote, {
+            id: existingId || '',
             customer_name: custName,
             customer_attn: document.getElementById('custAttn').value.trim(),
             customer_tel: document.getElementById('custTel').value.trim(),
@@ -1090,24 +1162,26 @@ const app = {
             supplier_bank: this.supplierSettings.bank
         });
 
-        const isUpdate = !!payload.id;
-        if (!payload.id) {
-            payload.id = 'qt_' + Date.now();
-            payload.quote_number = 'Q-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-' + String(Math.floor(Math.random() * 900) + 100);
-        }
+        // 로컬 보관용 임시 ID 및 번호
+        const localBackupId = existingId || ('qt_' + Date.now());
+        const localBackupQuoteNumber = payload.quote_number || ('Q-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-' + String(Math.floor(Math.random() * 900) + 100));
 
-        // 1. 로컬스토리지 백업 저장 (무중단 보존)
+        // 1. 로컬스토리지 즉시 백업 저장 (무중단 보존)
         try {
+            const localPayload = Object.assign({}, payload, {
+                id: localBackupId,
+                quote_number: localBackupQuoteNumber
+            });
             let localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
-            const exIdx = localQuotes.findIndex(q => String(q.id) === String(payload.id));
-            if (exIdx >= 0) localQuotes[exIdx] = payload;
-            else localQuotes.unshift(payload);
+            const exIdx = localQuotes.findIndex(q => String(q.id) === String(localBackupId));
+            if (exIdx >= 0) localQuotes[exIdx] = localPayload;
+            else localQuotes.unshift(localPayload);
             localStorage.setItem('kng_quotations_cache', JSON.stringify(localQuotes));
             localStorage.setItem('kng_quotations_local', JSON.stringify(localQuotes));
         } catch(e) {}
 
         const method = isUpdate ? 'PUT' : 'POST';
-        const url = isUpdate ? `${API_BASE}/${payload.id}` : API_BASE;
+        const url = isUpdate ? `${API_BASE}/${existingId}` : API_BASE;
 
         showToast('견적서를 저장하는 중입니다...', 'info');
 
@@ -1121,21 +1195,47 @@ const app = {
             return res.json();
         })
         .then(result => {
-            showToast('견적서가 안전하게 저장되었습니다!', 'success');
-            if (result.id) payload.id = result.id;
-            if (result.quote_number) payload.quote_number = result.quote_number;
+            const savedId = result.id || localBackupId;
+            const savedNumber = result.quote_number || localBackupQuoteNumber;
+
+            payload.id = savedId;
+            payload.quote_number = savedNumber;
             this.currentQuote = payload;
-            document.getElementById('quoteId').value = payload.id;
-            document.getElementById('badgeQuoteNumber').textContent = payload.quote_number;
+            document.getElementById('quoteId').value = savedId;
+            document.getElementById('badgeQuoteNumber').textContent = savedNumber;
+
+            // 로컬스토리지 최종 동기화
+            try {
+                let localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || '[]');
+                const exIdx = localQuotes.findIndex(q => String(q.id) === String(localBackupId) || String(q.id) === String(savedId));
+                if (exIdx >= 0) localQuotes[exIdx] = payload;
+                else localQuotes.unshift(payload);
+                localStorage.setItem('kng_quotations_cache', JSON.stringify(localQuotes));
+            } catch(e) {}
+
+            showToast(`견적서가 안전하게 저장되었습니다! (${savedNumber})`, 'success');
             this.fetchQuotations();
+
+            // 0.8초 후 견적서 보관함 목록 탭으로 자동 전환하여 저장된 내역 확인
+            setTimeout(() => {
+                this.switchView('list');
+            }, 800);
         })
         .catch(err => {
             console.warn('서버 저장 실패, 로컬 보관함에 보존됨:', err);
-            showToast('로컬 보관함에 저장되었습니다.', 'success');
+            payload.id = localBackupId;
+            payload.quote_number = localBackupQuoteNumber;
             this.currentQuote = payload;
-            document.getElementById('quoteId').value = payload.id;
-            document.getElementById('badgeQuoteNumber').textContent = payload.quote_number;
+            document.getElementById('quoteId').value = localBackupId;
+            document.getElementById('badgeQuoteNumber').textContent = localBackupQuoteNumber;
+
+            showToast(`로컬 보관함에 안전하게 저장되었습니다! (${localBackupQuoteNumber})`, 'success');
             this.fetchQuotations();
+
+            // 0.8초 후 견적서 보관함 목록 탭으로 자동 전환
+            setTimeout(() => {
+                this.switchView('list');
+            }, 800);
         });
     },
 
