@@ -725,7 +725,8 @@ const app = {
         document.getElementById('sumSupplyPrice').textContent = fmtWon(sumSupply);
         document.getElementById('sumVat').textContent = fmtWon(sumVat);
         document.getElementById('sumTotalAmount').textContent = fmtWon(sumTotal);
-        document.getElementById('amountKoreanText').textContent = `${numberToKorean(sumTotal)} (${fmtWon(sumTotal)})`;
+        const vatLabel = (vatType === 'none') ? '(면세)' : '(부가세 포함)';
+        document.getElementById('amountKoreanText').textContent = `${fmtNum(sumTotal)}원 ${vatLabel}`;
     },
 
     // ── 수기 행 추가 ──
@@ -1286,8 +1287,8 @@ const app = {
         const showImg = (q.show_images !== 0);
         const includeSeal = (q.include_seal !== 0);
         const items = q.items || [];
-        const totalWon = fmtWon(q.total_amount);
-        const koreanWon = numberToKorean(q.total_amount);
+        const vatText = (q.vat_type === 'none') ? '(면세)' : '(부가세 포함)';
+        const totalAmountText = `${fmtNum(q.total_amount)}원 ${vatText}`;
 
         // 직인 이미지 HTML
         const sealHtml = (includeSeal && s.sealUrl)
@@ -1334,20 +1335,16 @@ const app = {
                     <div class="a4-customer-box">
                         <div>
                             <div class="a4-customer-title">${escHtml(q.customer_name)} 귀하</div>
-                            <div style="margin-bottom: 3px;">견적일자: <b>${escHtml(q.issue_date || '-')}</b></div>
-                            ${q.valid_until ? `<div style="margin-bottom: 3px;">유효기간: ${escHtml(q.valid_until)} 까지</div>` : ''}
-                            ${q.project_name ? `<div style="margin-bottom: 3px;">견적건명: <b>${escHtml(q.project_name)}</b></div>` : ''}
-                            ${q.customer_attn ? `<div>담당자: ${escHtml(q.customer_attn)} ${q.customer_tel ? `(${escHtml(q.customer_tel)})` : ''}</div>` : ''}
-                            <div style="margin-top: 6px; font-size: 8.5pt; color: #444;">
-                                아래와 같이 견적하오니 검토 후 재가하여 주시기 바랍니다.
-                            </div>
+                            ${q.project_name ? `<div style="margin-bottom: 4px; font-size: 9.5pt;"><b>견적건명</b>: ${escHtml(q.project_name)}</div>` : ''}
+                            ${q.customer_attn ? `<div style="margin-bottom: 3px; font-size: 9pt;"><b>담당자</b>: ${escHtml(q.customer_attn)} ${q.customer_tel ? `(${escHtml(q.customer_tel)})` : ''}</div>` : ''}
+                            ${q.customer_email ? `<div style="margin-bottom: 3px; font-size: 8.5pt; color: #555;"><b>이메일</b>: ${escHtml(q.customer_email)}</div>` : ''}
                         </div>
 
-                        <!-- 총 견적금액 강조 바 -->
+                        <!-- 총 견적금액 심플 표기 [사용자 요청: OOO,OOO원 (부가세 포함)] -->
                         <div class="a4-total-highlight">
-                            <div style="font-size: 8pt; color: #666;">합계금액 (부가세 ${q.vat_type === 'inclusive' ? '포함' : (q.vat_type === 'none' ? '영세' : '별도')})</div>
-                            <div style="font-size: 12pt; font-weight: 800; color: #111;">
-                                ${koreanWon} <span style="font-size: 10pt; font-weight: normal;">(${totalWon})</span>
+                            <div style="font-size: 8.5pt; color: #555; margin-bottom: 2px;">합계금액</div>
+                            <div style="font-size: 13pt; font-weight: 800; color: #111;">
+                                ${totalAmountText}
                             </div>
                         </div>
                     </div>
@@ -1406,24 +1403,25 @@ const app = {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <th colspan="${showImg ? 6 : 5}" class="text-center">소 계 (공급가액 + 세액)</th>
-                            <td class="text-end pe-2" colspan="2" style="font-weight: bold;">${fmtWon(q.total_supply_price)}</td>
-                            <td class="text-end pe-2 text-danger" style="font-weight: bold;">${fmtWon(q.total_vat)}</td>
-                            <td class="text-center" style="font-size: 8pt;">-</td>
-                        </tr>
-                        <tr>
-                            <th colspan="${showImg ? 6 : 5}" class="text-center" style="font-size: 10pt; background: #e2e8f0;">총 견적 합계금액 (VAT ${q.vat_type === 'inclusive' ? '포함' : (q.vat_type === 'none' ? '면세' : '별도')})</th>
-                            <td colspan="4" class="text-end pe-3" style="font-size: 11pt; font-weight: 800; color: #000; background: #e2e8f0;">
-                                ${totalWon}
-                            </td>
+                            <th colspan="${showImg ? 7 : 6}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">합계(공급가액+세액)</th>
+                            <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
+                            <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_vat)}</td>
+                            <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
                         </tr>
                     </tfoot>
                 </table>
 
-                <!-- 하단 특이사항 및 결제조건 -->
+                <!-- 하단 특기사항 및 납품조건 (견적일자 및 유효기간 포함) [사용자 요청 반영] -->
                 <div class="a4-footer-notes">
                     <div class="a4-footer-notes-title">[ 특기사항 및 납품조건 ]</div>
-                    <div style="white-space: pre-wrap; line-height: 1.4;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
+                    <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
+                        <span>• <b>견적일자</b>: ${escHtml(q.issue_date || '-')}</span>
+                        <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
+                        ${q.delivery_date ? `<span>• <b>납기일</b>: ${escHtml(q.delivery_date)}</span>` : ''}
+                        ${q.delivery_place ? `<span>• <b>납품장소</b>: ${escHtml(q.delivery_place)}</span>` : ''}
+                        ${q.payment_terms ? `<span>• <b>결제조건</b>: ${escHtml(q.payment_terms)}</span>` : ''}
+                    </div>
+                    <div style="white-space: pre-wrap; line-height: 1.45;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
                 </div>
             </div>
         `;
