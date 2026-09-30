@@ -247,8 +247,8 @@ const app = {
                 cost_price: Number(item.cost_price) || 0,
                 unit_price: Number(item.unit_price) || 0,
                 supply_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
-                vat: Math.round(((Number(item.qty) || 1) * (Number(item.unit_price) || 0)) * 0.1),
-                total_price: Math.round(((Number(item.qty) || 1) * (Number(item.unit_price) || 0)) * 1.1),
+                vat: 0,
+                total_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
                 image_url: item.image_url || '',
                 remarks: item.remarks || ''
             }));
@@ -632,19 +632,23 @@ const app = {
             const vatType = document.getElementById('vatTypeSelect')?.value || 'exclusive';
             const qty = Number(it.qty) || 0;
             const price = Number(it.unit_price) || 0;
+            const baseAmount = Math.round(qty * price);
 
             if (vatType === 'exclusive') {
-                it.supply_price = Math.round(qty * price);
-                it.vat = Math.round(it.supply_price * 0.1);
-                it.total_price = it.supply_price + it.vat;
-            } else if (vatType === 'inclusive') {
-                it.total_price = Math.round(qty * price);
-                it.supply_price = Math.round(it.total_price / 1.1);
-                it.vat = it.total_price - it.supply_price;
-            } else {
-                it.supply_price = Math.round(qty * price);
+                // [부가세 별도]: 합계금액에 부가세를 가산하지 않음 (단가 합계 그대로)
+                it.supply_price = baseAmount;
                 it.vat = 0;
-                it.total_price = it.supply_price;
+                it.total_price = baseAmount;
+            } else if (vatType === 'inclusive') {
+                // [부가세 포함]: 단가 합계에 부가세 10%를 더함
+                it.supply_price = baseAmount;
+                it.vat = Math.round(baseAmount * 0.1);
+                it.total_price = it.supply_price + it.vat;
+            } else {
+                // [영세 / 면세]: 부가세 0원
+                it.supply_price = baseAmount;
+                it.vat = 0;
+                it.total_price = baseAmount;
             }
 
             // 셀 실시간 반영
@@ -652,7 +656,7 @@ const app = {
             const cellV = document.getElementById(`cellVat_${idx}`);
             const cellT = document.getElementById(`cellTotal_${idx}`);
             if (cellS) cellS.textContent = fmtWon(it.supply_price);
-            if (cellV) cellV.textContent = fmtWon(it.vat);
+            if (cellV) cellV.textContent = (vatType === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (cellT) cellT.textContent = fmtWon(it.total_price);
 
             this.recalcTotals();
@@ -674,19 +678,23 @@ const app = {
         items.forEach((it, idx) => {
             const qty = Number(it.qty) || 0;
             const price = Number(it.unit_price) || 0;
+            const baseAmount = Math.round(qty * price);
 
             if (vatType === 'exclusive') {
-                it.supply_price = Math.round(qty * price);
-                it.vat = Math.round(it.supply_price * 0.1);
-                it.total_price = it.supply_price + it.vat;
-            } else if (vatType === 'inclusive') {
-                it.total_price = Math.round(qty * price);
-                it.supply_price = Math.round(it.total_price / 1.1);
-                it.vat = it.total_price - it.supply_price;
-            } else {
-                it.supply_price = Math.round(qty * price);
+                // 부가세 별도: 부가세가 빠진 금액이 합계
+                it.supply_price = baseAmount;
                 it.vat = 0;
-                it.total_price = it.supply_price;
+                it.total_price = baseAmount;
+            } else if (vatType === 'inclusive') {
+                // 부가세 포함: 부가세 10%가 더해진 금액이 합계
+                it.supply_price = baseAmount;
+                it.vat = Math.round(baseAmount * 0.1);
+                it.total_price = it.supply_price + it.vat;
+            } else {
+                // 영세 / 면세
+                it.supply_price = baseAmount;
+                it.vat = 0;
+                it.total_price = baseAmount;
             }
 
             // [DOM 셀 즉시 반영 - 과세 구분 변경 시에도 품목 테이블 각 행 즉각 동기화]
@@ -694,7 +702,7 @@ const app = {
             const cellV = document.getElementById(`cellVat_${idx}`);
             const cellT = document.getElementById(`cellTotal_${idx}`);
             if (cellS) cellS.textContent = fmtWon(it.supply_price);
-            if (cellV) cellV.textContent = fmtWon(it.vat);
+            if (cellV) cellV.textContent = (vatType === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (cellT) cellT.textContent = fmtWon(it.total_price);
 
             sumSupply += it.supply_price;
@@ -712,15 +720,15 @@ const app = {
         const elKorean = document.getElementById('amountKoreanText');
 
         if (elSupply) elSupply.textContent = fmtWon(sumSupply);
-        if (elVat) elVat.textContent = fmtWon(sumVat);
+        if (elVat) elVat.textContent = (vatType === 'exclusive') ? '별도 (0원)' : fmtWon(sumVat);
         if (elTotal) elTotal.textContent = fmtWon(sumTotal);
 
         if (elKorean) {
             let label = '';
             if (vatType === 'exclusive') {
-                label = `합계: ${fmtNum(sumTotal)}원 (공급가액 + VAT 10%)`;
+                label = `합계: ${fmtNum(sumTotal)}원 (부가세 별도)`;
             } else if (vatType === 'inclusive') {
-                label = `합계: ${fmtNum(sumTotal)}원 (VAT 10% 포함)`;
+                label = `합계: ${fmtNum(sumTotal)}원 (부가세 10% 포함)`;
             } else {
                 label = `합계: ${fmtNum(sumTotal)}원 (영세 / 면세)`;
             }
@@ -1055,18 +1063,19 @@ const app = {
             const price = Number(p.sellPrice) || Number(p.buyPrice) || 0;
             let supply = 0, vat = 0, total = 0;
 
+            const baseAmount = qty * price;
             if (vatType === 'exclusive') {
-                supply = qty * price;
-                vat = Math.round(supply * 0.1);
-                total = supply + vat;
-            } else if (vatType === 'inclusive') {
-                total = qty * price;
-                supply = Math.round(total / 1.1);
-                vat = total - supply;
-            } else {
-                supply = qty * price;
+                supply = baseAmount;
                 vat = 0;
-                total = supply;
+                total = baseAmount;
+            } else if (vatType === 'inclusive') {
+                supply = baseAmount;
+                vat = Math.round(baseAmount * 0.1);
+                total = supply + vat;
+            } else {
+                supply = baseAmount;
+                vat = 0;
+                total = baseAmount;
             }
 
             this.currentQuote.items.push({
@@ -1419,11 +1428,12 @@ const app = {
                 : '';
 
             let priceCells = '';
+            const vatText = (q.vat_type === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (priceMode === 'all') {
                 priceCells = `
                     <td class="text-end pe-2">${fmtWon(it.unit_price)}</td>
                     <td class="text-end pe-2">${fmtWon(it.supply_price)}</td>
-                    <td class="text-end pe-2">${fmtWon(it.vat)}</td>
+                    <td class="text-end pe-2">${vatText}</td>
                 `;
             } else if (priceMode === 'unit') {
                 priceCells = `
@@ -1455,12 +1465,14 @@ const app = {
                 <th style="width: 70px;">세액</th>
             `;
             const leadCols = showImg ? 7 : 6;
+            const tfootTitle = (q.vat_type === 'exclusive') ? '합계(부가세 별도)' : '합계(공급가액+세액)';
+            const tfootVat = (q.vat_type === 'exclusive') ? '별도 (0원)' : fmtWon(q.total_vat);
             tfootHtml = `
                 <tfoot>
                     <tr>
-                        <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">합계(공급가액+세액)</th>
+                        <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 1px;">${tfootTitle}</th>
                         <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
-                        <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_vat)}</td>
+                        <td class="text-end pe-2 text-danger" style="font-weight: bold; background: #f8fafc;">${tfootVat}</td>
                         <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
                     </tr>
                 </tfoot>
