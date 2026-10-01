@@ -2574,14 +2574,18 @@ const app = {
         }
     },
 
+    partnerSearchActiveIndex: 0,
+
     showPartnerSearchModal: function(targetInputId) {
         const inputEl = $(targetInputId);
         if (!inputEl) return;
         
         $('partnerSearchTargetInput').value = targetInputId;
         const searchVal = inputEl.value.trim();
-        $('partnerSearchInput').value = searchVal;
+        const searchInput = $('partnerSearchInput');
+        if (searchInput) searchInput.value = searchVal;
         
+        this.partnerSearchActiveIndex = 0;
         this.filterPartnerSearch();
 
         const modalEl = $('partnerSearchModal');
@@ -2589,15 +2593,27 @@ const app = {
         if (!modal) modal = new bootstrap.Modal(modalEl);
         modal.show();
         
-        // 포커스 이동
-        setTimeout(() => $('partnerSearchInput').focus(), 500);
+        if (!modalEl._partnerKeydownBound) {
+            modalEl.addEventListener('keydown', (e) => app.handlePartnerSearchKeydown(e));
+            modalEl._partnerKeydownBound = true;
+        }
+
+        // 포커스 이동 & 텍스트 전체 선택 (바로 타이핑 또는 방향키/Enter 선택 가능)
+        setTimeout(() => {
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }, 300);
     },
 
     filterPartnerSearch: function() {
-        const val = $('partnerSearchInput').value.trim().toLowerCase();
+        const inputEl = $('partnerSearchInput');
+        const val = inputEl ? inputEl.value.trim().toLowerCase() : '';
         const listContainer = $('partnerSearchList');
+        if (!listContainer) return;
         
-        let matches = this.partnersCache;
+        let matches = this.partnersCache || [];
         if (val) {
             matches = matches.filter(p => 
                 (p.name && p.name.toLowerCase().includes(val)) || 
@@ -2605,29 +2621,109 @@ const app = {
             );
         }
         
+        this.partnerSearchActiveIndex = 0;
+
         if (matches.length === 0) {
             listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검색된 거래처가 없습니다.</div>`;
             return;
         }
 
-        listContainer.innerHTML = matches.map(m => {
-            const displayText = m.company_name ? `${m.name} / <small class="text-muted">${m.company_name}</small>` : m.name;
+        listContainer.innerHTML = matches.map((m, idx) => {
+            const isFirst = (idx === 0);
+            const safeName = this.escapeHtml(m.name);
+            const safeCompany = m.company_name ? this.escapeHtml(m.company_name) : '';
             return `
-                <button type="button" class="list-group-item list-group-item-action py-2" onclick="app.selectPartner('${m.name}')">
-                    <div class="fw-bold">${m.name}</div>
-                    ${m.company_name ? `<div style="font-size: 0.8rem;" class="text-muted">${m.company_name}</div>` : ''}
+                <button type="button" 
+                        class="list-group-item list-group-item-action py-2 partner-search-item ${isFirst ? 'active' : ''}" 
+                        data-index="${idx}"
+                        data-name="${safeName}"
+                        onclick="app.selectPartner('${safeName}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="fw-bold">${safeName}</div>
+                        <span class="badge-select-hint">Enter 선택</span>
+                    </div>
+                    ${safeCompany ? `<div style="font-size: 0.8rem;" class="text-muted">${safeCompany}</div>` : ''}
                 </button>
             `;
         }).join('');
+
+        // 마우스 호버 시 활성 인덱스 동기화
+        listContainer.querySelectorAll('.partner-search-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const idx = parseInt(item.dataset.index, 10);
+                if (!isNaN(idx)) this.setPartnerSearchActiveIndex(idx);
+            });
+        });
+    },
+
+    setPartnerSearchActiveIndex: function(idx) {
+        const items = document.querySelectorAll('#partnerSearchList .partner-search-item');
+        if (!items || items.length === 0) return;
+
+        if (idx < 0) idx = 0;
+        if (idx >= items.length) idx = items.length - 1;
+        this.partnerSearchActiveIndex = idx;
+
+        items.forEach((item, i) => {
+            if (i === idx) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    },
+
+    handlePartnerSearchKeydown: function(e) {
+        const items = document.querySelectorAll('#partnerSearchList .partner-search-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items.length > 0) {
+                this.setPartnerSearchActiveIndex(this.partnerSearchActiveIndex + 1);
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items.length > 0) {
+                this.setPartnerSearchActiveIndex(this.partnerSearchActiveIndex - 1);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items && items.length > 0) {
+                const activeItem = items[this.partnerSearchActiveIndex] || items[0];
+                if (activeItem && activeItem.dataset.name) {
+                    this.selectPartner(activeItem.dataset.name);
+                }
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            const modal = bootstrap.Modal.getInstance($('partnerSearchModal'));
+            if (modal) modal.hide();
+            const targetId = $('partnerSearchTargetInput')?.value;
+            if (targetId && $(targetId)) $(targetId).focus();
+        }
     },
 
     selectPartner: function(name) {
-        const targetId = $('partnerSearchTargetInput').value;
+        const targetId = $('partnerSearchTargetInput')?.value;
         if (targetId && $(targetId)) {
             $(targetId).value = name;
+            $(targetId).dispatchEvent(new Event('input', { bubbles: true }));
+            $(targetId).dispatchEvent(new Event('change', { bubbles: true }));
         }
         const modal = bootstrap.Modal.getInstance($('partnerSearchModal'));
         if (modal) modal.hide();
+
+        // 선택 완료 후 원래 입력창으로 포커스 복원 (이후 Tab 등으로 바로 다음 필드로 이동 가능)
+        setTimeout(() => {
+            if (targetId && $(targetId)) {
+                $(targetId).focus();
+            }
+        }, 150);
     },
 
 

@@ -182,14 +182,18 @@ const app = {
         }
     },
 
+    partnerSearchActiveIndex: 0,
+
     showPartnerSearchModal: function(targetInputId) {
         const inputEl = document.getElementById(targetInputId);
         if (!inputEl) return;
         
         document.getElementById('partnerSearchTargetInput').value = targetInputId;
         const searchVal = inputEl.value.trim();
-        document.getElementById('partnerSearchInput').value = searchVal;
+        const searchInput = document.getElementById('partnerSearchInput');
+        if (searchInput) searchInput.value = searchVal;
         
+        this.partnerSearchActiveIndex = 0;
         this.filterPartnerSearch();
 
         const modalEl = document.getElementById('partnerSearchModal');
@@ -197,15 +201,27 @@ const app = {
         if (!modal) modal = new bootstrap.Modal(modalEl);
         modal.show();
         
-        // 포커스 이동
-        setTimeout(() => document.getElementById('partnerSearchInput').focus(), 500);
+        if (!modalEl._partnerKeydownBound) {
+            modalEl.addEventListener('keydown', (e) => app.handlePartnerSearchKeydown(e));
+            modalEl._partnerKeydownBound = true;
+        }
+
+        // 포커스 이동 & 텍스트 선택
+        setTimeout(() => {
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }, 300);
     },
 
     filterPartnerSearch: function() {
-        const val = document.getElementById('partnerSearchInput').value.trim().toLowerCase();
+        const inputEl = document.getElementById('partnerSearchInput');
+        const val = inputEl ? inputEl.value.trim().toLowerCase() : '';
         const listContainer = document.getElementById('partnerSearchList');
+        if (!listContainer) return;
         
-        let matches = this.partners;
+        let matches = this.partners || [];
         if (val) {
             matches = matches.filter(p => 
                 (p.name && p.name.toLowerCase().includes(val)) || 
@@ -213,25 +229,97 @@ const app = {
             );
         }
         
+        this.partnerSearchActiveIndex = 0;
+
         if (matches.length === 0) {
             listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검색된 거래처가 없습니다.</div>`;
             return;
         }
         
-        listContainer.innerHTML = matches.map(m => {
+        listContainer.innerHTML = matches.map((m, idx) => {
+            const isFirst = (idx === 0);
             return `
-                <button type="button" class="list-group-item list-group-item-action py-2" onclick="app.selectPartner('${m.name}')">
-                    <div class="fw-bold">${m.name}</div>
+                <button type="button" 
+                        class="list-group-item list-group-item-action py-2 partner-search-item ${isFirst ? 'active' : ''}" 
+                        data-index="${idx}"
+                        data-name="${m.name}"
+                        onclick="app.selectPartner('${m.name}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="fw-bold">${m.name}</div>
+                        <span class="badge-select-hint">Enter 선택</span>
+                    </div>
                     ${m.company_name ? `<div style="font-size: 0.8rem;" class="text-muted">${m.company_name}</div>` : ''}
                 </button>
             `;
         }).join('');
+
+        // 마우스 호버 시 인덱스 동기화
+        listContainer.querySelectorAll('.partner-search-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const idx = parseInt(item.dataset.index, 10);
+                if (!isNaN(idx)) this.setPartnerSearchActiveIndex(idx);
+            });
+        });
+    },
+
+    setPartnerSearchActiveIndex: function(idx) {
+        const items = document.querySelectorAll('#partnerSearchList .partner-search-item');
+        if (!items || items.length === 0) return;
+
+        if (idx < 0) idx = 0;
+        if (idx >= items.length) idx = items.length - 1;
+        this.partnerSearchActiveIndex = idx;
+
+        items.forEach((item, i) => {
+            if (i === idx) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    },
+
+    handlePartnerSearchKeydown: function(e) {
+        const items = document.querySelectorAll('#partnerSearchList .partner-search-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items.length > 0) {
+                this.setPartnerSearchActiveIndex(this.partnerSearchActiveIndex + 1);
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items.length > 0) {
+                this.setPartnerSearchActiveIndex(this.partnerSearchActiveIndex - 1);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (items && items.length > 0) {
+                const activeItem = items[this.partnerSearchActiveIndex] || items[0];
+                if (activeItem && activeItem.dataset.name) {
+                    this.selectPartner(activeItem.dataset.name);
+                }
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('partnerSearchModal'));
+            if (modal) modal.hide();
+            const targetId = document.getElementById('partnerSearchTargetInput')?.value;
+            if (targetId && document.getElementById(targetId)) document.getElementById(targetId).focus();
+        }
     },
 
     selectPartner: function(name) {
-        const targetId = document.getElementById('partnerSearchTargetInput').value;
+        const targetId = document.getElementById('partnerSearchTargetInput')?.value;
         if (targetId && document.getElementById(targetId)) {
             document.getElementById(targetId).value = name;
+            document.getElementById(targetId).dispatchEvent(new Event('input', { bubbles: true }));
+            document.getElementById(targetId).dispatchEvent(new Event('change', { bubbles: true }));
         }
         const modal = bootstrap.Modal.getInstance(document.getElementById('partnerSearchModal'));
         if (modal) modal.hide();
@@ -239,6 +327,20 @@ const app = {
         // 선택 후 자동 조회
         if (targetId === 'partnerInput') {
             this.loadLedger();
+        }
+
+        setTimeout(() => {
+            if (targetId && document.getElementById(targetId)) {
+                document.getElementById(targetId).focus();
+            }
+        }, 150);
+    },
+
+    selectFirstPartnerMatch: function() {
+        const items = document.querySelectorAll('#partnerSearchList .partner-search-item');
+        const activeItem = items[this.partnerSearchActiveIndex] || items[0];
+        if (activeItem && activeItem.dataset.name) {
+            this.selectPartner(activeItem.dataset.name);
         }
     },
 

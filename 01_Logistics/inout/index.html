@@ -1144,6 +1144,36 @@
             color: #0f172a;
             border-color: #94a3b8;
         }
+
+        /* 거래처 검색 모달 키보드 내비게이션 스타일 */
+        .partner-search-item {
+            cursor: pointer;
+            transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+        }
+        .partner-search-item:hover,
+        .partner-search-item.active {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+        }
+        .partner-search-item:hover .text-muted,
+        .partner-search-item.active .text-muted {
+            color: rgba(255, 255, 255, 0.85) !important;
+        }
+        .partner-search-item .badge-select-hint {
+            display: none;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 3px;
+            background: #ffffff;
+            color: #2563eb;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .partner-search-item:hover .badge-select-hint,
+        .partner-search-item.active .badge-select-hint {
+            display: inline-block;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -2516,22 +2546,28 @@
 <div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-secondary text-white py-2">
-                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+            <div class="modal-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+                    <span class="badge bg-dark-subtle text-white-50 border border-secondary" style="font-size: 10px; font-weight: normal;">
+                        ↑↓ 방향키 이동 · Enter 선택 · Esc 닫기
+                    </span>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light">
                 <input type="hidden" id="partnerSearchTargetInput">
                 <div class="input-group mb-3 shadow-sm">
                     <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
-                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()">
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." autocomplete="off" oninput="app.filterPartnerSearch()" onkeydown="app.handlePartnerSearchKeydown(event)">
                 </div>
-                <div class="list-group shadow-sm" id="partnerSearchList">
+                <div class="list-group shadow-sm" id="partnerSearchList" onkeydown="app.handlePartnerSearchKeydown(event)">
                     <!-- JS Render -->
                 </div>
             </div>
         </div>
     </div>
+</div>
 <!-- 하단 플로팅 선택 요약 바 (Floating Selection Summary Bar) -->
 <div id="floatingSelectionBar" class="floating-selection-bar">
     <div class="floating-selection-container shadow">
@@ -2581,6 +2617,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>
