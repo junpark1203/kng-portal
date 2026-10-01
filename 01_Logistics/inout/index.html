@@ -1343,7 +1343,7 @@
 
 
 <!-- 일괄 수정 모달 -->
-<div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -1357,7 +1357,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">매입처 (입고/직출고 대상)</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" id="bulkSupplier" placeholder="새 매입처 이름 입력 (Enter 검색)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('bulkSupplier');}">
+                            <input type="text" class="form-control" id="bulkSupplier" placeholder="새 매입처 이름 입력 (Enter 검색)" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('bulkSupplier');}">
                             <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('bulkSupplier')"><i class='bx bx-search'></i></button>
                         </div>
                     </div>
@@ -1365,7 +1365,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">매출처 (출고/직출고 대상)</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" id="bulkDestination" placeholder="새 매출처 이름 입력 (Enter 검색)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('bulkDestination');}">
+                            <input type="text" class="form-control" id="bulkDestination" placeholder="새 매출처 이름 입력 (Enter 검색)" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('bulkDestination');}">
                             <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('bulkDestination')"><i class='bx bx-search'></i></button>
                         </div>
                     </div>
@@ -1392,7 +1392,7 @@
 <!-- 입출고 모달 영역 -->
 
 <!-- 입고 등록 모달 -->
-<div class="modal fade" id="inboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+<div class="modal fade" id="inboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-focus="false">
     <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
         <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
             <div class="modal-header erp-window-header">
@@ -1430,7 +1430,7 @@
                                 <th>매입처 <span class="text-danger">*</span></th>
                                 <td>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
+                                        <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('in_supplier');}">
                                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
                                 </td>
@@ -1540,7 +1540,7 @@
 </div>
 
 <!-- 출고 등록 모달 -->
-<div class="modal fade" id="outboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+<div class="modal fade" id="outboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-focus="false">
     <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
         <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
             <div class="modal-header erp-window-header">
@@ -1578,7 +1578,7 @@
                                 <th>매출처(계산서) <span class="text-danger">*</span></th>
                                 <td>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
+                                        <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('out_destination');}">
                                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
                                 </td>
@@ -1700,7 +1700,7 @@
 </div>
 
 <!-- 직출고 등록 모달 -->
-<div class="modal fade" id="directModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+<div class="modal fade" id="directModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-focus="false">
     <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
         <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
             <div class="modal-header erp-window-header">
@@ -1738,14 +1738,14 @@
                                 <th>매입처(공급) <span class="text-danger">*</span></th>
                                 <td>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
+                                        <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('dir_supplier');}">
                                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
                                 </td>
                                 <th>매출처(납품) <span class="text-danger">*</span></th>
                                 <td>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
+                                        <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('dir_destination');}">
                                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
                                 </td>
@@ -2063,7 +2063,7 @@
 </div>
 
 <!-- 입고 내역 수정 모달 -->
-<div class="modal fade" id="editInboundModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="editInboundModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-inbound">
@@ -2084,7 +2084,7 @@
                         <div class="col-4">
                             <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_in_supplier');}">
+                                <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('edit_in_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
@@ -2259,7 +2259,7 @@
 </div>
 
 <!-- 출고 내역 수정 모달 -->
-<div class="modal fade" id="editOutboundModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="editOutboundModal" tabindex="-1" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-outbound">
@@ -2280,7 +2280,7 @@
                         <div class="col-4">
                             <label class="form-label mb-1">출고처(고객/현장)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_out_destination');}">
+                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('edit_out_destination');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
@@ -2542,8 +2542,8 @@
     </div>
 </div>
 
-<!-- 거래처 검색 모달 (공통) -->
-<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+<!-- 거래처 검색 모달 (공통) - 즉각 반응 및 충돌 방지를 위해 fade 배제, data-bs-focus="false" 적용 -->
+<div class="modal" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;" data-bs-focus="false">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
@@ -2617,6 +2617,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=31"></script>
+<script src="app.js?v=32"></script>
 </body>
 </html>

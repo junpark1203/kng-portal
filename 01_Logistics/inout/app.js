@@ -1225,6 +1225,16 @@ const app = {
                 this.resetDirectModalForm();
             });
         }
+
+        // 중첩 모달(직출고/입고/출고 등 모달 위에 거래처 검색 모달이 닫힐 때) body 스크롤 및 활성 상태 보존
+        const partnerModal = $('partnerSearchModal');
+        if (partnerModal) {
+            partnerModal.addEventListener('hidden.bs.modal', () => {
+                if (document.querySelector('.modal.show')) {
+                    document.body.classList.add('modal-open');
+                }
+            });
+        }
     },
 
     // ----------------------------------------
@@ -2590,7 +2600,7 @@ const app = {
 
         const modalEl = $('partnerSearchModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) modal = new bootstrap.Modal(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl, { focus: false, backdrop: true });
         modal.show();
         
         if (!modalEl._partnerKeydownBound) {
@@ -2599,12 +2609,16 @@ const app = {
         }
 
         // 포커스 이동 & 텍스트 전체 선택 (바로 타이핑 또는 방향키/Enter 선택 가능)
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+        }
         setTimeout(() => {
-            if (searchInput) {
+            if (searchInput && document.activeElement !== searchInput) {
                 searchInput.focus();
                 searchInput.select();
             }
-        }, 300);
+        }, 50);
     },
 
     filterPartnerSearch: function() {
@@ -2701,10 +2715,16 @@ const app = {
         } else if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
-            const modal = bootstrap.Modal.getInstance($('partnerSearchModal'));
+            const modalEl = $('partnerSearchModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
             const targetId = $('partnerSearchTargetInput')?.value;
-            if (targetId && $(targetId)) $(targetId).focus();
+            setTimeout(() => {
+                if (document.querySelector('.modal.show')) {
+                    document.body.classList.add('modal-open');
+                }
+                if (targetId && $(targetId)) $(targetId).focus();
+            }, 50);
         }
     },
 
@@ -2715,15 +2735,19 @@ const app = {
             $(targetId).dispatchEvent(new Event('input', { bubbles: true }));
             $(targetId).dispatchEvent(new Event('change', { bubbles: true }));
         }
-        const modal = bootstrap.Modal.getInstance($('partnerSearchModal'));
+        const modalEl = $('partnerSearchModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
 
-        // 선택 완료 후 원래 입력창으로 포커스 복원 (이후 Tab 등으로 바로 다음 필드로 이동 가능)
+        // 선택 완료 후 원래 입력창으로 포커스 복원 및 상위 모달(직출고/입고/출고 등) 상태 완벽 보존
         setTimeout(() => {
+            if (document.querySelector('.modal.show')) {
+                document.body.classList.add('modal-open');
+            }
             if (targetId && $(targetId)) {
                 $(targetId).focus();
             }
-        }, 150);
+        }, 50);
     },
 
 
@@ -5959,6 +5983,8 @@ const app = {
         }
     }
 };
+
+window.app = app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();

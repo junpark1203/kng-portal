@@ -198,7 +198,7 @@ const app = {
 
         const modalEl = document.getElementById('partnerSearchModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) modal = new bootstrap.Modal(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl, { focus: false, backdrop: true });
         modal.show();
         
         if (!modalEl._partnerKeydownBound) {
@@ -207,12 +207,16 @@ const app = {
         }
 
         // 포커스 이동 & 텍스트 선택
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+        }
         setTimeout(() => {
-            if (searchInput) {
+            if (searchInput && document.activeElement !== searchInput) {
                 searchInput.focus();
                 searchInput.select();
             }
-        }, 300);
+        }, 50);
     },
 
     filterPartnerSearch: function() {
@@ -330,10 +334,13 @@ const app = {
         }
 
         setTimeout(() => {
+            if (document.querySelector('.modal.show')) {
+                document.body.classList.add('modal-open');
+            }
             if (targetId && document.getElementById(targetId)) {
                 document.getElementById(targetId).focus();
             }
-        }, 150);
+        }, 50);
     },
 
     selectFirstPartnerMatch: function() {

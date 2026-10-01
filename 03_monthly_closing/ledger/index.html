@@ -378,7 +378,7 @@
                 <!-- 우측: 거래처 검색, 사업자 합산 스위치, 조회 버튼 -->
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <div class="input-group input-group-sm flex-shrink-0" style="width: 220px;">
-                        <input type="text" id="partnerInput" class="form-control" placeholder="거래처 검색 (Enter)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('partnerInput');}">
+                        <input type="text" id="partnerInput" class="form-control" placeholder="거래처 검색 (Enter)" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('partnerInput');}">
                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('partnerInput')" title="거래처 검색"><i class='bx bx-search'></i></button>
                     </div>
                     
@@ -497,7 +497,7 @@
 </div>
 
 <!-- 거래처 검색 모달 -->
-<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+<div class="modal" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;" data-bs-focus="false">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
@@ -531,7 +531,7 @@
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 
 </body>
 </html>
