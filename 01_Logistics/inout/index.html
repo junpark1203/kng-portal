@@ -11,9 +11,100 @@
     <style>
         .lot-qty-input { width: 80px; text-align: right; }
         
-        .autocomplete-suggestions { border: 1px solid #cbd5e1; max-height: 220px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1090; background: #ffffff; width: 100%; border-radius: 6px; display: none; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
-        .autocomplete-suggestion { padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease; }
-        .autocomplete-suggestion:hover, .autocomplete-suggestion.active-suggestion { background-color: #eff6ff; color: #2563eb; font-weight: 600; }
+        /* ── ECOUNT ERP 스타일 컴팩트 자동완성 드롭다운 ── */
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1090;
+            background: #ffffff;
+            border: 1px solid #94a3b8 !important;
+            border-radius: 4px !important;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16), 0 2px 4px rgba(15, 23, 42, 0.08) !important;
+            max-height: 220px;
+            overflow-y: auto;
+            overflow-x: hidden !important;
+            font-size: 11.5px !important;
+            line-height: 1.35 !important;
+            padding: 3px 0 !important;
+            margin-top: 2px;
+            display: none;
+            box-sizing: border-box !important;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+        /* 5px 모던 슬림 스크롤바 */
+        .autocomplete-suggestions::-webkit-scrollbar {
+            width: 5px;
+        }
+        .autocomplete-suggestions::-webkit-scrollbar-track {
+            background: #f8fafc;
+            border-radius: 3px;
+        }
+        .autocomplete-suggestions::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .autocomplete-suggestions::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 1. 품목명 자동완성: 최소 300px, 최대 480px 보장 */
+        .autocomplete-suggestions.item-suggestions {
+            min-width: 300px !important;
+            width: max-content !important;
+            max-width: 480px !important;
+        }
+
+        /* 2. 규격 자동완성: 최소 340px, 최대 520px 보장 (규격명 + 단위 + 매입/매출 기준단가 한 줄 쾌적 정렬) */
+        .autocomplete-suggestions.spec-suggestions {
+            min-width: 340px !important;
+            width: max-content !important;
+            max-width: 520px !important;
+        }
+
+        /* 3. 분류(카테고리) 자동완성: 최소 160px 보장 (좁은 70px 셀 탈피) */
+        .autocomplete-suggestions.category-suggestions {
+            min-width: 160px !important;
+            width: max-content !important;
+        }
+
+        /* 개별 드롭다운 행 */
+        .autocomplete-suggestion {
+            padding: 5px 9px !important;
+            cursor: pointer !important;
+            font-size: 11.5px !important;
+            color: #1e293b !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            transition: background 0.1s ease, color 0.1s ease;
+            white-space: nowrap !important;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+        }
+        .autocomplete-suggestion:last-child {
+            border-bottom: none !important;
+        }
+        .autocomplete-suggestion:hover,
+        .autocomplete-suggestion.active-suggestion {
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+        }
+        .autocomplete-suggestion:hover strong,
+        .autocomplete-suggestion.active-suggestion strong {
+            color: #1d4ed8 !important;
+        }
+        .autocomplete-suggestion:hover i,
+        .autocomplete-suggestion.active-suggestion i {
+            color: #2563eb !important;
+        }
+        .autocomplete-suggestion mark {
+            background-color: #fef08a !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+            padding: 0 1px !important;
+            border-radius: 2px !important;
+        }
         
         .accordion-icon { font-size: 1.15rem; vertical-align: middle; transition: transform 0.2s ease, color 0.2s ease; }
         .history-main-row { transition: background-color 0.15s ease; }
@@ -776,14 +867,74 @@
             min-height: 26px;
         }
 
-        /* 메인 그리드 래퍼 및 테이블 */
+        html, body {
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+        .erp-page-layout {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100vh !important;
+            padding: 4px 8px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        .erp-top-toolbar,
+        .erp-filter-ribbon,
+        #historySummaryStrip,
+        #categoryPillsContainer,
+        #activeFilterChipsContainer {
+            flex: 0 0 auto !important;
+        }
         .erp-main-grid-wrapper {
             background: #ffffff;
             border: 1px solid #cbd5e1;
-            overflow-x: auto;
-            overflow-y: auto;
-            max-height: calc(100vh - 165px);
+            flex: 1 1 0 !important;
+            min-height: 100px !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
             width: 100%;
+        }
+        /* ECOUNT ERP 표준 하단 상태바 & 페이지네이션 */
+        .erp-bottom-bar {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-top: none;
+            padding: 3px 8px;
+            font-size: 11.5px;
+            color: #475569;
+            min-height: 32px;
+            flex: 0 0 auto !important;
+            margin-bottom: 0 !important;
+            z-index: 10;
+        }
+        .erp-bottom-bar .page-link,
+        #topHistoryPagination .page-link {
+            padding: 2px 8px;
+            font-size: 11px;
+            height: 24px;
+            line-height: 18px;
+            border-radius: 2px;
+            color: #334155;
+            cursor: pointer;
+        }
+        .erp-bottom-bar .page-item.active .page-link,
+        #topHistoryPagination .page-item.active .page-link {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+        .erp-bottom-bar .page-item.disabled .page-link,
+        #topHistoryPagination .page-item.disabled .page-link {
+            color: #94a3b8 !important;
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            cursor: not-allowed;
         }
         .erp-main-table {
             margin-bottom: 0 !important;
@@ -997,7 +1148,7 @@
 </head>
 <body class="bg-light">
 
-<div class="container-fluid py-1 px-2">
+<div class="erp-page-layout">
     <!-- 1. 최상단 리본 툴바: 타이틀 + 뷰 필터 탭 + 전표 등록/도구 액션 (Row 1) -->
     <div class="erp-top-toolbar mb-1">
         <div class="toolbar-left d-flex align-items-center gap-2">
@@ -1089,13 +1240,21 @@
             <button class="btn-erp" onclick="app.autoFitAllHistoryColumns()" title="모든 열 너비를 조회된 내용에 맞게 자동 조정"><i class='bx bx-expand-horizontal'></i> 자동맞춤</button>
 
             <!-- 표시 개수 -->
-            <select class="form-select form-select-sm erp-limit-select ms-1" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
+            <select class="form-select form-select-sm erp-limit-select ms-1" id="historyLimit" onchange="app.resetPageAndLoadHistory()" title="한 페이지에 표시할 개수">
                 <option value="50">50개</option>
                 <option value="100">100개</option>
                 <option value="150">150개</option>
                 <option value="200">200개</option>
                 <option value="999999">전체</option>
             </select>
+
+            <!-- 상단 페이지네이션 & 페이지 번호 (직접 클릭 이동 가능) -->
+            <div class="d-inline-flex align-items-center gap-1 ms-1 no-print" id="topPageNavContainer">
+                <ul id="topHistoryPagination" class="pagination pagination-sm mb-0"></ul>
+                <span class="badge bg-light text-dark border px-2 text-nowrap d-inline-flex align-items-center" id="topPageInfoText" style="height: 24px; font-size: 11px; font-weight: 600;">
+                    1 / 1
+                </span>
+            </div>
         </div>
     </div>
 
@@ -1139,9 +1298,16 @@
         </table>
     </div>
 
-    <!-- 5. 페이지네이션 -->
-    <div class="d-flex justify-content-center mt-2">
-        <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
+    <!-- 5. 하단 상태바 및 페이지네이션 (.erp-bottom-bar) -->
+    <div class="erp-bottom-bar no-print d-flex justify-content-between align-items-center flex-wrap px-2 py-1 bg-white border border-top-0 mb-2 shadow-sm" id="historyBottomBar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size: 11.5px;" id="bottomPageInfoText">총 0건 조회됨</span>
+            <span class="text-muted" style="font-size: 11.5px;">|</span>
+            <span class="text-muted" style="font-size: 11.5px;">선택: <strong id="bottomSelectedCount" class="text-primary">0</strong>건</span>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+            <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
+        </div>
     </div>
 </div>
 
@@ -2415,6 +2581,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

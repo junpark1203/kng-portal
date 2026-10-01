@@ -427,14 +427,14 @@ const app = {
 
     bindGridKeyboardAndPaste: function(tr, type) {
         const inputs = Array.from(tr.querySelectorAll('.erp-cell-input:not([readonly]), .btn-lot'));
-        const sugBox = tr.querySelector('.autocomplete-suggestions');
 
         inputs.forEach((inp) => {
             inp.addEventListener('keydown', (e) => {
+                const activeSug = inp.parentElement ? inp.parentElement.querySelector('.autocomplete-suggestions') : tr.querySelector('.autocomplete-suggestions');
                 if (e.key === 'Tab' || e.key === 'Escape') {
-                    if (sugBox) sugBox.style.display = 'none';
+                    if (activeSug) activeSug.style.display = 'none';
                 }
-                if (sugBox && sugBox.style.display === 'block') {
+                if (activeSug && activeSug.style.display === 'block') {
                     if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') return;
                 }
 
@@ -790,7 +790,47 @@ const app = {
         }
     },
 
-    setupCategoryAutocomplete() {
+    // ----------------------------------------
+    // Autocomplete UI Helpers & Enhancements
+    // ----------------------------------------
+    escapeHtml: function(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    highlightMatch: function(text, query) {
+        if (!text) return '';
+        const safeText = this.escapeHtml(text);
+        const q = (query || '').trim();
+        if (!q) return safeText;
+        const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedQ})`, 'gi');
+        return safeText.replace(regex, '<mark>$1</mark>');
+    },
+
+    positionAutocomplete: function(input, sug) {
+        if (!input || !sug) return;
+        const rect = input.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 220 && rect.top > 220) {
+            sug.style.top = 'auto';
+            sug.style.bottom = '100%';
+            sug.style.marginTop = '0';
+            sug.style.marginBottom = '2px';
+        } else {
+            sug.style.top = '100%';
+            sug.style.bottom = 'auto';
+            sug.style.marginTop = '2px';
+            sug.style.marginBottom = '0';
+        }
+    },
+
+    setupCategoryAutocomplete: function() {
         const inputs = document.querySelectorAll('.category-input, #in_category, #out_category, #dir_category, #bulkCategory, #edit_in_category, #edit_out_category, #edit_direct_category');
         
         inputs.forEach(input => {
@@ -801,9 +841,11 @@ const app = {
             let sug = container.querySelector('.autocomplete-suggestions');
             if (!sug) {
                 sug = document.createElement('div');
-                sug.className = 'autocomplete-suggestions';
+                sug.className = 'autocomplete-suggestions category-suggestions';
                 sug.style.display = 'none';
                 container.appendChild(sug);
+            } else {
+                sug.classList.add('category-suggestions');
             }
 
             const renderSuggestions = (query) => {
@@ -818,19 +860,27 @@ const app = {
                     return;
                 }
                 sug.innerHTML = filtered.map(c => {
-                    return `<div class="autocomplete-suggestion" style="padding: 7px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9;"><i class='bx bx-purchase-tag-alt text-primary me-1' style='font-size: 0.85rem;'></i>${c}</div>`;
+                    return `<div class="autocomplete-suggestion d-flex align-items-center gap-1 text-nowrap" data-val="${this.escapeHtml(c)}"><i class='bx bx-purchase-tag-alt text-primary' style='font-size: 11px;'></i><span>${this.highlightMatch(c, q)}</span></div>`;
                 }).join('');
+                this.positionAutocomplete(input, sug);
                 sug.style.display = 'block';
 
                 sug.querySelectorAll('.autocomplete-suggestion').forEach(itemDiv => {
-                    itemDiv.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        input.value = itemDiv.textContent.trim();
+                    const selectCat = (e) => {
+                        if (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                        input.value = itemDiv.dataset.val || itemDiv.textContent.trim();
                         sug.style.display = 'none';
                         input.dispatchEvent(new Event('change'));
-                    });
+                    };
+                    itemDiv.addEventListener('mousedown', selectCat);
+                    itemDiv.addEventListener('click', selectCat);
                 });
             };
+
+            this.attachAutocompleteKeyboard(input, sug);
 
             input.addEventListener('focus', () => {
                 renderSuggestions(input.value);
@@ -1015,7 +1065,7 @@ const app = {
             sug.innerHTML = filtered.map(spec => {
                 const detail = itemInfo.specDetails ? itemInfo.specDetails[spec] : null;
                 const unitBadge = detail && detail.unit 
-                    ? `<span class="badge bg-light text-secondary border ms-1" style="font-size: 10px; font-weight: normal;">${detail.unit}</span>` 
+                    ? `<span class="badge bg-secondary-subtle text-secondary border px-1 py-0 ms-1" style="font-size: 9.5px; font-weight: 500;">${this.escapeHtml(detail.unit)}</span>` 
                     : '';
                 
                 // 단가표 등록 기준단가 뱃지
@@ -1026,20 +1076,26 @@ const app = {
                         const parts = [];
                         if (priceInfo.buy_price) parts.push(`매입 ${Number(priceInfo.buy_price).toLocaleString()}원`);
                         if (priceInfo.sell_price) parts.push(`매출 ${Number(priceInfo.sell_price).toLocaleString()}원`);
-                        if (parts.length) priceBadge = `<span class="badge bg-light text-primary border ms-1" style="font-size: 10px; font-weight: normal;"><i class='bx bx-won'></i> ${parts.join(' / ')}</span>`;
+                        if (parts.length) priceBadge = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1 py-0" style="font-size: 9.5px; font-weight: 500;"><i class='bx bx-won'></i> ${parts.join(' / ')}</span>`;
                     } else if (type === 'inbound' && priceInfo.buy_price) {
-                        priceBadge = `<span class="badge bg-light text-primary border ms-1" style="font-size: 10px; font-weight: normal;"><i class='bx bx-won'></i> 매입 ${Number(priceInfo.buy_price).toLocaleString()}원</span>`;
+                        priceBadge = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1 py-0" style="font-size: 9.5px; font-weight: 500;"><i class='bx bx-won'></i> 매입 ${Number(priceInfo.buy_price).toLocaleString()}원</span>`;
                     }
                 }
 
                 return `
-                    <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" 
-                         style="padding: 7px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9;">
-                        <span><i class='bx bx-purchase-tag text-primary me-1' style='font-size: 0.85rem;'></i>${spec}</span>
-                        <span class="d-flex align-items-center gap-1">${unitBadge}${priceBadge}</span>
+                    <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" data-spec="${this.escapeHtml(spec)}">
+                        <div class="d-flex align-items-center gap-1 text-nowrap">
+                            <i class='bx bx-purchase-tag text-primary' style='font-size: 11.5px;'></i>
+                            <strong class="text-dark">${this.highlightMatch(spec, q)}</strong>
+                            ${unitBadge}
+                        </div>
+                        <div class="d-flex align-items-center gap-1 ms-3 text-nowrap">
+                            ${priceBadge}
+                        </div>
                     </div>
                 `;
             }).join('');
+            this.positionAutocomplete(specInput, sug);
             sug.style.display = 'block';
 
             sug.querySelectorAll('.autocomplete-suggestion').forEach((itemDiv, idx) => {
@@ -1236,8 +1292,11 @@ const app = {
     },
 
     changeHistoryPage: function(page) {
+        if (page < 1) return;
         this.currentPage = page;
         this.loadHistory();
+        const grid = document.querySelector('.erp-main-grid-wrapper');
+        if (grid) grid.scrollTop = 0;
     },
 
     currentDatePreset: 'all',
@@ -1664,47 +1723,72 @@ const app = {
     },
 
     renderPagination: function(total, currentPage, limit) {
-        const ul = $('historyPagination');
-        if (!ul) return;
+        const bottomUl = $('historyPagination');
+        const topUl = $('topHistoryPagination');
+        const topInfo = $('topPageInfoText');
+        const bottomInfo = $('bottomPageInfoText');
 
-        if (limit >= 999999) {
-            ul.innerHTML = '';
-            return;
+        const ps = parseInt(limit, 10) || 50;
+        const isAll = (ps >= 999999);
+        const totalPages = isAll ? 1 : Math.max(1, Math.ceil((total || 0) / ps));
+        const curPage = Math.min(Math.max(1, currentPage || 1), totalPages);
+        this.currentPage = curPage;
+
+        // 1. 상단 정보 배지 동기화
+        if (topInfo) {
+            topInfo.textContent = isAll ? `전체 (${(total || 0).toLocaleString()}건)` : `${curPage} / ${totalPages} 페이지`;
         }
 
-        const totalPages = Math.ceil(total / limit) || 1;
+        // 2. 하단 상태 정보 동기화
+        if (bottomInfo) {
+            if (isAll || total === 0) {
+                bottomInfo.textContent = `총 ${(total || 0).toLocaleString()}건 전체 표시`;
+            } else {
+                const startItem = (curPage - 1) * ps + 1;
+                const endItem = Math.min(curPage * ps, total);
+                bottomInfo.textContent = `총 ${(total || 0).toLocaleString()}건 중 ${startItem.toLocaleString()}~${endItem.toLocaleString()}건 (${curPage}/${totalPages} 페이지)`;
+            }
+        }
+
+        // 3. 페이지네이션 버튼 HTML 생성 (0건 또는 1페이지여도 [ 1 ] 버튼 항상 유지)
         let html = '';
-        
-        // Prev button
-        if (currentPage > 1) {
-            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage - 1})">이전</button></li>`;
+
+        // 처음(«) / 이전(‹) 버튼
+        if (curPage > 1 && !isAll) {
+            html += `<li class="page-item"><button type="button" class="page-link" onclick="app.changeHistoryPage(1)" title="첫 페이지">«</button></li>`;
+            html += `<li class="page-item"><button type="button" class="page-link" onclick="app.changeHistoryPage(${curPage - 1})" title="이전 페이지">‹</button></li>`;
         } else {
-            html += `<li class="page-item disabled"><span class="page-link">이전</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">«</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">‹</span></li>`;
         }
 
-        // Display up to 5 page numbers around the current page
-        let startPage = Math.max(1, currentPage - 2);
+        // 5개 단위 번호 표시
+        let startPage = Math.max(1, curPage - 2);
         let endPage = Math.min(totalPages, startPage + 4);
         if (endPage - startPage < 4) {
             startPage = Math.max(1, endPage - 4);
         }
+        if (startPage < 1) startPage = 1;
 
         for (let i = startPage; i <= endPage; i++) {
-            if (i === currentPage) {
-                html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+            if (i === curPage) {
+                html += `<li class="page-item active"><span class="page-link fw-bold">${i}</span></li>`;
             } else {
-                html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${i})">${i}</button></li>`;
+                html += `<li class="page-item"><button type="button" class="page-link" onclick="app.changeHistoryPage(${i})">${i}</button></li>`;
             }
         }
 
-        // Next button
-        if (currentPage < totalPages) {
-            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage + 1})">다음</button></li>`;
+        // 다음(›) / 끝(») 버튼
+        if (curPage < totalPages && !isAll) {
+            html += `<li class="page-item"><button type="button" class="page-link" onclick="app.changeHistoryPage(${curPage + 1})" title="다음 페이지">›</button></li>`;
+            html += `<li class="page-item"><button type="button" class="page-link" onclick="app.changeHistoryPage(${totalPages})" title="마지막 페이지">»</button></li>`;
         } else {
-            html += `<li class="page-item disabled"><span class="page-link">다음</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">›</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">»</span></li>`;
         }
 
-        ul.innerHTML = html;
+        if (bottomUl) bottomUl.innerHTML = html;
+        if (topUl) topUl.innerHTML = html;
     },
 
     renderHistoryTable: function(data) {
@@ -2137,6 +2221,10 @@ const app = {
             selectAll.checked = allBoxes.length > 0 && checked.length === allBoxes.length;
         }
 
+        if ($('bottomSelectedCount')) {
+            $('bottomSelectedCount').textContent = checked.length;
+        }
+
         const bar = $('floatingSelectionBar');
         if (!bar) return;
 
@@ -2555,7 +2643,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input in-item" placeholder="품목명 입력/선택" autocomplete="off" required>
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions item-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -2567,7 +2655,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input in-category category-input" placeholder="분류" autocomplete="off">
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions category-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -2601,6 +2689,7 @@ const app = {
         const newRow = $(rowId);
         const input = newRow.querySelector('.in-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
+        if (sug) sug.classList.add('item-suggestions');
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -2613,13 +2702,36 @@ const app = {
                 }
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
+                    sug.innerHTML = matches.map(m => {
+                        const itemInfo = map ? map[m] : null;
+                        const specCount = itemInfo && itemInfo.specs ? itemInfo.specs.length : 0;
+                        const countBadge = specCount > 0 
+                            ? `<span class="badge bg-light text-secondary border px-1 py-0 ms-auto" style="font-size: 9.5px; font-weight: 500;">규격 ${specCount}종</span>` 
+                            : '';
+                        const catBadge = itemInfo && itemInfo.defaultCategory 
+                            ? `<span class="badge bg-secondary-subtle text-secondary px-1 py-0 ms-1" style="font-size: 9.5px;">${this.escapeHtml(itemInfo.defaultCategory)}</span>` 
+                            : '';
+                        return `
+                            <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" data-val="${this.escapeHtml(m)}">
+                                <div class="d-flex align-items-center gap-1 text-nowrap">
+                                    <i class='bx bx-cube text-primary' style='font-size: 11.5px;'></i>
+                                    <span>${this.highlightMatch(m, val)}</span>
+                                    ${catBadge}
+                                </div>
+                                ${countBadge}
+                            </div>
+                        `;
+                    }).join('');
+                    this.positionAutocomplete(input, sug);
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
                         const selectItem = (e) => {
-                            if (e) e.preventDefault();
-                            input.value = div.innerText.trim();
+                            if (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                            input.value = div.dataset.val || div.innerText.trim();
                             sug.style.display = 'none';
                             input.dispatchEvent(new Event('change'));
                             this.handleItemSelectionAutoFill(newRow, 'inbound', input.value.trim());
@@ -2858,7 +2970,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input dir-item" placeholder="품목명 입력/선택" autocomplete="off" required>
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions item-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -2870,7 +2982,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input dir-category category-input" placeholder="분류" autocomplete="off">
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions category-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -2906,6 +3018,7 @@ const app = {
         const newRow = $(rowId);
         const input = newRow.querySelector('.dir-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
+        if (sug) sug.classList.add('item-suggestions');
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -2918,13 +3031,36 @@ const app = {
                 }
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
+                    sug.innerHTML = matches.map(m => {
+                        const itemInfo = map ? map[m] : null;
+                        const specCount = itemInfo && itemInfo.specs ? itemInfo.specs.length : 0;
+                        const countBadge = specCount > 0 
+                            ? `<span class="badge bg-light text-secondary border px-1 py-0 ms-auto" style="font-size: 9.5px; font-weight: 500;">규격 ${specCount}종</span>` 
+                            : '';
+                        const catBadge = itemInfo && itemInfo.defaultCategory 
+                            ? `<span class="badge bg-secondary-subtle text-secondary px-1 py-0 ms-1" style="font-size: 9.5px;">${this.escapeHtml(itemInfo.defaultCategory)}</span>` 
+                            : '';
+                        return `
+                            <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" data-val="${this.escapeHtml(m)}">
+                                <div class="d-flex align-items-center gap-1 text-nowrap">
+                                    <i class='bx bx-cube text-primary' style='font-size: 11.5px;'></i>
+                                    <span>${this.highlightMatch(m, val)}</span>
+                                    ${catBadge}
+                                </div>
+                                ${countBadge}
+                            </div>
+                        `;
+                    }).join('');
+                    this.positionAutocomplete(input, sug);
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
                         const selectItem = (e) => {
-                            if (e) e.preventDefault();
-                            input.value = div.innerText.trim();
+                            if (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                            input.value = div.dataset.val || div.innerText.trim();
                             sug.style.display = 'none';
                             input.dispatchEvent(new Event('change'));
                             this.handleItemSelectionAutoFill(newRow, 'direct', input.value.trim());
@@ -3172,7 +3308,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input out-item" placeholder="품목명 입력/선택" autocomplete="off" required>
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions item-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -3183,7 +3319,7 @@ const app = {
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input out-category category-input" placeholder="분류" autocomplete="off">
-                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                        <div class="autocomplete-suggestions category-suggestions" style="display:none;"></div>
                     </div>
                 </td>
                 <td>
@@ -3221,6 +3357,7 @@ const app = {
         const newRow = $(rowId);
         const input = newRow.querySelector('.out-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
+        if (sug) sug.classList.add('item-suggestions');
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -3242,21 +3379,28 @@ const app = {
                 const items = await authFetch(`${API_BASE}/inventory/items`);
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
+                    sug.innerHTML = matches.map(m => `
+                        <div class="autocomplete-suggestion d-flex align-items-center gap-1 text-nowrap" data-val="${this.escapeHtml(m)}">
+                            <i class='bx bx-cube text-primary' style='font-size: 11.5px;'></i>
+                            <span>${this.highlightMatch(m, val)}</span>
+                        </div>
+                    `).join('');
+                    this.positionAutocomplete(input, sug);
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
-                            input.value = div.innerText.trim();
+                        const selectOutItem = (e) => {
+                            if (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                            const chosen = div.dataset.val || div.innerText.trim();
+                            input.value = chosen;
                             sug.style.display = 'none';
-                            this.loadOutboundSpecsForRow(rowId, div.innerText.trim());
-                        });
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText.trim();
-                            sug.style.display = 'none';
-                            this.loadOutboundSpecsForRow(rowId, div.innerText.trim());
-                        });
+                            this.loadOutboundSpecsForRow(rowId, chosen);
+                        };
+                        div.addEventListener('mousedown', selectOutItem);
+                        div.addEventListener('click', selectOutItem);
                     });
                 } else {
                     sug.style.display = 'none';

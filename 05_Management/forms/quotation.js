@@ -199,7 +199,7 @@ const app = {
                 if (specEl) items[idx].spec = specEl.value.trim();
                 if (qtyEl) items[idx].qty = Number(qtyEl.value) || 0;
                 if (unitEl) items[idx].unit = unitEl.value.trim();
-                if (priceEl) items[idx].price = Number(priceEl.value) || 0;
+                if (priceEl) items[idx].price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (remarksEl) items[idx].remarks = remarksEl.value.trim();
             }
         });
@@ -220,7 +220,7 @@ const app = {
             vatType: getVal('vatTypeSelect'),
             notes: getVal('notesInstructions'),
             showImages: document.getElementById('optShowImages')?.checked ? 1 : 0,
-            includeSeal: document.getElementById('optIncludeSeal')?.checked ? 1 : 0,
+            includeSeal: (this.currentQuote?.include_seal !== undefined) ? this.currentQuote.include_seal : 1,
             items: items
         });
     },
@@ -394,11 +394,11 @@ const app = {
             payment_terms: '납품 후 익월 말일 현금결제',
             include_seal: 1,
             show_images: 1,
-            vat_type: 'exclusive',
+            vat_type: 'inclusive',
             total_supply_price: 0,
             total_vat: 0,
             total_amount: 0,
-            notes_instructions: '1. 상기 견적금액은 부가세(VAT) 별도 기준입니다.\n2. 견적 유효기간은 견적일로부터 15일간 유효합니다.\n3. 사양 및 수량 변경 시 견적단가가 변동될 수 있습니다.',
+            notes_instructions: '1. 상기 견적금액은 부가세(VAT) 포함 기준입니다.\n2. 견적 유효기간은 견적일로부터 15일간 유효합니다.\n3. 사양 및 수량 변경 시 견적단가가 변동될 수 있습니다.',
             status: '작성중',
             items: []
         };
@@ -427,10 +427,10 @@ const app = {
         document.getElementById('deliveryPlace').value = q.delivery_place || '';
         document.getElementById('paymentTerms').value = q.payment_terms || '';
         document.getElementById('quoteStatus').value = q.status || '작성중';
-        document.getElementById('vatTypeSelect').value = q.vat_type || 'exclusive';
+        document.getElementById('vatTypeSelect').value = q.vat_type || 'inclusive';
         document.getElementById('notesInstructions').value = q.notes_instructions || '';
-        document.getElementById('optShowImages').checked = (q.show_images !== 0);
-        document.getElementById('optIncludeSeal').checked = (q.include_seal !== 0);
+        if (document.getElementById('optShowImages')) document.getElementById('optShowImages').checked = (q.show_images !== 0);
+        if (document.getElementById('optIncludeSeal')) document.getElementById('optIncludeSeal').checked = (q.include_seal !== 0);
         this.toggleImageColumn(q.show_images !== 0);
     },
 
@@ -721,9 +721,17 @@ const app = {
                     <td class="col-cost text-end pe-2 text-muted" style="font-size:11px;">
                         ${fmtWon(it.cost_price || 0)}
                     </td>
-                    <!-- 제안단가 -->
+                    <!-- 제안단가 (원화기호 ₩ 및 3자리 콤마 포맷팅) -->
                     <td>
-                        <input type="number" class="form-control form-control-sm border-0 bg-transparent text-end fw-bold text-primary" min="0" value="${it.unit_price || 0}" oninput="app.updateItemField(${idx}, 'unit_price', this.value)">
+                        <input type="text"
+                               inputmode="numeric"
+                               class="form-control form-control-sm border-0 bg-transparent text-end fw-bold text-primary pe-2"
+                               value="${fmtWon(it.unit_price || 0)}"
+                               data-idx="${idx}"
+                               oninput="app.formatPriceInput(this, ${idx})"
+                               onfocus="this.select()"
+                               onblur="app.formatPriceBlur(this, ${idx})"
+                               onkeydown="if(event.key==='Enter'){this.blur();}">
                     </td>
                     <!-- 공급가액 -->
                     <td class="text-end pe-2 fw-semibold" id="cellSupply_${idx}">${fmtWon(it.supply_price || 0)}</td>
@@ -754,8 +762,9 @@ const app = {
         const it = this.currentQuote.items[idx];
 
         if (field === 'qty' || field === 'unit_price') {
-            it[field] = Number(val) || 0;
-            const vatType = document.getElementById('vatTypeSelect')?.value || 'exclusive';
+            const rawNum = (typeof val === 'string') ? Number(val.replace(/[^0-9.-]/g, '')) : Number(val);
+            it[field] = isNaN(rawNum) ? 0 : rawNum;
+            const vatType = document.getElementById('vatTypeSelect')?.value || 'inclusive';
             const qty = Number(it.qty) || 0;
             const price = Number(it.unit_price) || 0;
             const baseAmount = Math.round(qty * price);
@@ -791,10 +800,57 @@ const app = {
         }
     },
 
+    // ── 제안 단가 입력 실시간 포맷팅 (원화 ₩ 기호 및 3자리 콤마) ──
+    formatPriceInput: function(el, idx) {
+        const rawDigits = el.value.replace(/[^0-9]/g, '');
+        const num = rawDigits ? parseInt(rawDigits, 10) : 0;
+
+        // 품목 데이터 모델 및 금액 실시간 연동
+        if (this.currentQuote?.items && this.currentQuote.items[idx]) {
+            this.updateItemField(idx, 'unit_price', num);
+        }
+
+        if (rawDigits === '') {
+            el.value = '₩';
+            try { el.setSelectionRange(1, 1); } catch(e) {}
+        } else {
+            // 커서 위치(우측 기준 잔여 숫자 개수) 계산하여 자연스러운 타이핑 유지
+            const prevVal = el.value;
+            const curEnd = el.selectionEnd || prevVal.length;
+            const digitsRight = prevVal.slice(curEnd).replace(/[^0-9]/g, '').length;
+
+            const formatted = fmtWon(num);
+            el.value = formatted;
+
+            let newPos = formatted.length;
+            let counted = 0;
+            for (let i = formatted.length - 1; i >= 0; i--) {
+                if (/\d/.test(formatted[i])) {
+                    counted++;
+                    if (counted === digitsRight) {
+                        newPos = i;
+                        break;
+                    }
+                }
+            }
+            if (newPos < 1) newPos = 1;
+            try { el.setSelectionRange(newPos, newPos); } catch(e) {}
+        }
+    },
+
+    formatPriceBlur: function(el, idx) {
+        const rawDigits = el.value.replace(/[^0-9]/g, '');
+        const num = rawDigits ? parseInt(rawDigits, 10) : 0;
+        el.value = fmtWon(num);
+        if (this.currentQuote?.items && this.currentQuote.items[idx]) {
+            this.updateItemField(idx, 'unit_price', num);
+        }
+    },
+
     // ── 총 견적금액 및 한글 금액 재계산 ──
     recalcTotals: function() {
         const items = this.currentQuote.items || [];
-        const vatType = document.getElementById('vatTypeSelect')?.value || 'exclusive';
+        const vatType = document.getElementById('vatTypeSelect')?.value || 'inclusive';
         this.currentQuote.vat_type = vatType;
 
         let sumSupply = 0;
@@ -1181,7 +1237,7 @@ const app = {
             return;
         }
 
-        const vatType = document.getElementById('vatTypeSelect')?.value || 'exclusive';
+        const vatType = document.getElementById('vatTypeSelect')?.value || 'inclusive';
         const startSeq = (this.currentQuote.items.length || 0) + 1;
 
         selected.forEach((p, idx) => {
@@ -1258,7 +1314,7 @@ const app = {
                 if (specEl) item.spec = specEl.value.trim();
                 if (qtyEl) item.qty = Number(qtyEl.value) || 1;
                 if (unitEl && unitEl.value.trim()) item.unit = unitEl.value.trim();
-                if (priceEl) item.unit_price = Number(priceEl.value) || 0;
+                if (priceEl) item.unit_price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (remarksEl) item.remarks = remarksEl.value.trim();
             });
             this.recalcTotals();
@@ -1302,8 +1358,8 @@ const app = {
             status: document.getElementById('quoteStatus').value,
             vat_type: document.getElementById('vatTypeSelect').value,
             notes_instructions: document.getElementById('notesInstructions').value.trim(),
-            show_images: document.getElementById('optShowImages').checked ? 1 : 0,
-            include_seal: document.getElementById('optIncludeSeal').checked ? 1 : 0,
+            show_images: document.getElementById('optShowImages')?.checked ? 1 : 0,
+            include_seal: (this.currentQuote?.include_seal !== undefined) ? this.currentQuote.include_seal : 1,
             supplier_name: this.supplierSettings.name,
             supplier_biz_num: this.supplierSettings.bizNum,
             supplier_ceo: this.supplierSettings.ceo,

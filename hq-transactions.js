@@ -399,10 +399,25 @@
     function renderPagination(totalCount) {
         const bottomPageInfo = $('bottomPageInfo');
         const paginationContainer = $('pagination');
+        const topPaginationContainer = $('topPagination');
 
-        if (pageSize === 'all' || totalCount === 0) {
-            bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 전체 표시`;
-            paginationContainer.innerHTML = '';
+        if (pageSize === 'all') {
+            if (bottomPageInfo) bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 전체 표시`;
+            const allHtml = `<button type="button" class="erp-page-btn active" disabled>전체</button>`;
+            if (paginationContainer) paginationContainer.innerHTML = allHtml;
+            if (topPaginationContainer) topPaginationContainer.innerHTML = allHtml;
+            return;
+        }
+
+        if (totalCount === 0) {
+            if (bottomPageInfo) bottomPageInfo.textContent = `총 0건 조회됨`;
+            const zeroHtml = `
+                <button type="button" class="erp-page-btn" disabled>‹</button>
+                <button type="button" class="erp-page-btn active" disabled>1</button>
+                <button type="button" class="erp-page-btn" disabled>›</button>
+            `;
+            if (paginationContainer) paginationContainer.innerHTML = zeroHtml;
+            if (topPaginationContainer) topPaginationContainer.innerHTML = zeroHtml;
             return;
         }
 
@@ -411,7 +426,9 @@
         const startItem = (page - 1) * ps + 1;
         const endItem = Math.min(page * ps, totalCount);
 
-        bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 중 ${fmtNum(startItem)}~${fmtNum(endItem)}`;
+        if (bottomPageInfo) {
+            bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 중 ${fmtNum(startItem)}~${fmtNum(endItem)} (${page}/${totalPages} 페이지)`;
+        }
 
         let html = '';
         html += `<button type="button" class="erp-page-btn" ${page <= 1 ? 'disabled' : ''} onclick="app.goPage(${page - 1})">‹</button>`;
@@ -434,7 +451,9 @@
         }
 
         html += `<button type="button" class="erp-page-btn" ${page >= totalPages ? 'disabled' : ''} onclick="app.goPage(${page + 1})">›</button>`;
-        paginationContainer.innerHTML = html;
+
+        if (paginationContainer) paginationContainer.innerHTML = html;
+        if (topPaginationContainer) topPaginationContainer.innerHTML = html;
     }
 
     // ==========================================

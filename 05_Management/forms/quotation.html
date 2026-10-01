@@ -295,8 +295,8 @@
                     <div class="d-flex align-items-center gap-1">
                         <span class="fw-bold" style="font-size: 12px;">과세 구분:</span>
                         <select class="form-select form-select-sm" id="vatTypeSelect" style="width: 110px;" onchange="app.recalcTotals()">
-                            <option value="exclusive" selected>부가세 별도</option>
-                            <option value="inclusive">부가세 포함</option>
+                            <option value="inclusive" selected>부가세 포함</option>
+                            <option value="exclusive">부가세 별도</option>
                             <option value="none">영세 / 면세</option>
                         </select>
                     </div>
@@ -329,15 +329,10 @@
                         <span class="fw-bold text-dark" style="font-size: 12px;"><i class='bx bx-list-check text-primary'></i> 견적 품목 내역</span>
                         <span class="badge bg-primary" id="itemCountBadge">0개 품목</span>
                         
-                        <!-- 사진 포함 인쇄 토글 체크박스 [사용자 요구사항] -->
-                        <label class="form-check-label d-flex align-items-center gap-1 ms-3 cursor-pointer" style="font-size: 11.5px;">
+                        <!-- 사진 열 표시 토글 -->
+                        <label class="form-check-label d-flex align-items-center gap-1 ms-3 cursor-pointer text-secondary" style="font-size: 11.5px;" title="편집 테이블에서 사진 열을 표시하거나 숨깁니다">
                             <input type="checkbox" class="form-check-input m-0" id="optShowImages" checked onchange="app.toggleImageColumn(this.checked)">
-                            <i class='bx bx-image text-success'></i> 품목 사진 표시 / 인쇄에 포함
-                        </label>
-
-                        <label class="form-check-label d-flex align-items-center gap-1 ms-2 cursor-pointer" style="font-size: 11.5px;">
-                            <input type="checkbox" class="form-check-input m-0" id="optIncludeSeal" checked>
-                            <i class='bx bx-check-shield text-danger'></i> 직인(도장) 날인 포함
+                            <i class='bx bx-image text-primary'></i> 사진 열 보기
                         </label>
                     </div>
 
@@ -772,6 +767,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20260930_14"></script>
+    <script src="./quotation.js?v=20261001_02"></script>
 </body>
 </html>
