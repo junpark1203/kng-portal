@@ -2435,6 +2435,26 @@ function exportToInventory() {
             if (p.shippingOverrides) {
                 Object.keys(p.shippingOverrides).forEach(function(key) { sp[key] = p.shippingOverrides[key]; });
             }
+            var images = p._images || { main: null, additional: [], detail: [] };
+            var mainUrl = '';
+            if (images.main) {
+                if (typeof images.main === 'string') mainUrl = images.main;
+                else mainUrl = images.main.url || images.main.autoName || images.main.dataUrl || images.main.filename || '';
+            }
+            if (mainUrl && !mainUrl.startsWith('http') && !mainUrl.startsWith('data:') && !mainUrl.startsWith('/')) {
+                mainUrl = STORAGE_API + '/uploads/' + mainUrl;
+            }
+
+            var addUrls = (images.additional || []).map(function(img) {
+                var u = '';
+                if (typeof img === 'string') u = img;
+                else if (img) u = img.url || img.autoName || img.filename || '';
+                if (u && !u.startsWith('http') && !u.startsWith('data:') && !u.startsWith('/')) {
+                    u = STORAGE_API + '/uploads/' + u;
+                }
+                return u;
+            }).filter(Boolean);
+
             exportPayload.push({
                 supplier: supplier,
                 brand: p.brand || '',
@@ -2450,7 +2470,9 @@ function exportToInventory() {
                 sellShipping: p.saleShippingFee || 0,
                 isLowestPrice: p.isLowestPrice ? 1 : 0,
                 isSoldOut: 0,
-                remarks: ''
+                remarks: '',
+                thumbnail: mainUrl || '',
+                additionalImages: JSON.stringify(addUrls)
             });
         }
     });

@@ -145,6 +145,7 @@
                         <col class="col-updated" style="width: 76px;">
                         <col class="col-supplier" style="width: 88px;">
                         <col class="col-brand" style="width: 110px;">
+                        <col class="col-image" style="width: 44px;">
                         <col class="col-name" style="width: auto; min-width: 180px;">
                         <col class="col-color" style="width: 75px;">
                         <col class="col-size" style="width: 65px;">
@@ -170,6 +171,7 @@
                             <th rowspan="2" class="col-updated sortable text-center align-middle" data-sort="updatedAt">최종수정 <i class='bx bx-sort'></i></th>
                             <th rowspan="2" class="col-supplier sortable text-center align-middle" data-sort="supplier">매입처 <i class='bx bx-sort'></i></th>
                             <th rowspan="2" class="col-brand sortable text-center align-middle" data-sort="brand">브랜드 <i class='bx bx-sort'></i></th>
+                            <th rowspan="2" class="col-image text-center align-middle" style="width: 44px;">사진</th>
                             <th rowspan="2" class="col-name sortable text-center align-middle" data-sort="name">상품명 <i class='bx bx-sort'></i></th>
                             <th rowspan="2" class="col-color sortable text-center align-middle" data-sort="color">컬러 <i class='bx bx-sort'></i></th>
                             <th rowspan="2" class="col-size sortable text-center align-middle" data-sort="size">규격 <i class='bx bx-sort'></i></th>
@@ -192,7 +194,7 @@
                         </tr>
                     </thead>
                     <tbody id="skTableBody">
-                        <tr class="loading-row"><td colspan="18" class="text-center py-4"><i class='bx bx-loader-alt bx-spin fs-4 text-primary'></i><div class="mt-2 text-muted" style="font-size:12px;">데이터를 불러오는 중입니다...</div></td></tr>
+                        <tr class="loading-row"><td colspan="19" class="text-center py-4"><i class='bx bx-loader-alt bx-spin fs-4 text-primary'></i><div class="mt-2 text-muted" style="font-size:12px;">데이터를 불러오는 중입니다...</div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -260,6 +262,20 @@
                                         <label class="form-check-label d-flex align-items-center gap-2 cursor-pointer text-danger fw-bold m-0" style="font-size: 12px;">
                                             <input type="checkbox" id="skIsSoldOut" class="form-check-input m-0"> 품절 처리 (재고 없음)
                                         </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>대표 썸네일</th>
+                                    <td colspan="3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div id="skModalThumbPreview" class="sk-modal-thumb-box">
+                                                <i class='bx bx-image text-muted'></i>
+                                            </div>
+                                            <input type="text" id="skThumbnail" class="form-control form-control-sm flex-grow-1" placeholder="대표 썸네일 이미지 URL (https://...)">
+                                            <button type="button" class="btn-erp btn-sm" id="skModalViewGalleryBtn" style="white-space:nowrap; display:none;">
+                                                <i class='bx bx-images'></i> 사진 갤러리 (<span id="skModalAddCount">0</span>)
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -449,6 +465,41 @@
                             <button type="submit" class="btn-erp btn-erp-warning" id="saveBulkEditSkBtn"><i class='bx bx-check'></i> 일괄 적용</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 5. 이미지 호버 프리뷰 툴팁 ── -->
+    <div id="skImageHoverTooltip" class="sk-image-hover-tooltip">
+        <img id="skHoverTooltipImg" src="" alt="미리보기">
+        <div class="hover-title" id="skHoverTooltipTitle"></div>
+        <div class="hover-meta" id="skHoverTooltipMeta"></div>
+    </div>
+
+    <!-- ── 6. 상품 사진 갤러리 모달 (대표이미지 + 추가이미지 라이트박스) ── -->
+    <div id="skImageGalleryModal" class="modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 580px;">
+            <div class="modal-content erp-modal-content">
+                <div class="modal-header erp-modal-header py-2 px-3 d-flex justify-content-between align-items-center">
+                    <h5 class="modal-title m-0" id="skGalleryTitle" style="font-size: 13px; font-weight: 700;">
+                        <i class='bx bx-image text-primary'></i> 상품 사진 갤러리
+                    </h5>
+                    <button type="button" class="btn-close" id="closeSkGalleryModalBtn" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 text-center">
+                    <div class="sk-gallery-main-wrap mb-2">
+                        <img id="skGalleryMainImg" src="" alt="상품 이미지" class="sk-gallery-main-img">
+                    </div>
+                    <div class="sk-gallery-caption text-muted mb-2" id="skGalleryCaption" style="font-size: 11px;"></div>
+                    <!-- 하단 썸네일 스트립 (대표 + 추가이미지) -->
+                    <div class="sk-gallery-strip d-flex gap-2 justify-content-center flex-wrap" id="skGalleryStrip"></div>
+                </div>
+                <div class="modal-footer erp-modal-footer py-2 px-3 d-flex justify-content-between">
+                    <a href="#" target="_blank" class="btn-erp btn-sm" id="skGalleryOpenOriginalBtn">
+                        <i class='bx bx-link-external'></i> 새 탭에서 원본 보기
+                    </a>
+                    <button type="button" class="btn-erp btn-erp-primary btn-sm" id="closeSkGalleryModalBtn2">닫기</button>
                 </div>
             </div>
         </div>

@@ -246,6 +246,16 @@ function enrichProduct(p) {
         p.remarks || ''
     ].join(' ').toLowerCase();
 
+    // 추가이미지 JSON 파싱
+    var addImgs = [];
+    if (p.additionalImages) {
+        if (typeof p.additionalImages === 'string') {
+            try { addImgs = JSON.parse(p.additionalImages) || []; } catch(e) { addImgs = []; }
+        } else if (Array.isArray(p.additionalImages)) {
+            addImgs = p.additionalImages;
+        }
+    }
+
     return Object.assign({}, p, {
         buyPrice: bp,
         buyShipping: bs,
@@ -263,7 +273,8 @@ function enrichProduct(p) {
         _shortDate: shortDate,
         _shortUpdateDate: modified ? formatShortDate(p.updatedAt) : '-',
         _fullUpdateDate: modified ? formatDateTime(p.updatedAt) : '',
-        _searchIndex: searchIndex
+        _searchIndex: searchIndex,
+        _additionalImages: addImgs
     });
 }
 
@@ -485,7 +496,7 @@ function renderTable() {
 
     if (pageProducts.length === 0) {
         var emptyMsg = products.length === 0 ? '등록된 매입상품이 없습니다.' : '검색 조건에 맞는 상품이 없습니다.';
-        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-5 text-muted"><i class="bx bx-folder-open fs-3"></i><div class="mt-2">' + emptyMsg + '</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="19" class="text-center py-5 text-muted"><i class="bx bx-folder-open fs-3"></i><div class="mt-2">' + emptyMsg + '</div></td></tr>';
         renderPagination(0, 1, 0, 0);
         updateSelectedCount();
         return;
@@ -506,6 +517,19 @@ function renderTable() {
         if (p.isSoldOut) nameBadges += '<span class="badge-soldout">품절</span>';
         if (p.isLowestPrice) nameBadges += '<span class="badge-lowest">최저가</span>';
 
+        // 사진 썸네일 및 추가이미지 뱃지
+        var imgHtml = '';
+        if (p.thumbnail) {
+            var addCount = (p._additionalImages && p._additionalImages.length > 0) ? p._additionalImages.length : 0;
+            var badge = addCount > 0 ? '<span class="sk-thumb-badge" title="추가이미지 ' + addCount + '장">+' + addCount + '</span>' : '';
+            imgHtml = '<div class="sk-thumb-wrap" data-id="' + escapeHtml(p.id) + '" title="클릭하여 사진 크게보기">' +
+                          '<img src="' + escapeHtml(p.thumbnail) + '" class="sk-thumb-img" alt="' + escapeHtml(p.name) + '" loading="lazy" onerror="this.onerror=null;this.parentElement.className=\'sk-thumb-empty\';this.parentElement.innerHTML=\'<i class=\\\'bx bx-image\\\'></i>\';">' +
+                          badge +
+                      '</div>';
+        } else {
+            imgHtml = '<div class="sk-thumb-empty" title="등록된 사진 없음"><i class="bx bx-image"></i></div>';
+        }
+
         // 수익률 뱃지
         var rateClass = 'badge-rate-mid';
         if (p._profitRate >= 20) rateClass = 'badge-rate-high';
@@ -522,6 +546,7 @@ function renderTable() {
                 '<td class="col-updated text-center">' + updatedDateHtml + '</td>' +
                 '<td class="col-supplier text-center" title="' + escapeHtml(p.supplier) + '">' + escapeHtml(p.supplier) + '</td>' +
                 '<td class="col-brand text-center" title="' + escapeHtml(p.brand) + '">' + escapeHtml(p.brand) + '</td>' +
+                '<td class="col-image text-center">' + imgHtml + '</td>' +
                 '<td class="col-name text-start" title="' + escapeHtml(p.name) + '">' +
                     '<strong>' + escapeHtml(p.name) + '</strong>' + nameBadges +
                 '</td>' +
@@ -629,6 +654,164 @@ function updateSelectedCount() {
 }
 
 // ==========================================
+// 사진 썸네일, 갤러리 및 호버 프리뷰 엔진
+// ==========================================
+function updateModalThumbPreview(url) {
+    var box = document.getElementById('skModalThumbPreview');
+    if (!box) return;
+    if (url) {
+        box.innerHTML = '<img src="' + escapeHtml(url) + '" alt="썸네일" onerror="this.onerror=null;this.parentElement.innerHTML=\'<i class=\\\'bx bx-image text-muted\\\'></i>\';">';
+    } else {
+        box.innerHTML = '<i class="bx bx-image text-muted"></i>';
+    }
+}
+
+var activeGalleryImages = [];
+var activeGalleryIndex = 0;
+
+function openImageGallery(productId) {
+    var p = products.find(function(item) { return item.id === productId; });
+    if (!p) return;
+
+    var galleryModal = document.getElementById('skImageGalleryModal');
+    var galleryTitle = document.getElementById('skGalleryTitle');
+    var mainImg = document.getElementById('skGalleryMainImg');
+    var caption = document.getElementById('skGalleryCaption');
+    var strip = document.getElementById('skGalleryStrip');
+    var openBtn = document.getElementById('skGalleryOpenOriginalBtn');
+    if (!galleryModal) return;
+
+    var list = [];
+    if (p.thumbnail) {
+        list.push({ type: 'main', label: '대표 썸네일', url: p.thumbnail });
+    }
+    if (p._additionalImages && Array.isArray(p._additionalImages)) {
+        p._additionalImages.forEach(function(u, idx) {
+            if (u) list.push({ type: 'add', label: '추가이미지 ' + (idx + 1), url: u });
+        });
+    }
+
+    if (list.length === 0) {
+        showToast('등록된 상품 이미지가 없습니다.', 'info');
+        return;
+    }
+
+    activeGalleryImages = list;
+    activeGalleryIndex = 0;
+
+    if (galleryTitle) {
+        galleryTitle.innerHTML = "<i class='bx bx-image text-primary'></i> " + escapeHtml(p.name) + 
+            (p.brand ? " <span class='text-muted' style='font-size:11px;font-weight:400;'>(" + escapeHtml(p.brand) + ")</span>" : "");
+    }
+
+    function renderActiveGalleryImage(idx) {
+        if (idx < 0 || idx >= activeGalleryImages.length) return;
+        activeGalleryIndex = idx;
+        var item = activeGalleryImages[idx];
+        if (mainImg) {
+            mainImg.src = item.url;
+            mainImg.alt = item.label;
+        }
+        if (caption) {
+            var badgeCls = item.type === 'main' ? 'bg-primary' : 'bg-secondary';
+            caption.innerHTML = '<span class="badge ' + badgeCls + ' me-1">' + item.label + '</span> (' + (idx + 1) + ' / ' + activeGalleryImages.length + ')';
+        }
+        if (openBtn) {
+            openBtn.href = item.url;
+        }
+        if (strip) {
+            strip.querySelectorAll('.sk-gallery-thumb-item').forEach(function(thumbEl, tIdx) {
+                thumbEl.classList.toggle('active', tIdx === idx);
+            });
+        }
+    }
+
+    if (strip) {
+        strip.innerHTML = list.map(function(item, idx) {
+            return '<img src="' + escapeHtml(item.url) + '" class="sk-gallery-thumb-item ' + (idx === 0 ? 'active' : '') + '" data-idx="' + idx + '" alt="' + escapeHtml(item.label) + '" title="' + escapeHtml(item.label) + '">';
+        }).join('');
+
+        strip.querySelectorAll('.sk-gallery-thumb-item').forEach(function(imgEl) {
+            imgEl.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-idx'), 10);
+                renderActiveGalleryImage(idx);
+            });
+        });
+    }
+
+    renderActiveGalleryImage(0);
+    galleryModal.style.display = 'block';
+}
+
+function closeImageGallery() {
+    var galleryModal = document.getElementById('skImageGalleryModal');
+    if (galleryModal) galleryModal.style.display = 'none';
+    var mainImg = document.getElementById('skGalleryMainImg');
+    if (mainImg) mainImg.src = '';
+}
+
+function setupHoverPreview() {
+    var tooltip = document.getElementById('skImageHoverTooltip');
+    var tooltipImg = document.getElementById('skHoverTooltipImg');
+    var tooltipTitle = document.getElementById('skHoverTooltipTitle');
+    var tooltipMeta = document.getElementById('skHoverTooltipMeta');
+    var tableBody = document.getElementById('skTableBody');
+    if (!tooltip || !tableBody) return;
+
+    tableBody.addEventListener('mouseover', function(e) {
+        var wrap = e.target.closest('.sk-thumb-wrap');
+        if (!wrap) return;
+        var pid = wrap.getAttribute('data-id');
+        var p = products.find(function(item) { return item.id === pid; });
+        if (!p || !p.thumbnail) return;
+
+        tooltipImg.src = p.thumbnail;
+        tooltipTitle.textContent = p.name || '';
+        var metaText = [p.supplier, p.brand, p.color, p.size].filter(Boolean).join(' · ');
+        if (p._additionalImages && p._additionalImages.length > 0) {
+            metaText += ' (추가사진 ' + p._additionalImages.length + '장)';
+        }
+        tooltipMeta.textContent = metaText;
+        tooltip.style.display = 'block';
+        positionTooltip(e);
+    });
+
+    tableBody.addEventListener('mousemove', function(e) {
+        var wrap = e.target.closest('.sk-thumb-wrap');
+        if (!wrap || tooltip.style.display !== 'block') return;
+        positionTooltip(e);
+    });
+
+    tableBody.addEventListener('mouseout', function(e) {
+        var wrap = e.target.closest('.sk-thumb-wrap');
+        if (wrap) {
+            tooltip.style.display = 'none';
+            tooltipImg.src = '';
+        }
+    });
+
+    function positionTooltip(e) {
+        var offset = 16;
+        var x = e.clientX + offset;
+        var y = e.clientY + offset;
+        var w = tooltip.offsetWidth || 236;
+        var h = tooltip.offsetHeight || 260;
+
+        if (x + w > window.innerWidth - 10) {
+            x = e.clientX - w - offset;
+        }
+        if (y + h > window.innerHeight - 10) {
+            y = window.innerHeight - h - 10;
+        }
+        if (y < 10) y = 10;
+
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+    }
+}
+
+// ==========================================
 // 등록 / 수정 모달 핸들러
 // ==========================================
 function openModal(id) {
@@ -644,6 +827,13 @@ function openModal(id) {
     document.getElementById('skShippingQty').value = "1";
     toggleShippingQty();
     updateCalcPreview();
+
+    var thumbInput = document.getElementById('skThumbnail');
+    var galleryBtn = document.getElementById('skModalViewGalleryBtn');
+    var addCountSpan = document.getElementById('skModalAddCount');
+    if (thumbInput) thumbInput.value = '';
+    updateModalThumbPreview('');
+    if (galleryBtn) galleryBtn.style.display = 'none';
 
     if (id) {
         var p = products.find(function(i) { return i.id === id; });
@@ -663,6 +853,13 @@ function openModal(id) {
             document.getElementById('skIsLowestPrice').checked = (p.isLowestPrice === 1);
             if (document.getElementById('skIsSoldOut')) document.getElementById('skIsSoldOut').checked = (p.isSoldOut === 1);
             if (document.getElementById('skRemarks')) document.getElementById('skRemarks').value = p.remarks || '';
+            if (thumbInput) thumbInput.value = p.thumbnail || '';
+            updateModalThumbPreview(p.thumbnail || '');
+            if (galleryBtn && p._additionalImages && p._additionalImages.length > 0) {
+                galleryBtn.style.display = 'inline-flex';
+                if (addCountSpan) addCountSpan.textContent = p._additionalImages.length + '장';
+                galleryBtn.onclick = function() { openImageGallery(p.id); };
+            }
 
             // 타임스탬프 정보 바
             var tsEl = document.getElementById('skTimestampDisplay');
@@ -1021,6 +1218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 isLowestPrice: document.getElementById('skIsLowestPrice').checked ? 1 : 0,
                 isSoldOut: (document.getElementById('skIsSoldOut') && document.getElementById('skIsSoldOut').checked) ? 1 : 0,
                 remarks: document.getElementById('skRemarks') ? document.getElementById('skRemarks').value.trim() : '',
+                thumbnail: document.getElementById('skThumbnail') ? document.getElementById('skThumbnail').value.trim() : '',
                 author: getCurrentAuthor()
             };
 
@@ -1060,11 +1258,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 4-1. 대표 썸네일 URL 실시간 미리보기 바인딩
+    var thumbInputEl = document.getElementById('skThumbnail');
+    if (thumbInputEl) {
+        thumbInputEl.addEventListener('input', function() {
+            updateModalThumbPreview(this.value.trim());
+        });
+    }
+
     // 5. 단축키 핸들러 (F2: 신규, F8: 저장, ESC: 닫기)
     document.addEventListener('keydown', function(e) {
         var skModal = document.getElementById('skModal');
         var bulkModal = document.getElementById('bulkEditSkModal');
-        var isModalOpen = (skModal && skModal.style.display === 'block') || (bulkModal && bulkModal.style.display === 'flex' || (bulkModal && bulkModal.style.display === 'block'));
+        var galleryModal = document.getElementById('skImageGalleryModal');
+        var isModalOpen = (skModal && skModal.style.display === 'block') || (bulkModal && (bulkModal.style.display === 'flex' || bulkModal.style.display === 'block')) || (galleryModal && galleryModal.style.display === 'block');
 
         if (e.key === 'F2') {
             e.preventDefault();
@@ -1085,6 +1292,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (e.key === 'Escape') {
+            if (galleryModal && galleryModal.style.display === 'block') {
+                closeImageGallery();
+                return;
+            }
             if (skModal && skModal.style.display === 'block') closeModal();
             if (bulkModal && (bulkModal.style.display === 'block' || bulkModal.style.display === 'flex')) {
                 bulkModal.style.display = 'none';
@@ -1104,6 +1315,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // 사진 썸네일 클릭 시 갤러리 모달 열기
+            var thumbWrap = e.target.closest('.sk-thumb-wrap');
+            if (thumbWrap) {
+                e.stopPropagation();
+                var pid = thumbWrap.getAttribute('data-id');
+                if (pid) openImageGallery(pid);
+                return;
+            }
+
             // 행 클릭 시 수정 모달 열기
             var row = e.target.closest('.product-row');
             if (row) {
@@ -1112,6 +1332,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // 6-1. 호버 프리뷰 툴팁 및 갤러리 모달 버튼 리스너 바인딩
+    setupHoverPreview();
+    var closeGalleryBtn = document.getElementById('closeSkGalleryModalBtn');
+    var closeGalleryBtn2 = document.getElementById('closeSkGalleryModalBtn2');
+    if (closeGalleryBtn) closeGalleryBtn.addEventListener('click', closeImageGallery);
+    if (closeGalleryBtn2) closeGalleryBtn2.addEventListener('click', closeImageGallery);
 
     // 7. 전체 선택 체크박스
     var selectAllCheck = document.getElementById('selectAllSk');
@@ -1380,12 +1607,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             var wsData = [
-                ["스마트스토어 등록일", "매입처", "브랜드", "상품명", "컬러", "규격", "매입가(공급가)", "매입운임", "운임기준", "매입합계", "판매가(소비자가)", "판매운임", "매출합계", "수수료", "정산이익", "수익률(%)", "온라인최저가", "품절여부", "비고", "최종수정일"]
+                ["스마트스토어 등록일", "매입처", "브랜드", "상품명", "컬러", "규격", "대표이미지URL", "매입가(공급가)", "매입운임", "운임기준", "매입합계", "판매가(소비자가)", "판매운임", "매출합계", "수수료", "정산이익", "수익률(%)", "온라인최저가", "품절여부", "비고", "최종수정일"]
             ];
             filteredProducts.forEach(function(p) {
                 wsData.push([
                     p.uploadDate || '', p.supplier || '', p.brand || '', p.name || '',
-                    p.color || '', p.size || '', p.buyPrice || 0, p.buyShipping || 0,
+                    p.color || '', p.size || '', p.thumbnail || '', p.buyPrice || 0, p.buyShipping || 0,
                     p.shippingBasis || '', p._buyTotal, p.sellPrice || 0, p.sellShipping || 0,
                     p._sellTotal, p._commission, p._profit, p._profitRate.toFixed(1),
                     p.isLowestPrice ? 'O' : 'X', p.isSoldOut ? '품절' : '정상',
