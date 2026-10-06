@@ -127,7 +127,9 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee REAL DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_account TEXT DEFAULT ''",
-                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_month TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_month TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_inbound ADD COLUMN freight_type TEXT DEFAULT '상차도'",
+                        "ALTER TABLE logistics_inbound ADD COLUMN freight_region TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -166,7 +168,9 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN trade_type TEXT DEFAULT '내수'",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_account TEXT DEFAULT ''",
-                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_month TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_month TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_outbound ADD COLUMN freight_type TEXT DEFAULT '상차도'",
+                        "ALTER TABLE logistics_outbound ADD COLUMN freight_region TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -243,7 +247,7 @@ function initLogisticsTables(database) {
                                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                             )
                         `, (errUp) => {
-                            if (!errUp) {
+                            database.serialize(() => {
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN is_freight_included INTEGER DEFAULT 0`, () => {});
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN price_type TEXT DEFAULT '견적가'`, () => {});
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN exchange_rate REAL DEFAULT 1.0`, () => {});
@@ -251,10 +255,12 @@ function initLogisticsTables(database) {
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN foreign_sell_price REAL DEFAULT 0`, () => {});
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN freight_type TEXT DEFAULT '상차도'`, () => {});
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN freight_region TEXT DEFAULT ''`, () => {});
-                                database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec`, () => {
-                                    database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec_supplier ON logistics_unit_prices(item, spec, default_supplier)`);
-                                });
-                            }
+                                database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec`, () => {});
+                                database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec_supplier`, () => {});
+                                database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec_supplier_freight`, () => {});
+                                database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec_freight ON logistics_unit_prices(item, spec, freight_type)`, () => {});
+                            });
+                        });
 
                             // 6. 견적 비교 프로젝트 (검토서 보관함 마스터)
                             database.run(`
@@ -340,7 +346,6 @@ function initLogisticsTables(database) {
                                 database.run(`ALTER TABLE logistics_quote_items ADD COLUMN freight_region TEXT DEFAULT ''`, () => {});
                             });
                             database.run(`CREATE INDEX IF NOT EXISTS idx_quote_items_sec ON logistics_quote_items(section_id)`);
-                        });
 
                         reconcileInventory().finally(() => {
                             resolve();
@@ -526,6 +531,9 @@ router.get('/items/specs-map', (req, res) => {
 
 /**
  * 실거래(직출고/입고/출고) 발생 시 물류 단가 마스터(logistics_unit_prices) 자동 갱신 및 시계열 이력 누적 헬퍼
+ * - 방안 1 & 2 결합: 전표에서 지정된 freight_type / freight_region 우선 반영
+ * - 미지정 시 거래 형태(직출고, 배송비 유무, 비고 키워드)에 따른 스마트 자동 판별
+ * - 기존 단가표의 상차도/하차도 조건을 보존하며 조건별 단가 독립 관리
  */
 async function syncUnitPricesFromTransaction(items, source, date) {
     if (!db || !items || !Array.isArray(items) || items.length === 0) return;
@@ -540,15 +548,43 @@ async function syncUnitPricesFromTransaction(items, source, date) {
         const unit = (row.unit || '').trim();
         const supplier = (row.supplier || '').trim();
         const destination = (row.destination || '').trim();
+        const actualDest = (row.actual_destination || destination || '').trim();
 
         const buyPrice = parseFloat(row.inbound_price !== undefined ? row.inbound_price : (row.unit_price !== undefined ? row.unit_price : row.buy_price)) || 0;
         const sellPrice = parseFloat(row.outbound_price !== undefined ? row.outbound_price : (row.selling_price !== undefined ? row.selling_price : row.sell_price)) || 0;
 
+        // 운임조건 결정 (방안 1: 전표 입력값 우선 / 방안 2: 미지정 시 스마트 자동 판별)
+        let freightType = (row.freight_type || '').trim();
+        let freightRegion = (row.freight_region || '').trim();
+
+        if (!freightType) {
+            const shipFee = parseFloat(row.shipping_fee !== undefined ? row.shipping_fee : (row.in_shipping_fee || 0)) || 0;
+            const noteText = (row.note || '');
+            if (noteText.includes('하차도') || noteText.includes('도착도') || noteText.includes('운임포함')) {
+                freightType = '하차도';
+            } else if (shipFee > 0) {
+                freightType = '상차도';
+            } else if (source === 'direct') {
+                freightType = '하차도';
+            } else {
+                freightType = '상차도';
+            }
+        }
+
+        if (freightType === '하차도' && !freightRegion) {
+            freightRegion = actualDest || '전국';
+        }
+        const isFreightIncluded = freightType === '하차도' ? 1 : 0;
+
         try {
-            const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [item, spec]);
+            // 동일 품목 + 규격 + 운임조건 일치 항목 조회 (상차도/하차도 분리 보존)
+            const existing = await dbGet(
+                `SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ? AND (freight_type = ? OR (freight_type IS NULL AND ? = '상차도'))`,
+                [item, spec, freightType, freightType]
+            );
 
             if (!existing) {
-                // 신규 품목: 최초 등록 및 최초 이력 생성
+                // 신규 품목/운임조건: 최초 등록 및 최초 이력 생성
                 const initialHistory = [{
                     date: txDate,
                     timestamp: new Date().toISOString(),
@@ -558,16 +594,16 @@ async function syncUnitPricesFromTransaction(items, source, date) {
                     prev_sell_price: 0,
                     source: source,
                     partner: source === 'inbound' ? supplier : (source === 'outbound' ? destination : `${supplier} ➔ ${destination}`),
-                    note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표 자동 등록`
+                    note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표 자동 등록 [${freightType}${freightRegion ? ` (${freightRegion})` : ''}]`
                 }];
 
                 await dbRun(`
                     INSERT INTO logistics_unit_prices 
-                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, freight_type, freight_region, is_freight_included, history, note, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 `, [
                     item, spec, category, unit, buyPrice, sellPrice, 
-                    supplier, destination, JSON.stringify(initialHistory), ''
+                    supplier, destination, freightType, freightRegion, isFreightIncluded, JSON.stringify(initialHistory), ''
                 ]);
             } else {
                 // 기존 품목: 단가 변동 여부 확인
@@ -600,7 +636,7 @@ async function syncUnitPricesFromTransaction(items, source, date) {
                         prev_sell_price: currentSell,
                         source: source,
                         partner: source === 'inbound' ? (supplier || existing.default_supplier) : (source === 'outbound' ? (destination || existing.default_destination) : `${supplier || existing.default_supplier} ➔ ${destination || existing.default_destination}`),
-                        note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표에서 단가 변경 반영`
+                        note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표에서 단가 변경 반영 [${freightType}${freightRegion ? ` (${freightRegion})` : ''}]`
                     });
 
                     if (historyList.length > 50) historyList = historyList.slice(0, 50);
@@ -608,6 +644,9 @@ async function syncUnitPricesFromTransaction(items, source, date) {
                     await dbRun(`
                         UPDATE logistics_unit_prices
                         SET buy_price = ?, sell_price = ?,
+                            freight_type = ?,
+                            freight_region = CASE WHEN ? != '' THEN ? ELSE freight_region END,
+                            is_freight_included = ?,
                             category = CASE WHEN category IS NULL OR category = '' THEN ? ELSE category END,
                             unit = CASE WHEN unit IS NULL OR unit = '' THEN ? ELSE unit END,
                             default_supplier = CASE WHEN ? != '' THEN ? ELSE default_supplier END,
@@ -616,7 +655,9 @@ async function syncUnitPricesFromTransaction(items, source, date) {
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                     `, [
-                        newBuy, newSell, category, unit, 
+                        newBuy, newSell, 
+                        freightType, freightRegion, freightRegion, isFreightIncluded,
+                        category, unit, 
                         supplier, supplier, destination, destination, 
                         JSON.stringify(historyList), existing.id
                     ]);
@@ -699,10 +740,16 @@ router.get('/unit-prices/map', async (req, res) => {
                 default_supplier: r.default_supplier || '',
                 default_destination: r.default_destination || '',
                 note: r.note || '',
+                freight_type: r.freight_type || '상차도',
+                freight_region: r.freight_region || '',
+                is_freight_included: r.is_freight_included || (r.freight_type === '하차도' ? 1 : 0),
                 updated_at: r.updated_at
             };
+            const fType = r.freight_type || '상차도';
             const keyPipe = `${r.item}||${r.spec || ''}`;
+            const keyPipeFreight = `${r.item}||${r.spec || ''}||${fType}`;
             const keyUnderscore = `${r.item}__${r.spec || ''}`;
+            map[keyPipeFreight] = data;
             map[keyPipe] = data;
             map[keyUnderscore] = data;
         });
@@ -1091,13 +1138,13 @@ router.post('/unit-prices/batch-delete', async (req, res) => {
 router.post('/unit-prices/populate-from-history', async (req, res) => {
     try {
         const sql = `
-            SELECT item, spec, unit, category, supplier, destination, unit_price, selling_price, date, is_direct
+            SELECT item, spec, unit, category, supplier, destination, unit_price, selling_price, date, is_direct, shipping_fee, freight_type, freight_region, note
             FROM (
-                SELECT item, spec, unit, category, supplier, '' as destination, unit_price, 0 as selling_price, date, is_direct, id
+                SELECT item, spec, unit, category, supplier, '' as destination, unit_price, 0 as selling_price, date, is_direct, shipping_fee, freight_type, freight_region, note, id
                 FROM logistics_inbound
                 WHERE item IS NOT NULL AND TRIM(item) != ''
                 UNION ALL
-                SELECT item, spec, unit, category, '' as supplier, destination, 0 as unit_price, selling_price, date, is_direct, id
+                SELECT item, spec, unit, category, '' as supplier, destination, 0 as unit_price, selling_price, date, is_direct, shipping_fee, freight_type, freight_region, note, id
                 FROM logistics_outbound
                 WHERE item IS NOT NULL AND TRIM(item) != ''
             )
@@ -1111,7 +1158,32 @@ router.post('/unit-prices/populate-from-history', async (req, res) => {
             const spec = (r.spec || '').trim();
             if (!item) continue;
 
-            const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [item, spec]);
+            let freightType = (r.freight_type || '').trim();
+            let freightRegion = (r.freight_region || '').trim();
+
+            if (!freightType) {
+                const sFee = parseFloat(r.shipping_fee) || 0;
+                const noteText = r.note || '';
+                if (noteText.includes('하차도') || noteText.includes('도착도') || noteText.includes('운임포함')) {
+                    freightType = '하차도';
+                } else if (sFee > 0) {
+                    freightType = '상차도';
+                } else if (r.is_direct === 1) {
+                    freightType = '하차도';
+                } else {
+                    freightType = '상차도';
+                }
+            }
+
+            if (freightType === '하차도' && !freightRegion) {
+                freightRegion = (r.destination || '전국').trim();
+            }
+            const isFreightIncluded = freightType === '하차도' ? 1 : 0;
+
+            const existing = await dbGet(
+                `SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ? AND (freight_type = ? OR (freight_type IS NULL AND ? = '상차도'))`,
+                [item, spec, freightType, freightType]
+            );
             const buy = r.unit_price || 0;
             const sell = r.selling_price || 0;
 
@@ -1125,14 +1197,14 @@ router.post('/unit-prices/populate-from-history', async (req, res) => {
                     prev_sell_price: 0,
                     source: r.is_direct ? 'direct' : (r.supplier ? 'inbound' : 'outbound'),
                     partner: r.supplier || r.destination || '',
-                    note: '과거 거래 장부 자동 백필'
+                    note: `과거 거래 장부 자동 백필 [${freightType}${freightRegion ? ` (${freightRegion})` : ''}]`
                 }];
 
                 await dbRun(`
                     INSERT INTO logistics_unit_prices 
-                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                `, [item, spec, r.category || '', r.unit || '', buy, sell, r.supplier || '', r.destination || '', JSON.stringify(hist), '']);
+                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, freight_type, freight_region, is_freight_included, history, note, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `, [item, spec, r.category || '', r.unit || '', buy, sell, r.supplier || '', r.destination || '', freightType, freightRegion, isFreightIncluded, JSON.stringify(hist), '']);
                 count++;
             } else {
                 let updatedBuy = existing.buy_price;
@@ -1153,15 +1225,15 @@ router.post('/unit-prices/populate-from-history', async (req, res) => {
                         prev_sell_price: existing.sell_price,
                         source: r.is_direct ? 'direct' : (r.supplier ? 'inbound' : 'outbound'),
                         partner: r.supplier || r.destination || '',
-                        note: '과거 거래 장부 자동 갱신'
+                        note: `과거 거래 장부 자동 갱신 [${freightType}${freightRegion ? ` (${freightRegion})` : ''}]`
                     });
                     if (hist.length > 50) hist = hist.slice(0, 50);
 
                     await dbRun(`
                         UPDATE logistics_unit_prices
-                        SET buy_price = ?, sell_price = ?, history = ?, updated_at = CURRENT_TIMESTAMP
+                        SET buy_price = ?, sell_price = ?, freight_type = ?, freight_region = CASE WHEN ? != '' THEN ? ELSE freight_region END, is_freight_included = ?, history = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
-                    `, [updatedBuy, updatedSell, JSON.stringify(hist), existing.id]);
+                    `, [updatedBuy, updatedSell, freightType, freightRegion, freightRegion, isFreightIncluded, JSON.stringify(hist), existing.id]);
                 }
             }
         }
@@ -1961,8 +2033,8 @@ router.post('/inbound', (req, res) => {
         db.run("BEGIN TRANSACTION");
         const sql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type, freight_type, freight_region)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const stmt = db.prepare(sql);
         
@@ -1971,7 +2043,7 @@ router.post('/inbound', (req, res) => {
         
         try {
             for (let i of items) {
-                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId, i.trade_type || '내수');
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId, i.trade_type || '내수', i.freight_type || '상차도', i.freight_region || '');
             }
         } catch (e) {
             hasError = true;
@@ -2010,8 +2082,8 @@ router.post('/outbound', async (req, res) => {
 
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type, freight_type, freight_region)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         for (let i of items) {
@@ -2019,11 +2091,13 @@ router.post('/outbound', async (req, res) => {
                 throw new Error(`[${i.item}] 품목의 Lot 차감 정보가 누락되었습니다.`);
             }
 
+            const defaultFreight = parseFloat(i.shipping_fee) > 0 ? '상차도' : '하차도';
             const outRes = await dbRun(outSql, [
                 date, destination, actual_destination || '', i.item, i.spec, i.unit,
                 parseFloat(i.qty), parseFloat(i.selling_price) || 0,
                 parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
-                i.note || '', i.category || '', txGroupId, i.trade_type || '내수'
+                i.note || '', i.category || '', txGroupId, i.trade_type || '내수',
+                i.freight_type || defaultFreight, i.freight_region || actual_destination || ''
             ]);
             const outboundId = outRes.lastID;
 
@@ -2284,7 +2358,9 @@ router.get('/history', (req, res) => {
                 i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
                 COALESCE(i.settlement_account, '') as settlement_account,
                 i.settlement_month as settlement_month,
-                SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7) as original_month
+                SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7) as original_month,
+                COALESCE(i.freight_type, '상차도') as freight_type,
+                COALESCE(i.freight_region, '') as freight_region
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
@@ -2309,7 +2385,9 @@ router.get('/history', (req, res) => {
                 o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type,
                 COALESCE(o.settlement_account, '') as settlement_account,
                 o.settlement_month as settlement_month,
-                SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7) as original_month
+                SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7) as original_month,
+                COALESCE(o.freight_type, CASE WHEN o.is_direct = 1 THEN '하차도' ELSE '상차도' END) as freight_type,
+                COALESCE(o.freight_region, '') as freight_region
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -3207,14 +3285,14 @@ router.post('/direct', (req, res) => {
         
         const inSql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?, ?, ?)
         `;
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
         `;
         
         // 3. Mapping insert
@@ -3230,12 +3308,15 @@ router.post('/direct', (req, res) => {
             const inPrice = parseFloat(i.inbound_price !== undefined ? i.inbound_price : (i.unit_price !== undefined ? i.unit_price : 0)) || 0;
             const outPrice = parseFloat(i.selling_price !== undefined ? i.selling_price : (i.outbound_price !== undefined ? i.outbound_price : 0)) || 0;
             const qty = parseFloat(i.qty) || 0;
+            const itemFreight = i.freight_type || (parseFloat(i.shipping_fee) > 0 ? '상차도' : '하차도');
+            const itemRegion = i.freight_region || actual_destination || destination || '';
+
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, itemSpec, itemUnit, qty, inPrice, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
+            stmtIn.run(date, supplier, i.item, itemSpec, itemUnit, qty, inPrice, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', itemFreight, itemRegion, function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, itemSpec, itemUnit, qty, outPrice, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, itemSpec, itemUnit, qty, outPrice, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', itemFreight, itemRegion, function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -3466,7 +3547,7 @@ router.post('/settlement/:type', (req, res) => {
 // --- Inbound Update (입고 내역 수정) ---
 router.put('/direct/:id', (req, res) => {
     const id = req.params.id; // This is the outbound_id
-    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, in_shipping_fee, in_shipping_fee_vat_included, shipping_fee, shipping_fee_vat_included, note, category, trade_type } = req.body;
+    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, in_shipping_fee, in_shipping_fee_vat_included, shipping_fee, shipping_fee_vat_included, note, category, trade_type, freight_type, freight_region } = req.body;
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
@@ -3485,21 +3566,24 @@ router.put('/direct/:id', (req, res) => {
             const inboundId = lot.inbound_id;
             let hasError = false;
 
+            const finalFreight = (freight_type || '').trim() || (parseFloat(shipping_fee) > 0 ? '상차도' : '하차도');
+            const finalRegion = (freight_region || actual_destination || destination || '').trim();
+
             // 1. Update Inbound
             const inSql = `
                 UPDATE logistics_inbound
-                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?, trade_type = ?
+                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?, trade_type = ?, freight_type = ?, freight_region = ?
                 WHERE id = ?
             `;
-            db.run(inSql, [date, supplier, qty, inbound_price, parseFloat(in_shipping_fee) || 0, in_shipping_fee_vat_included ? 1 : 0, note || '', category || '', trade_type || '내수', inboundId], function(e) { if(e) hasError = true; });
+            db.run(inSql, [date, supplier, qty, inbound_price, parseFloat(in_shipping_fee) || 0, in_shipping_fee_vat_included ? 1 : 0, note || '', category || '', trade_type || '내수', finalFreight, finalRegion, inboundId], function(e) { if(e) hasError = true; });
 
             // 2. Update Outbound
             const outSql = `
                 UPDATE logistics_outbound
-                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?, trade_type = ?
+                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?, trade_type = ?, freight_type = ?, freight_region = ?
                 WHERE id = ?
             `;
-            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', category || '', trade_type || '내수', id], function(e) { if(e) hasError = true; });
+            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', category || '', trade_type || '내수', finalFreight, finalRegion, id], function(e) { if(e) hasError = true; });
 
             // 3. Update Lots
             const lotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
@@ -3512,6 +3596,32 @@ router.put('/direct/:id', (req, res) => {
                 }
                 db.run("COMMIT", (errCommit) => {
                     if (errCommit) return res.status(500).json({ error: errCommit.message });
+
+                    // 단가표 동기화
+                    db.get(`SELECT item, spec, unit FROM logistics_outbound WHERE id = ?`, [id], (errItem, itm) => {
+                        if (itm) {
+                            try {
+                                syncUnitPricesFromTransaction([{
+                                    item: itm.item,
+                                    spec: itm.spec,
+                                    unit: itm.unit,
+                                    category: category || '',
+                                    supplier,
+                                    destination,
+                                    inbound_price,
+                                    selling_price,
+                                    is_direct: 1,
+                                    shipping_fee: parseFloat(shipping_fee) || 0,
+                                    freight_type: finalFreight,
+                                    freight_region: finalRegion,
+                                    note: note || ''
+                                }], 'direct', date);
+                            } catch (e) {
+                                console.error('Failed to sync unit price in PUT /direct/:id:', e);
+                            }
+                        }
+                    });
+
                     res.json({ success: true });
                 });
             });
@@ -3521,7 +3631,7 @@ router.put('/direct/:id', (req, res) => {
 
 router.put('/inbound/:id', (req, res) => {
     const id = req.params.id;
-    const { date, supplier, item, spec, unit, qty, unit_price, location_id, note, trade_type, category } = req.body;
+    const { date, supplier, item, spec, unit, qty, unit_price, location_id, note, trade_type, category, freight_type, freight_region } = req.body;
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
@@ -3553,15 +3663,18 @@ router.put('/inbound/:id', (req, res) => {
             let finalItem = item;
             let finalSpec = spec;
             let finalUnit = unit;
+            const finalFreight = (freight_type || '').trim() || '상차도';
+            const finalRegion = (freight_region || '').trim();
             
             const updateSql = `
                 UPDATE logistics_inbound 
                 SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, 
-                    qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?, category = ?
+                    qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?, category = ?,
+                    freight_type = ?, freight_region = ?
                 WHERE id = ?
             `;
             
-            db.run(updateSql, [date, supplier, finalItem, finalSpec, finalUnit, qty, new_qty_remaining, unit_price, location_id, note || '', trade_type || '내수', category || '', id], function(err2) {
+            db.run(updateSql, [date, supplier, finalItem, finalSpec, finalUnit, qty, new_qty_remaining, unit_price, location_id, note || '', trade_type || '내수', category || '', finalFreight, finalRegion, id], function(err2) {
                 if (err2) {
                     db.run("ROLLBACK");
                     return res.status(500).json({ error: err2.message });
@@ -3569,6 +3682,24 @@ router.put('/inbound/:id', (req, res) => {
                 
                 db.run("COMMIT", (err3) => {
                     if (err3) return res.status(500).json({ error: err3.message });
+
+                    // 단가표 동기화
+                    try {
+                        syncUnitPricesFromTransaction([{
+                            item: finalItem,
+                            spec: finalSpec,
+                            unit: finalUnit,
+                            category: category || '',
+                            supplier,
+                            unit_price,
+                            freight_type: finalFreight,
+                            freight_region: finalRegion,
+                            note: note || ''
+                        }], 'inbound', date);
+                    } catch (e) {
+                        console.error('Failed to sync unit price in PUT /inbound/:id:', e);
+                    }
+
                     res.json({ message: 'Updated successfully' });
                 });
             });
@@ -3579,7 +3710,7 @@ router.put('/inbound/:id', (req, res) => {
 // --- Outbound Update (출고 내역 수정) ---
 router.put('/outbound/:id', async (req, res) => {
     const id = req.params.id;
-    const { date, destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category } = req.body;
+    const { date, destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category, freight_type, freight_region } = req.body;
     
     if (!consumed_lots || !Array.isArray(consumed_lots)) {
         return res.status(400).json({ error: 'consumed_lots are required' });
@@ -3602,17 +3733,22 @@ router.put('/outbound/:id', async (req, res) => {
         // 2. 기존 매핑(lots) 삭제
         await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id]);
 
+        const finalFreight = (freight_type || '').trim() || (parseFloat(shipping_fee) > 0 ? '상차도' : '상차도');
+        const finalRegion = (freight_region || req.body.actual_destination || '').trim();
+
         // 3. 출고 테이블 업데이트
         const outUpdateSql = `
             UPDATE logistics_outbound 
             SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, 
-                qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?
+                qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?,
+                freight_type = ?, freight_region = ?
             WHERE id = ?
         `;
         await dbRun(outUpdateSql, [
             date, destination, req.body.actual_destination || '', item, spec, unit,
             parseFloat(qty), parseFloat(selling_price) || 0, parseFloat(shipping_fee) || 0,
-            shipping_fee_vat_included ? 1 : 0, note || '', trade_type || '내수', category || '', id
+            shipping_fee_vat_included ? 1 : 0, note || '', trade_type || '내수', category || '',
+            finalFreight, finalRegion, id
         ]);
 
         // 4. 새로운 매핑(lots) 삽입 및 재고 차감
@@ -3626,6 +3762,24 @@ router.put('/outbound/:id', async (req, res) => {
         }
 
         await dbRun("COMMIT");
+
+        // 단가표 동기화
+        try {
+            syncUnitPricesFromTransaction([{
+                item,
+                spec,
+                unit,
+                category: category || '',
+                destination,
+                selling_price: parseFloat(selling_price) || 0,
+                shipping_fee: parseFloat(shipping_fee) || 0,
+                freight_type: finalFreight,
+                freight_region: finalRegion,
+                note: note || ''
+            }], 'outbound', date);
+        } catch (e) {
+            console.error('Failed to sync unit price in PUT /outbound/:id:', e);
+        }
 
         // 정합성 동기화
         await reconcileInventory();
@@ -3960,14 +4114,16 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
             const commonDate = date;
             const commonSupplier = supplier;
 
-            const updateSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
-            const insertSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            const updateSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?, category = ?, freight_type = ?, freight_region = ? WHERE id = ?`;
+            const insertSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type, freight_type, freight_region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const stmtUpdate = db.prepare(updateSql);
             const stmtInsert = db.prepare(insertSql);
 
             for (let i of items) {
                 const cat = i.category || '';
+                const fType = i.freight_type || '상차도';
+                const fRegion = i.freight_region || '';
                 if (i.id) {
                     const row = existingRows.find(r => r.id === parseInt(i.id));
                     if (!row) continue;
@@ -3980,11 +4136,11 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
                     }
                     const new_qty_remaining = parseFloat(i.qty) - consumed;
 
-                    stmtUpdate.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), new_qty_remaining, parseFloat(i.unit_price) || 0, location_id, i.note || '', i.trade_type || '내수', cat, parseInt(i.id), function(e) {
+                    stmtUpdate.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), new_qty_remaining, parseFloat(i.unit_price) || 0, location_id, i.note || '', i.trade_type || '내수', cat, fType, fRegion, parseInt(i.id), function(e) {
                         if(e) { hasError = true; errorMsg = e.message; }
                     });
                 } else {
-                    stmtInsert.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.qty), parseFloat(i.unit_price) || 0, location_id, i.note || '', cat, txId, i.trade_type || '내수', function(e) {
+                    stmtInsert.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.qty), parseFloat(i.unit_price) || 0, location_id, i.note || '', cat, txId, i.trade_type || '내수', fType, fRegion, function(e) {
                         if(e) { hasError = true; errorMsg = e.message; }
                     });
                 }
@@ -4001,6 +4157,7 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
                 
                 db.run("COMMIT", (commitErr) => {
                     if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    syncUnitPricesFromTransaction(items.map(i => ({ ...i, supplier })), 'inbound', date);
                     res.json({ success: true, message: 'Inbound transaction updated' });
                 });
             });
@@ -4040,12 +4197,14 @@ router.put('/outbound/tx/:tx_id', async (req, res) => {
         const commonDest = destination;
         const commonActualDest = actual_destination || '';
 
-        const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
-        const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?, freight_type = ?, freight_region = ? WHERE id = ?`;
+        const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type, freight_type, freight_region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         // 3. 각 품목 처리
         for (let i of items) {
             const cat = i.category || '';
+            const fType = i.freight_type || (parseFloat(i.shipping_fee) > 0 ? '상차도' : '하차도');
+            const fRegion = i.freight_region || actual_destination || destination || '';
             let oId = i.id ? parseInt(i.id, 10) : null;
 
             if (oId) {
@@ -4054,7 +4213,7 @@ router.put('/outbound/tx/:tx_id', async (req, res) => {
                     commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit,
                     parseFloat(i.qty), parseFloat(i.selling_price) || 0,
                     parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
-                    i.note || '', i.trade_type || '내수', cat, oId
+                    i.note || '', i.trade_type || '내수', cat, fType, fRegion, oId
                 ]);
 
                 // 기존 차감된 Lot 복원 후 삭제
@@ -4069,7 +4228,7 @@ router.put('/outbound/tx/:tx_id', async (req, res) => {
                     commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit,
                     parseFloat(i.qty), parseFloat(i.selling_price) || 0,
                     parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
-                    i.note || '', cat, txId, i.trade_type || '내수'
+                    i.note || '', cat, txId, i.trade_type || '내수', fType, fRegion
                 ]);
                 oId = insRes.lastID;
             }
@@ -4091,6 +4250,7 @@ router.put('/outbound/tx/:tx_id', async (req, res) => {
 
         // 잔여 재고 완벽 동기화
         await reconcileInventory();
+        syncUnitPricesFromTransaction(items.map(i => ({ ...i, destination })), 'outbound', date);
 
         res.json({ success: true, message: 'Outbound transaction updated successfully' });
     } catch (err) {
@@ -4152,18 +4312,20 @@ router.put('/direct/tx/:tx_id', async (req, res) => {
             const outShipVat = i.shipping_fee_vat_included ? 1 : 0;
             const note = i.note || '';
             const tradeType = i.trade_type || '내수';
+            const itemFreight = i.freight_type || (outShipFee > 0 ? '상차도' : '하차도');
+            const itemRegion = i.freight_region || commonActualDest || commonDest || '';
 
             if (i.id) {
                 const oId = parseInt(i.id);
                 const lotRow = await dbGet("SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?", [oId]);
                 if (lotRow && lotRow.inbound_id) {
                     await dbRun(
-                        `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
-                        [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, tradeType, cat, lotRow.inbound_id]
+                        `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?, freight_type = ?, freight_region = ? WHERE id = ?`,
+                        [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, tradeType, cat, itemFreight, itemRegion, lotRow.inbound_id]
                     );
                     await dbRun(
-                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
-                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, oId]
+                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?, freight_type = ?, freight_region = ? WHERE id = ?`,
+                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, itemFreight, itemRegion, oId]
                     );
                     await dbRun(
                         `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`,
@@ -4171,20 +4333,20 @@ router.put('/direct/tx/:tx_id', async (req, res) => {
                     );
                 } else {
                     await dbRun(
-                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
-                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, oId]
+                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?, freight_type = ?, freight_region = ? WHERE id = ?`,
+                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, itemFreight, itemRegion, oId]
                     );
                 }
             } else {
                 const inRes = await dbRun(
-                    `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?)`,
-                    [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, cat, txInGroupId, tradeType]
+                    `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?, ?, ?)`,
+                    [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, cat, txInGroupId, tradeType, itemFreight, itemRegion]
                 );
                 const newInId = inRes.lastID;
 
                 const outRes = await dbRun(
-                    `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
-                    [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, cat, txOutGroupId, tradeType]
+                    `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+                    [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, cat, txOutGroupId, tradeType, itemFreight, itemRegion]
                 );
                 const newOutId = outRes.lastID;
 

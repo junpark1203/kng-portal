@@ -386,6 +386,56 @@
             cursor: default !important;
         }
 
+        /* 셀 내부 드롭다운 셀렉트 */
+        .erp-cell-select {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 25px;
+            border: none !important;
+            outline: none !important;
+            padding: 1px 4px !important;
+            font-size: 11.5px !important;
+            background: transparent !important;
+            color: #1e293b;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            box-sizing: border-box !important;
+            cursor: pointer;
+            text-align-last: center;
+        }
+        .erp-cell-select:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        .price-warn-highlight {
+            background-color: #fef3c7 !important;
+            color: #b45309 !important;
+            font-weight: 700;
+            transition: background-color 0.2s;
+        }
+        .badge-freight-in {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .badge-freight-ex {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
         /* 활성 셀(Focus) 엑셀 테두리 하이라이트 */
         .erp-sheet-table tbody td:focus-within {
             box-shadow: inset 0 0 0 2px #2563eb !important;
@@ -1478,8 +1528,9 @@
                         <table class="erp-sheet-table align-middle text-nowrap" id="inboundSheetTable">
                             <colgroup>
                                 <col style="width: 36px;"> <!-- No -->
-                                <col style="width: 20%;"> <!-- 품목명 -->
+                                <col style="width: 19%;"> <!-- 품목명 -->
                                 <col style="width: 13%;"> <!-- 규격 -->
+                                <col style="width: 72px;"> <!-- 운임 -->
                                 <col style="width: 8%;"> <!-- 분류 -->
                                 <col style="width: 7%;"> <!-- 수량 -->
                                 <col style="width: 5%;"> <!-- 단위 -->
@@ -1494,6 +1545,7 @@
                                     <th class="th-no text-center">No</th>
                                     <th>품목명 <span class="text-danger">*</span></th>
                                     <th>규격 <span class="text-danger">*</span></th>
+                                    <th>운임</th>
                                     <th>분류</th>
                                     <th>수량 <span class="text-danger">*</span></th>
                                     <th>단위 <span class="text-danger">*</span></th>
@@ -1509,7 +1561,7 @@
                             </tbody>
                             <tfoot id="inboundItemsFoot">
                                 <tr class="fw-bold">
-                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td colspan="5" class="text-center bg-secondary-subtle text-dark">합계</td>
                                     <td class="text-end text-primary" id="in_total_qty">0</td>
                                     <td colspan="2"></td>
                                     <td class="text-end" id="in_total_supply">0원</td>
@@ -1635,8 +1687,9 @@
                         <table class="erp-sheet-table align-middle text-nowrap" id="outboundSheetTable">
                             <colgroup>
                                 <col style="width: 36px;"> <!-- No -->
-                                <col style="width: 19%;"> <!-- 품목명 -->
-                                <col style="width: 14%;"> <!-- 규격 (보유재고) -->
+                                <col style="width: 18%;"> <!-- 품목명 -->
+                                <col style="width: 13%;"> <!-- 규격 (보유재고) -->
+                                <col style="width: 72px;"> <!-- 운임 -->
                                 <col style="width: 8%;"> <!-- 분류 -->
                                 <col style="width: 6%;"> <!-- 수량 -->
                                 <col style="width: 4%;"> <!-- 단위 -->
@@ -1652,6 +1705,7 @@
                                     <th class="th-no text-center">No</th>
                                     <th>품목명 <span class="text-danger">*</span></th>
                                     <th>규격 (보유재고) <span class="text-danger">*</span></th>
+                                    <th>운임</th>
                                     <th>분류</th>
                                     <th>수량 <span class="text-danger">*</span></th>
                                     <th>단위</th>
@@ -1668,7 +1722,7 @@
                             </tbody>
                             <tfoot id="outboundItemsFoot">
                                 <tr class="fw-bold">
-                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td colspan="5" class="text-center bg-secondary-subtle text-dark">합계</td>
                                     <td class="text-end text-danger" id="out_total_qty">0</td>
                                     <td colspan="3"></td>
                                     <td class="text-end" id="out_total_supply">0원</td>
@@ -1814,8 +1868,9 @@
                         <table class="erp-sheet-table align-middle text-nowrap" id="directSheetTable">
                             <colgroup>
                                 <col style="width: 36px;"> <!-- No -->
-                                <col style="width: 17%;"> <!-- 품목명 -->
+                                <col style="width: 16%;"> <!-- 품목명 -->
                                 <col style="width: 12%;"> <!-- 규격 -->
+                                <col style="width: 72px;"> <!-- 운임 -->
                                 <col style="width: 7%;"> <!-- 분류 -->
                                 <col style="width: 6%;"> <!-- 수량 -->
                                 <col style="width: 4%;"> <!-- 단위 -->
@@ -1831,6 +1886,7 @@
                                     <th class="th-no text-center">No</th>
                                     <th>품목명 <span class="text-danger">*</span></th>
                                     <th>규격</th>
+                                    <th>운임</th>
                                     <th>분류</th>
                                     <th>수량 <span class="text-danger">*</span></th>
                                     <th>단위</th>
@@ -1847,7 +1903,7 @@
                             </tbody>
                             <tfoot id="directItemsFoot">
                                 <tr class="fw-bold">
-                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td colspan="5" class="text-center bg-secondary-subtle text-dark">합계</td>
                                     <td class="text-end text-dark" id="dir_total_qty">0</td>
                                     <td colspan="2"></td>
                                     <td class="text-end text-primary" id="dir_total_in_supply">0원</td>
@@ -2081,7 +2137,7 @@
                             <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="edit_in_date" required>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('edit_in_supplier');}">
@@ -2095,7 +2151,14 @@
                                 <option value="수입">수입</option>
                             </select>
                         </div>
-                        <div class="col-3 position-relative">
+                        <div class="col-2">
+                            <label class="form-label mb-1">운임조건</label>
+                            <select class="form-select form-select-sm" id="edit_in_freight_type">
+                                <option value="상차도" selected>상차도</option>
+                                <option value="하차도">하차도</option>
+                            </select>
+                        </div>
+                        <div class="col-2 position-relative">
                             <label class="form-label mb-1">분류</label>
                             <input type="text" class="form-control form-control-sm category-input" id="edit_in_category" placeholder="분류 선택/입력" autocomplete="off">
                             <div class="autocomplete-suggestions" style="display:none;"></div>
@@ -2160,7 +2223,7 @@
                     </div>
                     
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label text-muted small mb-1">일자</label>
                             <input type="date" class="form-control" id="edit_direct_date" required>
                         </div>
@@ -2178,6 +2241,13 @@
                                 <option value="내수" selected>내수</option>
                                 <option value="수입">수입</option>
                                 <option value="수출">수출</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label text-muted small mb-1">운임</label>
+                            <select class="form-select" id="edit_direct_freight_type">
+                                <option value="하차도" selected>하차도</option>
+                                <option value="상차도">상차도</option>
                             </select>
                         </div>
                         <div class="col-md-2 position-relative">
@@ -2277,7 +2347,7 @@
                             <label class="form-label mb-1">출고일자</label>
                             <input type="date" class="form-control form-control-sm" id="edit_out_date" required>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <label class="form-label mb-1">출고처(고객/현장)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.openPartnerSearchModal('edit_out_destination');}">
@@ -2291,7 +2361,14 @@
                                 <option value="수출">수출</option>
                             </select>
                         </div>
-                        <div class="col-3 position-relative">
+                        <div class="col-2">
+                            <label class="form-label mb-1">운임조건</label>
+                            <select class="form-select form-select-sm" id="edit_out_freight_type">
+                                <option value="상차도" selected>상차도</option>
+                                <option value="하차도">하차도</option>
+                            </select>
+                        </div>
+                        <div class="col-2 position-relative">
                             <label class="form-label mb-1">분류</label>
                             <input type="text" class="form-control form-control-sm category-input" id="edit_out_category" placeholder="분류 선택/입력" autocomplete="off">
                             <div class="autocomplete-suggestions" style="display:none;"></div>

@@ -947,16 +947,63 @@ const app = {
         }
     },
 
-    getUnitPriceInfo: function(item, spec) {
+    getUnitPriceInfo: function(item, spec, freightType = null) {
         if (!item || !this.unitPricesMap) return null;
-        const key = `${(item || '').trim()}||${(spec || '').trim()}`;
-        return this.unitPricesMap[key] || null;
+        const itemTrim = (item || '').trim();
+        const specTrim = (spec || '').trim();
+        const baseKey = `${itemTrim}||${specTrim}`;
+        if (freightType) {
+            const fullKey = `${baseKey}||${(freightType || '').trim()}`;
+            if (this.unitPricesMap[fullKey]) return this.unitPricesMap[fullKey];
+        }
+        return this.unitPricesMap[baseKey] || null;
     },
 
     autoFillPricesForRow: function(row, type, item, spec) {
         if (!item) return;
-        const priceInfo = this.getUnitPriceInfo(item, spec);
+        const freightSelect = row.querySelector(type === 'inbound' ? '.in-freight-type' : (type === 'direct' ? '.dir-freight-type' : '.out-freight-type'));
+        const curFreight = freightSelect ? freightSelect.value : null;
+
+        // 1. 단가표 조회 (현재 선택된 운임조건 일치 항목 우선, 없으면 기본 항목)
+        let priceInfo = this.getUnitPriceInfo(item, spec, curFreight) || this.getUnitPriceInfo(item, spec);
+
+        const manuallySet = row.dataset.freightManuallySet === 'true';
+
+        // 2. 사용자가 운임조건을 직접 변경하지 않은 경우: 단가표의 마스터 운임조건 또는 스마트 기본값 추천
+        if (!manuallySet && freightSelect) {
+            if (priceInfo && priceInfo.freight_type) {
+                freightSelect.value = priceInfo.freight_type;
+            } else if (type === 'direct') {
+                const shippingFee = parseFloat($('dir_out_shipping') ? $('dir_out_shipping').value : 0) || 0;
+                freightSelect.value = shippingFee > 0 ? '상차도' : '하차도';
+            } else if (type === 'outbound') {
+                const shippingFee = parseFloat($('out_shipping') ? $('out_shipping').value : 0) || 0;
+                freightSelect.value = shippingFee > 0 ? '상차도' : '상차도';
+            }
+        }
+
         if (!priceInfo) return;
+
+        const effectiveFreight = freightSelect ? freightSelect.value : (priceInfo.freight_type || '상차도');
+        // 마스터에 등록된 운임조건과 현재 행의 운임조건이 불일치하는지 여부
+        const isFreightMismatch = !!(priceInfo.freight_type && priceInfo.freight_type !== effectiveFreight);
+
+        const applyWarningOrClear = (inputEl, masterType, rowType) => {
+            if (!inputEl) return;
+            if (isFreightMismatch) {
+                inputEl.classList.add('price-warn-highlight');
+                inputEl.title = `단가표 기준(${masterType})과 전표 운임조건(${rowType})이 다릅니다. 단가를 확인하세요.`;
+                const clearWarn = () => {
+                    inputEl.classList.remove('price-warn-highlight');
+                    inputEl.removeAttribute('title');
+                    inputEl.removeEventListener('input', clearWarn);
+                };
+                inputEl.addEventListener('input', clearWarn);
+            } else {
+                inputEl.classList.remove('price-warn-highlight');
+                inputEl.removeAttribute('title');
+            }
+        };
 
         if (type === 'direct') {
             const inPriceInp = row.querySelector('.dir-in-price');
@@ -970,6 +1017,8 @@ const app = {
                 outPriceInp.value = priceInfo.sell_price;
                 updated = true;
             }
+            applyWarningOrClear(inPriceInp, priceInfo.freight_type, effectiveFreight);
+            applyWarningOrClear(outPriceInp, priceInfo.freight_type, effectiveFreight);
             if (updated) {
                 this.updateDirectGridTotals();
             }
@@ -979,12 +1028,14 @@ const app = {
                 priceInp.value = priceInfo.buy_price;
                 this.updateInboundGridTotals();
             }
+            applyWarningOrClear(priceInp, priceInfo.freight_type, effectiveFreight);
         } else if (type === 'outbound') {
             const priceInp = row.querySelector('.out-price');
             if (priceInp && (!priceInp.value || parseFloat(priceInp.value) === 0) && priceInfo.sell_price) {
                 priceInp.value = priceInfo.sell_price;
                 this.updateOutboundGridTotals();
             }
+            applyWarningOrClear(priceInp, priceInfo.freight_type, effectiveFreight);
         }
     },
 
@@ -1839,6 +1890,13 @@ const app = {
             const txIdDisplay = r.transaction_group_id || (r.is_direct === 1 ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
             const dateStr = (r.date || '').split('T')[0];
 
+            let freightBadge = '';
+            if (r.freight_type === '하차도') {
+                freightBadge = ` <span class="badge-freight-in" title="운임: 하차도">하차도</span>`;
+            } else if (r.freight_type === '상차도') {
+                freightBadge = ` <span class="badge-freight-ex" title="운임: 상차도">상차도</span>`;
+            }
+
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.updateSelectionSummary()"></td>
@@ -1851,7 +1909,7 @@ const app = {
                 <td class="text-center tabular-nums">${dateStr}</td>
                 <td title="${r.supplier || ''}">${renderCell(r.supplier)}</td>
                 <td title="${r.destination || ''}">${destHtml}</td>
-                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong></td>
+                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong>${freightBadge}</td>
                 <td class="text-center" title="${r.spec || ''}">${r.spec || '-'}</td>
                 <td class="text-center">${r.unit || '-'}</td>
                 <td class="text-end tabular-nums ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
@@ -2033,6 +2091,7 @@ const app = {
                 }
 
                 const catBadge = item.category ? `<span class="erp-badge erp-badge-cat ms-1">${item.category}</span>` : '';
+                const fBadge = item.freight_type ? `<span class="${item.freight_type === '하차도' ? 'badge-freight-in' : 'badge-freight-ex'} ms-1">${item.freight_type}</span>` : '';
 
                 if (isDirect) {
                     return `
@@ -2041,6 +2100,7 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
+                                ${fBadge}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
@@ -2058,6 +2118,7 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
+                                ${fBadge}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
@@ -2074,6 +2135,7 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
+                                ${fBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
@@ -2772,6 +2834,12 @@ const app = {
                         <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
                     </div>
                 </td>
+                <td class="text-center">
+                    <select class="erp-cell-select in-freight-type">
+                        <option value="상차도" selected>상차도</option>
+                        <option value="하차도">하차도</option>
+                    </select>
+                </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input in-category category-input" placeholder="분류" autocomplete="off">
@@ -2810,6 +2878,14 @@ const app = {
         const input = newRow.querySelector('.in-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
         if (sug) sug.classList.add('item-suggestions');
+
+        const freightSelect = newRow.querySelector('.in-freight-type');
+        if (freightSelect) {
+            freightSelect.addEventListener('change', () => {
+                newRow.dataset.freightManuallySet = 'true';
+                this.autoFillPricesForRow(newRow, 'inbound', newRow.querySelector('.in-item').value.trim(), newRow.querySelector('.in-spec').value.trim());
+            });
+        }
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -2987,6 +3063,8 @@ const app = {
             const note = rowNote || docNote;
             const trade_type = $('in_trade_type') ? $('in_trade_type').value : '내수';
 
+            const freight_type = row.querySelector('.in-freight-type') ? row.querySelector('.in-freight-type').value : '상차도';
+
             // 완전히 빈 행은 무시
             if (!item && !spec && !unit && !qtyStr && !priceStr && !rowNote) {
                 return;
@@ -2995,7 +3073,7 @@ const app = {
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price, note, trade_type, category });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price, note, trade_type, category, freight_type, freight_region: '' });
             }
         });
 
@@ -3099,6 +3177,12 @@ const app = {
                         <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
                     </div>
                 </td>
+                <td class="text-center">
+                    <select class="erp-cell-select dir-freight-type">
+                        <option value="하차도" selected>하차도</option>
+                        <option value="상차도">상차도</option>
+                    </select>
+                </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input dir-category category-input" placeholder="분류" autocomplete="off">
@@ -3139,6 +3223,17 @@ const app = {
         const input = newRow.querySelector('.dir-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
         if (sug) sug.classList.add('item-suggestions');
+
+        const freightSelect = newRow.querySelector('.dir-freight-type');
+        if (freightSelect) {
+            const outShippingFee = parseFloat($('dir_out_shipping') ? $('dir_out_shipping').value : 0) || 0;
+            if (outShippingFee > 0) freightSelect.value = '상차도';
+
+            freightSelect.addEventListener('change', () => {
+                newRow.dataset.freightManuallySet = 'true';
+                this.autoFillPricesForRow(newRow, 'direct', newRow.querySelector('.dir-item').value.trim(), newRow.querySelector('.dir-spec').value.trim());
+            });
+        }
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -3285,6 +3380,14 @@ const app = {
         const inShippingVat = $('dir_in_shipping_vat')?.checked ? 0 : Math.round(inShipping * 0.1);
         const outShippingVat = $('dir_out_shipping_vat')?.checked ? 0 : Math.round(outShipping * 0.1);
 
+        // 매출 배송비 변경 시 수동 변경되지 않은 행들의 운임조건 기본값 동적 추천
+        rows.forEach(r => {
+            if (!r.dataset.freightManuallySet) {
+                const sel = r.querySelector('.dir-freight-type');
+                if (sel) sel.value = outShipping > 0 ? '상차도' : '하차도';
+            }
+        });
+
         const grandInTotal = totalInSupply + Math.round(totalInSupply * 0.1) + inShipping + inShippingVat;
         const grandOutTotal = totalOutSupply + Math.round(totalOutSupply * 0.1) + outShipping + outShippingVat;
 
@@ -3338,6 +3441,7 @@ const app = {
             const rowNote = row.querySelector('.dir-note') ? row.querySelector('.dir-note').value.trim() : '';
             const note = rowNote || docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
+            const freight_type = row.querySelector('.dir-freight-type') ? row.querySelector('.dir-freight-type').value : (shipping_fee > 0 ? '상차도' : '하차도');
 
             // 완전히 빈 행은 무시
             if (!item && !spec && !unit && !qtyVal && !inPriceVal && !outPriceVal && !rowNote) {
@@ -3353,6 +3457,7 @@ const app = {
                     selling_price: out_price, outbound_price: out_price, 
                     in_shipping_fee, in_shipping_fee_vat_included,
                     shipping_fee, shipping_fee_vat_included, 
+                    freight_type, freight_region: actual_destination || destination || '',
                     note, trade_type, category 
                 });
             }
@@ -3436,6 +3541,12 @@ const app = {
                         <option value="">품목 먼저 선택</option>
                     </select>
                 </td>
+                <td class="text-center">
+                    <select class="erp-cell-select out-freight-type">
+                        <option value="상차도" selected>상차도</option>
+                        <option value="하차도">하차도</option>
+                    </select>
+                </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input out-category category-input" placeholder="분류" autocomplete="off">
@@ -3478,6 +3589,19 @@ const app = {
         const input = newRow.querySelector('.out-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
         if (sug) sug.classList.add('item-suggestions');
+
+        const freightSelect = newRow.querySelector('.out-freight-type');
+        if (freightSelect) {
+            const outShippingFee = parseFloat($('out_shipping') ? $('out_shipping').value : 0) || 0;
+            if (outShippingFee > 0) freightSelect.value = '상차도';
+
+            freightSelect.addEventListener('change', () => {
+                newRow.dataset.freightManuallySet = 'true';
+                const itemName = newRow.querySelector('.out-item').value.trim();
+                const specName = newRow.querySelector('.out-spec').value.trim();
+                this.autoFillPricesForRow(newRow, 'outbound', itemName, specName);
+            });
+        }
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
@@ -3605,6 +3729,15 @@ const app = {
         const shipping = parseFloat($('out_shipping')?.value) || 0;
         const shippingVat = $('out_shipping_vat')?.checked ? 0 : Math.round(shipping * 0.1);
         const grandTotal = totalSupply + totalVat + shipping + shippingVat;
+
+        if (shipping > 0) {
+            rows.forEach(r => {
+                if (!r.dataset.freightManuallySet) {
+                    const sel = r.querySelector('.out-freight-type');
+                    if (sel) sel.value = '상차도';
+                }
+            });
+        }
 
         if ($('out_total_qty')) $('out_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
         if ($('out_total_supply')) $('out_total_supply').innerText = totalSupply.toLocaleString() + '원';
@@ -3893,6 +4026,7 @@ const app = {
             const note = rowNote || docNote;
             const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
             const consumed_lots = this.outboundRows[rowId] ? this.outboundRows[rowId].consumedLots : [];
+            const freight_type = row.querySelector('.out-freight-type') ? row.querySelector('.out-freight-type').value : (shipping_fee > 0 ? '상차도' : '상차도');
 
             // 완전히 빈 행은 무시
             if (!item && !spec && !qtyStr && !priceStr && !rowNote) {
@@ -3902,7 +4036,11 @@ const app = {
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category });
+                items.push({ 
+                    id: row.dataset.dbId, item, spec, unit, qty, selling_price, 
+                    shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category,
+                    freight_type, freight_region: $('out_actual_destination') ? $('out_actual_destination').value.trim() : ''
+                });
             }
         });
 
@@ -4488,6 +4626,10 @@ const app = {
                 newRow.querySelector('.in-qty').value = item.qty_initial;
                 newRow.querySelector('.in-price').value = item.unit_price || 0;
                 if (newRow.querySelector('.in-category')) newRow.querySelector('.in-category').value = item.category || '';
+                if (newRow.querySelector('.in-freight-type')) {
+                    newRow.querySelector('.in-freight-type').value = item.freight_type || '상차도';
+                    newRow.dataset.freightManuallySet = 'true';
+                }
                 
                 const consumed = item.qty_initial - item.qty_remaining;
                 if (consumed > 0) {
@@ -4591,6 +4733,10 @@ const app = {
                 
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
                 if (newRow.querySelector('.out-category')) newRow.querySelector('.out-category').value = item.category || '';
+                if (newRow.querySelector('.out-freight-type')) {
+                    newRow.querySelector('.out-freight-type').value = item.freight_type || '상차도';
+                    newRow.dataset.freightManuallySet = 'true';
+                }
 
                 // 해당 규격에 매칭되는 Lot 목록 확보
                 let specLots = [];
@@ -4673,6 +4819,10 @@ const app = {
                 newRow.querySelector('.dir-in-price').value = item.inbound_price !== undefined ? item.inbound_price : (item.unit_price || 0);
                 newRow.querySelector('.dir-out-price').value = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
                 if (newRow.querySelector('.dir-category')) newRow.querySelector('.dir-category').value = item.category || '';
+                if (newRow.querySelector('.dir-freight-type')) {
+                    newRow.querySelector('.dir-freight-type').value = item.freight_type || '하차도';
+                    newRow.dataset.freightManuallySet = 'true';
+                }
             });
             this.updateDirectGridTotals();
 
@@ -5707,6 +5857,7 @@ const app = {
             $('edit_in_note').value = data.note || '';
             if ($('edit_in_category')) $('edit_in_category').value = data.category || '';
             if ($('edit_in_trade_type')) $('edit_in_trade_type').value = data.trade_type || '내수';
+            if ($('edit_in_freight_type')) $('edit_in_freight_type').value = data.freight_type || '상차도';
             
             const consumed = data.qty_initial - data.qty_remaining;
             if (consumed > 0) {
@@ -5758,7 +5909,9 @@ const app = {
             unit_price: parseFloat($('edit_in_price').value),
             note: $('edit_in_note').value,
             trade_type: $('edit_in_trade_type') ? $('edit_in_trade_type').value : '내수',
-            category: $('edit_in_category') ? $('edit_in_category').value.trim() : ''
+            category: $('edit_in_category') ? $('edit_in_category').value.trim() : '',
+            freight_type: $('edit_in_freight_type') ? $('edit_in_freight_type').value : '상차도',
+            freight_region: ''
         };
         
         try {
@@ -5796,6 +5949,7 @@ const app = {
             $('edit_direct_note').value = item.note || '';
             if ($('edit_direct_trade_type')) $('edit_direct_trade_type').value = item.trade_type || '내수';
             if ($('edit_direct_category')) $('edit_direct_category').value = item.category || '';
+            if ($('edit_direct_freight_type')) $('edit_direct_freight_type').value = item.freight_type || '하차도';
             
             $('edit_direct_item').value = item.item;
             $('edit_direct_spec').value = item.spec || '';
@@ -5831,7 +5985,9 @@ const app = {
             shipping_fee_vat_included: ($('edit_direct_out_shipping_vat') && $('edit_direct_out_shipping_vat').checked) ? 1 : 0,
             note: $('edit_direct_note').value,
             trade_type: $('edit_direct_trade_type') ? $('edit_direct_trade_type').value : '내수',
-            category: $('edit_direct_category') ? $('edit_direct_category').value.trim() : ''
+            category: $('edit_direct_category') ? $('edit_direct_category').value.trim() : '',
+            freight_type: $('edit_direct_freight_type') ? $('edit_direct_freight_type').value : '하차도',
+            freight_region: ''
         };
 
         try {
@@ -5863,6 +6019,7 @@ const app = {
             $('edit_out_note').value = item.note || '';
             if ($('edit_out_trade_type')) $('edit_out_trade_type').value = item.trade_type || '내수';
             if ($('edit_out_category')) $('edit_out_category').value = item.category || '';
+            if ($('edit_out_freight_type')) $('edit_out_freight_type').value = item.freight_type || '상차도';
             
             $('edit_out_item').value = item.item;
             $('edit_out_spec').value = item.spec || '';
@@ -5963,6 +6120,8 @@ const app = {
             shipping_fee_vat_included: $('edit_out_shipping_vat').checked ? 1 : 0,
             trade_type: $('edit_out_trade_type') ? $('edit_out_trade_type').value : '내수',
             category: $('edit_out_category') ? $('edit_out_category').value.trim() : '',
+            freight_type: $('edit_out_freight_type') ? $('edit_out_freight_type').value : '상차도',
+            freight_region: '',
             note: $('edit_out_note').value,
             consumed_lots: this.editOutboundState.consumedLots
         };
