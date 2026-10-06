@@ -631,11 +631,520 @@ button {
     background: rgba(220, 38, 38, 1);
 }
 
+/* ══════════════════════════════════════════════════════
+   MOBILE UI/UX ENHANCEMENTS & COMPONENT STYLES
+   ══════════════════════════════════════════════════════ */
+
+/* Search Box Clear Button */
+.btn-clear-search {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+.btn-clear-search:hover {
+    color: var(--text-main);
+}
+.btn-clear-search.hidden {
+    display: none;
+}
+
+/* Filter Toggle Button (Mobile/Tablet) */
+.btn-toggle-filter {
+    display: none;
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    position: relative;
+}
+.btn-toggle-filter:hover, .btn-toggle-filter.active {
+    background: #EEF2FF;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+.filter-count-badge {
+    background: var(--primary-color);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.filter-count-badge.hidden {
+    display: none;
+}
+
+/* Quick Filter Chips Ribbon */
+.quick-chips-ribbon {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.chip-scroll-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 0;
+}
+.chip-scroll-row::-webkit-scrollbar {
+    display: none;
+}
+.chip-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-right: 2px;
+}
+.filter-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+.filter-chip:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+.filter-chip.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+/* Filter Layout Grid */
+.filter-col-dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.date-inputs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.filter-col-selects {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.filter-select-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Form Grid 2 */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Attachment Header & Mobile Camera Button */
+.attachment-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.attachment-header-row label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0;
+}
+.btn-mobile-camera-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #EEF2FF;
+    color: var(--primary-color);
+    border: 1px solid #C7D2FE;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-mobile-camera-upload:hover {
+    background: #E0E7FF;
+    border-color: var(--primary-color);
+}
+
+/* Mobile Floating Action Button (FAB) */
+.mobile-fab-newlog {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 990;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mobile-fab-newlog:active {
+    transform: scale(0.92);
+}
+
+/* Mobile Sticky Bottom Action Bar for Editor */
+.mobile-editor-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-color);
+    padding: 10px 16px;
+    display: none;
+    gap: 10px;
+    z-index: 900;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+.btn-mobile-draft {
+    flex: 1;
+    background: white;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-mobile-save {
+    flex: 2;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Lightbox Modal */
+.image-lightbox-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.image-lightbox-modal.hidden {
+    display: none;
+}
+.lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+}
+.lightbox-content {
+    position: relative;
+    z-index: 2010;
+    max-width: 94vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    object-fit: contain;
+}
+.btn-close-lightbox {
+    position: absolute;
+    top: -42px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ══════════════════════════════════════════════════════ */
+
 @media (max-width: 1024px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+    .past-history-panel {
+        width: 100%;
+        max-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    #app-container {
+        padding: 12px 14px 80px 14px; /* Bottom padding for FAB and action bar */
+    }
+
+    /* Header */
+    .header-area {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .header-title h1 {
+        font-size: 20px;
+    }
+    .header-title p {
+        font-size: 12.5px;
+    }
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+    .search-box {
+        flex: 1;
+    }
+    .search-box input {
+        width: 100% !important;
+        font-size: 15px; /* Prevent iOS zoom */
+        padding: 10px 36px 10px 38px;
+    }
+    .desktop-new-log-btn {
+        display: none !important; /* Replaced by FAB on mobile */
+    }
+    .btn-toggle-filter {
+        display: flex;
+    }
+
+    /* Filter Area */
+    .filter-area {
+        padding: 14px;
+        margin-bottom: 16px;
+        gap: 14px;
+    }
+    .filter-area.collapsed-mobile {
+        display: none;
+    }
+    .filter-col-dates {
+        width: 100%;
+    }
+    .date-inputs-wrap {
+        width: 100%;
+    }
+    .date-inputs-wrap input[type="date"] {
+        flex: 1;
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+    .date-presets {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+    .filter-col-selects {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .filter-select-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        width: 100%;
+    }
+    .filter-select-item select {
+        width: 100%;
+        font-size: 15px;
+        padding: 8px 10px;
+    }
+
+    /* Cards */
+    .list-container {
+        gap: 14px;
+    }
+    .log-card {
+        border-radius: 12px;
+    }
+    .log-card-header {
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .log-meta {
+        flex-wrap: wrap;
+        gap: 6px 8px;
+        font-size: 12.5px;
+    }
     .log-card-body {
+        padding: 14px;
+        gap: 14px;
+    }
+    .log-section h3 {
+        font-size: 13.5px;
+        margin-bottom: 6px;
+    }
+    .log-content {
+        font-size: 13.5px;
+        line-height: 1.55;
+    }
+    .log-attachments img {
+        width: 80px;
+        height: 80px;
+    }
+
+    /* Editor View */
+    .editor-header {
+        margin-bottom: 16px;
+    }
+    .editor-header .editor-actions {
+        display: none; /* Handled by sticky bottom bar on mobile */
+    }
+    .editor-header .btn-outline {
+        display: inline-flex;
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+    .editor-form {
+        padding: 14px;
+        margin-bottom: 60px; /* Space for sticky bottom bar */
+    }
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .form-group input, .form-group select {
+        font-size: 16px; /* Prevents auto zoom */
+        padding: 12px 14px;
+    }
+    .form-group textarea {
+        font-size: 15px;
+        min-height: 180px;
+        padding: 12px 14px;
+    }
+    .dropzone {
+        padding: 20px 14px;
+    }
+    .dropzone i {
+        font-size: 26px;
+        margin-bottom: 8px;
+    }
+    .dropzone p {
+        font-size: 12.5px;
+    }
+
+    /* Past History Panel as Mobile Bottom Sheet */
+    .past-history-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        max-height: 80vh;
+        z-index: 1500;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+        border: none;
+        animation: slideUpBottom 0.3s ease-out forwards;
+    }
+    @keyframes slideUpBottom {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    /* Visible on mobile */
+    .mobile-fab-newlog {
+        display: flex;
+    }
+    .view-section.active#editView ~ .mobile-fab-newlog {
+        display: none;
+    }
+    .mobile-editor-bottom-bar {
+        display: flex;
+    }
+}
+
+@media (max-width: 480px) {
+    #app-container {
+        padding: 8px 10px 80px 10px;
+    }
+    .filter-col-selects {
         grid-template-columns: 1fr;
     }
-    .split-editor {
-        grid-template-columns: 1fr;
+    .log-attachments img {
+        width: 70px;
+        height: 70px;
+    }
+    .attachment-item {
+        width: 90px;
+        height: 90px;
     }
 }

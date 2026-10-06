@@ -26,18 +26,43 @@
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="searchInput" placeholder="업무 내용 검색...">
+                        <button type="button" class="btn-clear-search hidden" id="btnClearSearch" title="검색어 지우기"><i class="fa-solid fa-xmark"></i></button>
                     </div>
-                    <button class="btn-primary" id="btnNewLog"><i class="fa-solid fa-pen"></i> 업무일지 작성</button>
+                    <button type="button" class="btn-toggle-filter" id="btnToggleFilter" title="상세 필터 접기/펼치기">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span class="filter-count-badge hidden" id="filterCountBadge">0</span>
+                    </button>
+                    <button class="btn-primary desktop-new-log-btn" id="btnNewLog"><i class="fa-solid fa-pen"></i> 업무일지 작성</button>
                 </div>
             </div>
 
-            <div class="filter-area glass-panel" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 8px;">
+            <!-- 모바일/터치 퀵 칩 리본 -->
+            <div class="quick-chips-ribbon">
+                <div class="chip-scroll-row" id="chipRowType">
+                    <span class="chip-label">유형:</span>
+                    <button type="button" class="filter-chip active" data-type-val="">전체</button>
+                    <button type="button" class="filter-chip" data-type-val="일일">일일</button>
+                    <button type="button" class="filter-chip" data-type-val="주간">주간</button>
+                    <button type="button" class="filter-chip" data-type-val="월간">월간</button>
+                </div>
+                <div class="chip-scroll-row" id="chipRowCategory">
+                    <span class="chip-label">구분:</span>
+                    <button type="button" class="filter-chip active" data-cat-val="">전체</button>
+                    <button type="button" class="filter-chip" data-cat-val="업무">업무</button>
+                    <button type="button" class="filter-chip" data-cat-val="보고">보고</button>
+                    <button type="button" class="filter-chip" data-cat-val="기타">기타</button>
+                </div>
+            </div>
+
+            <div class="filter-area glass-panel" id="filterArea">
+                <div class="filter-col-dates">
                     <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">기간</label>
-                    <input type="date" id="filterStartDate" class="filter-input">
-                    <span style="color: var(--text-muted);">~</span>
-                    <input type="date" id="filterEndDate" class="filter-input">
-                    <div class="date-presets" id="datePresets" style="margin: 0 0 0 4px; display: flex; gap: 4px;">
+                    <div class="date-inputs-wrap">
+                        <input type="date" id="filterStartDate" class="filter-input">
+                        <span style="color: var(--text-muted);">~</span>
+                        <input type="date" id="filterEndDate" class="filter-input">
+                    </div>
+                    <div class="date-presets" id="datePresets">
                         <button class="btn-preset active" data-range="all">전체</button>
                         <button class="btn-preset" data-range="1y">1년</button>
                         <button class="btn-preset" data-range="1m">1달</button>
@@ -45,27 +70,29 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">유형</label>
-                    <select id="filterLogType" class="filter-input">
-                        <option value="">전체</option>
-                        <option value="일일">일일</option>
-                        <option value="주간">주간</option>
-                        <option value="월간">월간</option>
-                    </select>
+                <div class="filter-col-selects">
+                    <div class="filter-select-item">
+                        <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">유형</label>
+                        <select id="filterLogType" class="filter-input">
+                            <option value="">전체</option>
+                            <option value="일일">일일</option>
+                            <option value="주간">주간</option>
+                            <option value="월간">월간</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-select-item">
+                        <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">구분</label>
+                        <select id="filterCategory" class="filter-input">
+                            <option value="">전체</option>
+                            <option value="업무">업무</option>
+                            <option value="보고">보고</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">구분</label>
-                    <select id="filterCategory" class="filter-input">
-                        <option value="">전체</option>
-                        <option value="업무">업무</option>
-                        <option value="보고">보고</option>
-                        <option value="기타">기타</option>
-                    </select>
-                </div>
-                
-                <div class="checkbox-group" style="margin: 0; display: flex; align-items: center;">
+                <div class="checkbox-group">
                     <label style="white-space: nowrap;"><input type="checkbox" id="filterDraft"> 임시저장만 보기</label>
                 </div>
             </div>
@@ -78,9 +105,9 @@
         <!-- EditView / DetailView (Shared Form) -->
         <div id="editView" class="view-section">
             <div class="editor-header">
-                <button class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> 뒤로가기</button>
+                <button class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> 목록으로</button>
                 <div class="editor-actions">
-                    <button class="btn-outline" id="btnToggleHistory"><i class="fa-solid fa-clock-rotate-left"></i> 과거 내역 참고</button>
+                    <button class="btn-outline" id="btnToggleHistory"><i class="fa-solid fa-clock-rotate-left"></i> 과거 내역</button>
                     <button class="btn-secondary" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
                     <button class="btn-primary" id="btnSave"><i class="fa-solid fa-check"></i> 저장완료</button>
                     <button class="btn-danger" id="btnDelete" style="display: none;"><i class="fa-solid fa-trash"></i> 삭제</button>
@@ -89,7 +116,7 @@
 
             <div class="editor-layout">
                 <div class="editor-form glass-panel">
-                    <div class="form-row multi-col" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-row form-grid-2">
                         <div class="form-group">
                             <label>작성일</label>
                             <input type="date" id="inputDate" required>
@@ -100,7 +127,7 @@
                         </div>
                     </div>
 
-                    <div class="form-row multi-col" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-row form-grid-2">
                         <div class="form-group">
                             <label>유형</label>
                             <select id="inputLogType">
@@ -121,20 +148,23 @@
 
                     <div class="form-row stacked-editor">
                         <div class="form-group">
-                            <label>금일사항 (Today's Work)</label>
+                            <label><i class="fa-solid fa-sun text-warning"></i> 금일사항 (Today's Work)</label>
                             <textarea id="editorToday" placeholder="오늘 진행한 업무 내용을 자유롭게 작성하세요..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label>차일사항 (Next Work)</label>
+                            <label><i class="fa-solid fa-moon text-primary"></i> 차일사항 (Next Work)</label>
                             <textarea id="editorNext" placeholder="내일 또는 향후 진행할 업무 내용을 자유롭게 작성하세요..."></textarea>
                         </div>
                     </div>
 
                     <div class="attachment-section">
-                        <label style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: block;">첨부 이미지</label>
+                        <div class="attachment-header-row">
+                            <label>첨부 이미지</label>
+                            <label for="fileInput" class="btn-mobile-camera-upload"><i class="fa-solid fa-camera"></i> 사진 첨부</label>
+                        </div>
                         <div class="dropzone" id="imageDropzone">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <p>여기로 이미지를 드래그하거나 클릭하여 업로드하세요.</p>
+                            <p>이미지를 드래그하거나 <strong>터치하여 업로드</strong>하세요.</p>
                             <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
                         </div>
                         <div class="attachment-gallery" id="attachmentGallery">
@@ -143,6 +173,7 @@
                     </div>
                 </div>
 
+                <!-- 과거 내역 패널 (모바일에서는 바텀시트로 전환) -->
                 <div class="past-history-panel glass-panel" id="pastHistoryPanel">
                     <div class="history-header">
                         <h3><i class="fa-solid fa-clock-rotate-left"></i> 내 과거 업무일지</h3>
@@ -154,11 +185,31 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 모바일 에디터 하단 고정 액션 바 -->
+            <div class="mobile-editor-bottom-bar" id="mobileEditorBottomBar">
+                <button type="button" class="btn-mobile-draft" id="btnMobileDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
+                <button type="button" class="btn-mobile-save" id="btnMobileSave"><i class="fa-solid fa-check"></i> 저장완료</button>
+            </div>
         </div>
 
     </div>
 
+    <!-- 모바일 전용 플로팅 작성 버튼 (FAB) -->
+    <button type="button" class="mobile-fab-newlog" id="mobileFabNewLog" title="새 업무일지 작성">
+        <i class="fa-solid fa-pen"></i>
+    </button>
+
+    <!-- 이미지 확대 라이트박스 모달 -->
+    <div class="image-lightbox-modal hidden" id="imageLightboxModal">
+        <div class="lightbox-backdrop" id="closeLightboxBackdrop"></div>
+        <div class="lightbox-content">
+            <button type="button" class="btn-close-lightbox" id="btnCloseLightbox"><i class="fa-solid fa-xmark"></i></button>
+            <img id="lightboxImg" src="" alt="첨부 이미지 확대">
+        </div>
+    </div>
+
     <!-- Script Entry -->
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

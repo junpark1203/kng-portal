@@ -1450,7 +1450,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var globalVatBtn = document.getElementById('globalVatBtn');
 
     /** 내부 페이지 모드로 전환 — 선택한 섹션만 표시 */
-    var internalSections = ['dashboard', 'forms', 'inventory', 'transactions'];
+    var internalSections = ['mobileRoadmapSection', 'dashboard', 'forms', 'inventory', 'transactions'];
 
     function showInternalView(href, label) {
     // iframe 숨기고 내부 페이지 표시
@@ -1460,12 +1460,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var targetId = href.replace('#', '');
 
-    // dashboard 클릭 시 모든 섹션 표시
-    if (targetId === 'dashboard' || targetId === 'quickmenu') {
+    // dashboard, quickmenu, mobileRoadmapSection 클릭 시 표시
+    if (targetId === 'dashboard' || targetId === 'quickmenu' || targetId === 'mobileRoadmapSection') {
         internalSections.forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.style.display = '';
         });
+        if (targetId === 'mobileRoadmapSection') {
+            var body = document.getElementById('mobileRoadmapBody');
+            var btn = document.getElementById('btnToggleRoadmapBody');
+            if (body && body.classList.contains('collapsed')) {
+                body.classList.remove('collapsed');
+                if (btn) btn.classList.remove('collapsed');
+            }
+            setTimeout(function() {
+                var sec = document.getElementById('mobileRoadmapSection');
+                if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+            }, 60);
+        }
     } else {
         // 다른 탭일 경우 해당 섹션만 표시
         internalSections.forEach(function(id) {
@@ -1476,8 +1488,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (targetEl) targetEl.style.display = '';
     }
 
-    // 검색바 / VAT 버튼: dashboard 포함해서 표시
-    var showControls = ['dashboard', 'quickmenu', 'forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
+    // 검색바 / VAT 버튼: dashboard 및 로드맵 포함해서 표시
+    var showControls = ['dashboard', 'quickmenu', 'forms', 'inventory', 'transactions', 'mobileRoadmapSection'].indexOf(targetId) !== -1;
     if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
     if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
 
@@ -1597,18 +1609,412 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 대시보드가 기본값
-    var lastNavHref = sessionStorage.getItem('lastNavHref') || './05_Management/dashboard/index.html';
-    if (lastNavHref) {
-        var savedLink = document.querySelector('.menu a[href="' + lastNavHref + '"]');
-        if (savedLink) {
-            // 해당 메뉴가 속한 아코디언 그룹을 열어줌
-            var parentGroup = savedLink.closest('.menu-group');
-            if (parentGroup) parentGroup.classList.add('open');
-            // 이벤트 핸들러가 동작하도록 클릭 트리거
-            savedLink.click();
+    // ==========================================
+    // 📱 모바일 특화 개편 프로젝트 개발 노트 (Mobile Roadmap Note & Simulator)
+    // ==========================================
+    const MOBILE_MODULES = [
+        {
+            id: "logistics_inout",
+            category: "영업관리",
+            title: "입출고내역",
+            path: "./01_Logistics/inout/index.html?v=10",
+            icon: "bx-transfer",
+            priority: "1순위 (추천)",
+            tagColor: "primary",
+            defaultStatus: "대기중",
+            points: [
+                "가로 스크롤 ERP 테이블 ➔ 모바일 전용 반응형 카드 리스트 뷰",
+                "300~520px 고정 자동완성 드롭다운 반응형 너비 최적화",
+                "모바일 바텀시트(Bottom Sheet) 기반 전표 등록 폼"
+            ]
+        },
+        {
+            id: "logistics_inventory",
+            category: "영업관리",
+            title: "실시간 재고",
+            path: "./01_Logistics/inventory/index.html",
+            icon: "bx-box",
+            priority: "2순위",
+            tagColor: "blue",
+            defaultStatus: "대기중",
+            points: [
+                "상단 자재분류 탭 ➔ 모바일 가로 스와이프 필터 칩 전환",
+                "재고 수량 및 안전재고 부족 상태 직관적 상태 배지 카드",
+                "상단 고정 스마트 검색 및 터치 친화적 SKU 조회"
+            ]
+        },
+        {
+            id: "logistics_unit_prices",
+            category: "영업관리",
+            title: "단가표",
+            path: "./01_Logistics/unit_prices/index.html",
+            icon: "bx-won",
+            priority: "3순위",
+            tagColor: "emerald",
+            defaultStatus: "대기중",
+            points: [
+                "매입가 vs 매출가 vs 마진율 1열 카드 비교 레이아웃",
+                "복잡한 상단 툴바 간소화 및 뷰 전환 탭 모바일 최적화",
+                "모바일 플로팅 견적 비교 바구니(Floating Cart)"
+            ]
+        },
+        {
+            id: "hq_inventory",
+            category: "본사매입현황",
+            title: "실시간 재고",
+            path: "hq-inventory.html?v=20260930_1",
+            icon: "bx-building-house",
+            priority: "4순위",
+            tagColor: "purple",
+            defaultStatus: "대기중",
+            points: [
+                "5대 KPI 요약 통계 배지 ➔ 컴팩트 슬라이더/아코디언 전환",
+                "공급사 필터 탭 모바일 칩 전환 및 상품 검색 최적화",
+                "새 상품 등록(F2) 폼의 모바일 모달/바텀시트 대응"
+            ]
+        },
+        {
+            id: "hq_transactions",
+            category: "본사매입현황",
+            title: "입출고 내역",
+            path: "hq-transactions.html?v=20261001_2",
+            icon: "bx-list-ul",
+            priority: "5순위",
+            tagColor: "amber",
+            defaultStatus: "대기중",
+            points: [
+                "일자별(오늘/어제/이번주) 타임라인 카드 뷰 그룹핑",
+                "매입(IN: 파랑) / 출고(OUT: 빨강) 명확한 시각적 대비",
+                "터치 시 전표 상세 및 비고 확인 바텀시트 팝업"
+            ]
+        },
+        {
+            id: "work_logs",
+            category: "개인 업무일지",
+            title: "개인 업무일지",
+            path: "./05_Management/work_logs/index.html?v=4",
+            icon: "bx-edit",
+            priority: "1순위 (추천)",
+            tagColor: "indigo",
+            defaultStatus: "완료",
+            points: [
+                "이동 중 엄지 터치로 즉시 작성하는 모바일 플로팅 작성 버튼(FAB)",
+                "카카오톡/노션 스타일 일자별 업무 타임라인 피드 & 퀵 필터 칩",
+                "모바일 에디터 하단 고정 저장바 & 이미지 촬영/라이트박스 뷰어"
+            ]
         }
+    ];
+
+    function initMobileRoadmap() {
+        let savedStatuses = {};
+        try {
+            savedStatuses = JSON.parse(localStorage.getItem('kng_mobile_roadmap_statuses') || '{}');
+        } catch(e) {}
+
+        let savedMemo = localStorage.getItem('kng_mobile_roadmap_memo') || '';
+
+        const gridEl = document.getElementById('moduleRoadmapGrid');
+        const drawerListEl = document.getElementById('drawerContentList');
+        const roadmapProgressFill = document.getElementById('roadmapProgressFill');
+        const roadmapProgressText = document.getElementById('roadmapProgressText');
+        const drawerProgressFill = document.getElementById('drawerProgressFill');
+        const drawerProgressText = document.getElementById('drawerProgressText');
+        const roadmapHeaderCount = document.getElementById('roadmapHeaderCount');
+        const fabProgressBadge = document.getElementById('fabProgressBadge');
+        const memoTextarea = document.getElementById('roadmapMemoText');
+        const memoAutoSaveStatus = document.getElementById('memoAutoSaveStatus');
+        const btnClearMemo = document.getElementById('btnClearRoadmapMemo');
+
+        const drawer = document.getElementById('mobileRoadmapDrawer');
+        const drawerBackdrop = document.getElementById('mobileDrawerBackdrop');
+        const btnRoadmapTopbar = document.getElementById('mobileRoadmapBtn');
+        const btnCloseDrawer = document.getElementById('btnCloseDrawer');
+        const fabBtn = document.getElementById('mobileRoadmapFab');
+        const btnDrawerQuickNote = document.getElementById('btnDrawerQuickNote');
+
+        const simModal = document.getElementById('mobileSimModal');
+        const simBackdrop = document.getElementById('closeSimModalBackdrop');
+        const simCloseBtn = document.getElementById('simCloseBtn');
+        const simRefreshBtn = document.getElementById('simRefreshBtn');
+        const simNewTabBtn = document.getElementById('simNewTabBtn');
+        const simIframe = document.getElementById('mobileSimIframe');
+        const simTitleBadge = document.getElementById('simTitleBadge');
+        const phoneSimTime = document.getElementById('phoneSimTime');
+
+        const btnToggleBody = document.getElementById('btnToggleRoadmapBody');
+        const roadmapBody = document.getElementById('mobileRoadmapBody');
+
+        function updateSimClock() {
+            if (!phoneSimTime) return;
+            const now = new Date();
+            const hrs = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            phoneSimTime.textContent = `${hrs}:${mins}`;
+        }
+        updateSimClock();
+        setInterval(updateSimClock, 30000);
+
+        function updateProgress() {
+            let doneCount = 0;
+            MOBILE_MODULES.forEach(mod => {
+                const st = savedStatuses[mod.id] || mod.defaultStatus;
+                if (st === '완료') doneCount++;
+            });
+            const total = MOBILE_MODULES.length;
+            const pct = Math.round((doneCount / total) * 100);
+            const text = `${doneCount} / ${total} 완료 (${pct}%)`;
+
+            if (roadmapProgressFill) roadmapProgressFill.style.width = pct + '%';
+            if (roadmapProgressText) roadmapProgressText.textContent = text;
+            if (drawerProgressFill) drawerProgressFill.style.width = pct + '%';
+            if (drawerProgressText) drawerProgressText.textContent = text;
+            if (roadmapHeaderCount) roadmapHeaderCount.textContent = total - doneCount;
+            if (fabProgressBadge) fabProgressBadge.textContent = total - doneCount;
+        }
+
+        function toggleStatus(modId) {
+            const cur = savedStatuses[modId] || '대기중';
+            let next = '대기중';
+            if (cur === '대기중') next = '진행중';
+            else if (cur === '진행중') next = '완료';
+            else if (cur === '완료') next = '대기중';
+
+            savedStatuses[modId] = next;
+            localStorage.setItem('kng_mobile_roadmap_statuses', JSON.stringify(savedStatuses));
+            render();
+            updateProgress();
+        }
+
+        function openModule(mod) {
+            closeDrawer();
+            const fullLabel = mod.category + ' - ' + mod.title;
+            const targetLink = document.querySelector(`.menu a[href="${mod.path}"]`) ||
+                               document.querySelector(`.menu a[href^="${mod.path.split('?')[0]}"]`);
+            if (targetLink) {
+                const parentGroup = targetLink.closest('.menu-group');
+                if (parentGroup) parentGroup.classList.add('open');
+                targetLink.click();
+            } else {
+                showIframeView(mod.path, fullLabel);
+            }
+        }
+
+        let currentSimUrl = '';
+        function openSimulator(mod) {
+            currentSimUrl = mod.path;
+            if (simTitleBadge) simTitleBadge.textContent = `[${mod.category}] ${mod.title}`;
+            if (simIframe) {
+                simIframe.src = mod.path;
+            }
+            if (simModal) simModal.classList.remove('hidden');
+        }
+
+        function closeSimulator() {
+            if (simModal) simModal.classList.add('hidden');
+            if (simIframe) simIframe.src = 'about:blank';
+        }
+
+        if (simCloseBtn) simCloseBtn.addEventListener('click', closeSimulator);
+        if (simBackdrop) simBackdrop.addEventListener('click', closeSimulator);
+        if (simRefreshBtn) {
+            simRefreshBtn.addEventListener('click', () => {
+                if (simIframe && currentSimUrl) {
+                    simIframe.src = currentSimUrl + (currentSimUrl.indexOf('?') === -1 ? '?_r=' : '&_r=') + Date.now();
+                }
+            });
+        }
+        if (simNewTabBtn) {
+            simNewTabBtn.addEventListener('click', () => {
+                if (currentSimUrl) window.open(currentSimUrl, '_blank');
+            });
+        }
+
+        function openDrawer() {
+            if (drawer) drawer.classList.remove('hidden');
+            if (drawerBackdrop) drawerBackdrop.classList.remove('hidden');
+        }
+        function closeDrawer() {
+            if (drawer) drawer.classList.add('hidden');
+            if (drawerBackdrop) drawerBackdrop.classList.add('hidden');
+        }
+
+        if (btnRoadmapTopbar) {
+            btnRoadmapTopbar.addEventListener('click', () => {
+                const internalEl = document.getElementById('mobileRoadmapSection');
+                if (internalEl && internalPages && internalPages.style.display !== 'none' && !internalEl.closest('.hidden')) {
+                    if (roadmapBody && roadmapBody.classList.contains('collapsed')) {
+                        roadmapBody.classList.remove('collapsed');
+                        if (btnToggleBody) btnToggleBody.classList.remove('collapsed');
+                    }
+                    internalEl.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    openDrawer();
+                }
+            });
+        }
+
+        if (fabBtn) fabBtn.addEventListener('click', openDrawer);
+        if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', closeDrawer);
+        if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+        if (btnDrawerQuickNote) {
+            btnDrawerQuickNote.addEventListener('click', () => {
+                closeDrawer();
+                const quickMenuLink = document.querySelector('a[href="#quickmenu"]');
+                if (quickMenuLink) quickMenuLink.click();
+                setTimeout(() => {
+                    const memoEl = document.getElementById('roadmapMemoText');
+                    if (memoEl) {
+                        memoEl.scrollIntoView({ behavior: 'smooth' });
+                        memoEl.focus();
+                    }
+                }, 200);
+            });
+        }
+
+        if (btnToggleBody && roadmapBody) {
+            btnToggleBody.addEventListener('click', () => {
+                roadmapBody.classList.toggle('collapsed');
+                btnToggleBody.classList.toggle('collapsed');
+            });
+        }
+
+        if (memoTextarea) {
+            memoTextarea.value = savedMemo;
+            let memoDebounce = null;
+            memoTextarea.addEventListener('input', () => {
+                if (memoAutoSaveStatus) memoAutoSaveStatus.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 저장 중...";
+                clearTimeout(memoDebounce);
+                memoDebounce = setTimeout(() => {
+                    localStorage.setItem('kng_mobile_roadmap_memo', memoTextarea.value);
+                    if (memoAutoSaveStatus) memoAutoSaveStatus.innerHTML = "<i class='bx bx-check'></i> 자동 저장됨";
+                }, 500);
+            });
+        }
+        if (btnClearMemo && memoTextarea) {
+            btnClearMemo.addEventListener('click', () => {
+                if (confirm('모바일 개발 메모를 비우시겠습니까?')) {
+                    memoTextarea.value = '';
+                    localStorage.removeItem('kng_mobile_roadmap_memo');
+                    if (memoAutoSaveStatus) memoAutoSaveStatus.innerHTML = "<i class='bx bx-check'></i> 초기화됨";
+                }
+            });
+        }
+
+        function render() {
+            if (!gridEl) return;
+
+            gridEl.innerHTML = MOBILE_MODULES.map(mod => {
+                const status = savedStatuses[mod.id] || mod.defaultStatus;
+                let badgeClass = 'badge-waiting';
+                let iconBadge = 'bx-time-five';
+                if (status === '진행중') {
+                    badgeClass = 'badge-wip';
+                    iconBadge = 'bx-loader-alt bx-spin';
+                } else if (status === '완료') {
+                    badgeClass = 'badge-done';
+                    iconBadge = 'bx-check-circle';
+                }
+
+                const pointsHtml = mod.points.map(pt => `<li><i class='bx bx-check'></i> <span>${pt}</span></li>`).join('');
+
+                return `
+                    <div class="roadmap-module-card ${status === '완료' ? 'status-done' : ''}" data-mod-id="${mod.id}">
+                        <div class="card-top-meta">
+                            <span class="category-tag tag-${mod.tagColor}">${mod.category}</span>
+                            <div class="status-interactive-badge ${badgeClass}" data-action="toggle-status" data-id="${mod.id}" title="클릭하여 상태 변경 (대기중 ➔ 진행중 ➔ 완료)">
+                                <i class='bx ${iconBadge}'></i>
+                                <span>${status}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="card-title-group">
+                            <div class="card-icon-wrap icon-${mod.tagColor}">
+                                <i class='bx ${mod.icon}'></i>
+                            </div>
+                            <div class="card-title-text">
+                                <h4>
+                                    <span>${mod.title}</span>
+                                    ${mod.priority ? `<span class="priority-chip">${mod.priority}</span>` : ''}
+                                </h4>
+                                <div class="card-filepath">${mod.path.split('?')[0]}</div>
+                            </div>
+                        </div>
+
+                        <ul class="card-points-list">
+                            ${pointsHtml}
+                        </ul>
+
+                        <div class="card-action-bar">
+                            <button type="button" class="btn-open-module" data-action="open-module" data-id="${mod.id}" title="웹앱 화면에서 직접 열기">
+                                <i class='bx bx-play-circle'></i> 이 모듈 열기
+                            </button>
+                            <button type="button" class="btn-preview-sim" data-action="preview-sim" data-id="${mod.id}" title="실제 스마트폰 390px 해상도로 미리보기">
+                                <i class='bx bx-mobile-alt'></i> 390px 미리보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (drawerListEl) {
+                drawerListEl.innerHTML = MOBILE_MODULES.map(mod => {
+                    const status = savedStatuses[mod.id] || mod.defaultStatus;
+                    let badgeClass = 'badge-waiting';
+                    if (status === '진행중') badgeClass = 'badge-wip';
+                    else if (status === '완료') badgeClass = 'badge-done';
+
+                    return `
+                        <div class="drawer-card ${status === '완료' ? 'status-done' : ''}">
+                            <div class="drawer-card-top">
+                                <span class="category-tag tag-${mod.tagColor}">${mod.category}</span>
+                                <div class="status-interactive-badge ${badgeClass}" data-action="toggle-status" data-id="${mod.id}">
+                                    <span>${status}</span>
+                                </div>
+                            </div>
+                            <div class="drawer-card-title">
+                                <i class='bx ${mod.icon} text-${mod.tagColor}'></i>
+                                <span>${mod.title}</span>
+                                ${mod.priority ? `<span class="priority-chip">${mod.priority}</span>` : ''}
+                            </div>
+                            <div class="d-flex gap-2 mt-1">
+                                <button type="button" class="btn-open-module" data-action="open-module" data-id="${mod.id}" style="padding: 4px 8px; font-size: 11px;">
+                                    <i class='bx bx-right-arrow-alt'></i> 열기
+                                </button>
+                                <button type="button" class="btn-preview-sim" data-action="preview-sim" data-id="${mod.id}" style="padding: 4px 8px; font-size: 11px;">
+                                    <i class='bx bx-mobile-alt'></i> 390px
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            [gridEl, drawerListEl].forEach(container => {
+                if (!container) return;
+                container.querySelectorAll('[data-action]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const action = btn.getAttribute('data-action');
+                        const id = btn.getAttribute('data-id');
+                        const mod = MOBILE_MODULES.find(m => m.id === id);
+                        if (!mod) return;
+
+                        if (action === 'toggle-status') {
+                            toggleStatus(id);
+                        } else if (action === 'open-module') {
+                            openModule(mod);
+                        } else if (action === 'preview-sim') {
+                            openSimulator(mod);
+                        }
+                    });
+                });
+            });
+        }
+
+        render();
+        updateProgress();
     }
+
+    initMobileRoadmap();
 });
 
 // ==========================================

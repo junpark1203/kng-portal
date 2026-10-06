@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20260918_2">
+    <link rel="stylesheet" href="styles.css?v=20261007_2">
 </head>
 
 <body>
@@ -60,6 +60,10 @@
                 <div class="menu-label">대시보드</div>
                 <a href="./05_Management/dashboard/index.html" id="adminDashboardMenu" data-nav="iframe"><i class='bx bx-grid-alt'></i> <span>대시보드</span></a>
                 <a href="#quickmenu" class="active" data-nav="internal"><i class='bx bx-category'></i> <span>퀵 메뉴</span></a>
+                <a href="#mobileRoadmapSection" id="sidebarMobileRoadmapMenu" data-nav="internal" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border-left: 3px solid #6366f1;">
+                    <i class='bx bx-mobile-alt'></i> <span>모바일 개편 노트</span>
+                    <span class="badge" style="background: #4f46e5; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-left: auto;">HOT</span>
+                </a>
 
                 <!-- 셀러K -->
                 <div class="menu-label">셀러K</div>
@@ -165,7 +169,7 @@
                 <!-- 관리업무 -->
                 <div class="menu-label">관리업무</div>
                 <a href="./05_Management/project_tracker/index.html" data-nav="iframe"><i class='bx bx-briefcase-alt-2'></i> <span>프로젝트 관리</span></a>
-                <a href="./05_Management/work_logs/index.html?v=3" data-nav="iframe"><i class='bx bx-edit'></i> <span>개인 업무일지</span></a>
+                <a href="./05_Management/work_logs/index.html?v=4" data-nav="iframe"><i class='bx bx-edit'></i> <span>개인 업무일지</span></a>
                 <a href="./05_Management/guidelines/index.html" data-nav="iframe"><i class='bx bx-book-bookmark'></i> <span>업무 매뉴얼 / 지침</span></a>
                 
                 <div class="menu-group" id="managementMenuGroup">
@@ -237,8 +241,12 @@
                     </div>
                 </div>
                 <div class="topbar-right">
-                    <button id="globalVatBtn" class="vat-toggle-btn"><i class='bx bx-check-circle'></i> 부가세 포함여부
-                        설정</button>
+                    <button id="mobileRoadmapBtn" class="mobile-roadmap-btn" title="모바일 특화 개편 개발 로드맵 노트">
+                        <i class='bx bx-mobile-alt'></i>
+                        <span>모바일 개편 노트</span>
+                        <span class="roadmap-badge-count" id="roadmapHeaderCount">6</span>
+                    </button>
+                    <button id="globalVatBtn" class="vat-toggle-btn"><i class='bx bx-check-circle'></i> 부가세 포함여부 설정</button>
                 </div>
             </header>
 
@@ -249,6 +257,56 @@
 
             <!-- ═══ INTERNAL PAGES ═══ -->
             <div class="page-body" id="internalPages">
+                <!-- ═══ 모바일 특화 개편 프로젝트 개발 노트 (Mobile Optimization Task Note) ═══ -->
+                <section class="section-block mobile-roadmap-panel" id="mobileRoadmapSection">
+                    <div class="panel mobile-note-card">
+                        <div class="mobile-note-header">
+                            <div class="note-header-left">
+                                <div class="note-badge"><i class='bx bx-mobile-alt'></i> MOBILE UI/UX ROADMAP</div>
+                                <h2>📱 모바일 특화 개편 프로젝트 개발 노트</h2>
+                                <span class="note-subtitle">현장 및 스마트폰 환경에서 최적의 사용성을 제공하기 위한 6대 핵심 모듈 개발 로드맵</span>
+                            </div>
+                            <div class="note-header-right">
+                                <div class="progress-pill">
+                                    <span class="progress-label">진행률:</span>
+                                    <div class="progress-track"><div class="progress-fill" id="roadmapProgressFill" style="width: 0%;"></div></div>
+                                    <span class="progress-text" id="roadmapProgressText">0 / 6 완료 (0%)</span>
+                                </div>
+                                <button type="button" class="btn-note-toggle" id="btnToggleRoadmapBody" title="노트 접기/펼치기">
+                                    <i class='bx bx-chevron-up' id="iconToggleRoadmapBody"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mobile-note-body" id="mobileRoadmapBody">
+                            <div class="note-intro-banner">
+                                <div class="banner-icon"><i class='bx bx-bulb'></i></div>
+                                <div class="banner-text">
+                                    <strong>모바일 개편 핵심 원칙:</strong>
+                                    <span>가로 스크롤 ERP 테이블을 벗어나 <strong>모바일 전용 반응형 카드 뷰, 바텀시트 전표 입력, 큰 터치 타깃, 가로 스와이프 필터 칩</strong>을 적용합니다. 각 카드의 <strong>[📱 390px 미리보기]</strong> 버튼을 누르면 PC에서도 실제 스마트폰 화면으로 즉시 테스트해볼 수 있습니다.</span>
+                                </div>
+                            </div>
+
+                            <div class="module-roadmap-grid" id="moduleRoadmapGrid">
+                                <!-- 6개 모듈 카드 JS 동적 렌더링 -->
+                            </div>
+
+                            <!-- 실시간 개발 메모장 (localStorage 자동 저장) -->
+                            <div class="note-scratchpad">
+                                <div class="scratchpad-header">
+                                    <div class="scratchpad-title">
+                                        <i class='bx bx-notepad'></i> 
+                                        <span>개발 메모 & 모바일 UI 아이디어 노트</span>
+                                        <span class="autosave-tag" id="memoAutoSaveStatus"><i class='bx bx-check'></i> 자동 저장됨</span>
+                                    </div>
+                                    <button type="button" class="btn-clear-memo" id="btnClearRoadmapMemo">초기화</button>
+                                </div>
+                                <textarea id="roadmapMemoText" class="roadmap-memo-textarea" placeholder="모바일 개편 시 필요한 세부 요구사항, 현장 테스트 피드백, 메모를 적어두세요. 브라우저에 자동 보관됩니다."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="kpi-strip" id="dashboard">
                     <div class="kpi-card">
                         <div class="kpi-icon kpi-stock"><i class='bx bx-package'></i></div>
@@ -552,8 +610,69 @@
         </div>
     </div>
 
+    <!-- ═══ 모바일 개편 개발 노트 전역 슬라이드 드로어 ═══ -->
+    <div class="mobile-drawer-backdrop hidden" id="mobileDrawerBackdrop"></div>
+    <aside class="mobile-roadmap-drawer hidden" id="mobileRoadmapDrawer" aria-label="모바일 개편 개발 노트">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <i class='bx bx-mobile-alt'></i>
+                <div>
+                    <h3>모바일 개편 개발 노트</h3>
+                    <span class="drawer-sub">6대 핵심 모듈 개발 로드맵</span>
+                </div>
+            </div>
+            <button type="button" class="btn-close-drawer" id="btnCloseDrawer" title="닫기"><i class='bx bx-x'></i></button>
+        </div>
+        <div class="drawer-progress">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="drawer-prog-label">전체 진행률</span>
+                <span class="drawer-prog-text" id="drawerProgressText">0 / 6 완료 (0%)</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="drawerProgressFill" style="width: 0%;"></div></div>
+        </div>
+        <div class="drawer-content" id="drawerContentList">
+            <!-- 6개 모듈 컴팩트 카드 JS 동적 렌더링 -->
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn-drawer-quicknote" id="btnDrawerQuickNote"><i class='bx bx-notepad'></i> 메모장 보기</button>
+            <span class="drawer-tip"><i class='bx bx-info-circle'></i> 하나씩 순서대로 최적화 진행</span>
+        </div>
+    </aside>
+
+    <!-- ═══ 모바일 화면 390px 시뮬레이터 모달 ═══ -->
+    <div class="mobile-sim-modal hidden" id="mobileSimModal">
+        <div class="mobile-sim-backdrop" id="closeSimModalBackdrop"></div>
+        <div class="mobile-sim-container">
+            <div class="phone-frame">
+                <div class="phone-notch">
+                    <span class="phone-time" id="phoneSimTime">09:41</span>
+                    <span class="phone-speaker"></span>
+                    <span class="phone-icons"><i class='bx bx-wifi'></i> <i class='bx bxs-battery'></i></span>
+                </div>
+                <div class="phone-topbar">
+                    <span class="sim-url-badge" id="simTitleBadge">모듈 미리보기</span>
+                    <div class="sim-actions">
+                        <button type="button" class="sim-btn" id="simRefreshBtn" title="새로고침"><i class='bx bx-refresh'></i></button>
+                        <button type="button" class="sim-btn" id="simNewTabBtn" title="새 창으로 열기"><i class='bx bx-link-external'></i></button>
+                        <button type="button" class="sim-btn sim-close" id="simCloseBtn" title="닫기"><i class='bx bx-x'></i></button>
+                    </div>
+                </div>
+                <div class="phone-viewport">
+                    <iframe id="mobileSimIframe" src="about:blank" frameborder="0"></iframe>
+                </div>
+                <div class="phone-home-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ 모바일 개편 노트 플로팅 버튼 (모든 화면에서 상시 접근) ═══ -->
+    <button type="button" class="mobile-roadmap-fab" id="mobileRoadmapFab" title="모바일 개편 개발 로드맵 열기">
+        <i class='bx bx-mobile-alt'></i>
+        <span class="fab-badge" id="fabProgressBadge">6</span>
+    </button>
+
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="app.js?v=20260930_11"></script>
+    <script type="module" src="app.js?v=20261007_2"></script>
 </body>
 
 </html>

@@ -74,6 +74,19 @@
                 </div>
             </section>
 
+            <!-- 섹션: 모바일 특화 개편 프로젝트 개발 노트 -->
+            <section class="widget widget-mobile-roadmap" id="mobileRoadmapDashboardSection" style="grid-column: 1 / -1; border: 1px solid #c7d2fe; background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);">
+                <h2>
+                    <div class="widget-title" style="color: #312e81;"><i class='bx bx-mobile-alt'></i> 모바일 특화 UI/UX 개편 개발 노트 <span class="widget-subtitle" style="color: #4f46e5; margin-left: 6px;">6대 모듈 최적화 로드맵</span></div>
+                    <button type="button" class="add-btn" id="btnDashboardOpenRoadmap" style="background: #4f46e5; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer;"><i class='bx bx-notepad'></i> 개발 노트 열기</button>
+                </h2>
+                <div class="widget-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;" id="dashboardMobileGrid">
+                        <!-- JS 렌더링 -->
+                    </div>
+                </div>
+            </section>
+
             <!-- 섹션 3: 이번달 일정 + 결재대기함 -->
             <section class="widget widget-calendar" id="calendarSection">
                 <h2>
@@ -235,5 +248,59 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+    (function() {
+        const modules = [
+            { category: "영업관리", title: "입출고내역", id: "logistics_inout", path: "./01_Logistics/inout/index.html?v=10", icon: "bx-transfer", tag: "primary", priority: "1순위" },
+            { category: "영업관리", title: "실시간 재고", id: "logistics_inventory", path: "./01_Logistics/inventory/index.html", icon: "bx-box", tag: "primary", priority: "2순위" },
+            { category: "영업관리", title: "단가표", id: "logistics_unit_prices", path: "./01_Logistics/unit_prices/index.html", icon: "bx-won", tag: "primary", priority: "3순위" },
+            { category: "본사매입현황", title: "실시간 재고", id: "hq_inventory", path: "hq-inventory.html?v=20260930_1", icon: "bx-building-house", tag: "purple", priority: "4순위" },
+            { category: "본사매입현황", title: "입출고 내역", id: "hq_transactions", path: "hq-transactions.html?v=20261001_2", icon: "bx-list-ul", tag: "purple", priority: "5순위" },
+            { category: "개인 업무일지", title: "개인 업무일지", id: "work_logs", path: "./05_Management/work_logs/index.html?v=4", icon: "bx-edit", tag: "indigo", priority: "1순위" }
+        ];
+
+        function renderDashboardRoadmap() {
+            const grid = document.getElementById('dashboardMobileGrid');
+            if (!grid) return;
+            let statuses = {};
+            try { statuses = JSON.parse(localStorage.getItem('kng_mobile_roadmap_statuses') || '{}'); } catch(e) {}
+
+            grid.innerHTML = modules.map(m => {
+                const st = statuses[m.id] || "대기중";
+                const isDone = st === "완료";
+                const isWip = st === "진행중";
+                const badgeColor = isDone ? "#16a34a" : (isWip ? "#d97706" : "#64748b");
+                const badgeBg = isDone ? "#dcfce7" : (isWip ? "#fef3c7" : "#f1f5f9");
+
+                return `
+                    <div style="background: #ffffff; border: 1px solid ${isDone ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class='bx ${m.icon}' style="font-size: 18px; color: #4f46e5;"></i>
+                            <div>
+                                <div style="font-size: 10px; color: #64748b; font-weight: 600;">${m.category}</div>
+                                <div style="font-size: 13px; font-weight: 700; color: #1e293b;">${m.title} <span style="font-size: 9px; background: #fee2e2; color: #b91c1c; padding: 1px 4px; border-radius: 3px;">${m.priority}</span></div>
+                            </div>
+                        </div>
+                        <span style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; white-space: nowrap;">${st}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        renderDashboardRoadmap();
+
+        document.getElementById('btnDashboardOpenRoadmap')?.addEventListener('click', function() {
+            if (window.parent && window.parent.document) {
+                const parentRoadmapBtn = window.parent.document.getElementById('mobileRoadmapBtn');
+                if (parentRoadmapBtn) {
+                    parentRoadmapBtn.click();
+                    return;
+                }
+                const parentFab = window.parent.document.getElementById('mobileRoadmapFab');
+                if (parentFab) parentFab.click();
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

@@ -245,6 +245,8 @@ function showList(pushState = true) {
     if (pushState) history.pushState(null, '', window.location.pathname + window.location.search);
     editView.classList.remove('active');
     listView.classList.add('active');
+    const fab = document.getElementById('mobileFabNewLog');
+    if (fab) fab.style.display = '';
     loadLogs();
 }
 
@@ -253,6 +255,8 @@ async function showEditor(id = null, pushState = true) {
     
     listView.classList.remove('active');
     editView.classList.add('active');
+    const fab = document.getElementById('mobileFabNewLog');
+    if (fab) fab.style.display = 'none';
     
     currentEditingId = id;
     
@@ -389,7 +393,7 @@ function renderList() {
                     imagesHtml = `<div class="log-attachments">` + 
                         imgs.map(url => {
                             const absUrl = getImgSrc(url);
-                            return `<img src="${absUrl}" onclick="window.open('${absUrl}', '_blank')">`;
+                            return `<img src="${absUrl}" onclick="event.stopPropagation(); window.openLightbox('${absUrl}')" title="클릭하여 크게 보기">`;
                         }).join('') +
                         `</div>`;
                 }
@@ -573,3 +577,117 @@ presetButtons.forEach(btn => {
         renderList();
     });
 });
+
+// ----------------------------------------------------
+// Mobile Enhancements & Lightbox Logic
+// ----------------------------------------------------
+const mobileFabNewLog = document.getElementById('mobileFabNewLog');
+if (mobileFabNewLog) {
+    mobileFabNewLog.addEventListener('click', () => showEditor(null, true));
+}
+
+const btnMobileDraft = document.getElementById('btnMobileDraft');
+const btnMobileSave = document.getElementById('btnMobileSave');
+if (btnMobileDraft) btnMobileDraft.addEventListener('click', () => saveLog(true));
+if (btnMobileSave) btnMobileSave.addEventListener('click', () => saveLog(false));
+
+const btnClearSearch = document.getElementById('btnClearSearch');
+if (btnClearSearch && searchInput) {
+    searchInput.addEventListener('input', () => {
+        if (searchInput.value.trim()) {
+            btnClearSearch.classList.remove('hidden');
+        } else {
+            btnClearSearch.classList.add('hidden');
+        }
+    });
+    btnClearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        btnClearSearch.classList.add('hidden');
+        searchInput.focus();
+        renderList();
+    });
+}
+
+const btnToggleFilter = document.getElementById('btnToggleFilter');
+const filterArea = document.getElementById('filterArea');
+const filterCountBadge = document.getElementById('filterCountBadge');
+
+function updateFilterCountBadge() {
+    let count = 0;
+    if (filterStartDate.value || filterEndDate.value) count++;
+    if (filterLogType.value) count++;
+    if (filterCategory.value) count++;
+    if (filterDraft.checked) count++;
+
+    if (filterCountBadge) {
+        if (count > 0) {
+            filterCountBadge.textContent = count;
+            filterCountBadge.classList.remove('hidden');
+        } else {
+            filterCountBadge.classList.add('hidden');
+        }
+    }
+}
+
+if (btnToggleFilter && filterArea) {
+    btnToggleFilter.addEventListener('click', () => {
+        filterArea.classList.toggle('collapsed-mobile');
+        btnToggleFilter.classList.toggle('active');
+    });
+}
+
+// Quick Chips Filtering
+document.querySelectorAll('#chipRowType .filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        document.querySelectorAll('#chipRowType .filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterLogType.value = chip.getAttribute('data-type-val') || '';
+        renderList();
+        updateFilterCountBadge();
+    });
+});
+
+document.querySelectorAll('#chipRowCategory .filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        document.querySelectorAll('#chipRowCategory .filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterCategory.value = chip.getAttribute('data-cat-val') || '';
+        renderList();
+        updateFilterCountBadge();
+    });
+});
+
+filterLogType.addEventListener('change', () => {
+    const val = filterLogType.value;
+    document.querySelectorAll('#chipRowType .filter-chip').forEach(c => {
+        c.classList.toggle('active', (c.getAttribute('data-type-val') || '') === val);
+    });
+    updateFilterCountBadge();
+});
+
+filterCategory.addEventListener('change', () => {
+    const val = filterCategory.value;
+    document.querySelectorAll('#chipRowCategory .filter-chip').forEach(c => {
+        c.classList.toggle('active', (c.getAttribute('data-cat-val') || '') === val);
+    });
+    updateFilterCountBadge();
+});
+
+// Image Lightbox
+window.openLightbox = function(url) {
+    const modal = document.getElementById('imageLightboxModal');
+    const img = document.getElementById('lightboxImg');
+    if (modal && img) {
+        img.src = url;
+        modal.classList.remove('hidden');
+    }
+};
+
+const closeLightboxBackdrop = document.getElementById('closeLightboxBackdrop');
+const btnCloseLightbox = document.getElementById('btnCloseLightbox');
+function closeLightbox() {
+    const modal = document.getElementById('imageLightboxModal');
+    if (modal) modal.classList.add('hidden');
+}
+if (closeLightboxBackdrop) closeLightboxBackdrop.addEventListener('click', closeLightbox);
+if (btnCloseLightbox) btnCloseLightbox.addEventListener('click', closeLightbox);
