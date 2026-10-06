@@ -24,14 +24,14 @@ function initOptionBuilder() {
 
     var bulkStockBtn = document.getElementById('btnBulkStock');
     if (bulkStockBtn) bulkStockBtn.addEventListener('click', function() {
-        var val = parseInt(document.getElementById('bulkStock').value) || 0;
+        var val = (typeof getNumericValue === 'function') ? getNumericValue('bulkStock') : (parseInt(String(document.getElementById('bulkStock').value).replace(/,/g, ''), 10) || 0);
         optionCombinations.forEach(function(c) { c.stock = val; });
         renderOptionTable();
     });
 
     var bulkPriceBtn = document.getElementById('btnBulkPrice');
     if (bulkPriceBtn) bulkPriceBtn.addEventListener('click', function() {
-        var val = parseInt(document.getElementById('bulkPrice').value) || 0;
+        var val = (typeof getNumericValue === 'function') ? getNumericValue('bulkPrice') : (parseInt(String(document.getElementById('bulkPrice').value).replace(/,/g, ''), 10) || 0);
         optionCombinations.forEach(function(c) { c.price = val; });
         renderOptionTable();
     });
@@ -249,7 +249,7 @@ function collectOptionData() {
             optionNames: [],
             optionValues: [],
             combinations: [],
-            stock: parseInt(document.getElementById('fldNoOptionStock').value) || 0
+            stock: (typeof getNumericValue === 'function') ? getNumericValue('fldNoOptionStock') : (parseInt(String(document.getElementById('fldNoOptionStock').value).replace(/,/g, ''), 10) || 0)
         };
     }
     return {
@@ -284,7 +284,7 @@ function restoreOptionState(product) {
         }
     } else {
         setOptionEnabled(false, false);
-        document.getElementById('fldNoOptionStock').value = product.stock || 0;
+        document.getElementById('fldNoOptionStock').value = (typeof formatCurrency === 'function') ? formatCurrency(product.stock || 0) : (product.stock || 0);
     }
 }
 

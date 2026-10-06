@@ -261,10 +261,10 @@
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                 </td>
-                                                                <!-- 기본 배송비 -->
+                                                                 <!-- 기본 배송비 -->
                                                                 <td class="override-field" data-field="fee">
                                                                     <div class="erp-cell-wrap">
-                                                                        <input type="number" id="fldOverrideFee" min="0" class="text-end" placeholder="0">
+                                                                        <input type="text" inputmode="numeric" id="fldOverrideFee" class="text-end" placeholder="0">
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                 </td>
@@ -284,35 +284,35 @@
                                                                     <!-- 조건부무료 금액 -->
                                                                     <div class="override-field override-fee-cond override-cond-condition-free hidden erp-cell-wrap" data-field="freeCondition">
                                                                         <span class="cell-prefix">기준금액:</span>
-                                                                        <input type="number" id="fldOverrideFreeCondition" min="0" class="text-end" placeholder="원">
+                                                                        <input type="text" inputmode="numeric" id="fldOverrideFreeCondition" class="text-end" placeholder="원">
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                     <!-- 수량별 부과수량 -->
                                                                     <div class="override-field override-fee-cond override-cond-quantity hidden erp-cell-wrap" data-field="qty">
                                                                         <span class="cell-prefix">반복수량:</span>
-                                                                        <input type="number" id="fldOverrideQuantity" min="1" class="text-end" placeholder="개">
+                                                                        <input type="text" inputmode="numeric" id="fldOverrideQuantity" class="text-end" placeholder="개">
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                     <!-- 구간별: 2구간 수량 + 추가배송비 및 3구간 -->
                                                                     <div class="override-fee-cond override-cond-section hidden" style="display:flex; flex-direction:column; gap:2px;">
                                                                         <div class="override-field erp-cell-wrap" data-field="section2Qty">
                                                                             <span class="cell-prefix">2구간:</span>
-                                                                            <input type="number" id="fldOverrideSection2Qty" min="1" class="text-end" placeholder="수량">
+                                                                            <input type="text" inputmode="numeric" id="fldOverrideSection2Qty" class="text-end" placeholder="수량">
                                                                             <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                         </div>
                                                                         <div class="override-field erp-cell-wrap" data-field="addFee">
                                                                             <span class="cell-prefix">추가비:</span>
-                                                                            <input type="number" id="fldOverrideAddFee" min="10" class="text-end" placeholder="원">
+                                                                            <input type="text" inputmode="numeric" id="fldOverrideAddFee" class="text-end" placeholder="원">
                                                                             <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                         </div>
                                                                         <div class="override-field erp-cell-wrap" data-field="section3Qty">
                                                                             <span class="cell-prefix">3구간:</span>
-                                                                            <input type="number" id="fldOverrideSection3Qty" min="1" class="text-end" placeholder="수량(선택)">
+                                                                            <input type="text" inputmode="numeric" id="fldOverrideSection3Qty" class="text-end" placeholder="수량(선택)">
                                                                             <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                         </div>
                                                                         <div class="override-field erp-cell-wrap" data-field="section3Fee">
                                                                             <span class="cell-prefix">3구간비:</span>
-                                                                            <input type="number" id="fldOverrideSection3Fee" min="10" class="text-end" placeholder="원">
+                                                                            <input type="text" inputmode="numeric" id="fldOverrideSection3Fee" class="text-end" placeholder="원">
                                                                             <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                         </div>
                                                                     </div>
@@ -322,14 +322,14 @@
                                                                 <!-- 반품배송비 -->
                                                                 <td class="override-field" data-field="returnFee">
                                                                     <div class="erp-cell-wrap">
-                                                                        <input type="number" id="fldOverrideReturnFee" min="0" class="text-end" placeholder="0">
+                                                                        <input type="text" inputmode="numeric" id="fldOverrideReturnFee" class="text-end" placeholder="0">
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                 </td>
                                                                 <!-- 교환배송비 -->
                                                                 <td class="override-field" data-field="exchangeFee">
                                                                     <div class="erp-cell-wrap">
-                                                                        <input type="number" id="fldOverrideExchangeFee" min="0" class="text-end" placeholder="0">
+                                                                        <input type="text" inputmode="numeric" id="fldOverrideExchangeFee" class="text-end" placeholder="0">
                                                                         <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button>
                                                                     </div>
                                                                 </td>
@@ -464,7 +464,7 @@
                                             <tr>
                                                 <th>재고수량 <span class="required">*</span></th>
                                                 <td>
-                                                    <input type="number" id="fldNoOptionStock" min="0" value="0" placeholder="0" class="form-control text-end">
+                                                    <input type="text" inputmode="numeric" id="fldNoOptionStock" value="0" placeholder="0" class="form-control text-end">
                                                 </td>
                                                 <td style="font-size:11px;color:var(--gray-500);padding-left:8px;background:#f8fafc;">
                                                     <i class='bx bx-check-circle text-primary'></i> 단품 상품의 스마트스토어 판매 가능 재고수량을 입력합니다.
@@ -508,12 +508,12 @@
                                             <label class="bulk-label"><i class='bx bx-check-double text-primary'></i> 일괄적용:</label>
                                             <div class="bulk-group">
                                                 <span class="bulk-tag">재고</span>
-                                                <input type="number" id="bulkStock" min="0" value="0" style="width:65px;height:22px;">
+                                                <input type="text" inputmode="numeric" id="bulkStock" value="0" style="width:65px;height:22px;" class="text-end">
                                                 <button type="button" class="btn-erp btn-sm" id="btnBulkStock" style="height:22px;padding:0 6px;">적용</button>
                                             </div>
                                             <div class="bulk-group">
                                                 <span class="bulk-tag">옵션가</span>
-                                                <input type="number" id="bulkPrice" min="0" value="0" style="width:65px;height:22px;">
+                                                <input type="text" inputmode="numeric" id="bulkPrice" value="0" style="width:65px;height:22px;" class="text-end">
                                                 <button type="button" class="btn-erp btn-sm" id="btnBulkPrice" style="height:22px;padding:0 6px;">적용</button>
                                             </div>
                                         </div>

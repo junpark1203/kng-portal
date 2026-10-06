@@ -633,26 +633,46 @@ function initStep1Extras() {
     }
 
     // 숫자 필드 포커스 시 0 자동 클리어 및 덮어쓰기 편의 기능 일괄 적용
-    var numFieldIds = [
-        'fldBuyShippingFee', 'fldSaleShippingFee', 'fldBuyPrice', 'fldSalePrice', 'fldNoOptionStock',
-        'fldOverrideFee', 'fldOverrideReturnFee', 'fldOverrideExchangeFee', 'fldOverrideFreeCondition', 
-        'fldOverrideQuantity', 'fldOverrideAddFee', 'fldOverrideSection3Fee'
+    var numFieldConfigs = [
+        { id: 'fldBuyShippingFee', def: '0' },
+        { id: 'fldSaleShippingFee', def: '0' },
+        { id: 'fldBuyPrice', def: '0' },
+        { id: 'fldSalePrice', def: '0' },
+        { id: 'fldNoOptionStock', def: '0' },
+        { id: 'fldOverrideFee', def: '0' },
+        { id: 'fldOverrideReturnFee', def: '0' },
+        { id: 'fldOverrideExchangeFee', def: '0' },
+        { id: 'fldOverrideFreeCondition', def: '' },
+        { id: 'fldOverrideQuantity', def: '' },
+        { id: 'fldOverrideSection2Qty', def: '' },
+        { id: 'fldOverrideAddFee', def: '' },
+        { id: 'fldOverrideSection3Qty', def: '' },
+        { id: 'fldOverrideSection3Fee', def: '' },
+        { id: 'bulkStock', def: '0' },
+        { id: 'bulkPrice', def: '0' }
     ];
-    numFieldIds.forEach(function(id) {
-        setupZeroClearingInput(document.getElementById(id), '0');
+    numFieldConfigs.forEach(function(item) {
+        setupZeroClearingInput(document.getElementById(item.id), item.def);
     });
 }
 
 // 숫자 필드 포커스 시 0 자동 클리어, 입력 시 세 자리마다 콤마 포맷팅, 블러 시 복원
 function setupZeroClearingInput(input, defaultValue) {
     if (!input) return;
+    // type="number"인 경우 세자리 콤마 문자열 대입 시 브라우저가 값을 공백으로 초기화하므로 text/numeric으로 보정
+    if (input.type === 'number') {
+        try {
+            input.type = 'text';
+            input.inputMode = 'numeric';
+        } catch(e) {}
+    }
     var defVal = (defaultValue !== undefined) ? String(defaultValue) : '0';
 
-    // 포커스 시: 값이 0 또는 기본값이면 즉시 비워서 플레이스홀더("0")만 노출,
+    // 포커스 시: 값이 0 또는 기본값이면 즉시 비워서 플레이스홀더만 노출,
     // 사용자가 입력할 때 기존 '0' 뒤에 숫자가 이어붙어 자리수가 늘어나는 실수 방지
     input.addEventListener('focus', function() {
         var rawDigits = this.value.replace(/\D/g, '');
-        if (rawDigits === '0' || rawDigits === defVal || this.value.trim() === '0') {
+        if ((defVal !== '' && (rawDigits === '0' || rawDigits === defVal)) || this.value.trim() === '0') {
             this.value = '';
         } else if (this.value !== '') {
             // 이미 다른 숫자가 입력되어 있는 경우 전체 선택하여 즉시 덮어쓰기 지원
@@ -699,10 +719,14 @@ function setupZeroClearingInput(input, defaultValue) {
         } catch (e) {}
     });
 
-    // 블러 시: 빈칸인 채로 벗어나면 기본값(0)으로 복원
+    // 블러 시: 빈칸인 채로 벗어나면 기본값으로 복원
     input.addEventListener('blur', function() {
         if (this.value.trim() === '') {
-            this.value = defVal === '0' ? '0' : formatCurrency(defVal);
+            if (defVal === '') {
+                this.value = '';
+            } else {
+                this.value = defVal === '0' ? '0' : formatCurrency(defVal);
+            }
             if (typeof updateMarginDisplay === 'function') updateMarginDisplay();
             if (typeof calculateRecommendedPrice === 'function') calculateRecommendedPrice();
         } else {

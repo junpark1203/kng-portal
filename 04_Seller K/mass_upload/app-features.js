@@ -1832,7 +1832,13 @@ function _getFieldValue(fieldKey) {
     if (!elId) return undefined;
     var el = document.getElementById(elId);
     if (!el) return undefined;
-    if (el.type === 'number') return el.value === '' ? '' : (parseInt(el.value) || 0);
+    var numFields = ['fee', 'freeCondition', 'qty', 'section2Qty', 'addFee', 'section3Qty', 'section3Fee', 'returnFee', 'exchangeFee'];
+    if (numFields.indexOf(fieldKey) >= 0 || el.type === 'number') {
+        if (el.value === '' || el.value === null || el.value === undefined) return '';
+        var cleanStr = String(el.value).replace(/,/g, '').trim();
+        if (cleanStr === '') return '';
+        return parseInt(cleanStr, 10) || 0;
+    }
     return el.value;
 }
 
@@ -1841,7 +1847,17 @@ function _setFieldValue(fieldKey, val) {
     if (!elId) return;
     var el = document.getElementById(elId);
     if (!el) return;
-    el.value = (val === undefined || val === null) ? '' : val;
+    var numFields = ['fee', 'freeCondition', 'qty', 'section2Qty', 'addFee', 'section3Qty', 'section3Fee', 'returnFee', 'exchangeFee'];
+    if (numFields.indexOf(fieldKey) >= 0) {
+        if (val === '' || val === undefined || val === null) {
+            el.value = '';
+        } else {
+            var num = parseInt(String(val).replace(/,/g, ''), 10);
+            el.value = isNaN(num) ? '' : formatCurrency(num);
+        }
+    } else {
+        el.value = (val === undefined || val === null) ? '' : val;
+    }
 }
 
 function _checkOverrideStatus() {
@@ -1853,7 +1869,9 @@ function _checkOverrideStatus() {
         var currentVal = _getFieldValue(key);
         var originalVal = _currentPresetOriginal[key];
         // 숫자 비교 정규화
-        if (typeof originalVal === 'number') currentVal = parseInt(currentVal) || 0;
+        if (typeof originalVal === 'number') {
+            currentVal = (currentVal === '' || currentVal === undefined || currentVal === null) ? '' : (parseInt(String(currentVal).replace(/,/g, ''), 10) || 0);
+        }
         if (originalVal === '' || originalVal === undefined || originalVal === null) originalVal = '';
         if (currentVal === '' || currentVal === undefined || currentVal === null) currentVal = '';
         var isModified = (String(currentVal) !== String(originalVal));
@@ -1892,7 +1910,7 @@ function collectShippingOverrides() {
             // 숫자 필드는 숫자로 저장
             var numFields = ['fee', 'freeCondition', 'qty', 'section2Qty', 'addFee', 'section3Qty', 'section3Fee', 'returnFee', 'exchangeFee'];
             if (numFields.indexOf(key) >= 0) {
-                overrides[key] = currentVal === '' ? '' : (parseInt(currentVal) || 0);
+                overrides[key] = currentVal === '' ? '' : (parseInt(String(currentVal).replace(/,/g, ''), 10) || 0);
             } else {
                 overrides[key] = currentVal;
             }
