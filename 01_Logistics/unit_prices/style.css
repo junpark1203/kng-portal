@@ -2257,20 +2257,27 @@ body {
         margin-top: 5px;
     }
 
-    /* 3단 비교 가격 그리드 */
+    /* 4단 비교 가격 그리드 (매입단가, 매출단가, 마진액, 마진율) */
     .mobile-price-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 6px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 8px 10px;
+        padding: 8px 8px;
         margin-bottom: 8px;
+    }
+    @media (max-width: 375px) {
+        .mobile-price-grid {
+            grid-template-columns: 1fr 1fr;
+            row-gap: 8px;
+        }
     }
     .price-box {
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
     .price-box-label {
         font-size: 10px;
@@ -2278,18 +2285,19 @@ body {
         font-weight: 600;
         margin-bottom: 2px;
         letter-spacing: -0.02em;
+        white-space: nowrap;
     }
     .price-box-val {
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 700;
         color: #1e293b;
         line-height: 1.25;
         letter-spacing: -0.02em;
+        word-break: break-all;
     }
     .sell-box .price-box-val {
         color: #2563eb;
         font-weight: 800;
-        font-size: 13px;
     }
     .margin-box .price-box-val {
         font-weight: 800;
@@ -2298,6 +2306,44 @@ body {
         background: #fff5f5;
         border-radius: 4px;
         padding: 2px 4px;
+    }
+    .margin-rate-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 3px 5px;
+    }
+    .margin-rate-box.margin-high {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+    }
+    .margin-rate-box.margin-high .price-box-val {
+        color: #059669;
+        font-weight: 800;
+    }
+    .margin-rate-box.margin-mid {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    .margin-rate-box.margin-mid .price-box-val {
+        color: #2563eb;
+        font-weight: 800;
+    }
+    .margin-rate-box.margin-low {
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+    .margin-rate-box.margin-low .price-box-val {
+        color: #d97706;
+        font-weight: 800;
+    }
+    .margin-rate-box.margin-loss {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+    .margin-rate-box.margin-loss .price-box-val {
+        color: #dc2626;
+        font-weight: 800;
     }
 
     /* 카드 푸터 */

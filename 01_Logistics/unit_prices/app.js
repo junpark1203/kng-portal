@@ -851,7 +851,7 @@ const app = {
                             ${freightBadge}
                         </div>
                         <div class="flex-shrink-0 ms-1">
-                            <span class="mobile-margin-badge ${badgeClass}">${marginRateStr}</span>
+                            <span class="mobile-margin-badge ${badgeClass}"><i class='bx bx-trending-up'></i>마진율 <strong>${marginRateStr}</strong></span>
                         </div>
                     </div>
 
@@ -877,6 +877,10 @@ const app = {
                         <div class="price-box margin-box ${marginAmt < 0 ? 'margin-box-loss' : ''}">
                             <div class="price-box-label">마진액</div>
                             <div class="price-box-val ${marginAmt < 0 ? 'text-danger' : (marginAmt > 0 ? 'text-success' : '')}">${marginAmtStr}</div>
+                        </div>
+                        <div class="price-box margin-rate-box ${badgeClass}">
+                            <div class="price-box-label">마진율</div>
+                            <div class="price-box-val">${marginRateStr}</div>
                         </div>
                     </div>
 
