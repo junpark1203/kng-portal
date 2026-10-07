@@ -674,14 +674,16 @@ const app = {
             list = list.filter(item => {
                 const buy = item.buy_price || 0;
                 const sell = item.sell_price || 0;
-                let marginRate = 0;
-                if (sell > 0) marginRate = ((sell - buy) / sell) * 100;
-                else if (buy > 0) marginRate = -100;
+                if (!sell || sell <= 0) {
+                    return this.marginFilter === 'unregistered';
+                }
+                const marginRate = ((sell - buy) / sell) * 100;
 
                 if (this.marginFilter === 'high') return marginRate >= 20;
                 if (this.marginFilter === 'mid') return marginRate >= 10 && marginRate < 20;
                 if (this.marginFilter === 'low') return marginRate >= 0 && marginRate < 10;
                 if (this.marginFilter === 'loss') return marginRate < 0;
+                if (this.marginFilter === 'unregistered') return false;
                 return true;
             });
         }
@@ -728,18 +730,19 @@ const app = {
         let sumMarginRate = 0;
         let highCount = 0;
         let lossCount = 0;
+        let unregCount = 0;
 
         this.filteredList.forEach(p => {
             const b = p.buy_price || 0;
             const s = p.sell_price || 0;
-            if (s > 0) {
+            if (s > 0 && b > 0) {
                 const rate = ((s - b) / s) * 100;
                 sumMarginRate += rate;
                 validCount++;
                 if (rate >= 20) highCount++;
                 else if (rate < 0) lossCount++;
-            } else if (b > 0) {
-                lossCount++;
+            } else {
+                unregCount++;
             }
         });
         const avgMargin = validCount > 0 ? Math.round((sumMarginRate / validCount) * 10) / 10 : 0;
@@ -751,10 +754,11 @@ const app = {
         if ($('mobileKpiAvgMargin')) $('mobileKpiAvgMargin').innerText = `${avgMargin}%`;
         if ($('mobileKpiHighMargin')) $('mobileKpiHighMargin').innerText = `${highCount}건`;
         if ($('mobileKpiLossMargin')) $('mobileKpiLossMargin').innerText = `${lossCount}건`;
+        if ($('mobileKpiUnregMargin')) $('mobileKpiUnregMargin').innerText = `${unregCount}건`;
         if ($('mobileKpiFilteredText')) {
             let catText = this.selectedCategory ? `${this.selectedCategory}` : '전체 품목';
             if (this.marginFilter !== 'all') {
-                const map = { high: '고마진', mid: '표준', low: '저마진', loss: '역마진' };
+                const map = { high: '고마진', mid: '표준', low: '저마진', loss: '역마진', unregistered: '미등록' };
                 catText += ` · ${map[this.marginFilter] || ''}`;
             }
             $('mobileKpiFilteredText').innerText = catText;
@@ -789,6 +793,7 @@ const app = {
             let marginRate = 0;
             let marginRateStr = '-';
             let badgeClass = 'margin-mid';
+            let marginBadgeHtml = '';
 
             if (sell > 0 && buy > 0) {
                 marginRate = Math.round(((sell - buy) / sell) * 1000) / 10;
@@ -797,6 +802,15 @@ const app = {
                 else if (marginRate >= 10) badgeClass = 'margin-mid';
                 else if (marginRate >= 0) badgeClass = 'margin-low';
                 else badgeClass = 'margin-loss';
+
+                const icon = marginRate >= 0 ? "bx-trending-up" : "bx-trending-down";
+                marginBadgeHtml = `<span class="mobile-margin-badge ${badgeClass}"><i class='bx ${icon} me-1'></i>마진율 <strong>${marginRateStr}</strong></span>`;
+            } else if (buy > 0 && (!sell || sell <= 0)) {
+                badgeClass = 'margin-rate-none';
+                marginBadgeHtml = `<span class="mobile-margin-badge badge-unregistered" title="매출단가가 아직 등록되지 않았습니다"><i class='bx bx-info-circle me-1'></i>매출가 미등록</span>`;
+            } else {
+                badgeClass = 'margin-rate-none';
+                marginBadgeHtml = `<span class="mobile-margin-badge badge-unregistered"><i class='bx bx-minus-circle me-1'></i>단가 미설정</span>`;
             }
 
             let histCount = 0;
@@ -812,7 +826,7 @@ const app = {
             const currSymbol = this.currencySymbols[r.currency] || '$';
 
             let buyDisplay = buy ? `₩${buy.toLocaleString()}` : '-';
-            let sellDisplay = sell ? `₩${sell.toLocaleString()}` : '-';
+            let sellDisplay = sell ? `₩${sell.toLocaleString()}` : '<span class="text-muted" style="font-size:11px; font-weight:normal;">미등록</span>';
 
             if (isForeign && r.foreign_buy_price > 0) {
                 buyDisplay = `
@@ -832,7 +846,7 @@ const app = {
                 ? `<span class="badge-freight-in" style="font-size: 9.5px; padding: 1px 4px;"><i class='bx bx-check-circle'></i> 하차도${r.freight_region ? ` [${escapeHtml(r.freight_region)}]` : ''}</span>`
                 : `<span class="badge-freight-ex" style="font-size: 9.5px; padding: 1px 4px;">상차도</span>`;
 
-            let marginAmtStr = '-';
+            let marginAmtStr = '<span class="text-muted" style="font-size:11px; font-weight:normal;">-</span>';
             if (sell > 0 && buy > 0) {
                 marginAmtStr = (marginAmt > 0 ? '+' : '') + `₩${marginAmt.toLocaleString()}`;
             }
@@ -851,7 +865,7 @@ const app = {
                             ${freightBadge}
                         </div>
                         <div class="flex-shrink-0 ms-1">
-                            <span class="mobile-margin-badge ${badgeClass}"><i class='bx bx-trending-up'></i>마진율 <strong>${marginRateStr}</strong></span>
+                            ${marginBadgeHtml}
                         </div>
                     </div>
 
@@ -876,11 +890,11 @@ const app = {
                         </div>
                         <div class="price-box margin-box ${marginAmt < 0 ? 'margin-box-loss' : ''}">
                             <div class="price-box-label">마진액</div>
-                            <div class="price-box-val ${marginAmt < 0 ? 'text-danger' : (marginAmt > 0 ? 'text-success' : '')}">${marginAmtStr}</div>
+                            <div class="price-box-val ${(sell > 0 && buy > 0) ? (marginAmt < 0 ? 'text-danger' : (marginAmt > 0 ? 'text-success' : 'text-muted')) : 'text-muted'}">${marginAmtStr}</div>
                         </div>
-                        <div class="price-box margin-rate-box ${badgeClass}">
+                        <div class="price-box margin-rate-box ${sell > 0 && buy > 0 ? badgeClass : 'margin-rate-none'}">
                             <div class="price-box-label">마진율</div>
-                            <div class="price-box-val">${marginRateStr}</div>
+                            <div class="price-box-val">${(sell > 0 && buy > 0) ? marginRateStr : '<span class="text-muted" style="font-size:11px; font-weight:normal;">미등록</span>'}</div>
                         </div>
                     </div>
 
@@ -1812,11 +1826,209 @@ const app = {
         this.calcEditRatePreview();
     },
 
+    // ══════════════════════════════════════════════════════════════
+    // 모바일 전용 단가 상세 / 수정 모달 폼 컨트롤러
+    // ══════════════════════════════════════════════════════════════
+    populateMobileModalFields: function(item, row) {
+        if (!row) row = {};
+        if ($('mobInpItem')) $('mobInpItem').value = row.item || '';
+        if ($('mobInpSpec')) $('mobInpSpec').value = row.spec || '';
+        if ($('mobInpUnit')) $('mobInpUnit').value = row.unit || '';
+        if ($('mobInpCategory')) $('mobInpCategory').value = (item && item.category) || '';
+        if ($('mobInpPriceType')) $('mobInpPriceType').value = row.price_type || '견적가';
+
+        const curr = (item && item.currency) || 'KRW';
+        if ($('mobInpCurrency')) $('mobInpCurrency').value = curr;
+        if (curr !== 'KRW') {
+            const defaultRate = this.defaultRates[curr] || '';
+            const rateVal = (item && item.exchange_rate) || defaultRate;
+            if ($('mobInpExchangeRate')) $('mobInpExchangeRate').value = formatNumberWithComma(rateVal);
+        } else {
+            if ($('mobInpExchangeRate')) $('mobInpExchangeRate').value = '';
+        }
+
+        if ($('mobInpBuyPrice')) $('mobInpBuyPrice').value = row.buy_price ? formatNumberWithComma(row.buy_price) : '';
+        if ($('mobInpSellPrice')) $('mobInpSellPrice').value = row.sell_price ? formatNumberWithComma(row.sell_price) : '';
+        if ($('mobInpSupplier')) $('mobInpSupplier').value = (item && item.default_supplier) || '';
+        if ($('mobInpDestination')) $('mobInpDestination').value = (item && item.default_destination) || '';
+        if ($('mobInpFreightType')) $('mobInpFreightType').value = row.freight_type || '상차도';
+        if ($('mobInpFreightRegion')) $('mobInpFreightRegion').value = row.freight_region || '전국';
+        if ($('mobInpNote')) $('mobInpNote').value = row.note || '';
+
+        this.onMobPriceTypeChange(row.price_type || '견적가');
+        this.onMobCurrencyChange();
+        this.onMobFreightTypeChange();
+        this.calcMobModalMarginPreview();
+    },
+
+    onMobPriceTypeChange: function(val) {
+        const badge = $('modalPriceTypeBadge');
+        if (badge) {
+            badge.innerText = val || '견적가';
+            badge.className = 'badge';
+            if (val === '계약가') badge.classList.add('badge-pt-contract');
+            else if (val === '일시가') badge.classList.add('badge-pt-spot');
+            else if (val === '표준가') badge.classList.add('badge-pt-std');
+            else badge.classList.add('badge-pt-quote');
+        }
+    },
+
+    onMobCurrencyChange: function() {
+        const curr = $('mobInpCurrency') ? $('mobInpCurrency').value : 'KRW';
+        const rateBox = $('mobExchangeRateBox');
+        const rateInp = $('mobInpExchangeRate');
+        const rateHelp = $('mobExchangeRateHelp');
+        const buySymbol = $('mobBuyCurrSymbol');
+        const sellSymbol = $('mobSellCurrSymbol');
+
+        const sym = this.currencySymbols[curr] || '₩';
+        if (buySymbol) buySymbol.innerText = sym;
+        if (sellSymbol) sellSymbol.innerText = sym;
+
+        if (curr === 'KRW') {
+            if (rateBox) rateBox.classList.add('d-none');
+        } else {
+            if (rateBox) rateBox.classList.remove('d-none');
+            if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
+                rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
+            }
+            if (rateHelp) {
+                rateHelp.innerText = curr === 'JPY' ? '(1 JPY당 원화, 예: 9.0)' : `(1 ${curr}당 원화)`;
+            }
+        }
+        this.calcMobModalMarginPreview();
+    },
+
+    onMobExchangeRateInput: function(el) {
+        if (!el) return;
+        const oldVal = el.value;
+        const clean = oldVal.replace(/[^0-9.]/g, '');
+        el.value = formatNumberWithComma(clean);
+        this.calcMobModalMarginPreview();
+    },
+
+    onMobFreightTypeChange: function() {
+        const type = $('mobInpFreightType') ? $('mobInpFreightType').value : '상차도';
+        const box = $('mobFreightRegionBox');
+        if (box) {
+            if (type === '하차도') {
+                box.classList.remove('d-none');
+                const regInp = $('mobInpFreightRegion');
+                if (regInp && !regInp.value) regInp.value = '전국';
+            } else {
+                box.classList.add('d-none');
+            }
+        }
+    },
+
+    onMobPriceInput: function(field, el) {
+        if (!el) return;
+        const cursorPosition = el.selectionStart;
+        const oldVal = el.value;
+        const clean = oldVal.replace(/[^0-9.]/g, '');
+        const formatted = formatNumberWithComma(clean);
+        el.value = formatted;
+
+        const cleanBefore = oldVal.slice(0, cursorPosition).replace(/,/g, '').length;
+        let newPos = 0;
+        let countedClean = 0;
+        for (let i = 0; i < formatted.length; i++) {
+            if (formatted[i] !== ',') countedClean++;
+            if (countedClean === cleanBefore) {
+                newPos = i + 1;
+                break;
+            }
+        }
+        try {
+            el.setSelectionRange(newPos, newPos);
+        } catch (e) {}
+
+        this.calcMobModalMarginPreview();
+    },
+
+    calcMobModalMarginPreview: function() {
+        const buyRaw = $('mobInpBuyPrice') ? parseNumber($('mobInpBuyPrice').value) : 0;
+        const sellRaw = $('mobInpSellPrice') ? parseNumber($('mobInpSellPrice').value) : 0;
+        const curr = $('mobInpCurrency') ? $('mobInpCurrency').value : 'KRW';
+        const rate = (curr !== 'KRW') ? parseNumber($('mobInpExchangeRate') ? $('mobInpExchangeRate').value : 0) : 1;
+        const sym = this.currencySymbols[curr] || '₩';
+
+        const buyKrw = (curr !== 'KRW' && rate > 0) ? Math.round(buyRaw * rate) : buyRaw;
+        const sellKrw = (curr !== 'KRW' && rate > 0) ? Math.round(sellRaw * rate) : sellRaw;
+
+        // 외화일 때 원화 환산 미리보기
+        const buyKrwEl = $('mobBuyKrwPreview');
+        const sellKrwEl = $('mobSellKrwPreview');
+        if (curr !== 'KRW' && rate > 0) {
+            if (buyKrwEl) buyKrwEl.innerHTML = buyRaw > 0 ? `≈ ₩${buyKrw.toLocaleString()}` : '';
+            if (sellKrwEl) sellKrwEl.innerHTML = sellRaw > 0 ? `≈ ₩${sellKrw.toLocaleString()}` : '';
+        } else {
+            if (buyKrwEl) buyKrwEl.innerHTML = '';
+            if (sellKrwEl) sellKrwEl.innerHTML = '';
+        }
+
+        // 상단 실시간 분석 프리뷰 카드 갱신
+        const buyPreviewEl = $('mobModalBuyPreview');
+        const sellPreviewEl = $('mobModalSellPreview');
+        const profitPreviewEl = $('mobModalProfitPreview');
+        const profitBox = $('mobModalProfitBox');
+        const badgeEl = $('mobModalMarginBadge');
+
+        if (buyPreviewEl) {
+            buyPreviewEl.innerHTML = buyRaw > 0 ? `${sym}${buyRaw.toLocaleString()}` : `${sym}0`;
+        }
+
+        if (sellPreviewEl) {
+            sellPreviewEl.innerHTML = sellRaw > 0 ? `${sym}${sellRaw.toLocaleString()}` : `<span class="text-muted">미등록</span>`;
+        }
+
+        if (sellRaw > 0 && buyRaw > 0) {
+            const marginAmt = sellRaw - buyRaw;
+            const marginRate = Math.round(((sellRaw - buyRaw) / sellRaw) * 1000) / 10;
+            const rateStr = (marginRate > 0 ? '+' : '') + `${marginRate}%`;
+            const icon = marginRate >= 0 ? "bx-trending-up" : "bx-trending-down";
+
+            let bClass = 'margin-mid';
+            if (marginRate >= 20) bClass = 'margin-high';
+            else if (marginRate >= 10) bClass = 'margin-mid';
+            else if (marginRate >= 0) bClass = 'margin-low';
+            else bClass = 'margin-loss';
+
+            if (badgeEl) {
+                badgeEl.className = `mobile-margin-badge ${bClass}`;
+                badgeEl.innerHTML = `<i class='bx ${icon} me-1'></i>마진율 <strong>${rateStr}</strong>`;
+            }
+
+            if (profitPreviewEl) {
+                profitPreviewEl.className = `mob-preview-val ${marginAmt < 0 ? 'text-danger' : (marginAmt > 0 ? 'text-success' : '')}`;
+                profitPreviewEl.innerText = (marginAmt > 0 ? '+' : '') + `${sym}${marginAmt.toLocaleString()}`;
+            }
+
+            if (profitBox) {
+                profitBox.className = `mob-preview-box ${marginAmt > 0 ? 'profit-positive' : (marginAmt < 0 ? 'profit-loss' : '')}`;
+            }
+        } else {
+            if (badgeEl) {
+                badgeEl.className = `mobile-margin-badge badge-unregistered`;
+                badgeEl.innerHTML = buyRaw > 0 ? `<i class='bx bx-info-circle me-1'></i>매출가 미등록` : `<i class='bx bx-minus-circle me-1'></i>단가 미설정`;
+            }
+            if (profitPreviewEl) {
+                profitPreviewEl.className = `mob-preview-val text-muted`;
+                profitPreviewEl.innerText = `-`;
+            }
+            if (profitBox) {
+                profitBox.className = `mob-preview-box`;
+            }
+        }
+    },
+
     openCreateModal: function() {
         $('priceForm').reset();
         $('editId').value = '';
         this.currentEditId = null;
         if ($('btnModalDelete')) $('btnModalDelete').classList.add('d-none');
+        if ($('mobBtnDelete')) $('mobBtnDelete').classList.add('d-none');
+        if ($('mobBtnSaveText')) $('mobBtnSaveText').innerText = '신규 단가 등록';
         if ($('editQuoteInUseAlert')) $('editQuoteInUseAlert').classList.add('d-none');
 
         const toolbar = $('modalGridToolbar');
@@ -1833,12 +2045,13 @@ const app = {
         this.modalRows = [ this.createDefaultModalRow() ];
         this.updateModalItemDatalist();
         this.renderModalGrid();
+        this.populateMobileModalFields(null, this.modalRows[0]);
 
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
 
         setTimeout(() => {
-            const firstItemInp = $('gridItem_0');
+            const firstItemInp = (window.innerWidth < 768 && $('mobInpItem')) ? $('mobInpItem') : $('gridItem_0');
             if (firstItemInp) firstItemInp.focus();
         }, 200);
     },
@@ -1850,6 +2063,7 @@ const app = {
             this.modalRows[0].spec = spec;
         }
         this.renderModalGrid();
+        this.populateMobileModalFields(null, this.modalRows[0]);
     },
 
     openEditModal: function(id) {
@@ -1860,6 +2074,8 @@ const app = {
         $('editId').value = item.id;
         this.currentEditId = id;
         if ($('btnModalDelete')) $('btnModalDelete').classList.remove('d-none');
+        if ($('mobBtnDelete')) $('mobBtnDelete').classList.remove('d-none');
+        if ($('mobBtnSaveText')) $('mobBtnSaveText').innerText = '단가 수정 완료';
 
         // 견적 비교 테이블 포함 여부 사전 확인 및 배너 표시
         const relatedSections = [];
@@ -1927,6 +2143,7 @@ const app = {
 
         this.updateModalItemDatalist();
         this.renderModalGrid();
+        this.populateMobileModalFields(item, this.modalRows[0]);
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
     },
@@ -1941,6 +2158,45 @@ const app = {
     },
 
     syncModalRowsFromDom: function() {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            const mobItem = $('mobInpItem') ? $('mobInpItem').value.trim() : '';
+            const mobSpec = $('mobInpSpec') ? $('mobInpSpec').value.trim() : '';
+            const mobUnit = $('mobInpUnit') ? $('mobInpUnit').value.trim() : '';
+            const mobCategory = $('mobInpCategory') ? $('mobInpCategory').value.trim() : '';
+            const mobPriceType = $('mobInpPriceType') ? $('mobInpPriceType').value : '견적가';
+            const mobCurrency = $('mobInpCurrency') ? $('mobInpCurrency').value : 'KRW';
+            const mobExchangeRate = $('mobInpExchangeRate') ? $('mobInpExchangeRate').value : '';
+            const mobBuyPrice = $('mobInpBuyPrice') ? $('mobInpBuyPrice').value.replace(/[^0-9.]/g, '') : '';
+            const mobSellPrice = $('mobInpSellPrice') ? $('mobInpSellPrice').value.replace(/[^0-9.]/g, '') : '';
+            const mobSupplier = $('mobInpSupplier') ? $('mobInpSupplier').value.trim() : '';
+            const mobDestination = $('mobInpDestination') ? $('mobInpDestination').value.trim() : '';
+            const mobFreightType = $('mobInpFreightType') ? $('mobInpFreightType').value : '상차도';
+            const mobFreightRegion = $('mobInpFreightRegion') ? $('mobInpFreightRegion').value.trim() : '';
+            const mobNote = $('mobInpNote') ? $('mobInpNote').value.trim() : '';
+
+            // 데스크톱 공통 인풋에도 반영하여 후속 유효성 검증 및 저장 루틴 호환 유지
+            if ($('inpCategory')) $('inpCategory').value = mobCategory;
+            if ($('inpSupplier')) $('inpSupplier').value = mobSupplier;
+            if ($('inpDestination')) $('inpDestination').value = mobDestination;
+            if ($('inpCurrency')) $('inpCurrency').value = mobCurrency;
+            if ($('inpExchangeRate')) $('inpExchangeRate').value = mobExchangeRate;
+
+            if (!this.modalRows || this.modalRows.length === 0) {
+                this.modalRows = [ this.createDefaultModalRow() ];
+            }
+            this.modalRows[0].item = mobItem;
+            this.modalRows[0].spec = mobSpec;
+            this.modalRows[0].unit = mobUnit;
+            this.modalRows[0].price_type = mobPriceType;
+            this.modalRows[0].buy_price = mobBuyPrice;
+            this.modalRows[0].sell_price = mobSellPrice;
+            this.modalRows[0].freight_type = mobFreightType;
+            this.modalRows[0].freight_region = mobFreightRegion;
+            this.modalRows[0].note = mobNote;
+            return;
+        }
+
         this.modalRows.forEach((row, idx) => {
             const itemEl = $(`gridItem_${idx}`);
             if (itemEl && itemEl.value !== undefined) row.item = itemEl.value;
@@ -1988,7 +2244,7 @@ const app = {
                 const rowItem = (row.item || '').trim();
                 if (!rowItem) {
                     alert('품목명은 필수 입력 항목입니다.');
-                    const fItemInp = $('gridItem_0');
+                    const fItemInp = (window.innerWidth < 768 && $('mobInpItem')) ? $('mobInpItem') : $('gridItem_0');
                     if (fItemInp) fItemInp.focus();
                     return;
                 }
@@ -2107,7 +2363,7 @@ const app = {
 
                 if (validRows.length === 0) {
                     alert('최소 1개 이상의 행에 품목명을 입력해주세요.');
-                    const fItemInp = $('gridItem_0');
+                    const fItemInp = (window.innerWidth < 768 && $('mobInpItem')) ? $('mobInpItem') : $('gridItem_0');
                     if (fItemInp) fItemInp.focus();
                     return;
                 }

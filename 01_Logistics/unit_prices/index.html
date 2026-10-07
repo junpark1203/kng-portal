@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20261007_2">
+    <link rel="stylesheet" href="style.css?v=20261007_3">
 </head>
 <body>
 
@@ -90,14 +90,16 @@
 
         <!-- 4행: 초슬림 1라인 KPI 요약 바 -->
         <div class="mobile-price-kpi-bar shadow-sm">
-            <div class="d-flex align-items-center gap-2">
+            <div class="kpi-scroll-container">
                 <span class="kpi-item"><i class='bx bx-trending-up text-primary'></i> 평균 마진율 <strong id="mobileKpiAvgMargin">0%</strong></span>
-                <span class="text-muted">|</span>
+                <span class="text-muted kpi-divider">|</span>
                 <span class="kpi-item"><i class='bx bx-check-circle text-success'></i> 고마진 <strong class="text-success" id="mobileKpiHighMargin">0건</strong></span>
-                <span class="text-muted">|</span>
+                <span class="text-muted kpi-divider">|</span>
                 <span class="kpi-item"><i class='bx bx-error-circle text-danger'></i> 역마진 <strong class="text-danger" id="mobileKpiLossMargin">0건</strong></span>
+                <span class="text-muted kpi-divider">|</span>
+                <span class="kpi-item"><i class='bx bx-info-circle text-secondary'></i> 미등록 <strong class="text-muted" id="mobileKpiUnregMargin">0건</strong></span>
             </div>
-            <span class="badge bg-light text-secondary border text-truncate" id="mobileKpiFilteredText" style="max-width: 110px;">전체 품목</span>
+            <span class="badge bg-light text-secondary border text-truncate flex-shrink-0 ms-1" id="mobileKpiFilteredText" style="max-width: 95px;">전체 품목</span>
         </div>
     </div>
 
@@ -390,139 +392,316 @@
                             </div>
                         </div>
 
-                        <!-- [A] 상단 공통 설정 영역 (거래처, 자재분류, 통화 기본값) -->
-                        <div class="card border mb-2 shadow-sm">
-                            <div class="card-header py-1 px-2 bg-white fw-bold text-dark d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
-                                <span><i class='bx bx-building text-primary me-1'></i> 거래처 및 통화 공통 설정</span>
-                                <span class="text-muted" style="font-size: 10.5px; font-weight: normal;">* 하단에 등록되는 모든 품목에 공통 적용됩니다 (선택 입력).</span>
-                            </div>
-                            <div class="card-body p-2 bg-white">
-                                <table class="erp-form-table w-100">
-                                    <colgroup>
-                                        <col style="width: 90px;">
-                                        <col style="width: 25%;">
-                                        <col style="width: 90px;">
-                                        <col style="width: 25%;">
-                                        <col style="width: 85px;">
-                                        <col>
-                                    </colgroup>
-                                    <tbody>
-                                        <!-- 1행: 주 매입처 & 주 매출처 & 자재분류 -->
-                                        <tr>
-                                            <th>주 매입처</th>
-                                            <td>
-                                                <input type="text" class="form-control" id="inpSupplier" placeholder="주요 매입처 / 공급업체명 (Supplier)" autocomplete="off">
-                                            </td>
-                                            <th>주 매출처</th>
-                                            <td>
-                                                <input type="text" class="form-control" id="inpDestination" placeholder="주요 납품처 / 거래처명 (Destination)" autocomplete="off">
-                                            </td>
-                                            <th>자재분류</th>
-                                            <td>
-                                                <input type="text" class="form-control" id="inpCategory" placeholder="기본 분류 (예: 부자재, 체결류)" autocomplete="off">
-                                            </td>
-                                        </tr>
-
-                                        <!-- 2행: 거래통화 & 적용 환율 (인라인 배치) -->
-                                        <tr>
-                                            <th>거래통화</th>
-                                            <td colspan="5">
-                                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                                    <select class="form-select text-center fw-bold" id="inpCurrency" style="width: 170px;" onchange="app.onCurrencyChange()">
-                                                        <option value="KRW" selected>KRW (원화 ₩)</option>
-                                                        <option value="USD">USD (달러 $)</option>
-                                                        <option value="EUR">EUR (유로 €)</option>
-                                                        <option value="CNY">CNY (위안 ¥)</option>
-                                                        <option value="JPY">JPY (엔화 ¥)</option>
-                                                    </select>
-                                                    <div id="exchangeRateBox" class="d-none align-items-center gap-1">
-                                                        <span class="badge bg-light text-dark border ms-1 py-1 px-2 fw-semibold">
-                                                            <i class='bx bx-transfer-alt text-primary'></i> 적용 환율 <span class="text-danger">*</span>
-                                                        </span>
-                                                        <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1,350" style="width: 110px;" oninput="app.onExchangeRateInput(this)">
-                                                        <span class="text-muted small">원</span>
-                                                        <span id="exchangeRateHelp" class="text-muted ms-1" style="font-size: 11px;">(1 USD당 원화)</span>
-                                                    </div>
-                                                    <span class="text-muted ms-auto small" style="font-size: 11px;">
-                                                        * 외화(USD 등) 선택 시 원화 환산단가가 자동 계산됩니다.
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- 품목명 자동완성 공용 datalist -->
+                        <!-- 품목명 자동완성 공용 datalist (모바일/PC 공용) -->
                         <datalist id="modalItemDatalist"></datalist>
 
-                        <!-- [B] 하단 멀티 디테일 그리드 (품목별 규격·단가 및 운임조건 복사 등록) -->
-                        <div class="card border shadow-sm">
-                            <div class="card-header py-1 px-2 bg-white d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="fw-bold text-dark" style="font-size: 11.5px;">
-                                        <i class='bx bx-list-ul text-primary me-1'></i> 세부 품목 및 단가 목록 (<span class="text-primary fw-bold" id="modalRowCount">1</span>건)
-                                    </span>
-                                    <span class="text-muted small" style="font-size: 10.5px;">(행 복사(+)로 품목·규격·단가만 다르게 즉시 다건 추가)</span>
+                        <!-- ── [PC/태블릿 전용] ECOUNT ERP 마스터-디테일 다건 일괄등록 그리드 ── -->
+                        <div class="d-none d-md-block">
+                            <!-- [A] 상단 공통 설정 영역 (거래처, 자재분류, 통화 기본값) -->
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header py-1 px-2 bg-white fw-bold text-dark d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+                                    <span><i class='bx bx-building text-primary me-1'></i> 거래처 및 통화 공통 설정</span>
+                                    <span class="text-muted" style="font-size: 10.5px; font-weight: normal;">* 하단에 등록되는 모든 품목에 공통 적용됩니다 (선택 입력).</span>
                                 </div>
-                                <div class="d-flex align-items-center gap-1" id="modalGridToolbar">
-                                    <button type="button" class="btn-erp btn-sm" onclick="app.addModalRow()" title="새로운 품목/단가 행을 추가합니다">
-                                        <i class='bx bx-plus text-primary'></i> 행 추가
-                                    </button>
-                                    <button type="button" class="btn-erp btn-sm" onclick="app.copySelectedModalRows()" title="선택된 행의 내용을 복사하여 아래에 추가합니다 (품목/규격/단가 수정 가능)">
-                                        <i class='bx bx-copy text-success'></i> 선택 복사 (+)
-                                    </button>
-                                    <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteSelectedModalRows()" title="선택된 행을 삭제합니다">
-                                        <i class='bx bx-trash'></i> 선택 삭제
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body p-0 bg-white">
-                                <div class="table-responsive" style="max-height: 330px; overflow-y: auto;">
-                                    <table class="erp-sheet-table w-100 mb-0" id="modalGridTable">
-                                        <thead>
+                                <div class="card-body p-2 bg-white">
+                                    <table class="erp-form-table w-100">
+                                        <colgroup>
+                                            <col style="width: 90px;">
+                                            <col style="width: 25%;">
+                                            <col style="width: 90px;">
+                                            <col style="width: 25%;">
+                                            <col style="width: 85px;">
+                                            <col>
+                                        </colgroup>
+                                        <tbody>
+                                            <!-- 1행: 주 매입처 & 주 매출처 & 자재분류 -->
                                             <tr>
-                                                <th style="width: 28px;" class="text-center">
-                                                    <input type="checkbox" class="form-check-input" id="checkAllModalRows" onchange="app.toggleCheckAllModalRows(this.checked)">
-                                                </th>
-                                                <th style="width: 32px;" class="text-center">No.</th>
-                                                <th style="width: 75px;" class="text-center">단가구분</th>
-                                                <th style="min-width: 260px;" class="text-start ps-2">품목명 (Item) <span class="text-danger">*</span></th>
-                                                <th style="min-width: 140px;" class="text-start ps-2">규격 (Spec)</th>
-                                                <th style="width: 50px;" class="text-center">단위</th>
-                                                <th style="width: 110px;" class="text-end pe-2">기준 매입단가 <span class="text-danger">*</span></th>
-                                                <th style="width: 110px;" class="text-end pe-2">기준 매출단가</th>
-                                                <th style="width: 95px;" class="text-end pe-2">예상 마진(율)</th>
-                                                <th style="width: 205px;" class="text-start ps-2">운임 조건</th>
-                                                <th style="min-width: 120px;" class="text-start ps-2">비고 / 단가메모</th>
-                                                <th style="width: 34px;" class="text-center">삭제</th>
+                                                <th>주 매입처</th>
+                                                <td>
+                                                    <input type="text" class="form-control" id="inpSupplier" placeholder="주요 매입처 / 공급업체명 (Supplier)" autocomplete="off">
+                                                </td>
+                                                <th>주 매출처</th>
+                                                <td>
+                                                    <input type="text" class="form-control" id="inpDestination" placeholder="주요 납품처 / 거래처명 (Destination)" autocomplete="off">
+                                                </td>
+                                                <th>자재분류</th>
+                                                <td>
+                                                    <input type="text" class="form-control" id="inpCategory" placeholder="기본 분류 (예: 부자재, 체결류)" autocomplete="off">
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody id="modalGridBody">
-                                            <!-- JS 동적 렌더링 -->
+
+                                            <!-- 2행: 거래통화 & 적용 환율 (인라인 배치) -->
+                                            <tr>
+                                                <th>거래통화</th>
+                                                <td colspan="5">
+                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                        <select class="form-select text-center fw-bold" id="inpCurrency" style="width: 170px;" onchange="app.onCurrencyChange()">
+                                                            <option value="KRW" selected>KRW (원화 ₩)</option>
+                                                            <option value="USD">USD (달러 $)</option>
+                                                            <option value="EUR">EUR (유로 €)</option>
+                                                            <option value="CNY">CNY (위안 ¥)</option>
+                                                            <option value="JPY">JPY (엔화 ¥)</option>
+                                                        </select>
+                                                        <div id="exchangeRateBox" class="d-none align-items-center gap-1">
+                                                            <span class="badge bg-light text-dark border ms-1 py-1 px-2 fw-semibold">
+                                                                <i class='bx bx-transfer-alt text-primary'></i> 적용 환율 <span class="text-danger">*</span>
+                                                            </span>
+                                                            <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1,350" style="width: 110px;" oninput="app.onExchangeRateInput(this)">
+                                                            <span class="text-muted small">원</span>
+                                                            <span id="exchangeRateHelp" class="text-muted ms-1" style="font-size: 11px;">(1 USD당 원화)</span>
+                                                        </div>
+                                                        <span class="text-muted ms-auto small" style="font-size: 11px;">
+                                                            * 외화(USD 등) 선택 시 원화 환산단가가 자동 계산됩니다.
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+
+                            <!-- [B] 하단 멀티 디테일 그리드 (품목별 규격·단가 및 운임조건 복사 등록) -->
+                            <div class="card border shadow-sm">
+                                <div class="card-header py-1 px-2 bg-white d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark" style="font-size: 11.5px;">
+                                            <i class='bx bx-list-ul text-primary me-1'></i> 세부 품목 및 단가 목록 (<span class="text-primary fw-bold" id="modalRowCount">1</span>건)
+                                        </span>
+                                        <span class="text-muted small" style="font-size: 10.5px;">(행 복사(+)로 품목·규격·단가만 다르게 즉시 다건 추가)</span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1" id="modalGridToolbar">
+                                        <button type="button" class="btn-erp btn-sm" onclick="app.addModalRow()" title="새로운 품목/단가 행을 추가합니다">
+                                            <i class='bx bx-plus text-primary'></i> 행 추가
+                                        </button>
+                                        <button type="button" class="btn-erp btn-sm" onclick="app.copySelectedModalRows()" title="선택된 행의 내용을 복사하여 아래에 추가합니다 (품목/규격/단가 수정 가능)">
+                                            <i class='bx bx-copy text-success'></i> 선택 복사 (+)
+                                        </button>
+                                        <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteSelectedModalRows()" title="선택된 행을 삭제합니다">
+                                            <i class='bx bx-trash'></i> 선택 삭제
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0 bg-white">
+                                    <div class="table-responsive" style="max-height: 330px; overflow-y: auto;">
+                                        <table class="erp-sheet-table w-100 mb-0" id="modalGridTable">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 28px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="checkAllModalRows" onchange="app.toggleCheckAllModalRows(this.checked)">
+                                                    </th>
+                                                    <th style="width: 32px;" class="text-center">No.</th>
+                                                    <th style="width: 75px;" class="text-center">단가구분</th>
+                                                    <th style="min-width: 260px;" class="text-start ps-2">품목명 (Item) <span class="text-danger">*</span></th>
+                                                    <th style="min-width: 140px;" class="text-start ps-2">규격 (Spec)</th>
+                                                    <th style="width: 50px;" class="text-center">단위</th>
+                                                    <th style="width: 110px;" class="text-end pe-2">기준 매입단가 <span class="text-danger">*</span></th>
+                                                    <th style="width: 110px;" class="text-end pe-2">기준 매출단가</th>
+                                                    <th style="width: 95px;" class="text-end pe-2">예상 마진(율)</th>
+                                                    <th style="width: 205px;" class="text-start ps-2">운임 조건</th>
+                                                    <th style="min-width: 120px;" class="text-start ps-2">비고 / 단가메모</th>
+                                                    <th style="width: 34px;" class="text-center">삭제</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modalGridBody">
+                                                <!-- JS 동적 렌더링 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 데스크톱 모달 하단 툴바 -->
+                            <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn-erp btn-del d-none" id="btnModalDelete" onclick="app.deletePriceFromModal()" title="현재 등록된 단가 항목 삭제">
+                                        삭제
+                                    </button>
+                                    <span class="text-muted small" style="font-size: 11px;">
+                                        <code>Tab</code> 셀 이동 / <code>F8</code> 저장
+                                    </span>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn-erp" data-bs-dismiss="modal">
+                                        닫기
+                                    </button>
+                                    <button type="submit" class="btn-erp btn-erp-primary px-3 fw-bold" id="btnModalSave">
+                                        <span id="btnSaveCountText">전체 1건 일괄 저장 [F8]</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- 모달 하단 툴바 -->
-                        <div class="d-flex justify-content-between align-items-center mt-2 px-1">
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn-erp btn-del d-none" id="btnModalDelete" onclick="app.deletePriceFromModal()" title="현재 등록된 단가 항목 삭제">
-                                    삭제
-                                </button>
-                                <span class="text-muted small" style="font-size: 11px;">
-                                    <code>Tab</code> 셀 이동 / <code>F8</code> 저장
-                                </span>
+                        <!-- ── [모바일 전용] 1열 터치 최적화 상세 / 단가 수정 카드 폼 ── -->
+                        <div class="d-md-none mobile-price-modal-container">
+                            <!-- 실시간 마진율 및 예상 마진액 프리뷰 카드 -->
+                            <div class="mobile-modal-margin-card shadow-sm mb-2" id="mobModalMarginCard">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 12px;">
+                                        <i class='bx bx-calculator text-primary'></i> 실시간 마진 분석
+                                    </span>
+                                    <span class="mobile-margin-badge badge-unregistered" id="mobModalMarginBadge">
+                                        <i class='bx bx-info-circle me-1'></i>매출가 미등록
+                                    </span>
+                                </div>
+                                <div class="mob-preview-grid">
+                                    <div class="mob-preview-box">
+                                        <div class="mob-preview-label">기준 매입단가</div>
+                                        <div class="mob-preview-val text-dark" id="mobModalBuyPreview">₩0</div>
+                                    </div>
+                                    <div class="mob-preview-box">
+                                        <div class="mob-preview-label">기준 매출단가</div>
+                                        <div class="mob-preview-val text-primary" id="mobModalSellPreview">미등록</div>
+                                    </div>
+                                    <div class="mob-preview-box" id="mobModalProfitBox">
+                                        <div class="mob-preview-label">예상 마진액</div>
+                                        <div class="mob-preview-val text-muted" id="mobModalProfitPreview">-</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn-erp" data-bs-dismiss="modal">
+
+                            <!-- 섹션 1: 품목 기본 정보 -->
+                            <div class="card border mb-2 shadow-sm rounded-2 bg-white">
+                                <div class="card-header py-1 px-2 bg-light fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 11.5px;">
+                                    <i class='bx bx-package text-primary'></i> 품목 기본 정보
+                                </div>
+                                <div class="card-body p-2">
+                                    <div class="mb-2">
+                                        <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
+                                            품목명 (Item) <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm fw-bold text-dark" id="mobInpItem" 
+                                               list="modalItemDatalist" placeholder="품목명 입력 (예: 2X Gear 220)" autocomplete="off">
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-7">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">규격 (Spec)</label>
+                                            <input type="text" class="form-control form-control-sm" id="mobInpSpec" placeholder="예: 200L, DRUM">
+                                        </div>
+                                        <div class="col-5">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">단위 (Unit)</label>
+                                            <input type="text" class="form-control form-control-sm text-center" id="mobInpUnit" placeholder="DRUM, CAN">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">자재분류</label>
+                                            <input type="text" class="form-control form-control-sm" id="mobInpCategory" placeholder="기어유, 유압유 등">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">단가구분</label>
+                                            <select class="form-select form-select-sm fw-semibold" id="mobInpPriceType" onchange="app.onMobPriceTypeChange(this.value)">
+                                                <option value="견적가">견적가</option>
+                                                <option value="계약가">계약가</option>
+                                                <option value="표준가">표준가</option>
+                                                <option value="일시가">일시가</option>
+                                                <option value="실행가">실행가</option>
+                                                <option value="기타">기타</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 섹션 2: 단가 및 통화 설정 -->
+                            <div class="card border mb-2 shadow-sm rounded-2 bg-white">
+                                <div class="card-header py-1 px-2 bg-light fw-bold text-dark d-flex align-items-center justify-content-between" style="font-size: 11.5px;">
+                                    <span class="d-flex align-items-center gap-1">
+                                        <i class='bx bx-won text-primary'></i> 단가 및 통화 설정
+                                    </span>
+                                    <select class="form-select form-select-sm py-0 px-1 fw-bold text-primary" id="mobInpCurrency" style="width: 100px; height: 24px; font-size: 11px;" onchange="app.onMobCurrencyChange()">
+                                        <option value="KRW">KRW (₩)</option>
+                                        <option value="USD">USD ($)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="CNY">CNY (¥)</option>
+                                        <option value="JPY">JPY (¥)</option>
+                                    </select>
+                                </div>
+                                <div class="card-body p-2">
+                                    <!-- 외화 환율 입력 상자 (외화일 때만 표시) -->
+                                    <div id="mobExchangeRateBox" class="p-2 mb-2 rounded bg-light border d-none">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="small fw-semibold text-dark" style="font-size: 11px;"><i class='bx bx-transfer-alt text-primary'></i> 적용 환율 <span class="text-danger">*</span></span>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <input type="text" inputmode="numeric" class="form-control form-control-sm text-end fw-bold" id="mobInpExchangeRate" placeholder="1,350" style="width: 100px;" oninput="app.onMobExchangeRateInput(this)">
+                                                <span class="small text-muted">원</span>
+                                            </div>
+                                        </div>
+                                        <div class="text-muted text-end mt-1" id="mobExchangeRateHelp" style="font-size: 10px;">(1 USD당 원화)</div>
+                                    </div>
+
+                                    <div class="row g-2 mb-1">
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
+                                                기준 매입단가 <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text py-0 px-2 fw-bold text-muted" id="mobBuyCurrSymbol">₩</span>
+                                                <input type="text" inputmode="numeric" class="form-control form-control-sm text-end fw-bold" id="mobInpBuyPrice" placeholder="0" oninput="app.onMobPriceInput('buy_price', this)">
+                                            </div>
+                                            <div class="text-muted text-end mt-1" id="mobBuyKrwPreview" style="font-size: 10px; min-height: 14px;"></div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
+                                                기준 매출단가
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text py-0 px-2 fw-bold text-primary" id="mobSellCurrSymbol">₩</span>
+                                                <input type="text" inputmode="numeric" class="form-control form-control-sm text-end fw-bold text-primary" id="mobInpSellPrice" placeholder="0" oninput="app.onMobPriceInput('sell_price', this)">
+                                            </div>
+                                            <div class="text-muted text-end mt-1" id="mobSellKrwPreview" style="font-size: 10px; min-height: 14px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 섹션 3: 거래처 및 물류 조건 -->
+                            <div class="card border mb-2 shadow-sm rounded-2 bg-white">
+                                <div class="card-header py-1 px-2 bg-light fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 11.5px;">
+                                    <i class='bx bx-building text-primary'></i> 거래처 및 물류 조건
+                                </div>
+                                <div class="card-body p-2">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">주 매입처</label>
+                                            <input type="text" class="form-control form-control-sm" id="mobInpSupplier" placeholder="공급사/매입처명">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">주 매출처</label>
+                                            <input type="text" class="form-control form-control-sm" id="mobInpDestination" placeholder="납품처/거래처명">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">운임 조건</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <select class="form-select form-select-sm fw-semibold" id="mobInpFreightType" style="width: 110px;" onchange="app.onMobFreightTypeChange()">
+                                                <option value="상차도">상차도</option>
+                                                <option value="하차도">하차도 (운임포함)</option>
+                                            </select>
+                                            <div class="flex-grow-1" id="mobFreightRegionBox">
+                                                <input type="text" class="form-control form-control-sm" id="mobInpFreightRegion" placeholder="도착지 (예: 전국, 강릉제진)">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">비고 / 단가 메모</label>
+                                        <input type="text" class="form-control form-control-sm" id="mobInpNote" placeholder="결제조건, 특이사항 입력">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 모바일 전용 액션 툴바 -->
+                            <div class="mobile-modal-actions mt-3 pt-2 border-top d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-danger btn-sm px-3 flex-shrink-0 d-none" id="mobBtnDelete" onclick="app.deletePriceFromModal()">
+                                    <i class='bx bx-trash'></i> 삭제
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-3 flex-shrink-0" data-bs-dismiss="modal">
                                     닫기
                                 </button>
-                                <button type="submit" class="btn-erp btn-erp-primary px-3 fw-bold" id="btnModalSave">
-                                    <span id="btnSaveCountText">전체 1건 일괄 저장 [F8]</span>
+                                <button type="submit" class="btn btn-primary btn-sm flex-grow-1 py-2 fw-bold shadow-sm" id="mobBtnSave">
+                                    <i class='bx bx-check-circle me-1'></i><span id="mobBtnSaveText">단가 저장 완료</span>
                                 </button>
                             </div>
                         </div>
@@ -1249,6 +1428,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20261007_2"></script>
+    <script src="app.js?v=20261007_3"></script>
 </body>
 </html>

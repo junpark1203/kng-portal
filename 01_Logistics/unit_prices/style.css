@@ -2113,15 +2113,38 @@ body {
         justify-content: space-between;
         font-size: 11.5px;
         color: #334155;
+        gap: 6px;
+        overflow: hidden;
+    }
+    .kpi-scroll-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .kpi-scroll-container::-webkit-scrollbar {
+        display: none;
     }
     .mobile-price-kpi-bar .kpi-item {
         display: inline-flex;
         align-items: center;
         gap: 3px;
+        white-space: nowrap !important;
+        flex-shrink: 0;
+        font-size: 11.5px;
     }
     .mobile-price-kpi-bar .kpi-item strong {
-        font-size: 12.5px;
+        font-size: 12px;
         color: #0f172a;
+        white-space: nowrap !important;
+    }
+    .kpi-divider {
+        font-size: 10px;
+        color: #cbd5e1 !important;
+        flex-shrink: 0;
     }
 
     /* 모바일 단가 카드 컨테이너 */
@@ -2168,13 +2191,14 @@ body {
 
     /* 마진율 뱃지 */
     .mobile-margin-badge {
-        font-size: 12px;
-        font-weight: 800;
-        padding: 3px 8px;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 3px 7px;
         border-radius: 6px;
         letter-spacing: -0.01em;
         display: inline-flex;
         align-items: center;
+        white-space: nowrap !important;
     }
     .mobile-margin-badge.margin-high {
         background: #ecfdf5;
@@ -2195,6 +2219,13 @@ body {
         background: #fef2f2;
         color: #dc2626;
         border: 1px solid #fecaca;
+    }
+    .mobile-margin-badge.badge-unregistered {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #cbd5e1;
+        font-weight: 600;
+        font-size: 11px;
     }
 
     .mobile-price-card-body {
@@ -2345,6 +2376,15 @@ body {
         color: #dc2626;
         font-weight: 800;
     }
+    .margin-rate-box.margin-rate-none {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+    .margin-rate-box.margin-rate-none .price-box-val {
+        color: #94a3b8;
+        font-weight: 600;
+        font-size: 11px;
+    }
 
     /* 카드 푸터 */
     .mobile-price-card-footer {
@@ -2464,6 +2504,92 @@ body {
     }
     .modal-content {
         border-radius: 12px !important;
+    }
+
+    /* 단가표 #priceModal 모바일 전용 반응형 레이아웃 */
+    #priceModal .modal-dialog {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0.5rem auto !important;
+        padding: 0 4px;
+    }
+    #priceModal .modal-content {
+        border-radius: 14px !important;
+        border: none;
+        overflow: hidden;
+    }
+    #priceModal .modal-body {
+        max-height: calc(90vh - 48px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px !important;
+    }
+    .mobile-price-modal-container .card {
+        border-radius: 10px !important;
+        border-color: #e2e8f0 !important;
+    }
+    .mobile-price-modal-container .card-header {
+        border-top-left-radius: 9px !important;
+        border-top-right-radius: 9px !important;
+        background: #f8fafc !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+    .mobile-modal-margin-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 12px;
+    }
+    .mob-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    .mob-preview-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 4px;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    .mob-preview-label {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 2px;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+    }
+    .mob-preview-val {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        word-break: break-all;
+    }
+    .mob-preview-box.profit-positive {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+    }
+    .mob-preview-box.profit-positive .mob-preview-val {
+        color: #059669;
+    }
+    .mob-preview-box.profit-loss {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+    .mob-preview-box.profit-loss .mob-preview-val {
+        color: #dc2626;
+    }
+    .mob-curr-symbol {
+        font-size: 12px;
+        background-color: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+    .mobile-modal-actions button {
+        height: 38px;
+        border-radius: 8px;
+        font-size: 12.5px;
     }
 }
 
