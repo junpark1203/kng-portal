@@ -1617,15 +1617,15 @@ document.addEventListener('DOMContentLoaded', function() {
             id: "logistics_inout",
             category: "영업관리",
             title: "입출고내역",
-            path: "./01_Logistics/inout/index.html?v=10",
+            path: "./01_Logistics/inout/index.html?v=11",
             icon: "bx-transfer",
             priority: "1순위 (추천)",
             tagColor: "primary",
-            defaultStatus: "대기중",
+            defaultStatus: "완료",
             points: [
-                "가로 스크롤 ERP 테이블 ➔ 모바일 전용 반응형 카드 리스트 뷰",
-                "300~520px 고정 자동완성 드롭다운 반응형 너비 최적화",
-                "모바일 바텀시트(Bottom Sheet) 기반 전표 등록 폼"
+                "터치 특화 모바일 카드 뷰 & ERP 테이블 듀얼 뷰 모드 지원",
+                "모바일 상단 헤더, 스마트 검색 스트립 및 하단 플로팅 등록(FAB)",
+                "바텀시트 상세 필터 드로어 및 입출고 전표 모달 반응형 최적화"
             ]
         },
         {

@@ -82,6 +82,7 @@ const app = {
         this.initKeyboardNav();
         this.bindGlobalModalShortcuts();
         this.initGridColumnResizing();
+        this.initMobileUI();
     },
 
     bindGlobalModalShortcuts: function() {
@@ -1799,6 +1800,10 @@ const app = {
         if (topInfo) {
             topInfo.textContent = isAll ? `전체 (${(total || 0).toLocaleString()}건)` : `${curPage} / ${totalPages} 페이지`;
         }
+        const mobBadge = $('mobileHeaderCountBadge');
+        if (mobBadge) {
+            mobBadge.textContent = `${(total || 0).toLocaleString()}건`;
+        }
 
         // 2. 하단 상태 정보 동기화
         if (bottomInfo) {
@@ -1857,6 +1862,7 @@ const app = {
         const tbody = $('historyTbody');
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted" style="height: 60px;">해당하는 내역이 없습니다.</td></tr>`;
+            this.renderMobileCards(data);
             return;
         }
 
@@ -1899,7 +1905,7 @@ const app = {
 
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
-                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.updateSelectionSummary()"></td>
+                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)"></td>
                 <td class="d-print-none user-select-none text-nowrap" style="font-size: 11.5px; color: #475569;">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
                     <span>${txIdDisplay}</span>
@@ -1934,6 +1940,7 @@ const app = {
             </tr>
             `;
         }).join('');
+        this.renderMobileCards(data);
     },
 
     toggleAccordion: async function(id, type) {
@@ -6139,6 +6146,442 @@ const app = {
             }
         } catch(err) {
             alert('수정 실패: ' + err.message);
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════════
+    // 모바일 특화 반응형 UI / UX 컨트롤러 (Mobile Specialized UI/UX)
+    // ══════════════════════════════════════════════════════════════
+    currentViewMode: 'card', // 'card' 또는 'table'
+    isMobileFabOpen: false,
+    isMobileFilterOpen: false,
+
+    initMobileUI: function() {
+        const isMobile = window.innerWidth <= 768;
+        const savedMode = localStorage.getItem('kng_inout_view_mode');
+        this.currentViewMode = savedMode || (isMobile ? 'card' : 'table');
+        this.applyViewMode();
+
+        window.addEventListener('resize', () => {
+            this.applyViewMode();
+        });
+
+        // 모바일 검색창 Enter 키 이벤트
+        const mobSearch = $('mobileSearchInput');
+        if (mobSearch) {
+            mobSearch.addEventListener('input', (e) => {
+                const clearBtn = $('mobileClearSearchBtn');
+                if (clearBtn) {
+                    if (e.target.value) clearBtn.classList.remove('d-none');
+                    else clearBtn.classList.add('d-none');
+                }
+            });
+        }
+
+        // 초기 모바일 필터 값 동기화
+        this.updateMobileFilterFromDesktop();
+    },
+
+    setViewMode: function(mode) {
+        this.currentViewMode = mode;
+        localStorage.setItem('kng_inout_view_mode', mode);
+        this.applyViewMode();
+    },
+
+    applyViewMode: function() {
+        const isMobile = window.innerWidth <= 768;
+        const savedMode = localStorage.getItem('kng_inout_view_mode');
+        const mode = this.currentViewMode || savedMode || (isMobile ? 'card' : 'table');
+
+        const cardsContainer = $('historyCardsContainer');
+        const tableWrapper = document.querySelector('.erp-main-grid-wrapper');
+        const btnCard = $('btnViewCard');
+        const btnTable = $('btnViewTable');
+
+        if (mode === 'card') {
+            if (cardsContainer) cardsContainer.style.display = 'block';
+            if (tableWrapper) tableWrapper.classList.add('mobile-hidden-table');
+            if (btnCard) btnCard.classList.add('active');
+            if (btnTable) btnTable.classList.remove('active');
+        } else {
+            if (cardsContainer) cardsContainer.style.display = 'none';
+            if (tableWrapper) tableWrapper.classList.remove('mobile-hidden-table');
+            if (btnCard) btnCard.classList.remove('active');
+            if (btnTable) btnTable.classList.add('active');
+        }
+    },
+
+    renderMobileCards: function(data) {
+        const container = $('historyCardsContainer');
+        if (!container) return;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div class="mobile-empty-state">
+                    <i class='bx bx-file-blank fs-1 text-muted mb-2'></i>
+                    <div class="fw-bold text-dark fs-6">조회된 입출고 내역이 없습니다</div>
+                    <div class="text-muted small mt-1">상단 필터나 검색 조건을 변경해 보세요.</div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = data.map(r => {
+            const isOut = r.type === 'outbound';
+            const isDirect = (r.type === '직출고' || r.is_direct === 1);
+
+            let badge = isOut ? `<span class="erp-badge erp-badge-out">출고</span>` : `<span class="erp-badge erp-badge-in">입고</span>`;
+            if (isDirect) {
+                badge = `<span class="erp-badge erp-badge-direct">직출고</span>`;
+            }
+            if (r.trade_type && r.trade_type !== '내수') {
+                badge += ` <span class="erp-badge erp-badge-info">${r.trade_type}</span>`;
+            }
+
+            const txIdDisplay = r.transaction_group_id || (isDirect ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
+            const dateStr = (r.date || '').split('T')[0];
+
+            let freightBadge = '';
+            if (r.freight_type === '하차도') {
+                freightBadge = ` <span class="badge-freight-in" title="운임: 하차도">하차도</span>`;
+            } else if (r.freight_type === '상차도') {
+                freightBadge = ` <span class="badge-freight-ex" title="운임: 상차도">상차도</span>`;
+            }
+
+            const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
+            const editFn = isDirect
+                ? `app.openEditDirectOutboundTx('${r.transaction_group_id || ''}', ${r.id})`
+                : (isOut ? `app.openEditOutboundTx('${r.transaction_group_id || ''}', ${r.id})` : `app.openEditInboundTx('${r.transaction_group_id || ''}', ${r.id})`);
+
+            let partnerHtml = '';
+            if (isDirect) {
+                partnerHtml = `
+                    <div class="mobile-partner-flow">
+                        <span class="partner-point"><span class="partner-label">매입</span> <strong>${r.supplier || '-'}</strong></span>
+                        <i class='bx bx-right-arrow-alt flow-arrow'></i>
+                        <span class="partner-point"><span class="partner-label">매출</span> <strong class="text-primary">${r.destination || '-'}</strong></span>
+                    </div>
+                `;
+            } else if (isOut) {
+                partnerHtml = `
+                    <div class="mobile-partner-single">
+                        <span class="partner-label">매출처</span>
+                        <strong class="text-dark">${r.destination || '-'}</strong>
+                        ${r.actual_destination && r.actual_destination.trim() !== (r.destination || '').trim() ? `<span class="text-secondary small ms-1">(실: ${r.actual_destination.trim()})</span>` : ''}
+                    </div>
+                `;
+            } else {
+                partnerHtml = `
+                    <div class="mobile-partner-single">
+                        <span class="partner-label">매입처</span>
+                        <strong class="text-dark">${r.supplier || '-'}</strong>
+                    </div>
+                `;
+            }
+
+            const qtyDisplay = (r.qty || 0).toLocaleString();
+            const priceDisplay = isOut ? (r.outbound_price ? Math.round(Number(r.outbound_price)).toLocaleString() : '-') : (r.inbound_price ? Math.round(Number(r.inbound_price)).toLocaleString() : '-');
+            const totalDisplay = isOut ? (r.outbound_total ? Math.round(Number(r.outbound_total)).toLocaleString() : '0') : (r.inbound_total ? Math.round(Number(r.inbound_total)).toLocaleString() : '0');
+
+            return `
+            <div class="mobile-tx-card" id="mobile_card_${r.id}">
+                <div class="mobile-tx-card-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="form-check-input history-checkbox m-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)">
+                        ${badge}
+                        <span class="mobile-tx-date"><i class='bx bx-calendar me-1'></i>${dateStr}</span>
+                    </div>
+                    <span class="mobile-tx-id">${txIdDisplay}</span>
+                </div>
+
+                <div class="mobile-tx-card-body" onclick="app.toggleMobileCardAccordion(${r.id}, '${r.type}')">
+                    <div class="mobile-tx-item-title">
+                        <span class="item-name">${r.item || '-'}</span>
+                        ${freightBadge}
+                    </div>
+
+                    <div class="mobile-tx-meta-chips">
+                        ${r.spec ? `<span class="mobile-chip spec-chip"><i class='bx bx-ruler'></i> ${r.spec}</span>` : ''}
+                        ${r.category ? `<span class="mobile-chip cat-chip">${r.category}</span>` : ''}
+                        ${r.unit ? `<span class="mobile-chip unit-chip">${r.unit}</span>` : ''}
+                    </div>
+
+                    <div class="mobile-tx-partner-wrap">
+                        ${partnerHtml}
+                    </div>
+
+                    <div class="mobile-tx-stats-grid">
+                        <div class="mobile-stat-box">
+                            <span class="mobile-stat-label">수량</span>
+                            <span class="mobile-stat-val ${isOut ? 'text-danger' : 'text-success'}">${qtyDisplay} <small class="fw-normal text-muted">${r.unit || ''}</small></span>
+                        </div>
+                        <div class="mobile-stat-box">
+                            <span class="mobile-stat-label">${isOut ? '매출단가' : '매입단가'}</span>
+                            <span class="mobile-stat-val text-muted">${priceDisplay}원</span>
+                        </div>
+                        <div class="mobile-stat-box mobile-stat-highlight">
+                            <span class="mobile-stat-label">${isOut ? '매출합계' : '매입합계'}</span>
+                            <span class="mobile-stat-val text-primary fw-bold">${totalDisplay}원</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-tx-card-footer">
+                    <button type="button" class="btn-mobile-acc" onclick="app.toggleMobileCardAccordion(${r.id}, '${r.type}')" id="mobile_acc_btn_${r.id}">
+                        <i class='bx bx-chevron-down' id="mobile_acc_icon_${r.id}"></i> 상세 전표
+                    </button>
+                    <div class="mobile-tx-actions">
+                        ${r.settlement_status === '정산완료'
+                            ? `<span class="badge bg-secondary px-2 py-1">정산완료</span>`
+                            : `<button type="button" class="btn btn-sm btn-outline-primary mobile-act-btn me-1" onclick="event.stopPropagation(); ${editFn}">
+                                   <i class='bx bx-edit'></i> 수정
+                               </button>
+                               <button type="button" class="btn btn-sm btn-outline-danger mobile-act-btn" onclick="event.stopPropagation(); ${delFn}">
+                                   <i class='bx bx-trash'></i> 삭제
+                               </button>`
+                        }
+                    </div>
+                </div>
+
+                <div id="mobile_accordion_${r.id}" class="mobile-card-accordion-content d-none">
+                    <div class="p-3 text-center text-muted" style="font-size: 12px;">
+                        <i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    },
+
+    syncCardSelection: function(id, isChecked) {
+        const tableCb = document.querySelector(`#row_${id} .history-checkbox`);
+        if (tableCb && tableCb.checked !== isChecked) {
+            tableCb.checked = isChecked;
+        }
+        const cardCb = document.querySelector(`#mobile_card_${id} .history-checkbox`);
+        if (cardCb && cardCb.checked !== isChecked) {
+            cardCb.checked = isChecked;
+        }
+        this.updateSelectionSummary();
+    },
+
+    toggleMobileCardAccordion: async function(id, type) {
+        const accBox = $(`mobile_accordion_${id}`);
+        const accIcon = $(`mobile_acc_icon_${id}`);
+        const card = $(`mobile_card_${id}`);
+        if (!accBox) return;
+
+        const isOpening = accBox.classList.contains('d-none');
+        if (!isOpening) {
+            accBox.classList.add('d-none');
+            if (accIcon) accIcon.className = 'bx bx-chevron-down';
+            if (card) card.classList.remove('card-expanded');
+            return;
+        }
+
+        accBox.classList.remove('d-none');
+        if (accIcon) accIcon.className = 'bx bx-chevron-up text-primary';
+        if (card) card.classList.add('card-expanded');
+
+        accBox.innerHTML = `<div class="p-3 text-center text-muted" style="font-size: 12px;"><i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...</div>`;
+
+        try {
+            const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
+            if (type === 'inbound') {
+                data.qty = data.qty_initial;
+            }
+            const items = data.items || [data];
+            const isDirect = (type === 'outbound' && data.is_direct === 1) || type === '직출고';
+
+            let itemsHtml = items.map((item, idx) => {
+                const itemQty = type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
+                const inPrice = item.unit_price !== undefined ? item.unit_price : (item.inbound_price || 0);
+                const outPrice = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
+                const inAmt = Math.round(inPrice * itemQty);
+                const outAmt = Math.round(outPrice * itemQty);
+
+                let lotsHtml = '';
+                if (type === 'outbound' && !isDirect && item.consumed_lots && item.consumed_lots.length > 0) {
+                    lotsHtml = `
+                        <div class="mobile-lot-box mt-1">
+                            <small class="text-muted fw-bold">차감 Lot:</small>
+                            ${item.consumed_lots.map(l => `<span class="badge bg-light text-dark border me-1">${l.inbound_date} (${l.supplier || '-'}) -${l.consumed_qty}</span>`).join('')}
+                        </div>
+                    `;
+                }
+
+                return `
+                <div class="mobile-sub-item-card">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-dark">${idx + 1}. ${item.item}</strong>
+                        <span class="badge bg-primary bg-opacity-10 text-primary">${itemQty.toLocaleString()} ${item.unit || ''}</span>
+                    </div>
+                    <div class="text-muted small mb-1">
+                        <span>규격: ${item.spec || '-'}</span> | <span>분류: ${item.category || '-'}</span>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span class="text-secondary">${isDirect || type === 'inbound' ? `매입단가: ${inPrice.toLocaleString()}원` : ''}</span>
+                        <strong class="${isDirect || type === 'outbound' ? 'text-danger' : 'text-primary'}">${isDirect || type === 'outbound' ? `매출: ${outAmt.toLocaleString()}원` : `매입: ${inAmt.toLocaleString()}원`}</strong>
+                    </div>
+                    ${lotsHtml}
+                    ${item.note ? `<div class="text-muted small mt-1 bg-light p-1 rounded">비고: ${item.note}</div>` : ''}
+                </div>
+                `;
+            }).join('');
+
+            accBox.innerHTML = `
+                <div class="mobile-acc-inner p-3 bg-light rounded-bottom">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <span class="fw-bold small text-dark"><i class='bx bx-list-check me-1 text-primary'></i> 전표 품목 리스트 (${items.length}건)</span>
+                        <span class="small text-muted">${data.transaction_group_id || ''}</span>
+                    </div>
+                    <div class="mobile-sub-items-wrap">
+                        ${itemsHtml}
+                    </div>
+                    ${data.note ? `<div class="alert alert-light border mt-2 py-1 px-2 mb-0 small"><i class='bx bx-note me-1'></i>전표 비고: ${data.note}</div>` : ''}
+                </div>
+            `;
+        } catch(err) {
+            console.error('Mobile accordion error:', err);
+            accBox.innerHTML = `<div class="p-3 text-center text-danger small">상세 정보를 불러올 수 없습니다.</div>`;
+        }
+    },
+
+    toggleMobileFilter: function(force) {
+        const drawer = $('mobileFilterDrawer');
+        const backdrop = $('mobileFilterBackdrop');
+        const dot = $('mobileFilterDot');
+        if (!drawer) return;
+
+        this.isMobileFilterOpen = (force !== undefined) ? force : !this.isMobileFilterOpen;
+        if (this.isMobileFilterOpen) {
+            drawer.classList.add('open');
+            if (backdrop) backdrop.classList.remove('d-none');
+            this.updateMobileFilterFromDesktop();
+        } else {
+            drawer.classList.remove('open');
+            if (backdrop) backdrop.classList.add('d-none');
+        }
+
+        // 활성 필터 인디케이터 도트 표시 여부
+        if (dot) {
+            const hasActiveFilter = Boolean($('searchStartDate')?.value || $('searchEndDate')?.value || $('searchTarget')?.value || (this.currentDatePreset && this.currentDatePreset !== 'all'));
+            if (hasActiveFilter) dot.classList.remove('d-none');
+            else dot.classList.add('d-none');
+        }
+    },
+
+    toggleMobileFab: function(force) {
+        const menu = $('mobileFabMenu');
+        const mainBtn = $('mobileFabMainBtn');
+        const backdrop = $('mobileFabBackdrop');
+        if (!menu || !mainBtn) return;
+
+        this.isMobileFabOpen = (force !== undefined) ? force : !this.isMobileFabOpen;
+        if (this.isMobileFabOpen) {
+            menu.classList.add('open');
+            mainBtn.classList.add('active');
+            if (backdrop) backdrop.classList.remove('d-none');
+        } else {
+            menu.classList.remove('open');
+            mainBtn.classList.remove('active');
+            if (backdrop) backdrop.classList.add('d-none');
+        }
+    },
+
+    setMobileTypeFilter: function(type) {
+        document.querySelectorAll('.mobile-type-tab').forEach(t => {
+            if (t.dataset.type === type) t.classList.add('active');
+            else t.classList.remove('active');
+        });
+
+        const targetRadioMap = {
+            'all': 'btnFilterAll',
+            'inbound': 'btnFilterIn',
+            'outbound': 'btnFilterOut',
+            'direct': 'btnFilterDirect'
+        };
+        const radioId = targetRadioMap[type];
+        if (radioId && $(radioId)) {
+            $(radioId).checked = true;
+            this.resetPageAndLoadHistory();
+        }
+    },
+
+    submitMobileSearch: function() {
+        const input = $('mobileSearchInput');
+        const kw = input ? input.value.trim() : '';
+        if ($('historySearch')) {
+            $('historySearch').value = kw;
+        }
+        this.resetPageAndLoadHistory();
+    },
+
+    clearMobileSearch: function() {
+        const input = $('mobileSearchInput');
+        if (input) input.value = '';
+        const clearBtn = $('mobileClearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        if ($('historySearch')) $('historySearch').value = '';
+        this.resetPageAndLoadHistory();
+    },
+
+    updateMobileDateInputs: function() {
+        if ($('mobileStartDate') && $('searchStartDate')) {
+            $('mobileStartDate').value = $('searchStartDate').value;
+        }
+        if ($('mobileEndDate') && $('searchEndDate')) {
+            $('mobileEndDate').value = $('searchEndDate').value;
+        }
+        // 프리셋 칩 액티브 동기화
+        document.querySelectorAll('.mobile-preset-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.trim() === this.getPresetLabel(this.currentDatePreset));
+            btn.classList.toggle('btn-primary', btn.textContent.trim() === this.getPresetLabel(this.currentDatePreset));
+            btn.classList.toggle('btn-outline-secondary', btn.textContent.trim() !== this.getPresetLabel(this.currentDatePreset));
+        });
+    },
+
+    getPresetLabel: function(preset) {
+        const map = { 'all': '전체', 'thisMonth': '당월', 'prevMonth': '전월', 'thisYear': '금년도', 'prevYear': '전년도' };
+        return map[preset] || '전체';
+    },
+
+    updateMobileFilterFromDesktop: function() {
+        this.updateMobileDateInputs();
+        if ($('mobileSearchTarget') && $('searchTarget')) {
+            $('mobileSearchTarget').value = $('searchTarget').value;
+        }
+        if ($('mobileLimitSelect') && $('historyLimit')) {
+            $('mobileLimitSelect').value = $('historyLimit').value;
+        }
+        if ($('mobileSearchInput') && $('historySearch')) {
+            $('mobileSearchInput').value = $('historySearch').value;
+            const clearBtn = $('mobileClearSearchBtn');
+            if (clearBtn) {
+                if ($('historySearch').value) clearBtn.classList.remove('d-none');
+                else clearBtn.classList.add('d-none');
+            }
+        }
+    },
+
+    syncMobileDatesToDesktop: function() {
+        if ($('searchStartDate') && $('mobileStartDate')) {
+            $('searchStartDate').value = $('mobileStartDate').value;
+        }
+        if ($('searchEndDate') && $('mobileEndDate')) {
+            $('searchEndDate').value = $('mobileEndDate').value;
+        }
+    },
+
+    syncMobileTargetToDesktop: function() {
+        if ($('searchTarget') && $('mobileSearchTarget')) {
+            $('searchTarget').value = $('mobileSearchTarget').value;
+        }
+    },
+
+    syncMobileLimitToDesktop: function() {
+        if ($('historyLimit') && $('mobileLimitSelect')) {
+            $('historyLimit').value = $('mobileLimitSelect').value;
         }
     }
 };

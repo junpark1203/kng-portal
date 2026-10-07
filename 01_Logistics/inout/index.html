@@ -1224,11 +1224,611 @@
         .partner-search-item.active .badge-select-hint {
             display: inline-block;
         }
+
+        /* ══════════════════════════════════════════════════════════════
+           MOBILE SPECIALIZED UI/UX OPTIMIZATIONS (≤ 768px)
+           ══════════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            html, body {
+                height: 100% !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            .erp-page-layout {
+                height: auto !important;
+                min-height: 100vh !important;
+                padding: 8px 10px 96px 10px !important;
+                overflow-x: hidden !important;
+                overflow-y: visible !important;
+                display: block !important;
+            }
+
+            /* 데스크톱 전용 툴바 및 필터 리본 숨김 (모바일 전용 바 사용) */
+            .erp-top-toolbar {
+                display: none !important;
+            }
+            .erp-filter-ribbon {
+                display: none !important;
+            }
+
+            /* 모바일 헤더 */
+            .mobile-inout-header {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                padding: 12px 14px;
+                margin-bottom: 10px;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+            }
+            .mobile-view-toggle .btn {
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            .mobile-view-toggle .btn.active {
+                background-color: #2563eb !important;
+                color: #ffffff !important;
+                border-color: #2563eb !important;
+            }
+            .mobile-filter-badge {
+                position: absolute;
+                top: -3px;
+                right: -3px;
+                width: 9px;
+                height: 9px;
+                background-color: #ef4444;
+                border-radius: 50%;
+                border: 2px solid #ffffff;
+            }
+
+            /* 모바일 검색 스트립 */
+            .mobile-search-strip .form-control {
+                height: 38px !important;
+                font-size: 13.5px !important;
+                border-color: #cbd5e1 !important;
+            }
+            .mobile-search-strip .btn {
+                height: 38px !important;
+                font-size: 13px !important;
+                font-weight: 600;
+            }
+
+            /* 모바일 구분 세그먼트 탭 */
+            .mobile-type-tabs {
+                display: flex;
+                background: #f1f5f9;
+                padding: 4px;
+                border-radius: 10px;
+                gap: 4px;
+            }
+            .mobile-type-tab {
+                flex: 1;
+                border: none;
+                background: transparent;
+                padding: 8px 0;
+                font-size: 12.5px;
+                font-weight: 600;
+                color: #64748b;
+                border-radius: 7px;
+                text-align: center;
+                transition: all 0.15s ease;
+                cursor: pointer;
+            }
+            .mobile-type-tab.active {
+                background: #ffffff;
+                color: #1e293b;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+                font-weight: 700;
+            }
+
+            /* 모바일 요약 바 */
+            #historySummaryStrip {
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                padding: 8px 12px !important;
+                height: auto !important;
+                border-radius: 10px !important;
+                margin-bottom: 10px !important;
+                white-space: normal !important;
+                overflow-x: auto !important;
+            }
+
+            /* 모바일 카드 뷰 컨테이너 */
+            .history-cards-container {
+                display: block;
+                margin-bottom: 20px;
+            }
+            .mobile-empty-state {
+                text-align: center;
+                padding: 48px 16px;
+                background: #ffffff;
+                border-radius: 12px;
+                border: 1px dashed #cbd5e1;
+                margin: 12px 0;
+            }
+            .mobile-tx-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                padding: 14px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+                transition: transform 0.12s ease, box-shadow 0.12s ease;
+            }
+            .mobile-tx-card:active {
+                transform: scale(0.995);
+            }
+            .mobile-tx-card.card-expanded {
+                border-color: #93c5fd;
+                box-shadow: 0 4px 16px rgba(37, 99, 235, 0.1);
+            }
+            .mobile-tx-card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #f1f5f9;
+                margin-bottom: 10px;
+            }
+            .mobile-tx-date {
+                font-size: 11.5px;
+                color: #64748b;
+                font-weight: 500;
+            }
+            .mobile-tx-id {
+                font-size: 11px;
+                font-family: monospace;
+                color: #94a3b8;
+                letter-spacing: -0.02em;
+            }
+            .mobile-tx-card-body {
+                cursor: pointer;
+            }
+            .mobile-tx-item-title {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 8px;
+            }
+            .mobile-tx-item-title .item-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: #0f172a;
+                line-height: 1.35;
+            }
+            .mobile-tx-meta-chips {
+                display: flex;
+                gap: 5px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .mobile-chip {
+                font-size: 11px;
+                padding: 2px 7px;
+                border-radius: 5px;
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+            }
+            .mobile-chip.spec-chip {
+                background: #f1f5f9;
+                color: #334155;
+                font-weight: 500;
+            }
+            .mobile-chip.cat-chip {
+                background: #e0f2fe;
+                color: #0369a1;
+                font-weight: 600;
+            }
+            .mobile-chip.unit-chip {
+                background: #f8fafc;
+                color: #64748b;
+                border: 1px solid #e2e8f0;
+            }
+            .mobile-tx-partner-wrap {
+                background: #f8fafc;
+                border-radius: 8px;
+                padding: 8px 12px;
+                margin-bottom: 10px;
+                font-size: 12.5px;
+            }
+            .mobile-partner-single .partner-label,
+            .mobile-partner-flow .partner-label {
+                color: #64748b;
+                font-size: 11.5px;
+                margin-right: 4px;
+            }
+            .mobile-partner-flow {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .flow-arrow {
+                color: #94a3b8;
+                font-size: 15px;
+            }
+            .mobile-tx-stats-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1.3fr;
+                gap: 8px;
+                background: #ffffff;
+                border: 1px solid #f1f5f9;
+                border-radius: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .mobile-stat-box {
+                display: flex;
+                flex-direction: column;
+            }
+            .mobile-stat-label {
+                font-size: 11px;
+                color: #64748b;
+                margin-bottom: 2px;
+            }
+            .mobile-stat-val {
+                font-size: 13.5px;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .mobile-stat-highlight .mobile-stat-val {
+                font-size: 14.5px;
+                color: #2563eb !important;
+            }
+            .mobile-tx-card-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding-top: 8px;
+                border-top: 1px dashed #e2e8f0;
+            }
+            .btn-mobile-acc {
+                background: transparent;
+                border: none;
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                padding: 5px 8px;
+                border-radius: 6px;
+            }
+            .btn-mobile-acc:hover, .btn-mobile-acc:active {
+                background: #f1f5f9;
+                color: #2563eb;
+            }
+            .mobile-act-btn {
+                font-size: 12px !important;
+                padding: 4px 10px !important;
+                border-radius: 6px !important;
+                font-weight: 600 !important;
+            }
+            .mobile-card-accordion-content {
+                margin-top: 10px;
+                border-top: 1px solid #e2e8f0;
+                animation: fadeIn 0.2s ease-in-out;
+            }
+            .mobile-sub-item-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+
+            /* 테이블 뷰 선택 시 모바일 레이아웃 */
+            .mobile-hidden-table {
+                display: none !important;
+            }
+            .erp-main-grid-wrapper {
+                flex: none !important;
+                height: 60vh !important;
+                min-height: 350px !important;
+                margin-bottom: 12px !important;
+                border-radius: 10px !important;
+            }
+
+            /* 모바일 필터 드로어 (바텀시트 스타일) */
+            .mobile-filter-drawer {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #ffffff;
+                z-index: 1060;
+                border-radius: 20px 20px 0 0;
+                max-height: 85vh;
+                display: flex;
+                flex-direction: column;
+                transform: translateY(100%);
+                transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .mobile-filter-drawer.open {
+                transform: translateY(0);
+            }
+            .mobile-filter-body {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .mobile-filter-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                backdrop-filter: blur(3px);
+                z-index: 1055;
+            }
+            .mobile-preset-chip {
+                border-radius: 20px !important;
+                font-size: 11.5px !important;
+                padding: 5px 12px !important;
+                font-weight: 600 !important;
+            }
+
+            /* 모바일 FAB (플로팅 버튼) */
+            .mobile-fab-container {
+                position: fixed;
+                bottom: 24px;
+                right: 18px;
+                z-index: 1040;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            .mobile-fab-main {
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+                color: #ffffff;
+                border: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 28px;
+                box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+                cursor: pointer;
+                transition: transform 0.2s ease, background 0.2s ease;
+            }
+            .mobile-fab-main:active {
+                transform: scale(0.92);
+            }
+            .mobile-fab-main.active {
+                transform: rotate(45deg);
+                background: #475569;
+            }
+            .mobile-fab-menu {
+                display: none;
+                flex-direction: column;
+                gap: 10px;
+                margin-bottom: 14px;
+                align-items: flex-end;
+                animation: fadeIn 0.15s ease-out;
+            }
+            .mobile-fab-menu.open {
+                display: flex;
+            }
+            .mobile-fab-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 18px;
+                border-radius: 30px;
+                border: none;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+                transition: transform 0.15s ease;
+            }
+            .mobile-fab-item:active {
+                transform: scale(0.95);
+            }
+            .mobile-fab-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.35);
+                z-index: 1035;
+            }
+
+            /* 모달 화면 최적화 */
+            .modal-dialog.erp-modal-xl,
+            #inboundModal .modal-dialog,
+            #outboundModal .modal-dialog,
+            #directModal .modal-dialog,
+            #bulkUpdateModal .modal-dialog,
+            #partnerSearchModal .modal-dialog {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                height: 100% !important;
+            }
+            .modal-content {
+                min-height: 100vh !important;
+                border-radius: 0 !important;
+            }
+            .erp-form-table,
+            .erp-form-table tbody,
+            .erp-form-table tr,
+            .erp-form-table th,
+            .erp-form-table td {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .erp-form-table colgroup {
+                display: none !important;
+            }
+            .erp-form-table th {
+                text-align: left !important;
+                padding: 4px 8px !important;
+                background-color: #f1f5f9 !important;
+                font-size: 11.5px !important;
+                border: none !important;
+                height: auto !important;
+            }
+            .erp-form-table td {
+                padding: 2px 8px 8px 8px !important;
+                border: none !important;
+                height: auto !important;
+            }
+            .erp-form-table .form-control,
+            .erp-form-table .form-select {
+                height: 38px !important;
+                font-size: 13.5px !important;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 6px !important;
+                background: #ffffff !important;
+                padding: 4px 10px !important;
+            }
+            .erp-form-table .input-group .form-control {
+                border-radius: 6px 0 0 6px !important;
+            }
+            .erp-form-table .input-group .btn {
+                height: 38px !important;
+                padding: 0 14px !important;
+                border: 1px solid #cbd5e1 !important;
+                border-left: none !important;
+                border-radius: 0 6px 6px 0 !important;
+                background: #f8fafc !important;
+            }
+            .erp-grid-wrapper {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 8px !important;
+                background: #ffffff !important;
+            }
+            .erp-sheet-table {
+                min-width: 680px !important;
+            }
+            .erp-summary-panel {
+                position: sticky !important;
+                bottom: 0 !important;
+                background: #ffffff !important;
+                border-top: 1px solid #cbd5e1 !important;
+                padding: 12px !important;
+                z-index: 15 !important;
+                box-shadow: 0 -4px 14px rgba(0,0,0,0.06) !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .erp-summary-panel .btn-submit-erp {
+                width: 100% !important;
+                height: 44px !important;
+                font-size: 15px !important;
+                font-weight: 700 !important;
+            }
+
+            /* 자동완성 드롭다운 화면 밖 이탈 방지 */
+            .autocomplete-suggestions,
+            .autocomplete-suggestions.item-suggestions,
+            .autocomplete-suggestions.spec-suggestions,
+            .autocomplete-suggestions.category-suggestions {
+                position: fixed !important;
+                left: 4vw !important;
+                right: 4vw !important;
+                width: 92vw !important;
+                max-width: 92vw !important;
+                min-width: 0 !important;
+                max-height: 250px !important;
+                z-index: 2050 !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+                border: 1.5px solid #2563eb !important;
+                border-radius: 8px !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-inout-header,
+            .mobile-filter-drawer,
+            .mobile-filter-backdrop,
+            .mobile-fab-container,
+            .mobile-fab-backdrop,
+            #historyCardsContainer {
+                display: none !important;
+            }
+            .erp-main-grid-wrapper {
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-light">
 
 <div class="erp-page-layout">
+    <!-- 모바일 전용 상단 헤더 (≤ 768px) -->
+    <div class="mobile-inout-header d-md-none">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <a href="../../index.html" class="btn btn-sm btn-light border px-2 py-1 text-dark" title="메인 포털로 이동">
+                    <i class='bx bx-left-arrow-alt fs-5'></i>
+                </a>
+                <div class="d-flex align-items-baseline gap-1">
+                    <h5 class="mb-0 fw-bold text-dark" style="font-size: 1.1rem;"><i class='bx bx-transfer text-primary'></i> 입출고내역</h5>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="mobileHeaderCountBadge">0건</span>
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-1">
+                <!-- 뷰 모드 전환 (카드 / 표) -->
+                <div class="btn-group btn-group-sm mobile-view-toggle shadow-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="btnViewCard" onclick="app.setViewMode('card')" title="모바일 카드 뷰">
+                        <i class='bx bx-grid-alt'></i> 카드
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnViewTable" onclick="app.setViewMode('table')" title="ERP 테이블 뷰">
+                        <i class='bx bx-table'></i> 표
+                    </button>
+                </div>
+
+                <!-- 필터 열기 토글 버튼 -->
+                <div class="position-relative">
+                    <button type="button" class="btn btn-sm btn-outline-primary px-2" id="btnToggleMobileFilter" onclick="app.toggleMobileFilter()" title="검색 및 필터">
+                        <i class='bx bx-filter-alt'></i>
+                    </button>
+                    <span class="mobile-filter-badge d-none" id="mobileFilterDot"></span>
+                </div>
+
+                <!-- 기타 액션 드롭다운 -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border px-2" type="button" data-bs-toggle="dropdown">
+                        <i class='bx bx-dots-vertical-rounded'></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openExcelMenuModal()"><i class='bx bx-table text-success me-2'></i> 엑셀 등록</a></li>
+                        <li><a class="dropdown-item py-2" href="../unit_prices/index.html"><i class='bx bx-won text-primary me-2'></i> 단가표 바로가기</a></li>
+                        <li><a class="dropdown-item py-2" href="../external_inout/index.html"><i class='bx bx-export text-info me-2'></i> 외부 입출내역</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openLocationsModal()"><i class='bx bx-cog text-secondary me-2'></i> 위치 설정</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 모바일 검색바 -->
+        <div class="mobile-search-strip mb-2">
+            <div class="input-group input-group-sm shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class='bx bx-search text-muted'></i></span>
+                <input type="text" class="form-control border-start-0 border-end-0" id="mobileSearchInput" placeholder="품목명, 거래처, 규격 통합검색..." autocomplete="off" onkeyup="if(event.key==='Enter')app.submitMobileSearch()">
+                <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="mobileClearSearchBtn" onclick="app.clearMobileSearch()"><i class='bx bx-x'></i></button>
+                <button class="btn btn-primary px-3" type="button" onclick="app.submitMobileSearch()">검색</button>
+            </div>
+        </div>
+
+        <!-- 모바일 구분 세그먼트 탭 (전체 / 입고 / 출고 / 직출고) -->
+        <div class="mobile-type-tabs">
+            <button type="button" class="mobile-type-tab active" data-type="all" onclick="app.setMobileTypeFilter('all')">전체</button>
+            <button type="button" class="mobile-type-tab" data-type="inbound" onclick="app.setMobileTypeFilter('inbound')">입고</button>
+            <button type="button" class="mobile-type-tab" data-type="outbound" onclick="app.setMobileTypeFilter('outbound')">출고</button>
+            <button type="button" class="mobile-type-tab" data-type="direct" onclick="app.setMobileTypeFilter('direct')">직출고</button>
+        </div>
+    </div>
+
     <!-- 1. 최상단 리본 툴바: 타이틀 + 뷰 필터 탭 + 전표 등록/도구 액션 (Row 1) -->
     <div class="erp-top-toolbar mb-1">
         <div class="toolbar-left d-flex align-items-center gap-2">
@@ -1376,6 +1976,13 @@
                 <tr><td colspan="16" class="text-center text-muted" style="height: 60px;">데이터를 불러오는 중입니다...</td></tr>
             </tbody>
         </table>
+    </div>
+
+    <!-- 4-1. 모바일 전용 반응형 카드 뷰 (Mobile Card View) -->
+    <div class="history-cards-container d-md-none" id="historyCardsContainer">
+        <div class="text-center py-5 text-muted">
+            <i class='bx bx-loader-alt bx-spin fs-3 d-block mb-2'></i>데이터를 불러오는 중입니다...
+        </div>
     </div>
 
     <!-- 5. 하단 상태바 및 페이지네이션 (.erp-bottom-bar) -->
@@ -2688,12 +3295,108 @@
         </div>
     </div>
 </div>
+<!-- 모바일 상세 필터 드로어 (바텀시트 스타일) -->
+<div class="mobile-filter-drawer shadow-lg" id="mobileFilterDrawer">
+    <div class="mobile-filter-header d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
+        <h6 class="mb-0 fw-bold text-dark"><i class='bx bx-slider-alt text-primary me-1'></i> 필터 및 검색 설정</h6>
+        <button type="button" class="btn-close" onclick="app.toggleMobileFilter(false)"></button>
+    </div>
+    <div class="mobile-filter-body p-3">
+        <!-- 1. 기간 프리셋 칩 -->
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold mb-2">조회 기간 프리셋</label>
+            <div class="d-flex gap-1 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary mobile-preset-chip" onclick="app.setDatePreset('prevMonth'); app.updateMobileDateInputs();">전월</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary mobile-preset-chip" onclick="app.setDatePreset('thisMonth'); app.updateMobileDateInputs();">당월</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary mobile-preset-chip" onclick="app.setDatePreset('prevYear'); app.updateMobileDateInputs();">전년도</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary mobile-preset-chip" onclick="app.setDatePreset('thisYear'); app.updateMobileDateInputs();">금년도</button>
+                <button type="button" class="btn btn-sm btn-primary mobile-preset-chip active" onclick="app.setDatePreset('all'); app.updateMobileDateInputs();">전체</button>
+            </div>
+        </div>
+
+        <!-- 2. 직접 날짜 범위 선택 -->
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold mb-1">상세 기간 선택</label>
+            <div class="d-flex align-items-center gap-2">
+                <input type="date" class="form-control form-control-sm" id="mobileStartDate" onchange="app.syncMobileDatesToDesktop()">
+                <span class="text-muted">~</span>
+                <input type="date" class="form-control form-control-sm" id="mobileEndDate" onchange="app.syncMobileDatesToDesktop()">
+            </div>
+        </div>
+
+        <!-- 3. 검색 타겟 구분 -->
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold mb-1">검색 항목 대상</label>
+            <select class="form-select form-select-sm" id="mobileSearchTarget" onchange="app.syncMobileTargetToDesktop()">
+                <option value="">전체 검색 (스마트 다중 검색)</option>
+                <option value="item">품목명</option>
+                <option value="spec">규격</option>
+                <option value="supplier">매입처</option>
+                <option value="destination">매출처</option>
+                <option value="category">분류</option>
+                <option value="note">비고</option>
+                <option value="tx_id">고유번호</option>
+            </select>
+        </div>
+
+        <!-- 4. 표시 건수 -->
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold mb-1">페이지당 표시 건수</label>
+            <select class="form-select form-select-sm" id="mobileLimitSelect" onchange="app.syncMobileLimitToDesktop()">
+                <option value="50">50개씩 보기</option>
+                <option value="100">100개씩 보기</option>
+                <option value="150">150개씩 보기</option>
+                <option value="999999">전체 목록 보기</option>
+            </select>
+        </div>
+
+        <!-- 5. 일괄 관리 액션 -->
+        <div class="mb-3 pt-2 border-top">
+            <label class="form-label text-muted small fw-bold mb-2">선택 항목 일괄 작업</label>
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.deleteSelectedHistory(); app.toggleMobileFilter(false);">
+                    <i class='bx bx-trash'></i> 선택 항목 일괄 삭제
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.openBulkUpdateModal(); app.toggleMobileFilter(false);">
+                    <i class='bx bx-edit'></i> 선택 항목 일괄 수정
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="app.printSelectedHistory(); app.toggleMobileFilter(false);">
+                    <i class='bx bx-printer'></i> 거래명세서 출력
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="mobile-filter-footer p-3 border-top bg-white d-flex gap-2">
+        <button type="button" class="btn btn-light border flex-grow-1" onclick="app.resetSearch(); app.updateMobileFilterFromDesktop(); app.toggleMobileFilter(false);">초기화</button>
+        <button type="button" class="btn btn-primary flex-grow-1" onclick="app.resetPageAndLoadHistory(); app.toggleMobileFilter(false);">필터 적용</button>
+    </div>
+</div>
+<div class="mobile-filter-backdrop d-none" id="mobileFilterBackdrop" onclick="app.toggleMobileFilter(false)"></div>
+
+<!-- 모바일 전용 플로팅 등록 액션 버튼 (FAB) -->
+<div class="mobile-fab-container d-md-none" id="mobileFabContainer">
+    <div class="mobile-fab-menu shadow-lg" id="mobileFabMenu">
+        <button type="button" class="mobile-fab-item bg-success text-white" onclick="app.openDrawer('inbound_create'); app.toggleMobileFab(false);">
+            <i class='bx bx-download'></i> <span>입고 전표 등록</span>
+        </button>
+        <button type="button" class="mobile-fab-item bg-danger text-white" onclick="app.openDrawer('outbound_create'); app.toggleMobileFab(false);">
+            <i class='bx bx-upload'></i> <span>출고 전표 등록</span>
+        </button>
+        <button type="button" class="mobile-fab-item bg-warning text-dark" onclick="app.openDrawer('direct_create'); app.toggleMobileFab(false);">
+            <i class='bx bx-transfer'></i> <span>직출고 전표 등록</span>
+        </button>
+    </div>
+    <button type="button" class="mobile-fab-main shadow-lg" id="mobileFabMainBtn" onclick="app.toggleMobileFab()" aria-label="새 전표 등록">
+        <i class='bx bx-plus' id="mobileFabIcon"></i>
+    </button>
+</div>
+<div class="mobile-fab-backdrop d-none" id="mobileFabBackdrop" onclick="app.toggleMobileFab(false)"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Firebase & Auth -->
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>

@@ -251,7 +251,7 @@
     <script>
     (function() {
         const modules = [
-            { category: "영업관리", title: "입출고내역", id: "logistics_inout", path: "./01_Logistics/inout/index.html?v=10", icon: "bx-transfer", tag: "primary", priority: "1순위" },
+            { category: "영업관리", title: "입출고내역", id: "logistics_inout", path: "./01_Logistics/inout/index.html?v=11", icon: "bx-transfer", tag: "primary", priority: "1순위" },
             { category: "영업관리", title: "실시간 재고", id: "logistics_inventory", path: "./01_Logistics/inventory/index.html", icon: "bx-box", tag: "primary", priority: "2순위" },
             { category: "영업관리", title: "단가표", id: "logistics_unit_prices", path: "./01_Logistics/unit_prices/index.html", icon: "bx-won", tag: "primary", priority: "3순위" },
             { category: "본사매입현황", title: "실시간 재고", id: "hq_inventory", path: "hq-inventory.html?v=20260930_1", icon: "bx-building-house", tag: "purple", priority: "4순위" },
@@ -266,7 +266,8 @@
             try { statuses = JSON.parse(localStorage.getItem('kng_mobile_roadmap_statuses') || '{}'); } catch(e) {}
 
             grid.innerHTML = modules.map(m => {
-                const st = statuses[m.id] || "대기중";
+                const defaultSt = (m.id === 'work_logs' || m.id === 'logistics_inout') ? "완료" : "대기중";
+                const st = statuses[m.id] || defaultSt;
                 const isDone = st === "완료";
                 const isWip = st === "진행중";
                 const badgeColor = isDone ? "#16a34a" : (isWip ? "#d97706" : "#64748b");
