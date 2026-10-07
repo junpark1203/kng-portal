@@ -516,3 +516,413 @@ body {
         height: 20px !important;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   8. MOBILE SPECIALIZED UI/UX OPTIMIZATIONS (≤ 768px)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    body {
+        padding: 8px 10px 80px 10px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        background-color: #f8fafc !important;
+    }
+
+    /* 모바일 헤더 */
+    .mobile-inventory-header {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .mobile-head-btn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 16px;
+        padding: 0;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+    }
+    .mobile-head-btn:active {
+        background: #f1f5f9;
+        transform: scale(0.95);
+    }
+    .mobile-head-btn.btn-outline-primary {
+        border-color: #93c5fd;
+        color: #2563eb;
+        background: #f0f7ff;
+    }
+    .mobile-header-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        letter-spacing: -0.02em;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .mobile-icon-toggle {
+        width: 30px;
+        height: 32px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px !important;
+    }
+    .mobile-view-toggle .btn.active {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+    }
+    .mobile-filter-badge {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 8px;
+        height: 8px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+    }
+
+    /* 모바일 검색창 */
+    .mobile-search-strip .form-control {
+        height: 38px !important;
+        font-size: 13.5px !important;
+        border-color: #cbd5e1 !important;
+    }
+    .mobile-search-strip .btn {
+        height: 38px !important;
+        font-size: 13px !important;
+        font-weight: 600;
+    }
+
+    /* 모바일 카테고리 칩 스와이프 바 */
+    .mobile-cat-scroll-wrapper {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
+    .mobile-cat-scroll-wrapper::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 4px;
+        width: 24px;
+        background: linear-gradient(to right, rgba(248, 250, 252, 0), rgba(241, 245, 249, 0.95));
+        pointer-events: none;
+        border-radius: 0 8px 8px 0;
+    }
+    .category-pills-scroll-track {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px !important;
+        padding: 2px 28px 6px 4px !important;
+        width: 100% !important;
+        scrollbar-width: thin;
+        cursor: grab;
+        user-select: none;
+    }
+    .category-pills-scroll-track.is-dragging {
+        cursor: grabbing !important;
+        scroll-behavior: auto !important;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar {
+        height: 3px;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .category-pills-scroll-track .btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 4px 12px !important;
+        font-size: 12px !important;
+        height: 28px !important;
+        line-height: 18px !important;
+        border-radius: 14px !important;
+        user-select: none;
+    }
+    .category-pills-scroll-track .btn.btn-primary {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+    }
+
+    /* 초슬림 1라인 KPI 요약 바 */
+    .mobile-inv-kpi-bar {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11.5px;
+        color: #334155;
+    }
+    .mobile-inv-kpi-bar .kpi-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .mobile-inv-kpi-bar .kpi-item strong {
+        font-size: 12.5px;
+        color: #0f172a;
+    }
+
+    /* 모바일 재고 카드 컨테이너 */
+    .inventory-cards-container {
+        display: block;
+        padding-bottom: 40px;
+    }
+    .mobile-empty-state {
+        text-align: center;
+        padding: 48px 16px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+        margin: 12px 0;
+    }
+
+    /* 모바일 재고 카드 */
+    .mobile-inv-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .mobile-inv-card:active {
+        transform: scale(0.995);
+    }
+    .mobile-inv-card.card-expanded {
+        border-color: #93c5fd;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.1);
+    }
+
+    .mobile-inv-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 8px;
+    }
+    .mobile-inv-loc-chip {
+        font-size: 11px;
+        color: #64748b;
+        background: #f1f5f9;
+        padding: 2px 7px;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .mobile-inv-qty-badge {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 3px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        padding: 3px 9px;
+        border-radius: 8px;
+    }
+    .mobile-inv-qty-badge.qty-zero {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+    .mobile-inv-qty-badge .qty-num {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .mobile-inv-qty-badge .qty-unit {
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .mobile-inv-card-body {
+        cursor: pointer;
+        margin-bottom: 8px;
+    }
+    .mobile-inv-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.35;
+        margin-bottom: 6px;
+    }
+    .mobile-inv-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    .mobile-chip {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .mobile-chip.spec-chip {
+        background: #f8fafc;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+    }
+    .mobile-chip.lot-chip {
+        background: #f1f5f9;
+        color: #2563eb;
+        font-weight: 600;
+    }
+    .mobile-chip.date-chip {
+        background: #f8fafc;
+        color: #64748b;
+    }
+
+    .mobile-inv-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .btn-inv-acc {
+        background: transparent;
+        border: none;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 4px 6px;
+        border-radius: 6px;
+    }
+    .btn-inv-acc:hover, .btn-inv-acc:active {
+        background: #f1f5f9;
+        color: #2563eb;
+    }
+    .btn-inv-inout-link {
+        font-size: 11.5px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: #2563eb;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+    }
+    .btn-inv-inout-link:hover, .btn-inv-inout-link:active {
+        background: #2563eb;
+        color: #ffffff;
+    }
+
+    /* Lot 아코디언 콘텐츠 */
+    .mobile-lot-accordion-content {
+        margin-top: 10px;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 8px;
+        animation: fadeIn 0.18s ease;
+    }
+    .mobile-lot-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11.5px;
+        color: #475569;
+        margin-bottom: 6px;
+    }
+    .mobile-lot-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .mobile-lot-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    /* 뷰 모드 전환 (테이블 모드 시 스타일) */
+    .mobile-hidden-table {
+        display: none !important;
+    }
+    .mobile-hidden-cards {
+        display: none !important;
+    }
+    .erp-grid-wrapper {
+        min-height: 380px !important;
+        height: 65vh !important;
+        border-radius: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* 모바일 필터 바텀시트 드로어 */
+    .mobile-filter-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(2px);
+        z-index: 1055;
+    }
+    .mobile-filter-drawer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        z-index: 1060;
+        border-radius: 20px 20px 0 0;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+    }
+    .mobile-filter-drawer.open {
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}

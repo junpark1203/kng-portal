@@ -1,11 +1,12 @@
 /**
  * 실시간 재고 현황 프론트엔드 모듈 (Inventory ECOUNT ERP Engine)
  * - ECOUNT ERP 고밀도 디자인 시스템 및 10개 최적 컬럼 지원
+ * - 모바일 특화 반응형 카드 뷰 (Mobile Card List ↔ ERP Table View 듀얼 모드)
+ * - 가로 스와이프 카테고리 칩 바 (터치 제스처 + 마우스 드래그 & 휠 스크롤)
+ * - 실시간 Lot별 상세 입고 내역 아코디언 서브테이블 & 모바일 미니카드
  * - 스마트 다중 교집합(AND) 검색 및 결과 내 2차 재검색
- * - 자재 분류 퀵 필터 탭 (전체/안전자재/토목자재/보양재/소모품/일반자재)
- * - Lot별 상세 아코디언 서브테이블
+ * - 모바일 하단 슬라이드업 필터 바텀시트 (Bottom Sheet)
  * - 실시간 엑셀 다운로드 (SheetJS) 및 A4 인쇄 서식 지원
- * - ERP 그리드 열 너비 마우스 드래그 조절 & 자동맞춤
  */
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -71,19 +72,60 @@ const $ = id => document.getElementById(id);
 const app = {
     inventoryData: [],
     currentFilteredData: [],
+    allCategories: [],
     activeCategory: '',
     searchTarget: '',
     searchKeyword: '',
     subSearchKeyword: '',
+    stockFilter: 'all', // 'all' | 'in_stock' | 'out_of_stock'
+    currentViewMode: 'card',
     expandedIndices: new Set(),
     searchDebounceTimer: null,
 
     init: async function() {
+        this.initViewMode();
         this.bindEvents();
         await this.loadInventory();
     },
 
+    initViewMode: function() {
+        const isMobile = window.innerWidth <= 768;
+        const savedMode = localStorage.getItem('kng_inventory_view_mode');
+        this.currentViewMode = savedMode || (isMobile ? 'card' : 'table');
+        this.applyViewMode();
+    },
+
+    setViewMode: function(mode) {
+        this.currentViewMode = mode;
+        localStorage.setItem('kng_inventory_view_mode', mode);
+        this.applyViewMode();
+    },
+
+    applyViewMode: function() {
+        const isMobile = window.innerWidth <= 768;
+        const savedMode = localStorage.getItem('kng_inventory_view_mode');
+        const mode = this.currentViewMode || savedMode || (isMobile ? 'card' : 'table');
+
+        const cardsContainer = $('inventoryCardsContainer');
+        const tableWrapper = $('inventoryGridWrapper');
+        const btnCard = $('btnViewCard');
+        const btnTable = $('btnViewTable');
+
+        if (mode === 'card') {
+            if (cardsContainer) cardsContainer.classList.remove('mobile-hidden-cards');
+            if (tableWrapper) tableWrapper.classList.add('mobile-hidden-table');
+            if (btnCard) btnCard.classList.add('active');
+            if (btnTable) btnTable.classList.remove('active');
+        } else {
+            if (cardsContainer) cardsContainer.classList.add('mobile-hidden-cards');
+            if (tableWrapper) tableWrapper.classList.remove('mobile-hidden-table');
+            if (btnCard) btnCard.classList.remove('active');
+            if (btnTable) btnTable.classList.add('active');
+        }
+    },
+
     bindEvents: function() {
+        // 데스크톱 검색창 실시간 검색 바인딩
         const historySearch = $('historySearch');
         if (historySearch) {
             historySearch.addEventListener('input', (e) => {
@@ -93,14 +135,71 @@ const app = {
                     if (val.length > 0) clearBtn.classList.remove('d-none');
                     else clearBtn.classList.add('d-none');
                 }
-                // 실시간 반응형 검색 (디바운스 150ms)
                 clearTimeout(this.searchDebounceTimer);
                 this.searchDebounceTimer = setTimeout(() => {
                     this.searchKeyword = val.trim();
+                    if ($('mobileSearchInput')) $('mobileSearchInput').value = this.searchKeyword;
                     this.applyFilterAndRender();
                 }, 150);
             });
         }
+
+        // 창 크기 변경 시 뷰 모드 자동 적용
+        window.addEventListener('resize', () => {
+            this.applyViewMode();
+        });
+    },
+
+    enableDragToScroll: function(el) {
+        if (!el || el._dragScrollEnabled) return;
+        el._dragScrollEnabled = true;
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+        let isDragging = false;
+
+        el.addEventListener('mousedown', (e) => {
+            isDown = true;
+            isDragging = false;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDown) {
+                isDown = false;
+                setTimeout(() => {
+                    isDragging = false;
+                    el.classList.remove('is-dragging');
+                }, 50);
+            }
+        });
+
+        el.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            const x = e.pageX - el.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(walk) > 4) {
+                isDragging = true;
+                el.classList.add('is-dragging');
+                e.preventDefault();
+                el.scrollLeft = scrollLeft - walk;
+            }
+        });
+
+        el.addEventListener('click', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        el.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+                e.preventDefault();
+                el.scrollLeft += (e.deltaY * 0.8);
+            }
+        }, { passive: false });
     },
 
     loadInventory: async function() {
@@ -145,26 +244,90 @@ const app = {
                 };
             });
 
+            // 전체 카테고리 목록 추출 (가나다순 정렬)
+            const rawCats = [...new Set(this.inventoryData.map(r => r.category).filter(Boolean))];
+            this.allCategories = rawCats.sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
+
+            // 모바일 필터 드로어 카테고리 셀렉트 옵션 채우기
+            const drawerCatSelect = $('mobileFilterCategory');
+            if (drawerCatSelect) {
+                drawerCatSelect.innerHTML = `<option value="">전체 분류</option>` + 
+                    this.allCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+
+            this.renderCategoryChips();
             this.applyFilterAndRender();
         } catch (e) {
             console.error(e);
             $('inventoryTbody').innerHTML = `<tr><td colspan="10" class="text-center text-danger py-4">데이터를 불러오는 중 오류가 발생했습니다.<br>${e.message}</td></tr>`;
+            if ($('inventoryCardsContainer')) {
+                $('inventoryCardsContainer').innerHTML = `<div class="p-4 text-center text-danger">재고 데이터를 불러오는 중 오류가 발생했습니다.<br>${e.message}</div>`;
+            }
+        }
+    },
+
+    renderCategoryChips: function() {
+        // 1. 데스크톱 자재분류 탭 그룹 갱신
+        const desktopGroup = $('categoryTabGroup');
+        if (desktopGroup) {
+            desktopGroup.innerHTML = `
+                <button type="button" class="erp-tab-btn ${!this.activeCategory ? 'active' : ''}" data-category="" onclick="app.setCategoryFilter('')">전체</button>
+                ${this.allCategories.map(c => `
+                    <button type="button" class="erp-tab-btn ${this.activeCategory === c ? 'active' : ''}" data-category="${c}" onclick="app.setCategoryFilter('${c}')">${c}</button>
+                `).join('')}
+            `;
+        }
+
+        // 2. 모바일 가로 스와이프 칩 트랙 갱신
+        const mobileTrack = $('mobileCategoryScrollTrack');
+        if (mobileTrack) {
+            mobileTrack.innerHTML = `
+                <button type="button" class="btn btn-sm ${!this.activeCategory ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3 flex-shrink-0" onclick="app.setCategoryFilter('')">
+                    전체보기
+                </button>
+                ${this.allCategories.map(c => `
+                    <button type="button" class="btn btn-sm ${this.activeCategory === c ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3 flex-shrink-0" onclick="app.setCategoryFilter('${c}')">
+                        ${c}
+                    </button>
+                `).join('')}
+            `;
+            this.enableDragToScroll(mobileTrack);
+            const activeBtn = mobileTrack.querySelector('.btn-primary');
+            if (activeBtn) {
+                setTimeout(() => {
+                    activeBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                }, 60);
+            }
         }
     },
 
     setCategoryFilter: function(category) {
         this.activeCategory = category || '';
         
-        // 탭 UI 활성화 클래스 갱신
+        // 탭 UI 활성화 클래스 동기화
         const tabBtns = document.querySelectorAll('#categoryTabGroup .erp-tab-btn');
         tabBtns.forEach(btn => {
             const cat = btn.getAttribute('data-category') || '';
-            if (cat === this.activeCategory) {
-                btn.classList.add('active');
+            if (cat === this.activeCategory) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+
+        // 모바일 칩 바 UI 동기화
+        const mobileBtns = document.querySelectorAll('#mobileCategoryScrollTrack .btn');
+        mobileBtns.forEach(btn => {
+            const text = btn.innerText.trim();
+            const isMatch = (!this.activeCategory && text === '전체보기') || (text === this.activeCategory);
+            if (isMatch) {
+                btn.className = 'btn btn-sm btn-primary text-white shadow-sm fw-bold rounded-pill px-3 flex-shrink-0';
+                btn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
             } else {
-                btn.classList.remove('active');
+                btn.className = 'btn btn-sm btn-outline-secondary rounded-pill px-3 flex-shrink-0';
             }
         });
+
+        if ($('mobileFilterCategory')) {
+            $('mobileFilterCategory').value = this.activeCategory;
+        }
 
         this.applyFilterAndRender();
     },
@@ -186,6 +349,7 @@ const app = {
     clearSearchInput: function() {
         const input = $('historySearch');
         if (input) input.value = '';
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
         const clearBtn = $('clearSearchBtn');
         if (clearBtn) clearBtn.classList.add('d-none');
         this.searchKeyword = '';
@@ -214,6 +378,7 @@ const app = {
     search: function() {
         const input = $('historySearch');
         this.searchKeyword = input ? input.value.trim() : '';
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = this.searchKeyword;
         this.applyFilterAndRender();
     },
 
@@ -222,24 +387,104 @@ const app = {
         this.searchTarget = '';
         this.searchKeyword = '';
         this.subSearchKeyword = '';
+        this.stockFilter = 'all';
 
         if ($('searchTarget')) $('searchTarget').value = '';
         if ($('historySearch')) $('historySearch').value = '';
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
         if ($('subSearchInput')) $('subSearchInput').value = '';
         
         const clearBtn = $('clearSearchBtn');
         if (clearBtn) clearBtn.classList.add('d-none');
         const clearSubBtn = $('clearSubSearchBtn');
         if (clearSubBtn) clearSubBtn.classList.add('d-none');
+        const mobileClearBtn = $('mobileClearSearchBtn');
+        if (mobileClearBtn) mobileClearBtn.classList.add('d-none');
 
-        // 자재분류 탭 초기화
-        const tabBtns = document.querySelectorAll('#categoryTabGroup .erp-tab-btn');
-        tabBtns.forEach(btn => {
-            if ((btn.getAttribute('data-category') || '') === '') btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-
+        this.renderCategoryChips();
         this.applyFilterAndRender();
+    },
+
+    submitMobileSearch: function() {
+        const input = $('mobileSearchInput');
+        const val = input ? input.value.trim() : '';
+        this.searchKeyword = val;
+        if ($('historySearch')) $('historySearch').value = val;
+        
+        const clearBtn = $('mobileClearSearchBtn');
+        if (clearBtn) {
+            if (val.length > 0) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        this.applyFilterAndRender();
+    },
+
+    clearMobileSearch: function() {
+        const input = $('mobileSearchInput');
+        if (input) input.value = '';
+        if ($('historySearch')) $('historySearch').value = '';
+        const clearBtn = $('mobileClearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.searchKeyword = '';
+        this.applyFilterAndRender();
+    },
+
+    toggleMobileFilter: function() {
+        const drawer = $('mobileFilterDrawer');
+        const backdrop = $('mobileFilterBackdrop');
+        if (!drawer) return;
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+            drawer.classList.remove('open');
+            if (backdrop) backdrop.classList.add('d-none');
+        } else {
+            drawer.classList.add('open');
+            if (backdrop) backdrop.classList.remove('d-none');
+        }
+    },
+
+    applyMobileDrawerFilter: function() {
+        const catSelect = $('mobileFilterCategory');
+        const stockSelect = $('mobileFilterStock');
+        const targetSelect = $('mobileFilterTarget');
+
+        if (catSelect) this.activeCategory = catSelect.value;
+        if (stockSelect) this.stockFilter = stockSelect.value;
+        if (targetSelect) this.searchTarget = targetSelect.value;
+
+        // 필터 활성화 도트 표시
+        const hasCustom = !!this.activeCategory || (this.stockFilter !== 'all') || !!this.searchTarget;
+        const dot = $('mobileFilterDot');
+        if (dot) {
+            if (hasCustom) dot.classList.remove('d-none');
+            else dot.classList.add('d-none');
+        }
+
+        this.renderCategoryChips();
+        this.applyFilterAndRender();
+        this.toggleMobileFilter();
+    },
+
+    resetMobileDrawerFilter: function() {
+        this.activeCategory = '';
+        this.stockFilter = 'all';
+        this.searchTarget = '';
+        this.searchKeyword = '';
+
+        if ($('mobileFilterCategory')) $('mobileFilterCategory').value = '';
+        if ($('mobileFilterStock')) $('mobileFilterStock').value = 'all';
+        if ($('mobileFilterTarget')) $('mobileFilterTarget').value = '';
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('historySearch')) $('historySearch').value = '';
+
+        const dot = $('mobileFilterDot');
+        if (dot) dot.classList.add('d-none');
+        const clearBtn = $('mobileClearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+
+        this.renderCategoryChips();
+        this.applyFilterAndRender();
+        this.toggleMobileFilter();
     },
 
     applyFilterAndRender: function() {
@@ -250,7 +495,14 @@ const app = {
             result = result.filter(r => (r.category || '').includes(this.activeCategory));
         }
 
-        // 2. 스마트 다중 검색 (공백 구분 AND 교집합 검색)
+        // 2. 재고 보유 상태 필터
+        if (this.stockFilter === 'in_stock') {
+            result = result.filter(r => Number(r.total_qty || 0) > 0);
+        } else if (this.stockFilter === 'out_of_stock') {
+            result = result.filter(r => Number(r.total_qty || 0) <= 0);
+        }
+
+        // 3. 스마트 다중 검색 (공백 구분 AND 교집합 검색)
         if (this.searchKeyword) {
             const tokens = this.searchKeyword.toLowerCase().split(/\s+/).filter(Boolean);
             result = result.filter(row => {
@@ -282,7 +534,7 @@ const app = {
             });
         }
 
-        // 3. 결과 내 재검색 (2차 보조 필터)
+        // 4. 결과 내 재검색 (2차 보조 필터)
         if (this.subSearchKeyword) {
             const subToken = this.subSearchKeyword.toLowerCase();
             result = result.filter(row => {
@@ -296,6 +548,8 @@ const app = {
 
         this.currentFilteredData = result;
         this.renderTable(result);
+        this.renderMobileCards(result);
+        this.updateSummary(result);
     },
 
     getCategoryPillHtml: function(cat) {
@@ -305,27 +559,79 @@ const app = {
         else if (cat.includes('토목')) cls = 'cat-civil';
         else if (cat.includes('보양')) cls = 'cat-protect';
         else if (cat.includes('소모')) cls = 'cat-consum';
+        else if (cat.includes('유압') || cat.includes('기어') || cat.includes('오일')) cls = 'cat-safety';
         return `<span class="category-pill ${cls}">${cat}</span>`;
     },
 
+    updateSummary: function(data) {
+        const totalSku = data ? data.length : 0;
+        const totalQty = data ? data.reduce((acc, cur) => acc + (Number(cur.total_qty) || 0), 0) : 0;
+
+        // 데스크톱 상단 뱃지 갱신
+        if ($('skuCountBadge')) $('skuCountBadge').innerText = `관리 ${totalSku.toLocaleString()} SKU`;
+        if ($('totalQtyBadge')) $('totalQtyBadge').innerText = `총 재고: ${totalQty.toLocaleString()}개`;
+
+        // 모바일 헤더 뱃지 및 KPI 바 갱신
+        if ($('mobileHeaderSkuBadge')) $('mobileHeaderSkuBadge').innerText = `${totalSku.toLocaleString()} SKU`;
+        if ($('mobileKpiSku')) $('mobileKpiSku').innerText = totalSku.toLocaleString();
+        if ($('mobileKpiQty')) $('mobileKpiQty').innerText = totalQty.toLocaleString();
+        if ($('mobileKpiFilteredText')) {
+            let desc = this.activeCategory || '전체 품목';
+            if (this.searchKeyword) desc += ` · "${this.searchKeyword}"`;
+            $('mobileKpiFilteredText').innerText = desc;
+        }
+
+        // 데스크톱 그리드 하단 합계 요약
+        if ($('inventoryTfoot')) {
+            if (totalSku > 0) {
+                $('inventoryTfoot').classList.remove('d-none');
+                if ($('footSkuSummary')) $('footSkuSummary').innerText = `총 ${totalSku.toLocaleString()}개 품목`;
+                if ($('footQtySummary')) $('footQtySummary').innerText = totalQty.toLocaleString();
+            } else {
+                $('inventoryTfoot').classList.add('d-none');
+            }
+        }
+    },
+
     toggleLotRow: function(index) {
+        const isExpanded = this.expandedIndices.has(index);
+
+        if (isExpanded) {
+            this.expandedIndices.delete(index);
+        } else {
+            this.expandedIndices.add(index);
+        }
+
+        // 1. 데스크톱 테이블 행 상태 동기화
         const subRow = document.getElementById(`lotSubRow_${index}`);
         const icon = document.getElementById(`accIcon_${index}`);
         const mainRow = document.getElementById(`mainRow_${index}`);
+        if (subRow) {
+            if (isExpanded) {
+                subRow.classList.add('d-none');
+                if (icon) icon.classList.remove('rotate-90');
+                if (mainRow) mainRow.classList.remove('row-expanded');
+            } else {
+                subRow.classList.remove('d-none');
+                if (icon) icon.classList.add('rotate-90');
+                if (mainRow) mainRow.classList.add('row-expanded');
+            }
+        }
 
-        if (!subRow) return;
-
-        const isHidden = subRow.classList.contains('d-none');
-        if (isHidden) {
-            subRow.classList.remove('d-none');
-            if (icon) icon.classList.add('rotate-90');
-            if (mainRow) mainRow.classList.add('row-expanded');
-            this.expandedIndices.add(index);
-        } else {
-            subRow.classList.add('d-none');
-            if (icon) icon.classList.remove('rotate-90');
-            if (mainRow) mainRow.classList.remove('row-expanded');
-            this.expandedIndices.delete(index);
+        // 2. 모바일 카드 아코디언 상태 동기화
+        const cardAcc = document.getElementById(`mobileLotAccordion_${index}`);
+        const cardIcon = document.getElementById(`mobile_acc_icon_${index}`);
+        const cardBox = document.getElementById(`inv_card_${index}`);
+        if (cardAcc) {
+            if (isExpanded) {
+                cardAcc.classList.add('d-none');
+                if (cardIcon) cardIcon.classList.remove('rotate-180');
+                if (cardBox) cardBox.classList.remove('card-expanded');
+            } else {
+                cardAcc.classList.remove('d-none');
+                if (cardIcon) cardIcon.classList.add('rotate-180');
+                if (cardBox) cardBox.classList.add('card-expanded');
+            }
         }
     },
 
@@ -335,23 +641,7 @@ const app = {
 
         if (!data || data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">일치하는 재고 내역이 없습니다.</td></tr>`;
-            if ($('skuCountBadge')) $('skuCountBadge').innerText = `관리 0 SKU`;
-            if ($('totalQtyBadge')) $('totalQtyBadge').innerText = `총 재고: 0개`;
-            if ($('inventoryTfoot')) $('inventoryTfoot').classList.add('d-none');
             return;
-        }
-
-        // 통계 집계
-        const totalSku = data.length;
-        const totalQty = data.reduce((acc, cur) => acc + (Number(cur.total_qty) || 0), 0);
-
-        if ($('skuCountBadge')) $('skuCountBadge').innerText = `관리 ${totalSku.toLocaleString()} SKU`;
-        if ($('totalQtyBadge')) $('totalQtyBadge').innerText = `총 재고: ${totalQty.toLocaleString()}개`;
-
-        if ($('inventoryTfoot')) {
-            $('inventoryTfoot').classList.remove('d-none');
-            if ($('footSkuSummary')) $('footSkuSummary').innerText = `총 ${totalSku.toLocaleString()}개 품목`;
-            if ($('footQtySummary')) $('footQtySummary').innerText = totalQty.toLocaleString();
         }
 
         const escapeAttr = (str) => {
@@ -362,7 +652,6 @@ const app = {
         tbody.innerHTML = data.map((row, index) => {
             const isExpanded = this.expandedIndices.has(index);
 
-            // Lot 상세 행 구성
             let lotRows = '';
             if (row.lots && row.lots.length > 0) {
                 lotRows = row.lots.map(lot => `
@@ -424,10 +713,108 @@ const app = {
             `;
         }).join('');
 
-        // ERP 그리드 리사이저 초기화/동기화
         if (window.ErpGridResizer) {
             window.ErpGridResizer.init('inventoryTable', { storageKey: 'kng_inventory_grid_widths_v2' });
         }
+    },
+
+    renderMobileCards: function(data) {
+        const container = $('inventoryCardsContainer');
+        if (!container) return;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div class="mobile-empty-state">
+                    <i class='bx bx-box fs-1 text-muted mb-2'></i>
+                    <div class="fw-bold text-dark fs-6">조회된 재고 품목이 없습니다</div>
+                    <div class="text-muted small mt-1">상단 카테고리 칩이나 검색 조건을 변경해 보세요.</div>
+                </div>
+            `;
+            return;
+        }
+
+        const escapeAttr = (str) => {
+            if (!str) return '';
+            return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+
+        container.innerHTML = data.map((row, index) => {
+            const isExpanded = this.expandedIndices.has(index);
+            const totalQty = Number(row.total_qty || 0);
+            const isZero = totalQty <= 0;
+
+            let lotHtml = '';
+            if (row.lots && row.lots.length > 0) {
+                lotHtml = row.lots.map(lot => `
+                    <div class="mobile-lot-item">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="lot-date"><i class='bx bx-calendar me-1'></i>${lot.date || '-'}</span>
+                            <span class="lot-qty ${Number(lot.qty_remaining || 0) > 0 ? 'text-primary' : 'text-muted'} fw-bold">
+                                잔여 ${Number(lot.qty_remaining || 0).toLocaleString()} ${row.unit || ''}
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between text-muted small">
+                            <span><i class='bx bx-store-alt me-1'></i>${escapeAttr(lot.supplier || '-')}</span>
+                            <span>단가: <strong>${Number(lot.unit_price || 0).toLocaleString()}원</strong></span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between text-muted small mt-1">
+                            <span><i class='bx bx-map-pin me-1'></i>${escapeAttr(lot.location_name || '-')}</span>
+                            ${lot.note ? `<span class="text-truncate ms-2" style="max-width: 140px;">비고: ${escapeAttr(lot.note)}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                lotHtml = `<div class="p-3 text-center text-muted small">등록된 Lot 상세 입고 내역이 없습니다.</div>`;
+            }
+
+            return `
+                <div class="mobile-inv-card ${isExpanded ? 'card-expanded' : ''}" id="inv_card_${index}">
+                    <div class="mobile-inv-card-header">
+                        <div class="d-flex align-items-center gap-1 min-w-0" style="overflow: hidden;">
+                            ${this.getCategoryPillHtml(row.category)}
+                            <span class="mobile-inv-loc-chip text-truncate" title="${escapeAttr(row.location_summary)}">
+                                <i class='bx bx-map-pin'></i> ${row.location_summary}
+                            </span>
+                        </div>
+                        <div class="mobile-inv-qty-badge ${isZero ? 'qty-zero' : ''}">
+                            <span class="qty-num">${totalQty.toLocaleString()}</span>
+                            <span class="qty-unit">${row.unit || '개'}</span>
+                        </div>
+                    </div>
+
+                    <div class="mobile-inv-card-body" onclick="app.toggleLotRow(${index})">
+                        <div class="mobile-inv-title text-truncate" title="${escapeAttr(row.item)}">
+                            ${row.item}
+                        </div>
+                        <div class="mobile-inv-meta-row">
+                            ${row.spec && row.spec !== '-' ? `<span class="mobile-chip spec-chip"><i class='bx bx-ruler'></i> ${row.spec}</span>` : ''}
+                            <span class="mobile-chip lot-chip"><i class='bx bx-layer'></i> Lot ${row.lot_count}건</span>
+                            <span class="mobile-chip date-chip"><i class='bx bx-time-five'></i> 입고: ${row.latest_date}</span>
+                        </div>
+                    </div>
+
+                    <div class="mobile-inv-card-footer">
+                        <button type="button" class="btn-inv-acc" onclick="app.toggleLotRow(${index})" id="mobile_acc_btn_${index}">
+                            <i class='bx bx-chevron-down ${isExpanded ? 'rotate-180' : ''}' id="mobile_acc_icon_${index}"></i>
+                            <span>Lot 상세 (${row.lot_count}건)</span>
+                        </button>
+                        <a href="../inout/index.html?search=${encodeURIComponent(row.item)}" class="btn-inv-inout-link" title="입출고 전표 관리 바로가기">
+                            <i class='bx bx-transfer'></i> 입출고 내역
+                        </a>
+                    </div>
+
+                    <div class="mobile-lot-accordion-content ${isExpanded ? '' : 'd-none'}" id="mobileLotAccordion_${index}">
+                        <div class="mobile-lot-header">
+                            <span class="fw-bold"><i class='bx bx-history text-primary'></i> 입고일자별 잔여 Lot 목록</span>
+                            <span class="text-muted small">총 ${row.lot_count}건</span>
+                        </div>
+                        <div class="mobile-lot-list">
+                            ${lotHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     },
 
     exportExcel: function() {

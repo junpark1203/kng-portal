@@ -78,6 +78,14 @@ const app = {
         this.loadCategories();
         this.loadItemSpecsMap();
         this.loadUnitPricesMap();
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        if (searchParam) {
+            if ($('historySearch')) $('historySearch').value = searchParam;
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = searchParam;
+            if ($('clearSearchBtn')) $('clearSearchBtn').classList.remove('d-none');
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.remove('d-none');
+        }
         this.loadHistory();
         this.initKeyboardNav();
         this.bindGlobalModalShortcuts();
