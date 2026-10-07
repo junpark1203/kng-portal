@@ -69,6 +69,7 @@
     let filteredList = [];
     const selectedIds = new Set();
     let focusedRowIndex = -1;
+    let viewMode = window.innerWidth <= 768 ? 'card' : 'table'; // 'card' or 'table'
 
     let sort = { col: 'name', asc: true };
     let searchTarget = 'all';
@@ -118,9 +119,13 @@
             buildSupplierTabs();
             renderTable();
             initGridResizer();
+            applyViewMode();
         } catch (e) {
             showToast('상품 목록 로딩 실패: ' + e.message, 'error');
             $('tableBody').innerHTML = `<tr><td colspan="14" class="text-center py-5 text-danger"><i class='bx bx-error-circle'></i> 데이터를 불러오지 못했습니다 (${escHtml(e.message)})</td></tr>`;
+            if ($('mobileCardsContainer')) {
+                $('mobileCardsContainer').innerHTML = `<div class="text-center py-5 text-danger"><i class='bx bx-error-circle fs-2 mb-2'></i><div>데이터를 불러오지 못했습니다.</div></div>`;
+            }
         }
     }
 
@@ -129,13 +134,15 @@
             const res = await authFetch(API_BASE + '/metrics');
             if (!res.ok) return;
             metrics = await res.json();
-            $('kpiRevenueBadge').textContent = '누적 매출: ' + fmtWon(metrics.totalRevenue || 0);
-            $('kpiCostBadge').textContent = '누적 매입: ' + fmtWon(metrics.totalCost || 0);
+            if ($('kpiRevenueBadge')) $('kpiRevenueBadge').textContent = '누적 매출: ' + fmtWon(metrics.totalRevenue || 0);
+            if ($('kpiCostBadge')) $('kpiCostBadge').textContent = '누적 매입: ' + fmtWon(metrics.totalCost || 0);
+            if ($('mobileKpiRevenue')) $('mobileKpiRevenue').textContent = fmtWon(metrics.totalRevenue || 0);
+            if ($('mobileKpiCost')) $('mobileKpiCost').textContent = fmtWon(metrics.totalCost || 0);
         } catch (e) { /* silent */ }
     }
 
     // ==========================================
-    // 공급사 탭 생성 (동적 카운트)
+    // 공급사 탭 생성 (동적 카운트 & 모바일 트랙/드로어 연동)
     // ==========================================
     function buildSupplierTabs() {
         const suppliersMap = {};
@@ -145,25 +152,54 @@
         });
 
         const tabGroup = $('supplierTabGroup');
-        if (!tabGroup) return;
-
-        let html = `
-            <button type="button" class="erp-tab-btn ${supplierFilter === '' ? 'active' : ''}" data-supplier="" onclick="app.setSupplierFilter('')">
-                전체 <span class="erp-tab-badge" id="tabCountAll">${products.length}</span>
-            </button>
-        `;
-
         const sortedSuppliers = Object.keys(suppliersMap).sort();
-        sortedSuppliers.forEach(s => {
-            const isActive = supplierFilter === s ? 'active' : '';
-            html += `
-                <button type="button" class="erp-tab-btn ${isActive}" data-supplier="${escHtml(s)}" onclick="app.setSupplierFilter('${escHtml(s)}')">
-                    ${escHtml(s)} <span class="erp-tab-badge">${suppliersMap[s]}</span>
+
+        // 1) 데스크톱 탭
+        if (tabGroup) {
+            let html = `
+                <button type="button" class="erp-tab-btn ${supplierFilter === '' ? 'active' : ''}" data-supplier="" onclick="app.setSupplierFilter('')">
+                    전체 <span class="erp-tab-badge" id="tabCountAll">${products.length}</span>
                 </button>
             `;
-        });
+            sortedSuppliers.forEach(s => {
+                const isActive = supplierFilter === s ? 'active' : '';
+                html += `
+                    <button type="button" class="erp-tab-btn ${isActive}" data-supplier="${escHtml(s)}" onclick="app.setSupplierFilter('${escHtml(s)}')">
+                        ${escHtml(s)} <span class="erp-tab-badge">${suppliersMap[s]}</span>
+                    </button>
+                `;
+            });
+            tabGroup.innerHTML = html;
+        }
 
-        tabGroup.innerHTML = html;
+        // 2) 모바일 가로 스와이프 트랙 (#mobileSupplierScrollTrack)
+        const mobTrack = $('mobileSupplierScrollTrack');
+        if (mobTrack) {
+            let mobHtml = `
+                <button type="button" class="mobile-supplier-chip ${supplierFilter === '' ? 'active' : ''}" onclick="app.setSupplierFilter('')">
+                    전체 <span class="chip-count">${products.length}</span>
+                </button>
+            `;
+            sortedSuppliers.forEach(s => {
+                const isActive = supplierFilter === s ? 'active' : '';
+                mobHtml += `
+                    <button type="button" class="mobile-supplier-chip ${isActive}" onclick="app.setSupplierFilter('${escHtml(s)}')">
+                        ${escHtml(s)} <span class="chip-count">${suppliersMap[s]}</span>
+                    </button>
+                `;
+            });
+            mobTrack.innerHTML = mobHtml;
+        }
+
+        // 3) 모바일 필터 드로어 공급사 드롭다운 (#mobileDrawerSupplier)
+        const drawerSelect = $('mobileDrawerSupplier');
+        if (drawerSelect) {
+            let optHtml = `<option value="">전체 공급사 (${products.length})</option>`;
+            sortedSuppliers.forEach(s => {
+                optHtml += `<option value="${escHtml(s)}" ${supplierFilter === s ? 'selected' : ''}>${escHtml(s)} (${suppliersMap[s]})</option>`;
+            });
+            drawerSelect.innerHTML = optHtml;
+        }
     }
 
     // ==========================================
@@ -263,26 +299,46 @@
         const totalStockVal = list.reduce((s, p) => s + ((Number(p.buyPrice) || 0) * (Number(p.stock) || 0)), 0);
         const totalSellVal = list.reduce((s, p) => s + ((Number(p.sellPrice) || 0) * (Number(p.stock) || 0)), 0);
 
-        $('skuCountBadge').textContent = `관리 ${fmtNum(totalItemsCount)} SKU`;
-        $('totalQtyBadge').textContent = `총 재고: ${fmtNum(totalStockQty)}개`;
-        $('totalStockValueBadge').textContent = `재고원가: ${fmtWon(totalStockVal)}`;
+        // 데스크톱 KPI
+        if ($('skuCountBadge')) $('skuCountBadge').textContent = `관리 ${fmtNum(totalItemsCount)} SKU`;
+        if ($('totalQtyBadge')) $('totalQtyBadge').textContent = `총 재고: ${fmtNum(totalStockQty)}개`;
+        if ($('totalStockValueBadge')) $('totalStockValueBadge').textContent = `재고원가: ${fmtWon(totalStockVal)}`;
+
+        // 모바일 헤더 및 초슬림 KPI 바 동기화
+        if ($('mobileSkuBadge')) $('mobileSkuBadge').textContent = `${fmtNum(totalItemsCount)} SKU`;
+        if ($('mobileKpiQty')) $('mobileKpiQty').textContent = fmtNum(totalStockQty);
+        if ($('mobileKpiStockVal')) $('mobileKpiStockVal').textContent = fmtWon(totalStockVal);
+        if ($('mobileKpiRevenue')) $('mobileKpiRevenue').textContent = fmtWon(metrics.totalRevenue || 0);
+        if ($('mobileKpiCost')) $('mobileKpiCost').textContent = fmtWon(metrics.totalCost || 0);
 
         // 정렬 헤더 UI 갱신
         document.querySelectorAll('#inventoryTable thead th.sortable').forEach(th => {
             const col = th.dataset.sort;
             const icon = th.querySelector('.sort-icon');
-            if (sort.col === col) {
-                th.classList.add('sorted');
-                icon.className = `bx bx-sort-${sort.asc ? 'up' : 'down'} sort-icon text-primary`;
-            } else {
-                th.classList.remove('sorted');
-                icon.className = 'bx bx-sort sort-icon';
+            if (icon) {
+                if (sort.col === col) {
+                    th.classList.add('sorted');
+                    icon.className = `bx bx-sort-${sort.asc ? 'up' : 'down'} sort-icon text-primary`;
+                } else {
+                    th.classList.remove('sorted');
+                    icon.className = 'bx bx-sort sort-icon';
+                }
             }
         });
 
         // 데이터가 없는 경우
         if (list.length === 0) {
             tbody.innerHTML = `<tr><td colspan="14" class="text-center py-5 text-muted"><i class='bx bx-search-alt'></i> 조건에 일치하는 상품 데이터가 없습니다.</td></tr>`;
+            const mobContainer = $('mobileCardsContainer');
+            if (mobContainer) {
+                mobContainer.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class='bx bx-search-alt fs-1 text-secondary mb-2'></i>
+                        <div class="fw-bold">조건에 일치하는 상품이 없습니다.</div>
+                        <small class="text-muted">검색어 또는 필터 조건을 변경해 보세요.</small>
+                    </div>
+                `;
+            }
             tfoot.classList.add('d-none');
             renderPagination(0);
             updateSelectedUI();
@@ -321,7 +377,8 @@
             let marginRate = 0;
             let marginBadge = '';
             if (sellPrice > 0) {
-                marginRate = Math.round(((sellPrice - buyPrice) / sellPrice) * 100);
+                const activeSell = discPrice > 0 ? discPrice : sellPrice;
+                marginRate = Math.round(((activeSell - buyPrice) / activeSell) * 100);
                 let badgeClass = 'mid';
                 if (marginRate >= 40) badgeClass = 'high';
                 else if (marginRate < 10 && marginRate >= 0) badgeClass = 'low';
@@ -383,9 +440,134 @@
         $('footTotalStock').textContent = fmtNum(totalStockQty);
         $('footTotalStockValue').textContent = fmtWon(totalStockVal);
 
+        // 모바일 카드 뷰 렌더링
+        renderMobileCards(pagedList);
+
         renderPagination(list.length);
         updateSelectedUI();
         initGridResizer();
+    }
+
+    // ==========================================
+    // 모바일 전용 카드 뷰 렌더링
+    // ==========================================
+    function renderMobileCards(pagedList) {
+        const container = $('mobileCardsContainer');
+        if (!container) return;
+
+        if (!pagedList || pagedList.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted">
+                    <i class='bx bx-search-alt fs-1 text-secondary mb-2'></i>
+                    <div class="fw-bold">조건에 일치하는 상품이 없습니다.</div>
+                    <small class="text-muted">검색어 또는 필터 조건을 변경해 보세요.</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        pagedList.forEach(p => {
+            const isChecked = selectedIds.has(p.id);
+            const buyPrice = Number(p.buyPrice) || 0;
+            const sellPrice = Number(p.sellPrice) || 0;
+            const discPrice = Number(p.discountPrice) || 0;
+            const stock = Number(p.stock) || 0;
+            const stockVal = buyPrice * stock;
+
+            // 마진율 계산
+            let marginRate = 0;
+            let marginBadgeHtml = '<span class="text-muted small">-</span>';
+            if (sellPrice > 0) {
+                const activeSell = discPrice > 0 ? discPrice : sellPrice;
+                marginRate = Math.round(((activeSell - buyPrice) / activeSell) * 100);
+                let badgeClass = 'mid';
+                if (marginRate >= 40) badgeClass = 'high';
+                else if (marginRate < 10 && marginRate >= 0) badgeClass = 'low';
+                else if (marginRate < 0) badgeClass = 'neg';
+                marginBadgeHtml = `<span class="mobile-margin-badge badge-${badgeClass}">${marginRate}%</span>`;
+            }
+
+            // 재고 상태 뱃지
+            let stockBadge = '';
+            if (stock === 0) {
+                stockBadge = '<span class="stock-pill stock-zero">0 품절</span>';
+            } else if (stock <= 2) {
+                stockBadge = `<span class="stock-pill stock-low">${stock}개</span>`;
+            } else {
+                stockBadge = `<span class="stock-pill stock-ok">${stock}개</span>`;
+            }
+
+            // 판매가 노출 방식 (할인가 있을 시 취소선 + 레드 강조)
+            let priceHtml = '';
+            if (discPrice > 0) {
+                priceHtml = `
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        <span class="text-decoration-line-through text-muted" style="font-size: 11px;">${fmtWon(sellPrice)}</span>
+                        <span class="text-danger fw-bold">${fmtWon(discPrice)}</span>
+                    </div>
+                `;
+            } else {
+                priceHtml = sellPrice > 0 ? fmtWon(sellPrice) : '-';
+            }
+
+            html += `
+                <div class="mobile-hq-card ${isChecked ? 'checked-card' : ''}" data-id="${escHtml(p.id)}">
+                    <div class="mob-card-head">
+                        <div class="mob-card-head-left">
+                            <input type="checkbox" class="form-check-input mt-0 row-check-mob" value="${escHtml(p.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(p.id)}', this.checked)">
+                            <span class="mob-badge-supplier">${escHtml(p.supplier || '최가유통')}</span>
+                            <span class="mob-badge-brand">${escHtml(p.brand || '-')}</span>
+                        </div>
+                        <div class="mob-card-head-right">
+                            ${stockBadge}
+                        </div>
+                    </div>
+
+                    <div class="mob-card-title">${escHtml(p.name)}</div>
+
+                    <div class="mob-card-meta">
+                        ${p.color ? `<span class="mob-meta-tag"><i class='bx bx-palette me-1 text-primary'></i>${escHtml(p.color)}</span>` : ''}
+                        ${p.size ? `<span class="mob-meta-tag"><i class='bx bx-ruler me-1 text-secondary'></i>${escHtml(p.size)}</span>` : ''}
+                    </div>
+
+                    <div class="mob-card-grid">
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">매입 단가</span>
+                            <span class="mob-grid-val text-dark">${buyPrice > 0 ? fmtWon(buyPrice) : '-'}</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">${discPrice > 0 ? '할인 판매가' : '일반 판매가'}</span>
+                            <span class="mob-grid-val">${priceHtml}</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">마진율</span>
+                            <span class="mob-grid-val">${marginBadgeHtml}</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">재고 평가액</span>
+                            <span class="mob-grid-val text-success">${stockVal > 0 ? fmtWon(stockVal) : '-'}</span>
+                        </div>
+                    </div>
+
+                    <div class="mob-card-actions">
+                        <button type="button" class="mob-action-btn btn-quote" onclick="app.addItemToQuoteCart('${escHtml(p.id)}')">
+                            <i class='bx bx-cart-alt'></i> 견적담기
+                        </button>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="mob-action-btn btn-edit" onclick="app.openEditModal('${escHtml(p.id)}')">
+                                <i class='bx bx-edit-alt'></i> 수정
+                            </button>
+                            <button type="button" class="mob-action-btn btn-delete" onclick="app.deleteSingleProduct('${escHtml(p.id)}')">
+                                <i class='bx bx-trash'></i> 삭제
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
     }
 
     // ==========================================
@@ -396,8 +578,8 @@
         const paginationContainer = $('pagination');
 
         if (pageSize === 'all' || totalCount === 0) {
-            bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 전체 표시`;
-            paginationContainer.innerHTML = '';
+            if (bottomPageInfo) bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 전체 표시`;
+            if (paginationContainer) paginationContainer.innerHTML = '';
             return;
         }
 
@@ -406,7 +588,7 @@
         const startItem = (page - 1) * ps + 1;
         const endItem = Math.min(page * ps, totalCount);
 
-        bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 중 ${fmtNum(startItem)}~${fmtNum(endItem)}`;
+        if (bottomPageInfo) bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 중 ${fmtNum(startItem)}~${fmtNum(endItem)}`;
 
         let html = '';
         html += `<button type="button" class="erp-page-btn" ${page <= 1 ? 'disabled' : ''} onclick="app.goPage(${page - 1})">‹</button>`;
@@ -429,7 +611,7 @@
         }
 
         html += `<button type="button" class="erp-page-btn" ${page >= totalPages ? 'disabled' : ''} onclick="app.goPage(${page + 1})">›</button>`;
-        paginationContainer.innerHTML = html;
+        if (paginationContainer) paginationContainer.innerHTML = html;
     }
 
     // ==========================================
@@ -437,21 +619,96 @@
     // ==========================================
     function updateSelectedUI() {
         const count = selectedIds.size;
-        $('selectedCount').textContent = count;
-        $('bottomSelectedCount').textContent = count;
+        if ($('selectedCount')) $('selectedCount').textContent = count;
+        if ($('bottomSelectedCount')) $('bottomSelectedCount').textContent = count;
+
+        // 모바일 플로팅 일괄 선택 바 업데이트
+        const mobFloatingBar = $('mobileFloatingSelectionBar');
+        const mobSelCount = $('mobileSelectionCount');
+        const mobSelectAllCheck = $('mobSelectAllCheck');
+        if (mobFloatingBar) {
+            mobFloatingBar.classList.toggle('d-none', count === 0);
+        }
+        if (mobSelCount) {
+            mobSelCount.textContent = count;
+        }
+
+        // 모바일 카드 체크박스 및 배경 동기화
+        document.querySelectorAll('.mobile-hq-card').forEach(card => {
+            const id = card.dataset.id;
+            const checked = selectedIds.has(id);
+            card.classList.toggle('checked-card', checked);
+            const chk = card.querySelector('.row-check-mob');
+            if (chk) chk.checked = checked;
+        });
+
+        // 데스크톱 테이블 행 체크박스 및 배경 동기화
+        document.querySelectorAll('#tableBody tr').forEach(tr => {
+            const chk = tr.querySelector('.row-check');
+            if (chk) {
+                const checked = selectedIds.has(chk.value);
+                chk.checked = checked;
+                tr.classList.toggle('checked-row', checked);
+            }
+        });
 
         const selectAll = $('selectAll');
-        if (selectAll) {
-            const pageChecks = document.querySelectorAll('.row-check');
-            if (pageChecks.length > 0) {
-                const allChecked = Array.from(pageChecks).every(c => c.checked);
-                const someChecked = Array.from(pageChecks).some(c => c.checked);
-                selectAll.checked = allChecked;
-                selectAll.indeterminate = someChecked && !allChecked;
-            } else {
-                selectAll.checked = false;
-                selectAll.indeterminate = false;
+        const pageChecks = document.querySelectorAll('.row-check');
+        if (selectAll && pageChecks.length > 0) {
+            const allChecked = Array.from(pageChecks).every(c => c.checked);
+            const someChecked = Array.from(pageChecks).some(c => c.checked);
+            selectAll.checked = allChecked;
+            selectAll.indeterminate = someChecked && !allChecked;
+            if (mobSelectAllCheck) {
+                mobSelectAllCheck.checked = allChecked;
+                mobSelectAllCheck.indeterminate = someChecked && !allChecked;
             }
+        } else if (selectAll) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            if (mobSelectAllCheck) {
+                mobSelectAllCheck.checked = false;
+                mobSelectAllCheck.indeterminate = false;
+            }
+        }
+    }
+
+    // ==========================================
+    // 뷰 모드 전환 (카드 뷰 <-> ECOUNT 그리드)
+    // ==========================================
+    function toggleViewMode() {
+        viewMode = viewMode === 'card' ? 'table' : 'card';
+        applyViewMode();
+    }
+
+    function applyViewMode() {
+        const gridWrap = $('inventoryGridWrapper');
+        const cardWrap = $('mobileCardsContainer');
+        const toggleBtn = $('mobileViewToggleBtn');
+        const bottomBar = document.querySelector('.erp-bottom-bar');
+
+        if (window.innerWidth <= 768) {
+            if (viewMode === 'card') {
+                if (gridWrap) gridWrap.classList.add('mobile-hidden-table');
+                if (cardWrap) cardWrap.classList.remove('d-none');
+                if (bottomBar) bottomBar.classList.add('d-none');
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = "<i class='bx bx-table'></i>";
+                    toggleBtn.title = "테이블 그리드로 보기";
+                }
+            } else {
+                if (gridWrap) gridWrap.classList.remove('mobile-hidden-table');
+                if (cardWrap) cardWrap.classList.add('d-none');
+                if (bottomBar) bottomBar.classList.remove('d-none');
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = "<i class='bx bx-grid-alt'></i>";
+                    toggleBtn.title = "카드 뷰로 보기";
+                }
+            }
+        } else {
+            if (gridWrap) gridWrap.classList.remove('mobile-hidden-table');
+            if (cardWrap) cardWrap.classList.add('d-none');
+            if (bottomBar) bottomBar.classList.remove('d-none');
         }
     }
 
@@ -461,6 +718,8 @@
     function openNewModal() {
         $('editId').value = '';
         $('modalModeTitle').textContent = '본사 신규 상품 등록';
+
+        // PC 폼 필드 초기화
         $('mSupplier').value = '최가유통';
         $('mBrand').value = '';
         $('mName').value = '';
@@ -471,13 +730,30 @@
         $('mDiscountPrice').value = '0';
         $('mStock').value = '0';
 
+        // 모바일 폼 필드 동기화
+        if ($('mobSupplier')) $('mobSupplier').value = '최가유통';
+        if ($('mobBrand')) $('mobBrand').value = '';
+        if ($('mobName')) $('mobName').value = '';
+        if ($('mobColor')) $('mobColor').value = '';
+        if ($('mobSize')) $('mobSize').value = '';
+        if ($('mobBuyPrice')) $('mobBuyPrice').value = '0';
+        if ($('mobSellPrice')) $('mobSellPrice').value = '0';
+        if ($('mobDiscountPrice')) $('mobDiscountPrice').value = '0';
+        if ($('mobStock')) $('mobStock').value = '0';
+
         calcModalMargin();
         productModal.show();
-        setTimeout(() => $('mBrand').focus(), 300);
+        setTimeout(() => {
+            if (window.innerWidth <= 768) {
+                if ($('mobBrand')) $('mobBrand').focus();
+            } else {
+                $('mBrand').focus();
+            }
+        }, 300);
     }
 
     function openEditModal(id) {
-        const p = products.find(item => item.id === id);
+        const p = products.find(item => String(item.id) === String(id));
         if (!p) {
             showToast('상품 정보를 찾을 수 없습니다.', 'warning');
             return;
@@ -485,6 +761,8 @@
 
         $('editId').value = p.id;
         $('modalModeTitle').textContent = `상품 정보 수정 (${p.name})`;
+
+        // PC 폼 필드 채우기
         $('mSupplier').value = p.supplier || '최가유통';
         $('mBrand').value = p.brand || '';
         $('mName').value = p.name || '';
@@ -495,27 +773,98 @@
         $('mDiscountPrice').value = fmtNum(p.discountPrice || 0);
         $('mStock').value = p.stock ?? 0;
 
+        // 모바일 폼 필드 채우기
+        if ($('mobSupplier')) $('mobSupplier').value = p.supplier || '최가유통';
+        if ($('mobBrand')) $('mobBrand').value = p.brand || '';
+        if ($('mobName')) $('mobName').value = p.name || '';
+        if ($('mobColor')) $('mobColor').value = p.color || '';
+        if ($('mobSize')) $('mobSize').value = p.size || '';
+        if ($('mobBuyPrice')) $('mobBuyPrice').value = fmtNum(p.buyPrice || 0);
+        if ($('mobSellPrice')) $('mobSellPrice').value = fmtNum(p.sellPrice || 0);
+        if ($('mobDiscountPrice')) $('mobDiscountPrice').value = fmtNum(p.discountPrice || 0);
+        if ($('mobStock')) $('mobStock').value = p.stock ?? 0;
+
         calcModalMargin();
         productModal.show();
-        setTimeout(() => $('mStock').focus(), 300);
+        setTimeout(() => {
+            if (window.innerWidth <= 768) {
+                if ($('mobStock')) $('mobStock').focus();
+            } else {
+                $('mStock').focus();
+            }
+        }, 300);
+    }
+
+    function syncModalInputs(field) {
+        if (field === 'supplier') {
+            if ($('mobSupplier')) $('mSupplier').value = $('mobSupplier').value;
+        } else if (field === 'brand') {
+            if ($('mobBrand')) $('mBrand').value = $('mobBrand').value;
+        } else if (field === 'name') {
+            if ($('mobName')) $('mName').value = $('mobName').value;
+        } else if (field === 'color') {
+            if ($('mobColor')) $('mColor').value = $('mobColor').value;
+        } else if (field === 'size') {
+            if ($('mobSize')) $('mSize').value = $('mobSize').value;
+        } else if (field === 'stock') {
+            if ($('mobStock')) $('mStock').value = $('mobStock').value;
+        } else if (field === 'buyPrice') {
+            if ($('mobBuyPrice')) $('mBuyPrice').value = $('mobBuyPrice').value;
+        } else if (field === 'sellPrice') {
+            if ($('mobSellPrice')) $('mSellPrice').value = $('mobSellPrice').value;
+        } else if (field === 'discountPrice') {
+            if ($('mobDiscountPrice')) $('mDiscountPrice').value = $('mobDiscountPrice').value;
+        }
     }
 
     function calcModalMargin() {
-        const buy = parseNumber($('mBuyPrice').value);
-        const sell = parseNumber($('mSellPrice').value);
-        const stock = parseNumber($('mStock').value);
+        const buy = parseNumber($('mBuyPrice').value || ($('mobBuyPrice') && $('mobBuyPrice').value));
+        const sell = parseNumber($('mSellPrice').value || ($('mobSellPrice') && $('mobSellPrice').value));
+        const stock = parseNumber($('mStock').value || ($('mobStock') && $('mobStock').value));
+        const disc = parseNumber($('mDiscountPrice').value || ($('mobDiscountPrice') && $('mobDiscountPrice').value));
 
+        // PC 요약 패널
         const marginEl = $('modalExpectedMargin');
-        if (sell > 0) {
-            const marginRate = Math.round(((sell - buy) / sell) * 100);
-            marginEl.textContent = `${marginRate}% (마진 ₩${fmtNum(sell - buy)})`;
-            marginEl.className = marginRate >= 30 ? 'text-success fs-6' : (marginRate < 10 ? 'text-danger fs-6' : 'text-primary fs-6');
-        } else {
-            marginEl.textContent = '-';
-            marginEl.className = 'text-muted fs-6';
+        if (marginEl) {
+            if (sell > 0) {
+                const marginRate = Math.round(((sell - buy) / sell) * 100);
+                marginEl.textContent = `${marginRate}% (마진 ₩${fmtNum(sell - buy)})`;
+                marginEl.className = marginRate >= 30 ? 'text-success fs-6' : (marginRate < 10 ? 'text-danger fs-6' : 'text-primary fs-6');
+            } else {
+                marginEl.textContent = '-';
+                marginEl.className = 'text-muted fs-6';
+            }
+        }
+        if ($('modalExpectedStockValue')) {
+            $('modalExpectedStockValue').textContent = fmtWon(buy * stock);
         }
 
-        $('modalExpectedStockValue').textContent = fmtWon(buy * stock);
+        // 모바일 실시간 프리뷰 카드
+        const mobBadge = $('mobModalMarginBadge');
+        if (mobBadge) {
+            if (sell > 0) {
+                const activeSell = disc > 0 ? disc : sell;
+                const marginRate = Math.round(((activeSell - buy) / activeSell) * 100);
+                let badgeClass = 'badge-mid';
+                if (marginRate >= 40) badgeClass = 'badge-high';
+                else if (marginRate < 10 && marginRate >= 0) badgeClass = 'badge-low';
+                else if (marginRate < 0) badgeClass = 'badge-neg';
+
+                mobBadge.textContent = `${marginRate}%`;
+                mobBadge.className = `mobile-margin-badge ${badgeClass}`;
+            } else {
+                mobBadge.textContent = '미등록';
+                mobBadge.className = 'mobile-margin-badge badge-mid';
+            }
+        }
+        if ($('mobModalBuyPreview')) $('mobModalBuyPreview').textContent = fmtWon(buy);
+        if ($('mobModalSellPreview')) $('mobModalSellPreview').textContent = sell > 0 ? fmtWon(sell) : '₩0';
+        if ($('mobModalProfitPreview')) {
+            const profit = sell > 0 ? (sell - buy) : 0;
+            $('mobModalProfitPreview').textContent = (profit >= 0 ? '+' : '') + fmtWon(profit);
+            $('mobModalProfitPreview').className = profit < 0 ? 'mob-preview-val text-danger' : 'mob-preview-val text-success';
+        }
+        if ($('mobModalStockValPreview')) $('mobModalStockValPreview').textContent = fmtWon(buy * stock);
     }
 
     function parseNumber(val) {
@@ -538,24 +887,26 @@
         if (e) e.preventDefault();
 
         const id = $('editId').value.trim();
-        const supplier = $('mSupplier').value.trim() || '최가유통';
-        const brand = $('mBrand').value.trim();
-        const name = $('mName').value.trim();
-        const color = $('mColor').value.trim();
-        const size = $('mSize').value.trim();
-        const buyPrice = parseNumber($('mBuyPrice').value);
-        const sellPrice = parseNumber($('mSellPrice').value);
-        const discountPrice = parseNumber($('mDiscountPrice').value);
-        const stock = parseNumber($('mStock').value);
+        const supplier = ($('mSupplier').value || ($('mobSupplier') && $('mobSupplier').value) || '최가유통').trim();
+        const brand = ($('mBrand').value || ($('mobBrand') && $('mobBrand').value) || '').trim();
+        const name = ($('mName').value || ($('mobName') && $('mobName').value) || '').trim();
+        const color = ($('mColor').value || ($('mobColor') && $('mobColor').value) || '').trim();
+        const size = ($('mSize').value || ($('mobSize') && $('mobSize').value) || '').trim();
+        const buyPrice = parseNumber($('mBuyPrice').value || ($('mobBuyPrice') && $('mobBuyPrice').value));
+        const sellPrice = parseNumber($('mSellPrice').value || ($('mobSellPrice') && $('mobSellPrice').value));
+        const discountPrice = parseNumber($('mDiscountPrice').value || ($('mobDiscountPrice') && $('mobDiscountPrice').value));
+        const stock = parseNumber($('mStock').value || ($('mobStock') && $('mobStock').value));
 
         if (!brand) {
             showToast('브랜드를 입력해 주세요.', 'warning');
-            $('mBrand').focus();
+            if (window.innerWidth <= 768 && $('mobBrand')) $('mobBrand').focus();
+            else $('mBrand').focus();
             return;
         }
         if (!name) {
             showToast('상품명을 입력해 주세요.', 'warning');
-            $('mName').focus();
+            if (window.innerWidth <= 768 && $('mobName')) $('mobName').focus();
+            else $('mName').focus();
             return;
         }
 
@@ -611,8 +962,74 @@
             showToast(`${count}개 상품이 삭제되었습니다.`, 'success');
             selectedIds.clear();
             await fetchProducts();
+            await fetchMetrics();
         } catch (err) {
             showToast('삭제 중 오류: ' + err.message, 'error');
+        }
+    }
+
+    async function deleteSingleProduct(id) {
+        const p = products.find(item => String(item.id) === String(id));
+        const name = p ? p.name : '해당 상품';
+        if (!confirm(`[${name}] 상품을 영구 삭제하시겠습니까?\n(입출고 내역 데이터에는 영향이 없습니다)`)) return;
+
+        try {
+            const res = await authFetch(API_BASE + '/products/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [id] })
+            });
+
+            if (!res.ok) throw new Error('삭제 처리 실패');
+
+            showToast(`[${name}] 상품이 삭제되었습니다.`, 'success');
+            selectedIds.delete(id);
+            await fetchProducts();
+            await fetchMetrics();
+        } catch (err) {
+            showToast('삭제 중 오류: ' + err.message, 'error');
+        }
+    }
+
+    function addItemToQuoteCart(id) {
+        const p = products.find(item => String(item.id) === String(id));
+        if (!p) {
+            showToast('상품 정보를 찾을 수 없습니다.', 'warning');
+            return;
+        }
+
+        let cart = [];
+        try {
+            cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
+            if (!Array.isArray(cart)) cart = [];
+        } catch (e) {
+            cart = [];
+        }
+
+        const existing = cart.find(c => c.source_module === 'hq-inventory' && String(c.source_id) === String(p.id));
+        if (existing) {
+            existing.qty = (Number(existing.qty) || 1) + 1;
+        } else {
+            cart.push({
+                source_module: 'hq-inventory',
+                source_id: p.id,
+                product_name: p.name || '',
+                spec: [p.color, p.size].filter(Boolean).join(' / ') || p.spec || '',
+                color: p.color || '',
+                unit: p.unit || 'EA',
+                qty: 1,
+                cost_price: Number(p.buyPrice || 0),
+                unit_price: Number(p.discountPrice || p.sellPrice || p.buyPrice || 0),
+                image_url: p.image_url || '',
+                remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
+            });
+        }
+
+        localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
+        showToast(`[${p.name}] 견적서 장바구니에 담겼습니다.`, 'success');
+
+        if (confirm(`[${p.name}] 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
+            location.href = './05_Management/forms/quotation.html';
         }
     }
 
@@ -636,7 +1053,8 @@
             const sell = Number(p.sellPrice) || 0;
             const disc = Number(p.discountPrice) || 0;
             const stock = Number(p.stock) || 0;
-            const margin = sell > 0 ? Math.round(((sell - buy) / sell) * 100) : 0;
+            const activeSell = disc > 0 ? disc : sell;
+            const margin = activeSell > 0 ? Math.round(((activeSell - buy) / activeSell) * 100) : 0;
             const stockVal = buy * stock;
 
             return {
@@ -712,6 +1130,109 @@
     }
 
     // ==========================================
+    // 모바일 필터 드로어 제어
+    // ==========================================
+    function toggleMobileFilter() {
+        const drawer = $('mobileFilterDrawer');
+        const backdrop = $('mobileFilterBackdrop');
+        if (!drawer || !backdrop) return;
+
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+            drawer.classList.remove('open');
+            backdrop.classList.add('d-none');
+        } else {
+            // 필터 드로어 열릴 때 현재 필터값 동기화
+            if ($('mobileDrawerSupplier')) $('mobileDrawerSupplier').value = supplierFilter;
+            if ($('mobileDrawerStock')) $('mobileDrawerStock').value = stockFilter;
+            if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = searchTarget;
+            if ($('mobileDrawerSort')) $('mobileDrawerSort').value = `${sort.col}_${sort.asc ? 'asc' : 'desc'}`;
+
+            drawer.classList.add('open');
+            backdrop.classList.remove('d-none');
+        }
+    }
+
+    function applyMobileDrawerFilter() {
+        if ($('mobileDrawerSupplier')) {
+            supplierFilter = $('mobileDrawerSupplier').value;
+        }
+        if ($('mobileDrawerStock')) {
+            stockFilter = $('mobileDrawerStock').value;
+        }
+        if ($('mobileDrawerTarget')) {
+            searchTarget = $('mobileDrawerTarget').value;
+            if ($('searchTarget')) $('searchTarget').value = searchTarget;
+        }
+        if ($('mobileDrawerSort')) {
+            const sVal = $('mobileDrawerSort').value.split('_');
+            sort.col = sVal[0];
+            sort.asc = sVal[1] === 'asc';
+        }
+
+        // 모바일 필터 활성 뱃지(레드 닷) 표시 여부
+        const hasFilter = supplierFilter !== '' || stockFilter !== 'all' || searchTarget !== 'all';
+        if ($('mobileFilterDot')) $('mobileFilterDot').classList.toggle('d-none', !hasFilter);
+
+        // 상단 칩 UI 동기화
+        document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.supplier === supplierFilter);
+        });
+        document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
+            const s = chip.getAttribute('onclick') || '';
+            if (supplierFilter === '') {
+                chip.classList.toggle('active', s.includes("('')"));
+            } else {
+                chip.classList.toggle('active', s.includes(`('${supplierFilter}')`));
+            }
+        });
+        document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.stock === stockFilter);
+        });
+        document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.stock === stockFilter);
+        });
+
+        toggleMobileFilter();
+        page = 1;
+        renderTable();
+    }
+
+    function resetMobileDrawerFilter() {
+        supplierFilter = '';
+        stockFilter = 'all';
+        searchTarget = 'all';
+        sort = { col: 'name', asc: true };
+        searchQuery = '';
+        subSearchQuery = '';
+
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+        if ($('searchInput')) $('searchInput').value = '';
+        if ($('clearSearchBtn')) $('clearSearchBtn').classList.add('d-none');
+        if ($('mobileFilterDot')) $('mobileFilterDot').classList.add('d-none');
+
+        // 상단 칩 UI 동기화
+        document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.supplier === '');
+        });
+        document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
+            const s = chip.getAttribute('onclick') || '';
+            chip.classList.toggle('active', s.includes("('')"));
+        });
+        document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.stock === 'all');
+        });
+        document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.stock === 'all');
+        });
+
+        toggleMobileFilter();
+        page = 1;
+        renderTable();
+    }
+
+    // ==========================================
     // 이벤트 바인딩 & 공개 인터페이스
     // ==========================================
     const app = {
@@ -720,6 +1241,15 @@
             document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.supplier === s);
             });
+            document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
+                const onclickAttr = chip.getAttribute('onclick') || '';
+                if (s === '') {
+                    chip.classList.toggle('active', onclickAttr.includes("('')"));
+                } else {
+                    chip.classList.toggle('active', onclickAttr.includes(`('${s}')`));
+                }
+            });
+            if ($('mobileDrawerSupplier')) $('mobileDrawerSupplier').value = s;
             page = 1;
             renderTable();
         },
@@ -729,12 +1259,17 @@
             document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.stock === filter);
             });
+            document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.stock === filter);
+            });
+            if ($('mobileDrawerStock')) $('mobileDrawerStock').value = filter;
             page = 1;
             renderTable();
         },
 
         onSearchTargetChange() {
             searchTarget = $('searchTarget').value;
+            if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = searchTarget;
             page = 1;
             renderTable();
         },
@@ -750,11 +1285,38 @@
         clearSearchInput() {
             $('searchInput').value = '';
             $('clearSearchBtn').classList.add('d-none');
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+            this.search();
+        },
+
+        onMobileSearchKeyup(e) {
+            const val = $('mobileSearchInput').value;
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.toggle('d-none', !val);
+            if (e.key === 'Enter') {
+                this.submitMobileSearch();
+            }
+        },
+
+        submitMobileSearch() {
+            searchQuery = ($('mobileSearchInput').value || '').trim();
+            $('searchInput').value = searchQuery;
+            $('clearSearchBtn').classList.toggle('d-none', !searchQuery);
+            page = 1;
+            renderTable();
+        },
+
+        clearMobileSearch() {
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+            $('searchInput').value = '';
+            $('clearSearchBtn').classList.add('d-none');
             this.search();
         },
 
         search() {
             searchQuery = $('searchInput').value.trim();
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = searchQuery;
             page = 1;
             renderTable();
         },
@@ -764,6 +1326,8 @@
             searchTarget = 'all';
             $('searchInput').value = '';
             $('clearSearchBtn').classList.add('d-none');
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
             searchQuery = '';
             $('subSearchInput').value = '';
             $('clearSubSearchBtn').classList.add('d-none');
@@ -797,6 +1361,7 @@
             page = p;
             renderTable();
             $('inventoryGridWrapper').scrollTop = 0;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         },
 
         toggleSelectAll(checked) {
@@ -807,10 +1372,6 @@
                 else selectedIds.delete(c.value);
             });
             updateSelectedUI();
-            // 행 배경색 동기화
-            document.querySelectorAll('#tableBody tr').forEach(tr => {
-                tr.classList.toggle('checked-row', checked);
-            });
         },
 
         toggleSelectOne(id, checked) {
@@ -853,13 +1414,13 @@
                         source_module: 'hq-inventory',
                         source_id: p.id,
                         product_name: p.name || '',
-                        spec: p.spec || '',
+                        spec: [p.color, p.size].filter(Boolean).join(' / ') || p.spec || '',
                         color: p.color || '',
                         unit: p.unit || 'EA',
                         qty: 1,
-                        cost_price: Number(p.cost_price || p.purchase_price || 0),
-                        unit_price: Number(p.selling_price || p.unit_price || p.cost_price || 0),
-                        image_url: p.image_url || p.image || '',
+                        cost_price: Number(p.buyPrice || 0),
+                        unit_price: Number(p.discountPrice || p.sellPrice || p.buyPrice || 0),
+                        image_url: p.image_url || '',
                         remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
                     });
                 }
@@ -874,15 +1435,22 @@
             }
         },
 
+        addItemToQuoteCart,
+        deleteSingleProduct,
         openNewModal,
         openEditModal,
+        syncModalInputs,
         calcModalMargin,
         formatMoneyInput,
         clearZero,
         handleSaveProduct,
         handleDelete,
         exportExcel,
-        printReport
+        printReport,
+        toggleViewMode,
+        toggleMobileFilter,
+        applyMobileDrawerFilter,
+        resetMobileDrawerFilter
     };
 
     window.app = app;
@@ -907,6 +1475,11 @@
                 }
                 renderTable();
             });
+        });
+
+        // 윈도우 크기 변경 시 뷰 모드 및 레이아웃 자동 반영
+        window.addEventListener('resize', () => {
+            applyViewMode();
         });
 
         // ECOUNT ERP 표준 키보드 단축키

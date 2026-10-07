@@ -1662,11 +1662,11 @@ document.addEventListener('DOMContentLoaded', function() {
             id: "hq_inventory",
             category: "본사매입현황",
             title: "실시간 재고",
-            path: "hq-inventory.html?v=20260930_1",
+            path: "hq-inventory.html?v=20261007_1",
             icon: "bx-building-house",
             priority: "4순위",
             tagColor: "purple",
-            defaultStatus: "대기중",
+            defaultStatus: "완료",
             points: [
                 "5대 KPI 요약 통계 배지 ➔ 컴팩트 슬라이더/아코디언 전환",
                 "공급사 필터 탭 모바일 칩 전환 및 상품 검색 최적화",
