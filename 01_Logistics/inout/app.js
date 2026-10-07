@@ -660,13 +660,70 @@ const app = {
         }
     },
 
+    enableDragToScroll: function(el) {
+        if (!el || el._dragScrollEnabled) return;
+        el._dragScrollEnabled = true;
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+        let isDragging = false;
+
+        el.addEventListener('mousedown', (e) => {
+            isDown = true;
+            isDragging = false;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDown) {
+                isDown = false;
+                setTimeout(() => {
+                    isDragging = false;
+                    el.classList.remove('is-dragging');
+                }, 50);
+            }
+        });
+
+        el.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            const x = e.pageX - el.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(walk) > 4) {
+                isDragging = true;
+                el.classList.add('is-dragging');
+                e.preventDefault();
+                el.scrollLeft = scrollLeft - walk;
+            }
+        });
+
+        // Prevent firing click on pills if user was dragging horizontally
+        el.addEventListener('click', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        // Vertical mouse wheel converts to smooth horizontal scroll
+        el.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+                e.preventDefault();
+                el.scrollLeft += (e.deltaY * 0.8);
+            }
+        }, { passive: false });
+    },
+
     renderCategoryPills() {
         const pillsContainer = $('categoryPillsContainer');
         if (!pillsContainer) return;
 
         const currentCat = this.detailedFilters.category || '';
+        const isAllActive = !currentCat;
         
-        // 상위 6개 퀵 버튼 결정 (지정된 대표 항목 중 존재하는 것 우선 + 부족하면 상위 가나다순 항목 채움)
+        // ----------------------------------------
+        // 1. 데스크톱용: 상위 6개 퀵 버튼 + 가나다순 전체 드롭다운
+        // ----------------------------------------
         const topSet = new Set();
         const quickList = [];
         this.topCategories.forEach(c => {
@@ -682,10 +739,8 @@ const app = {
             }
         });
 
-        // 1. 전체보기 버튼
-        const isAllActive = !currentCat;
-        let html = `
-            <div class="d-flex align-items-center gap-2 flex-wrap w-100">
+        let desktopHtml = `
+            <div class="desktop-category-bar d-none d-md-flex align-items-center gap-2 flex-wrap w-100">
                 <span class="text-secondary fw-semibold d-inline-flex align-items-center me-1" style="font-size:0.85rem;">
                     <i class='bx bx-purchase-tag-alt text-primary me-1'></i>분류:
                 </span>
@@ -694,20 +749,18 @@ const app = {
                 </button>
         `;
 
-        // 2. 상위 6개 퀵 버튼
         quickList.forEach(c => {
             const isActive = currentCat === c;
-            html += `
+            desktopHtml += `
                 <button type="button" class="btn btn-sm ${isActive ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3" onclick="app.filterByCategory('${c}')">
                     ${c}
                 </button>
             `;
         });
 
-        // 3. 퀵 버튼에 없는 분류가 선택된 경우 -> 활성 칩 추가
         const isCustomSelected = currentCat && !topSet.has(currentCat);
         if (isCustomSelected) {
-            html += `
+            desktopHtml += `
                 <button type="button" class="btn btn-sm btn-primary text-white rounded-pill px-3 d-inline-flex align-items-center gap-1 shadow-sm fw-bold" onclick="app.filterByCategory('')" title="필터 해제">
                     <span>${currentCat}</span>
                     <i class='bx bx-x' style="font-size: 1.15rem;"></i>
@@ -715,40 +768,72 @@ const app = {
             `;
         }
 
-        // 4. [ 🔍 분류 전체 선택/검색 (전체 N개) ▾ ] 드롭다운
         const dropdownBtnText = currentCat ? `분류: ${currentCat}` : `분류 전체 선택 / 검색 (${this.categoryList.length}개)`;
         const isDropdownHighlight = isCustomSelected;
 
-        html += `
-            <div class="dropdown d-inline-block position-relative" id="categoryDropdownContainer">
-                <button type="button" class="btn btn-sm ${isDropdownHighlight ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary'} rounded-pill dropdown-toggle px-3 d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" id="btnCategoryDropdown">
-                    <i class='bx bx-search-alt-2'></i>
-                    <span>${dropdownBtnText}</span>
-                </button>
-                <div class="dropdown-menu shadow-lg p-2 border-0" style="min-width: 270px; max-width: 320px; z-index: 1080; border-radius: 10px;" id="categoryDropdownMenu">
-                    <div class="p-1 mb-2 position-relative">
-                        <input type="text" class="form-control form-control-sm ps-4" id="categoryDropdownSearchInput" placeholder="분류 검색 (가나다순)..." autocomplete="off" oninput="app.filterCategoryDropdownList(this.value)">
-                        <i class='bx bx-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted' style="font-size:0.9rem;"></i>
-                    </div>
-                    <div class="list-group list-group-flush overflow-auto" id="categoryDropdownList" style="max-height: 240px;">
-                        <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start ${!currentCat ? 'active fw-bold' : ''}" onclick="app.filterByCategory(''); app.closeCategoryDropdown();" style="font-size:0.85rem;">
-                            <i class='bx bx-check-circle me-1'></i> 전체보기
-                        </button>
-                        ${this.categoryList.map(c => {
-                            const isItemActive = currentCat === c;
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start cat-drop-item ${isItemActive ? 'active fw-bold' : ''}" data-category="${c}" onclick="app.filterByCategory('${c}'); app.closeCategoryDropdown();" style="font-size:0.85rem;">
-                                    <i class='bx bx-purchase-tag-alt text-secondary me-1'></i> ${c}
-                                </button>
-                            `;
-                        }).join('')}
+        desktopHtml += `
+                <div class="dropdown d-inline-block position-relative" id="categoryDropdownContainer">
+                    <button type="button" class="btn btn-sm ${isDropdownHighlight ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary'} rounded-pill dropdown-toggle px-3 d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" id="btnCategoryDropdown">
+                        <i class='bx bx-search-alt-2'></i>
+                        <span>${dropdownBtnText}</span>
+                    </button>
+                    <div class="dropdown-menu shadow-lg p-2 border-0" style="min-width: 270px; max-width: 320px; z-index: 1080; border-radius: 10px;" id="categoryDropdownMenu">
+                        <div class="p-1 mb-2 position-relative">
+                            <input type="text" class="form-control form-control-sm ps-4" id="categoryDropdownSearchInput" placeholder="분류 검색 (가나다순)..." autocomplete="off" oninput="app.filterCategoryDropdownList(this.value)">
+                            <i class='bx bx-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted' style="font-size:0.9rem;"></i>
+                        </div>
+                        <div class="list-group list-group-flush overflow-auto" id="categoryDropdownList" style="max-height: 240px;">
+                            <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start ${!currentCat ? 'active fw-bold' : ''}" onclick="app.filterByCategory(''); app.closeCategoryDropdown();" style="font-size:0.85rem;">
+                                <i class='bx bx-check-circle me-1'></i> 전체보기
+                            </button>
+                            ${this.categoryList.map(c => {
+                                const isItemActive = currentCat === c;
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start cat-drop-item ${isItemActive ? 'active fw-bold' : ''}" data-category="${c}" onclick="app.filterByCategory('${c}'); app.closeCategoryDropdown();" style="font-size:0.85rem;">
+                                        <i class='bx bx-purchase-tag-alt text-secondary me-1'></i> ${c}
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
                 </div>
             </div>
+        `;
+
+        // ----------------------------------------
+        // 2. 모바일용: 전체 카테고리 무제한 터치/드래그 가로 스와이프 칩 바
+        // ----------------------------------------
+        const mobileHtml = `
+            <div class="mobile-cat-scroll-wrapper d-md-none w-100">
+                <div class="category-pills-scroll-track" id="mobileCategoryScrollTrack">
+                    <button type="button" class="btn btn-sm ${isAllActive ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3 flex-shrink-0" onclick="app.filterByCategory('')">
+                        전체보기
+                    </button>
+                    ${this.categoryList.map(c => {
+                        const isActive = currentCat === c;
+                        return `
+                            <button type="button" class="btn btn-sm ${isActive ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3 flex-shrink-0" onclick="app.filterByCategory('${c}')">
+                                ${c}
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
             </div>
         `;
 
-        pillsContainer.innerHTML = html;
+        pillsContainer.innerHTML = desktopHtml + mobileHtml;
+
+        // 모바일 가로 스크롤 트랙에 마우스 드래그 & 휠 & 활성 버튼 자동 중앙 정렬 연결
+        const scrollTrack = $('mobileCategoryScrollTrack');
+        if (scrollTrack) {
+            this.enableDragToScroll(scrollTrack);
+            const activeBtn = scrollTrack.querySelector('.btn-primary');
+            if (activeBtn) {
+                setTimeout(() => {
+                    activeBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                }, 60);
+            }
+        }
     },
 
     filterCategoryDropdownList(query) {
