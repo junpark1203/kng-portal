@@ -1617,7 +1617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             id: "logistics_inout",
             category: "영업관리",
             title: "입출고내역",
-            path: "./01_Logistics/inout/index.html?v=11",
+            path: "./01_Logistics/inout/index.html?v=20261007_1",
             icon: "bx-transfer",
             priority: "1순위 (추천)",
             tagColor: "primary",
