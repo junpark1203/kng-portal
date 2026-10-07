@@ -1256,15 +1256,53 @@
             .mobile-inout-header {
                 background: #ffffff;
                 border: 1px solid #e2e8f0;
-                border-radius: 14px;
-                padding: 12px 14px;
-                margin-bottom: 10px;
-                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+                border-radius: 12px;
+                padding: 10px 12px;
+                margin-bottom: 8px;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
             }
-            .mobile-view-toggle .btn {
-                padding: 4px 10px;
-                font-size: 12px;
-                font-weight: 600;
+            .mobile-head-btn {
+                width: 32px;
+                height: 32px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                font-size: 16px;
+                padding: 0;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                color: #334155;
+                transition: all 0.15s ease;
+                flex-shrink: 0;
+            }
+            .mobile-head-btn:active {
+                background: #f1f5f9;
+                transform: scale(0.95);
+            }
+            .mobile-head-btn.btn-outline-primary {
+                border-color: #93c5fd;
+                color: #2563eb;
+                background: #f0f7ff;
+            }
+            .mobile-header-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: #0f172a;
+                white-space: nowrap;
+                letter-spacing: -0.02em;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .mobile-icon-toggle {
+                width: 30px;
+                height: 32px;
+                padding: 0 !important;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                font-size: 15px !important;
             }
             .mobile-view-toggle .btn.active {
                 background-color: #2563eb !important;
@@ -1275,8 +1313,8 @@
                 position: absolute;
                 top: -3px;
                 right: -3px;
-                width: 9px;
-                height: 9px;
+                width: 8px;
+                height: 8px;
                 background-color: #ef4444;
                 border-radius: 50%;
                 border: 2px solid #ffffff;
@@ -1322,21 +1360,166 @@
                 font-weight: 700;
             }
 
-            /* 모바일 요약 바 */
+            /* 모바일 카테고리 칩 스와이프 바 (단일 라인 수평 스크롤) */
+            #categoryPillsContainer {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 6px !important;
+                padding: 2px 2px 6px 2px !important;
+                margin-bottom: 6px !important;
+            }
+            #categoryPillsContainer::-webkit-scrollbar {
+                display: none;
+            }
+            #categoryPillsContainer > .d-flex {
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                scrollbar-width: none;
+                gap: 6px !important;
+                width: auto !important;
+            }
+            #categoryPillsContainer > .d-flex::-webkit-scrollbar {
+                display: none;
+            }
+            #categoryPillsContainer .text-secondary {
+                display: none !important; /* '분류:' 텍스트 숨김으로 공간 절약 */
+            }
+            #categoryPillsContainer #categoryDropdownContainer {
+                display: none !important; /* 모바일 전용 필터 바텀시트에서 검색하므로 대형 드롭다운 숨김 */
+            }
+            #categoryPillsContainer .btn {
+                flex-shrink: 0 !important;
+                white-space: nowrap !important;
+                padding: 4px 12px !important;
+                font-size: 12px !important;
+                height: 28px !important;
+                line-height: 18px !important;
+            }
+
+            /* 모바일 슬림 요약 바 & 아코디언 상세 */
             #historySummaryStrip {
                 font-size: 12px !important;
-                line-height: 1.4 !important;
-                padding: 8px 12px !important;
+                padding: 0 !important;
                 height: auto !important;
-                border-radius: 10px !important;
-                margin-bottom: 10px !important;
-                white-space: normal !important;
-                overflow-x: auto !important;
+                border: none !important;
+                background: transparent !important;
+                margin-bottom: 8px !important;
+            }
+            .mobile-summary-wrapper {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+                overflow: hidden;
+            }
+            .mobile-summary-pill-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 7px 10px;
+                cursor: pointer;
+                background: #f8fafc;
+                user-select: none;
+                transition: background 0.15s ease;
+            }
+            .mobile-summary-pill-bar:active {
+                background: #f1f5f9;
+            }
+            .mobile-summary-main-metrics {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 11.5px;
+                color: #334155;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+            .mobile-kpi-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+            }
+            .mobile-kpi-item strong {
+                font-size: 12px;
+                color: #0f172a;
+            }
+            .mobile-kpi-divider {
+                color: #cbd5e1;
+            }
+            .btn-toggle-summary-detail {
+                background: transparent;
+                border: none;
+                color: #64748b;
+                padding: 0 4px;
+                display: flex;
+                align-items: center;
+                font-size: 16px;
+            }
+            #summaryChevronIcon {
+                transition: transform 0.2s ease;
+            }
+            .mobile-summary-detail-panel {
+                padding: 10px 12px;
+                border-top: 1px solid #f1f5f9;
+                background: #ffffff;
+                animation: fadeIn 0.2s ease;
+            }
+            .mobile-summary-detail-panel .detail-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .mobile-summary-detail-panel .detail-box {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 8px 10px;
+                font-size: 11px;
+            }
+            .mobile-summary-detail-panel .detail-box.in-box {
+                border-left: 3px solid #10b981;
+            }
+            .mobile-summary-detail-panel .detail-box.out-box {
+                border-left: 3px solid #ef4444;
+            }
+            .mobile-summary-detail-panel .detail-box-title {
+                font-weight: 700;
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .mobile-summary-detail-panel .detail-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 2px;
+                color: #64748b;
+            }
+            .mobile-summary-detail-panel .detail-row.highlight {
+                margin-top: 4px;
+                padding-top: 4px;
+                border-top: 1px dashed #cbd5e1;
+                font-weight: 700;
+                color: #0f172a;
+            }
+            .mobile-summary-detail-panel .margin-box {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #eff6ff;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
             }
 
             /* 모바일 카드 뷰 컨테이너 */
             .history-cards-container {
                 display: block;
+                padding-bottom: 96px !important;
                 margin-bottom: 20px;
             }
             .mobile-empty-state {
@@ -1377,10 +1560,16 @@
                 font-weight: 500;
             }
             .mobile-tx-id {
-                font-size: 11px;
-                font-family: monospace;
-                color: #94a3b8;
-                letter-spacing: -0.02em;
+                font-size: 10.5px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                color: #64748b;
+                white-space: nowrap;
+                flex-shrink: 0;
+                background: #f8fafc;
+                padding: 2px 6px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+                letter-spacing: 0;
             }
             .mobile-tx-card-body {
                 cursor: pointer;
@@ -1571,16 +1760,16 @@
             /* 모바일 FAB (플로팅 버튼) */
             .mobile-fab-container {
                 position: fixed;
-                bottom: 24px;
-                right: 18px;
+                bottom: 20px;
+                right: 16px;
                 z-index: 1040;
                 display: flex;
                 flex-direction: column;
                 align-items: flex-end;
             }
             .mobile-fab-main {
-                width: 56px;
-                height: 56px;
+                width: 50px;
+                height: 50px;
                 border-radius: 50%;
                 background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
                 color: #ffffff;
@@ -1588,8 +1777,8 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 28px;
-                box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+                font-size: 24px;
+                box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
                 cursor: pointer;
                 transition: transform 0.2s ease, background 0.2s ease;
             }
@@ -1765,30 +1954,32 @@
     <!-- 모바일 전용 상단 헤더 (≤ 768px) -->
     <div class="mobile-inout-header d-md-none">
         <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="d-flex align-items-center gap-2">
-                <a href="../../index.html" class="btn btn-sm btn-light border px-2 py-1 text-dark" title="메인 포털로 이동">
+            <div class="d-flex align-items-center gap-1 min-w-0" style="overflow: hidden;">
+                <a href="../../index.html" class="mobile-head-btn text-dark text-decoration-none" title="메인 포털로 이동">
                     <i class='bx bx-left-arrow-alt fs-5'></i>
                 </a>
-                <div class="d-flex align-items-baseline gap-1">
-                    <h5 class="mb-0 fw-bold text-dark" style="font-size: 1.1rem;"><i class='bx bx-transfer text-primary'></i> 입출고내역</h5>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="mobileHeaderCountBadge">0건</span>
+                <div class="d-inline-flex align-items-center gap-1 text-truncate">
+                    <span class="mobile-header-title text-truncate">
+                        <i class='bx bx-transfer text-primary'></i> 입출고내역
+                    </span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle flex-shrink-0" id="mobileHeaderCountBadge" style="font-size: 11px; padding: 2px 6px;">0건</span>
                 </div>
             </div>
             
-            <div class="d-flex align-items-center gap-1">
-                <!-- 뷰 모드 전환 (카드 / 표) -->
-                <div class="btn-group btn-group-sm mobile-view-toggle shadow-sm" role="group">
-                    <button type="button" class="btn btn-outline-secondary active" id="btnViewCard" onclick="app.setViewMode('card')" title="모바일 카드 뷰">
-                        <i class='bx bx-grid-alt'></i> 카드
+            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                <!-- 뷰 모드 전환 (카드 / 표 아이콘 버튼) -->
+                <div class="btn-group btn-group-sm mobile-view-toggle" role="group">
+                    <button type="button" class="btn btn-outline-secondary mobile-icon-toggle active" id="btnViewCard" onclick="app.setViewMode('card')" title="모바일 카드 뷰">
+                        <i class='bx bx-grid-alt'></i>
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnViewTable" onclick="app.setViewMode('table')" title="ERP 테이블 뷰">
-                        <i class='bx bx-table'></i> 표
+                    <button type="button" class="btn btn-outline-secondary mobile-icon-toggle" id="btnViewTable" onclick="app.setViewMode('table')" title="ERP 테이블 뷰">
+                        <i class='bx bx-table'></i>
                     </button>
                 </div>
 
                 <!-- 필터 열기 토글 버튼 -->
                 <div class="position-relative">
-                    <button type="button" class="btn btn-sm btn-outline-primary px-2" id="btnToggleMobileFilter" onclick="app.toggleMobileFilter()" title="검색 및 필터">
+                    <button type="button" class="mobile-head-btn btn-outline-primary" id="btnToggleMobileFilter" onclick="app.toggleMobileFilter()" title="검색 및 필터">
                         <i class='bx bx-filter-alt'></i>
                     </button>
                     <span class="mobile-filter-badge d-none" id="mobileFilterDot"></span>
@@ -1796,7 +1987,7 @@
 
                 <!-- 기타 액션 드롭다운 -->
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-light border px-2" type="button" data-bs-toggle="dropdown">
+                    <button class="mobile-head-btn btn-light border text-secondary" type="button" data-bs-toggle="dropdown" title="더보기">
                         <i class='bx bx-dots-vertical-rounded'></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">

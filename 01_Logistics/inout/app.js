@@ -1620,6 +1620,32 @@ const app = {
         }
     },
 
+    toggleMobileSummaryDetail: function() {
+        const panel = $('mobileSummaryDetailPanel');
+        const chevron = $('summaryChevronIcon');
+        if (!panel) return;
+        const isHidden = panel.classList.contains('d-none');
+        if (isHidden) {
+            panel.classList.remove('d-none');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+        } else {
+            panel.classList.add('d-none');
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+    },
+
+    formatCompactNum: function(num) {
+        if (!num || isNaN(num)) return '0';
+        const abs = Math.abs(num);
+        if (abs >= 100000000) {
+            return (num / 100000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '억';
+        }
+        if (abs >= 10000) {
+            return Math.round(num / 10000).toLocaleString() + '만';
+        }
+        return Number(num).toLocaleString();
+    },
+
     renderSummaryStrip: function(summary, typeFilter) {
         const strip = $('historySummaryStrip');
         if (!strip) return;
@@ -1634,8 +1660,8 @@ const app = {
         const inbound = summary.inbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
         const outbound = summary.outbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
 
+        // 1. 데스크톱 전용 요약 HTML
         let amountHtml = '';
-
         if (typeFilter === 'inbound') {
             amountHtml = `
                 <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -1680,20 +1706,87 @@ const app = {
             `;
         }
 
-        strip.innerHTML = `
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span><strong>검색 결과</strong> <span class="badge bg-dark" style="font-size: 11px; padding: 2px 6px;">${totalCount.toLocaleString()}건</span></span>
-                ${typeFilter === 'all' ? `
-                    <span class="erp-badge erp-badge-cat">입고 ${summary.inboundCount || 0}</span>
-                    <span class="erp-badge erp-badge-cat">출고 ${summary.outboundCount || 0}</span>
-                    <span class="erp-badge erp-badge-cat">직출고 ${summary.directCount || 0}</span>
-                ` : ''}
-                <span class="text-muted ms-1 me-1">|</span>
-                <span class="text-muted">총 수량:</span>
-                <strong class="text-dark tabular-nums">${totalQty.toLocaleString()}</strong>
+        const desktopHtml = `
+            <div class="desktop-summary-content d-none d-md-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span><strong>검색 결과</strong> <span class="badge bg-dark" style="font-size: 11px; padding: 2px 6px;">${totalCount.toLocaleString()}건</span></span>
+                    ${typeFilter === 'all' ? `
+                        <span class="erp-badge erp-badge-cat">입고 ${summary.inboundCount || 0}</span>
+                        <span class="erp-badge erp-badge-cat">출고 ${summary.outboundCount || 0}</span>
+                        <span class="erp-badge erp-badge-cat">직출고 ${summary.directCount || 0}</span>
+                    ` : ''}
+                    <span class="text-muted ms-1 me-1">|</span>
+                    <span class="text-muted">총 수량:</span>
+                    <strong class="text-dark tabular-nums">${totalQty.toLocaleString()}</strong>
+                </div>
+                ${amountHtml}
             </div>
-            ${amountHtml}
         `;
+
+        // 2. 모바일 전용 슬림 KPI 요약 HTML
+        let mobileAmountKpi = '';
+        if (typeFilter === 'inbound') {
+            mobileAmountKpi = `<span class="text-muted small">매입</span> <strong class="text-success">${this.formatCompactNum(inbound.totalAmt)}</strong>`;
+        } else if (typeFilter === 'outbound') {
+            mobileAmountKpi = `<span class="text-muted small">매출</span> <strong class="text-danger">${this.formatCompactNum(outbound.totalAmt)}</strong>`;
+        } else if (typeFilter === 'direct') {
+            const margin = outbound.totalAmt - inbound.totalAmt;
+            mobileAmountKpi = `<span class="text-muted small">마진</span> <strong class="${margin >= 0 ? 'text-primary' : 'text-danger'}">${this.formatCompactNum(margin)}</strong>`;
+        } else {
+            mobileAmountKpi = `<span class="text-muted small">매출</span> <strong class="text-danger">${this.formatCompactNum(outbound.totalAmt)}</strong> <small class="text-muted fw-normal">(매입 ${this.formatCompactNum(inbound.totalAmt)})</small>`;
+        }
+
+        const directMargin = outbound.totalAmt - inbound.totalAmt;
+
+        const mobileHtml = `
+            <div class="mobile-summary-wrapper d-md-none w-100">
+                <div class="mobile-summary-pill-bar" onclick="app.toggleMobileSummaryDetail()">
+                    <div class="mobile-summary-main-metrics">
+                        <span class="mobile-kpi-item">
+                            <i class='bx bx-bar-chart-alt-2 text-primary'></i>
+                            <strong>${totalCount.toLocaleString()}</strong><small>건</small>
+                        </span>
+                        <span class="mobile-kpi-divider">·</span>
+                        <span class="mobile-kpi-item">
+                            <small class="text-muted">수량</small> <strong>${totalQty.toLocaleString()}</strong>
+                        </span>
+                        <span class="mobile-kpi-divider">|</span>
+                        <span class="mobile-kpi-item">
+                            ${mobileAmountKpi}
+                        </span>
+                    </div>
+                    <button type="button" class="btn-toggle-summary-detail" aria-label="요약 상세 접기/펼치기">
+                        <i class='bx bx-chevron-down' id="summaryChevronIcon"></i>
+                    </button>
+                </div>
+                <div class="mobile-summary-detail-panel d-none" id="mobileSummaryDetailPanel">
+                    <div class="detail-grid">
+                        <div class="detail-box in-box">
+                            <div class="detail-box-title text-success"><i class='bx bx-down-arrow-circle'></i> 입고 (${summary.inboundCount || 0}건)</div>
+                            <div class="detail-row"><span>공급가</span> <strong>${inbound.supplyAmt.toLocaleString()}원</strong></div>
+                            <div class="detail-row"><span>부가세</span> <strong>${inbound.vat.toLocaleString()}원</strong></div>
+                            <div class="detail-row highlight"><span>합계</span> <strong class="text-success">${inbound.totalAmt.toLocaleString()}원</strong></div>
+                        </div>
+                        <div class="detail-box out-box">
+                            <div class="detail-box-title text-danger"><i class='bx bx-up-arrow-circle'></i> 출고 (${summary.outboundCount || 0}건)</div>
+                            <div class="detail-row"><span>공급가</span> <strong>${outbound.supplyAmt.toLocaleString()}원</strong></div>
+                            <div class="detail-row"><span>부가세</span> <strong>${outbound.vat.toLocaleString()}원</strong></div>
+                            <div class="detail-row highlight"><span>합계</span> <strong class="text-danger">${outbound.totalAmt.toLocaleString()}원</strong></div>
+                        </div>
+                    </div>
+                    ${typeFilter === 'direct' || (summary.directCount && summary.directCount > 0) ? `
+                        <div class="margin-box mt-2">
+                            <span><i class='bx bx-git-compare'></i> 직출고 (${summary.directCount || 0}건) 마진:</span>
+                            <strong class="${directMargin >= 0 ? 'text-primary' : 'text-danger'}">
+                                ${directMargin.toLocaleString()}원
+                            </strong>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        strip.innerHTML = desktopHtml + mobileHtml;
     },
 
     loadHistory: async function() {
@@ -6286,10 +6379,10 @@ const app = {
             return `
             <div class="mobile-tx-card" id="mobile_card_${r.id}">
                 <div class="mobile-tx-card-header">
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="form-check-input history-checkbox m-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)">
+                    <div class="d-flex align-items-center gap-2 min-w-0" style="overflow: hidden;">
+                        <input type="checkbox" class="form-check-input history-checkbox m-0 flex-shrink-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)">
                         ${badge}
-                        <span class="mobile-tx-date"><i class='bx bx-calendar me-1'></i>${dateStr}</span>
+                        <span class="mobile-tx-date text-truncate"><i class='bx bx-calendar me-1'></i>${dateStr}</span>
                     </div>
                     <span class="mobile-tx-id">${txIdDisplay}</span>
                 </div>
