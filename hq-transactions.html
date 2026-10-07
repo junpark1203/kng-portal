@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="K&G 본사 매입 현황 — 입출고 내역 (ECOUNT ERP Style)">
     <title>본사 입출고 내역</title>
     <!-- Bootstrap 5 & Boxicons -->
@@ -11,7 +11,7 @@
     <!-- Common Design Systems -->
     <link rel="stylesheet" href="./Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="hq-transactions.css?v=20260930_1">
+    <link rel="stylesheet" href="hq-transactions.css?v=20261007_1">
 </head>
 <body>
 
@@ -21,8 +21,99 @@
         <p id="printMetaInfo" style="font-size: 9pt; color: #64748b; margin: 0;"></p>
     </div>
 
-    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (타이틀 + 통계 + 구분 탭 + 액션 버튼) ── -->
-    <div class="erp-top-toolbar no-print">
+    <!-- ── [모바일 전용] 상단 앱 헤더 & 원터치 제어 센터 (≤ 768px) ── -->
+    <div class="mobile-tx-header d-md-none no-print">
+        <!-- 1행: 내비게이션 + 타이틀 + 건수 배지 + 뷰전환 + 필터 + 메뉴 -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <a href="index.html" class="btn btn-sm btn-light border p-1 d-inline-flex align-items-center" title="포털 메인으로 이동">
+                    <i class='bx bx-arrow-back fs-5 text-dark'></i>
+                </a>
+                <span class="fw-bold fs-6 text-dark d-flex align-items-center gap-1">
+                    <i class='bx bx-transfer text-primary'></i> 본사 입출고
+                </span>
+                <span class="badge bg-primary text-white" id="mobileCountBadge" style="font-size: 11px;">0건</span>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <!-- 뷰 전환 토글 (카드 뷰 <-> ECOUNT 시트 그리드) -->
+                <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" id="mobileViewToggleBtn" onclick="app.toggleViewMode()" title="보기 모드 전환 (카드/테이블)">
+                    <i class='bx bx-table'></i>
+                </button>
+                <!-- 필터 드로어 열기 버튼 -->
+                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 position-relative" onclick="app.toggleMobileFilter()" title="필터 상세 설정">
+                    <i class='bx bx-filter-alt'></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none" id="mobileFilterDot"></span>
+                </button>
+                <!-- 추가 메뉴 드롭다운 -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border py-1 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class='bx bx-dots-vertical-rounded'></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 12.5px;">
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openVoucherModal()"><i class='bx bx-plus-circle text-primary me-2'></i> 새 전표 일괄 작성</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.exportExcel()"><i class='bx bx-download text-success me-2'></i> 엑셀 다운로드</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="location.href='./05_Management/forms/quotation.html'"><i class='bx bx-file-blank text-warning me-2'></i> 견적서 바구니 이동</a></li>
+                        <li><a class="dropdown-item py-2" href="hq-inventory.html"><i class='bx bx-box text-info me-2'></i> 실시간 재고 바로가기</a></li>
+                        <li><a class="dropdown-item py-2" href="hq-label.html"><i class='bx bx-purchase-tag-alt text-secondary me-2'></i> 라벨 출력 디자이너</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.printReport()"><i class='bx bx-printer text-muted me-2'></i> 거래 내역서 인쇄</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2행: 모바일 스마트 검색창 -->
+        <div class="mobile-search-strip mb-2">
+            <div class="input-group input-group-sm shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class='bx bx-search text-muted'></i></span>
+                <input type="text" class="form-control border-start-0 border-end-0" id="mobileSearchInput" placeholder="공급사, 브랜드, 상품명, 비고 검색..." autocomplete="off" onkeyup="app.onMobileSearchKeyup(event)">
+                <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="mobileClearSearchBtn" onclick="app.clearMobileSearch()"><i class='bx bx-x'></i></button>
+                <button class="btn btn-primary px-3 fw-bold" type="button" onclick="app.submitMobileSearch()">검색</button>
+            </div>
+        </div>
+
+        <!-- 3행: 날짜 프리셋 가로 스와이프 칩 바 -->
+        <div class="mobile-date-presets-wrapper mb-2">
+            <div class="mobile-date-presets-track">
+                <button type="button" class="mob-date-chip" data-preset="today" onclick="app.setDatePreset('today')">오늘</button>
+                <button type="button" class="mob-date-chip" data-preset="week" onclick="app.setDatePreset('week')">1주일</button>
+                <button type="button" class="mob-date-chip active" data-preset="month" onclick="app.setDatePreset('month')">당월</button>
+                <button type="button" class="mob-date-chip" data-preset="3months" onclick="app.setDatePreset('3months')">3개월</button>
+                <button type="button" class="mob-date-chip" data-preset="all" onclick="app.setDatePreset('all')">전체</button>
+            </div>
+        </div>
+
+        <!-- 4행: 구분 세그먼트 버튼군 (전체 / 매입 / 출고) -->
+        <div class="mobile-type-filter-wrapper mb-2">
+            <div class="mobile-type-filter-track">
+                <button type="button" class="mob-type-chip active" data-type="all" onclick="app.setTypeFilter('all')">
+                    전체 <span id="mobTabCountAll">0</span>
+                </button>
+                <button type="button" class="mob-type-chip" data-type="IN" onclick="app.setTypeFilter('IN')">
+                    매입(입고) <span id="mobTabCountIn">0</span>
+                </button>
+                <button type="button" class="mob-type-chip" data-type="OUT" onclick="app.setTypeFilter('OUT')">
+                    출고 <span id="mobTabCountOut">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 5행: 초슬림 1라인 KPI 요약 바 (가로 스크롤 & white-space: nowrap) -->
+        <div class="mobile-tx-kpi-bar shadow-sm">
+            <div class="mobile-tx-kpi-track">
+                <span class="kpi-tag"><i class='bx bx-list-check text-dark'></i> 총 <strong id="mobileKpiTotal">0</strong>건</span>
+                <span class="kpi-divider">|</span>
+                <span class="kpi-tag"><i class='bx bx-down-arrow-circle text-primary'></i> 매입 <strong id="mobileKpiInAmt" class="text-primary">₩0</strong> (<span id="mobileKpiInCount">0</span>건)</span>
+                <span class="kpi-divider">|</span>
+                <span class="kpi-tag"><i class='bx bx-up-arrow-circle text-danger'></i> 출고 <strong id="mobileKpiOutAmt" class="text-danger">₩0</strong> (<span id="mobileKpiOutCount">0</span>건)</span>
+                <span class="kpi-divider">|</span>
+                <span class="kpi-tag"><i class='bx bx-layer text-success'></i> 순수량 <strong id="mobileKpiNetQty" class="text-success">0</strong>개</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (데스크톱 전용) ── -->
+    <div class="erp-top-toolbar no-print d-none d-md-flex">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="erp-title-tag">
                 <i class='bx bx-transfer text-primary'></i> 본사 입출고 내역
@@ -75,8 +166,8 @@
         </div>
     </div>
 
-    <!-- ── 2. ECOUNT ERP 2행 필터 리본 (날짜 프리셋 + 기간 + 다중검색 + 그리드도구) ── -->
-    <div class="erp-filter-ribbon no-print">
+    <!-- ── 2. ECOUNT ERP 2행 필터 리본 (데스크톱 전용) ── -->
+    <div class="erp-filter-ribbon no-print d-none d-md-flex">
         <div class="d-flex align-items-center gap-1 flex-wrap">
             <!-- 날짜 프리셋 -->
             <div class="erp-date-presets me-1">
@@ -136,8 +227,17 @@
         </div>
     </div>
 
-    <!-- ── 3. ERP 고밀도 시트 그리드 (입출고 내역 테이블) ── -->
-    <div class="erp-grid-wrapper shadow-sm" id="txGridWrapper">
+    <!-- ── 3-0. 모바일 전용 터치 최적화 카드 뷰 컨테이너 (≤ 768px 기본 노출) ── -->
+    <div class="mobile-cards-container d-md-none" id="mobileCardsContainer">
+        <!-- JS로 동적 카드 렌더링 -->
+        <div class="text-center py-5 text-muted">
+            <i class='bx bx-loader-alt bx-spin fs-2 text-primary mb-2'></i>
+            <div>입출고 내역 데이터를 불러오는 중입니다...</div>
+        </div>
+    </div>
+
+    <!-- ── 3. ERP 고밀도 시트 그리드 (입출고 내역 테이블 / 모바일 전환 가능) ── -->
+    <div class="erp-grid-wrapper shadow-sm mobile-hidden-table" id="txGridWrapper">
         <table id="txTable" class="erp-sheet-table">
             <thead>
                 <tr>
@@ -178,7 +278,7 @@
     </div>
 
     <!-- ── 4. 하단 상태바 및 페이지네이션 (.erp-bottom-bar) ── -->
-    <div class="erp-bottom-bar no-print">
+    <div class="erp-bottom-bar no-print d-none d-md-flex">
         <div class="d-flex align-items-center gap-2">
             <span>선택: <strong id="bottomSelectedCount" class="text-primary">0</strong>건</span>
             <span class="text-muted">|</span>
@@ -197,6 +297,115 @@
 
         <div class="erp-pagination" id="pagination">
             <!-- JS 렌더링 -->
+        </div>
+    </div>
+
+    <!-- ── 모바일 전용 플로팅 액션 버튼 (신규 전표 등록 FAB) ── -->
+    <button type="button" class="mobile-fab-btn d-md-none" onclick="app.openVoucherModal()" title="새 전표 작성">
+        <i class='bx bx-plus'></i>
+    </button>
+
+    <!-- ── 모바일 전용 플로팅 일괄 선택 액션 바 ── -->
+    <div class="mobile-floating-selection-bar d-md-none d-none" id="mobileFloatingSelectionBar">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" class="form-check-input mt-0" id="mobSelectAllCheck" onchange="app.toggleSelectAll(this.checked)">
+                <span class="fw-bold small text-white"><span id="mobileSelectionCount">0</span>건 선택</span>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2" onclick="app.addSelectedToQuoteCart()">
+                    <i class='bx bx-cart-alt'></i> 견적담기
+                </button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold py-1 px-2" onclick="app.handleDelete()">
+                    <i class='bx bx-trash'></i> 선택삭제
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 모바일 전용 상세 필터 드로어 (바텀시트) ── -->
+    <div class="mobile-filter-backdrop d-none" id="mobileFilterBackdrop" onclick="app.toggleMobileFilter()"></div>
+    <div class="mobile-filter-drawer d-md-none" id="mobileFilterDrawer">
+        <div class="drawer-header d-flex align-items-center justify-content-between p-3 border-bottom">
+            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                <i class='bx bx-filter-alt text-primary'></i> 입출고 상세 필터 &amp; 정렬
+            </h6>
+            <button type="button" class="btn-close" onclick="app.toggleMobileFilter()"></button>
+        </div>
+        <div class="drawer-body p-3 overflow-auto" style="max-height: 65vh;">
+            <!-- 구분 필터 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">입출고 구분</label>
+                <select class="form-select form-select-sm" id="mobileDrawerType">
+                    <option value="all">전체 (매입+출고)</option>
+                    <option value="IN">매입(입고)만</option>
+                    <option value="OUT">출고만</option>
+                </select>
+            </div>
+
+            <!-- 날짜 프리셋 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">조회 기간 프리셋</label>
+                <select class="form-select form-select-sm" id="mobileDrawerDatePreset" onchange="app.onMobileDrawerPresetChange(this.value)">
+                    <option value="today">오늘</option>
+                    <option value="week">1주일</option>
+                    <option value="month" selected>당월 (1일~오늘)</option>
+                    <option value="3months">3개월</option>
+                    <option value="all">전체 기간</option>
+                    <option value="custom">직접 지정</option>
+                </select>
+            </div>
+
+            <!-- 날짜 직접 범위 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">날짜 범위 지정</label>
+                <div class="d-flex align-items-center gap-1">
+                    <input type="date" class="form-control form-control-sm" id="mobileDrawerStartDate">
+                    <span class="text-muted small">~</span>
+                    <input type="date" class="form-control form-control-sm" id="mobileDrawerEndDate">
+                </div>
+            </div>
+
+            <!-- 공급사 / 거래처 선택 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">공급사 / 거래처</label>
+                <select class="form-select form-select-sm" id="mobileDrawerSupplier">
+                    <option value="">전체 거래처</option>
+                </select>
+            </div>
+
+            <!-- 검색 대상 기준 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">검색 기준 대상</label>
+                <select class="form-select form-select-sm" id="mobileDrawerTarget">
+                    <option value="all">통합 검색 (공급사/브랜드/상품명/비고)</option>
+                    <option value="supplier">공급사/출고처만</option>
+                    <option value="brand">브랜드만</option>
+                    <option value="productName">상품명만</option>
+                    <option value="remarks">비고만</option>
+                </select>
+            </div>
+
+            <!-- 정렬 기준 -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">정렬 기준</label>
+                <select class="form-select form-select-sm" id="mobileDrawerSort">
+                    <option value="txDate_desc">일시 최신순 (기본)</option>
+                    <option value="txDate_asc">일시 과거순</option>
+                    <option value="totalAmount_desc">총 금액 높은순</option>
+                    <option value="totalAmount_asc">총 금액 낮은순</option>
+                    <option value="qty_desc">수량 많은순</option>
+                    <option value="productName_asc">상품명 가나다순</option>
+                </select>
+            </div>
+        </div>
+        <div class="drawer-footer p-3 border-top bg-light d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="app.resetMobileDrawerFilter()">
+                <i class='bx bx-reset'></i> 초기화
+            </button>
+            <button type="button" class="btn btn-sm btn-primary flex-fill fw-bold" onclick="app.applyMobileDrawerFilter()">
+                <i class='bx bx-check'></i> 필터 적용
+            </button>
         </div>
     </div>
 
@@ -347,70 +556,158 @@
                 <div class="modal-body p-3 bg-light">
                     <form id="editForm" onsubmit="app.handleSaveEdit(event)" autocomplete="off">
                         <input type="hidden" id="editId">
-                        <div class="border shadow-sm mb-2">
-                            <table class="erp-form-table">
-                                <colgroup>
-                                    <col style="width: 100px;">
-                                    <col style="width: 40%;">
-                                    <col style="width: 100px;">
-                                    <col style="width: 40%;">
-                                </colgroup>
-                                <tbody>
-                                    <tr>
-                                        <th>일자 <span class="text-danger">*</span></th>
-                                        <td><input type="date" class="form-control" id="eTxDate" required></td>
-                                        <th>구분</th>
-                                        <td><input type="text" class="form-control text-muted fw-bold" id="eTxType" readonly style="background:#f1f5f9 !important;"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>공급사/출고처</th>
-                                        <td><input type="text" class="form-control" id="eSupplier"></td>
-                                        <th>브랜드</th>
-                                        <td><input type="text" class="form-control" id="eBrand"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>상품명 <span class="text-danger">*</span></th>
-                                        <td colspan="3"><input type="text" class="form-control" id="eName" required></td>
-                                    </tr>
-                                    <tr>
-                                        <th>컬러</th>
-                                        <td><input type="text" class="form-control" id="eColor"></td>
-                                        <th>사이즈</th>
-                                        <td><input type="text" class="form-control" id="eSize"></td>
-                                    </tr>
-                                    <tr>
-                                        <th>수량 <span class="text-danger">*</span></th>
-                                        <td>
-                                            <input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="eQty" min="1" required oninput="app.recalcEditModal()">
-                                        </td>
-                                        <th>단가(공급가) <span class="text-danger">*</span></th>
-                                        <td>
-                                            <input type="text" class="form-control col-num pe-2 fw-bold" id="ePrice" required oninput="app.formatMoneyInput(this); app.recalcEditModal()">
-                                        </td>
-                                    </tr>
-                                    <tr id="eRowInDetails">
-                                        <th>상품가 (VAT별도)</th>
-                                        <td>
-                                            <input type="text" class="form-control col-num pe-2" id="eBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
-                                        </td>
-                                        <th>운임 (VAT별도)</th>
-                                        <td>
-                                            <input type="text" class="form-control col-num pe-2" id="eFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>총 합계 금액</th>
-                                        <td>
-                                            <input type="text" class="form-control col-num pe-2 text-success fw-bold fs-6" id="eTotalAmount" readonly style="background:#f8fafc !important;">
-                                        </td>
-                                        <th>비고</th>
-                                        <td>
-                                            <input type="text" class="form-control" id="eRemarks" placeholder="메모">
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+
+                        <!-- ── [데스크톱 전용] 2열 테이블 폼 ── -->
+                        <div class="d-none d-md-block">
+                            <div class="border shadow-sm mb-2">
+                                <table class="erp-form-table">
+                                    <colgroup>
+                                        <col style="width: 100px;">
+                                        <col style="width: 40%;">
+                                        <col style="width: 100px;">
+                                        <col style="width: 40%;">
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th>일자 <span class="text-danger">*</span></th>
+                                            <td><input type="date" class="form-control" id="eTxDate" required oninput="app.syncDesktopEditToMobile()"></td>
+                                            <th>구분</th>
+                                            <td><input type="text" class="form-control text-muted fw-bold" id="eTxType" readonly style="background:#f1f5f9 !important;"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>공급사/출고처</th>
+                                            <td><input type="text" class="form-control" id="eSupplier" oninput="app.syncDesktopEditToMobile()"></td>
+                                            <th>브랜드</th>
+                                            <td><input type="text" class="form-control" id="eBrand" oninput="app.syncDesktopEditToMobile()"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>상품명 <span class="text-danger">*</span></th>
+                                            <td colspan="3"><input type="text" class="form-control" id="eName" required oninput="app.syncDesktopEditToMobile()"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>컬러</th>
+                                            <td><input type="text" class="form-control" id="eColor" oninput="app.syncDesktopEditToMobile()"></td>
+                                            <th>사이즈</th>
+                                            <td><input type="text" class="form-control" id="eSize" oninput="app.syncDesktopEditToMobile()"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>수량 <span class="text-danger">*</span></th>
+                                            <td>
+                                                <input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="eQty" min="1" required oninput="app.syncDesktopEditToMobile(); app.recalcEditModal();">
+                                            </td>
+                                            <th>단가(공급가) <span class="text-danger">*</span></th>
+                                            <td>
+                                                <input type="text" class="form-control col-num pe-2 fw-bold" id="ePrice" required oninput="app.formatMoneyInput(this); app.syncDesktopEditToMobile(); app.recalcEditModal();">
+                                            </td>
+                                        </tr>
+                                        <tr id="eRowInDetails">
+                                            <th>상품가 (VAT별도)</th>
+                                            <td>
+                                                <input type="text" class="form-control col-num pe-2" id="eBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
+                                            </td>
+                                            <th>운임 (VAT별도)</th>
+                                            <td>
+                                                <input type="text" class="form-control col-num pe-2" id="eFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreight()">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>총 합계 금액</th>
+                                            <td>
+                                                <input type="text" class="form-control col-num pe-2 text-success fw-bold fs-6" id="eTotalAmount" readonly style="background:#f8fafc !important;">
+                                            </td>
+                                            <th>비고</th>
+                                            <td>
+                                                <input type="text" class="form-control" id="eRemarks" placeholder="메모" oninput="app.syncDesktopEditToMobile()">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+
+                        <!-- ── [모바일 전용] 1열 터치 최적화 폼 (≤ 768px) ── -->
+                        <div class="d-md-none mobile-tx-modal-container">
+                            <!-- 요약 프리뷰 카드 -->
+                            <div class="mobile-modal-tx-card shadow-sm mb-2" id="mobModalTxCard">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="mobile-tx-type-badge badge-in" id="mobModalTypeBadge">매입</span>
+                                        <span class="text-muted small" id="mobModalTxDatePreview">2026-10-07</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="text-muted small me-1">합계금액:</span>
+                                        <strong id="mobModalAmountPreview" class="text-success fs-6">₩0</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 일자 -->
+                            <div class="mb-2">
+                                <label class="form-label fw-bold text-secondary small mb-1">일자 <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control form-control-sm" id="mobETxDate" required oninput="app.syncMobileEditToDesktop()">
+                            </div>
+
+                            <!-- 공급사 & 브랜드 (2열) -->
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">공급사/출고처</label>
+                                    <input type="text" class="form-control form-control-sm" id="mobESupplier" placeholder="거래처" oninput="app.syncMobileEditToDesktop()">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">브랜드</label>
+                                    <input type="text" class="form-control form-control-sm" id="mobEBrand" placeholder="브랜드" oninput="app.syncMobileEditToDesktop()">
+                                </div>
+                            </div>
+
+                            <!-- 상품명 -->
+                            <div class="mb-2">
+                                <label class="form-label fw-bold text-secondary small mb-1">상품명 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm" id="mobEName" required placeholder="상품명 입력" oninput="app.syncMobileEditToDesktop()">
+                            </div>
+
+                            <!-- 컬러 & 사이즈 (2열) -->
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">컬러</label>
+                                    <input type="text" class="form-control form-control-sm" id="mobEColor" placeholder="컬러" oninput="app.syncMobileEditToDesktop()">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">사이즈</label>
+                                    <input type="text" class="form-control form-control-sm" id="mobESize" placeholder="사이즈" oninput="app.syncMobileEditToDesktop()">
+                                </div>
+                            </div>
+
+                            <!-- 수량 & 단가 (2열) -->
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">수량 <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control form-control-sm col-num pe-2 fw-bold text-primary" id="mobEQty" min="1" required oninput="app.syncMobileEditToDesktop(); app.recalcEditModal();">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">단가(공급가) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm col-num pe-2 fw-bold" id="mobEPrice" required oninput="app.formatMoneyInput(this); app.syncMobileEditToDesktop(); app.recalcEditModal();">
+                                </div>
+                            </div>
+
+                            <!-- 매입 상세 (상품가 & 운임 - 2열) -->
+                            <div class="row g-2 mb-2" id="mobERowInDetails">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">상품가 (VAT별도)</label>
+                                    <input type="text" class="form-control form-control-sm col-num pe-2" id="mobEBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreightMobile();">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary small mb-1">운임 (VAT별도)</label>
+                                    <input type="text" class="form-control form-control-sm col-num pe-2" id="mobEFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.calcPriceFromBaseAndFreightMobile();">
+                                </div>
+                            </div>
+
+                            <!-- 비고 -->
+                            <div class="mb-1">
+                                <label class="form-label fw-bold text-secondary small mb-1">비고 (메모)</label>
+                                <input type="text" class="form-control form-control-sm" id="mobERemarks" placeholder="비고 메모 입력" oninput="app.syncMobileEditToDesktop()">
+                            </div>
+                        </div>
+
                         <div class="d-none"><button type="submit" id="hiddenEditSubmitBtn"></button></div>
                     </form>
                 </div>
@@ -436,6 +733,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./Common/js/erp-grid-resizer.js"></script>
-    <script src="hq-transactions.js?v=20261001_1"></script>
+    <script src="hq-transactions.js?v=20261007_1"></script>
 </body>
 </html>

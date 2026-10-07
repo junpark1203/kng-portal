@@ -78,6 +78,7 @@
     let subSearchQuery = '';
     let page = 1;
     let pageSize = 50;
+    let viewMode = 'card'; // 'card' or 'table'
 
     // 전표 모달 상태
     let voucherModal = null;
@@ -165,6 +166,9 @@
                 '3months': '3개월',
                 all: '전체'
             }[preset]);
+        });
+        document.querySelectorAll('.mobile-date-presets-track .mob-date-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.preset === preset);
         });
 
         const today = new Date();
@@ -294,6 +298,18 @@
         $('tabCountIn').textContent = inItems.length;
         $('tabCountOut').textContent = outItems.length;
 
+        // 모바일 헤더 배지 & KPI 동기화
+        if ($('mobileCountBadge')) $('mobileCountBadge').textContent = `${fmtNum(totalCount)}건`;
+        if ($('mobTabCountAll')) $('mobTabCountAll').textContent = totalCount;
+        if ($('mobTabCountIn')) $('mobTabCountIn').textContent = inItems.length;
+        if ($('mobTabCountOut')) $('mobTabCountOut').textContent = outItems.length;
+        if ($('mobileKpiTotal')) $('mobileKpiTotal').textContent = fmtNum(totalCount);
+        if ($('mobileKpiInAmt')) $('mobileKpiInAmt').textContent = fmtWon(inAmount);
+        if ($('mobileKpiInCount')) $('mobileKpiInCount').textContent = fmtNum(inItems.length);
+        if ($('mobileKpiOutAmt')) $('mobileKpiOutAmt').textContent = fmtWon(outAmount);
+        if ($('mobileKpiOutCount')) $('mobileKpiOutCount').textContent = fmtNum(outItems.length);
+        if ($('mobileKpiNetQty')) $('mobileKpiNetQty').textContent = fmtNum(inQty - outQty);
+
         // 정렬 헤더 UI 갱신
         document.querySelectorAll('#txTable thead th.sortable').forEach(th => {
             const col = th.dataset.sort;
@@ -309,6 +325,7 @@
 
         if (list.length === 0) {
             tbody.innerHTML = `<tr><td colspan="14" class="text-center py-5 text-muted"><i class='bx bx-search-alt'></i> 조건에 일치하는 거래 내역이 없습니다.</td></tr>`;
+            renderMobileCards([]);
             tfoot.classList.add('d-none');
             renderPagination(0);
             updateSelectedUI();
@@ -379,6 +396,7 @@
         });
 
         tbody.innerHTML = html;
+        renderMobileCards(pagedList);
 
         // 푸터 총액 반영
         const totalQty = list.reduce((s, t) => s + (Number(t.qty) || 0), 0);
@@ -391,6 +409,99 @@
         renderPagination(list.length);
         updateSelectedUI();
         initGridResizer();
+    }
+
+    // ==========================================
+    // 모바일 전용 카드 뷰 렌더링 (≤ 768px)
+    // ==========================================
+    function renderMobileCards(pagedList) {
+        const container = $('mobileCardsContainer');
+        if (!container) return;
+
+        if (pagedList.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted bg-white rounded-2 border">
+                    <i class='bx bx-search-alt fs-1 text-secondary mb-2'></i>
+                    <div>조건에 일치하는 거래 내역이 없습니다.</div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        pagedList.forEach(t => {
+            const isChecked = selectedIds.has(t.id);
+            const isIN = t.type === 'IN';
+            const badgeClass = isIN ? 'mob-tx-badge in' : 'mob-tx-badge out';
+            const typeLabel = isIN ? '매입' : '출고';
+
+            const qty = Number(t.qty) || 0;
+            const price = Number(t.price) || 0;
+            const totalAmount = qty * price;
+            const basePrice = Number(t.basePrice) || 0;
+            const freight = Number(t.freight) || 0;
+
+            let subDetail = '-';
+            if (isIN && (basePrice > 0 || freight > 0)) {
+                subDetail = `상품가 ${fmtWon(basePrice)} / 운임 ${fmtWon(freight)}`;
+            } else if (t.remarks) {
+                subDetail = t.remarks;
+            }
+
+            const colorTag = t.color ? `<span class="mob-meta-tag">${escHtml(t.color)}</span>` : '';
+            const sizeTag = t.size ? `<span class="mob-meta-tag">${escHtml(t.size)}</span>` : '';
+
+            html += `
+                <div class="mobile-tx-card ${isChecked ? 'checked-card' : ''}" id="mobCard_${escHtml(t.id)}">
+                    <div class="mob-card-head">
+                        <div class="mob-card-head-left">
+                            <input type="checkbox" class="form-check-input mt-0 mob-item-check" value="${escHtml(t.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(t.id)}', this.checked)">
+                            <span class="mob-card-date">${escHtml(t.txDate || '-')}</span>
+                            <span class="${badgeClass}">${typeLabel}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            ${t.supplier ? `<span class="mob-badge-supplier" title="${escHtml(t.supplier)}">${escHtml(t.supplier)}</span>` : ''}
+                            ${t.brand ? `<span class="mob-badge-brand" title="${escHtml(t.brand)}">${escHtml(t.brand)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="mob-card-title">${escHtml(t.productName || '-')}</div>
+                    ${(colorTag || sizeTag) ? `<div class="mob-card-meta">${colorTag}${sizeTag}</div>` : ''}
+                    <div class="mob-card-grid">
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">수량</span>
+                            <span class="mob-grid-val ${isIN ? 'text-primary' : 'text-danger'}">${fmtNum(qty)}개</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">단가(공급가)</span>
+                            <span class="mob-grid-val">${price > 0 ? fmtWon(price) : '-'}</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">총 거래액</span>
+                            <span class="mob-grid-val text-dark">${fmtWon(totalAmount)}</span>
+                        </div>
+                        <div class="mob-grid-item">
+                            <span class="mob-grid-label">${isIN ? '상품가 / 운임' : '비고'}</span>
+                            <span class="mob-grid-val text-muted small text-truncate" title="${escHtml(subDetail)}">${escHtml(subDetail)}</span>
+                        </div>
+                    </div>
+                    <div class="mob-card-actions">
+                        <button type="button" class="mob-action-btn btn-quote" onclick="app.addItemToQuoteCart('${escHtml(t.id)}')">
+                            <i class='bx bx-cart-alt'></i> 견적담기
+                        </button>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="mob-action-btn btn-edit" onclick="app.openEditModal('${escHtml(t.id)}')">
+                                <i class='bx bx-edit'></i> 수정
+                            </button>
+                            <button type="button" class="mob-action-btn btn-delete" onclick="app.deleteSingleTx('${escHtml(t.id)}')">
+                                <i class='bx bx-trash'></i> 삭제
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
     }
 
     // ==========================================
@@ -464,18 +575,28 @@
         $('selectedCount').textContent = count;
         $('bottomSelectedCount').textContent = count;
 
+        if ($('mobileSelectionCount')) $('mobileSelectionCount').textContent = count;
+        const mobBar = $('mobileFloatingSelectionBar');
+        if (mobBar) mobBar.classList.toggle('d-none', count === 0);
+
         const selectAll = $('selectAll');
-        if (selectAll) {
-            const pageChecks = document.querySelectorAll('.row-check');
-            if (pageChecks.length > 0) {
-                const allChecked = Array.from(pageChecks).every(c => c.checked);
-                const someChecked = Array.from(pageChecks).some(c => c.checked);
+        const mobSelectAll = $('mobSelectAllCheck');
+
+        const pageChecks = document.querySelectorAll('.row-check, .mob-item-check');
+        if (pageChecks.length > 0) {
+            const allChecked = Array.from(pageChecks).every(c => c.checked);
+            const someChecked = Array.from(pageChecks).some(c => c.checked);
+            if (selectAll) {
                 selectAll.checked = allChecked;
                 selectAll.indeterminate = someChecked && !allChecked;
-            } else {
-                selectAll.checked = false;
-                selectAll.indeterminate = false;
             }
+            if (mobSelectAll) {
+                mobSelectAll.checked = allChecked;
+                mobSelectAll.indeterminate = someChecked && !allChecked;
+            }
+        } else {
+            if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+            if (mobSelectAll) { mobSelectAll.checked = false; mobSelectAll.indeterminate = false; }
         }
     }
 
@@ -892,15 +1013,49 @@
         $('eFreight').value = fmtNum(t.freight || 0);
         $('eRemarks').value = t.remarks || '';
 
+        // 모바일 폼 필드 동기화
+        if ($('mobETxDate')) $('mobETxDate').value = t.txDate;
+        if ($('mobESupplier')) $('mobESupplier').value = t.supplier || '';
+        if ($('mobEBrand')) $('mobEBrand').value = t.brand || '';
+        if ($('mobEName')) $('mobEName').value = t.productName || '';
+        if ($('mobEColor')) $('mobEColor').value = t.color || '';
+        if ($('mobESize')) $('mobESize').value = t.size || '';
+        if ($('mobEQty')) $('mobEQty').value = t.qty;
+        if ($('mobEPrice')) $('mobEPrice').value = fmtNum(t.price || 0);
+        if ($('mobEBasePrice')) $('mobEBasePrice').value = fmtNum(t.basePrice || 0);
+        if ($('mobEFreight')) $('mobEFreight').value = fmtNum(t.freight || 0);
+        if ($('mobERemarks')) $('mobERemarks').value = t.remarks || '';
+
         const rowInDetails = $('eRowInDetails');
+        const mobRowInDetails = $('mobERowInDetails');
+        const mobBadge = $('mobModalTypeBadge');
+
         if (t.type === 'OUT') {
             rowInDetails.classList.add('d-none');
+            if (mobRowInDetails) mobRowInDetails.classList.add('d-none');
+            if (mobBadge) {
+                mobBadge.className = 'mobile-tx-type-badge badge-out';
+                mobBadge.textContent = '출고';
+            }
             $('ePrice').readOnly = false;
             $('ePrice').style.background = '#ffffff';
+            if ($('mobEPrice')) {
+                $('mobEPrice').readOnly = false;
+                $('mobEPrice').style.background = '#ffffff';
+            }
         } else {
             rowInDetails.classList.remove('d-none');
+            if (mobRowInDetails) mobRowInDetails.classList.remove('d-none');
+            if (mobBadge) {
+                mobBadge.className = 'mobile-tx-type-badge badge-in';
+                mobBadge.textContent = '매입(입고)';
+            }
             $('ePrice').readOnly = true;
             $('ePrice').style.background = '#f8fafc';
+            if ($('mobEPrice')) {
+                $('mobEPrice').readOnly = true;
+                $('mobEPrice').style.background = '#f8fafc';
+            }
         }
 
         recalcEditModal();
@@ -911,13 +1066,106 @@
         const base = parseNumber($('eBasePrice').value);
         const freight = parseNumber($('eFreight').value);
         $('ePrice').value = fmtNum(base + freight);
+        syncDesktopEditToMobile();
         recalcEditModal();
+    }
+
+    function calcPriceFromBaseAndFreightMobile() {
+        const base = parseNumber($('mobEBasePrice')?.value);
+        const freight = parseNumber($('mobEFreight')?.value);
+        if ($('mobEPrice')) $('mobEPrice').value = fmtNum(base + freight);
+        syncMobileEditToDesktop();
+        recalcEditModal();
+    }
+
+    function syncMobileEditToDesktop() {
+        const dDate = $('eTxDate'), mDate = $('mobETxDate');
+        if (dDate && mDate) dDate.value = mDate.value;
+
+        const dSupp = $('eSupplier'), mSupp = $('mobESupplier');
+        if (dSupp && mSupp) dSupp.value = mSupp.value;
+
+        const dBrand = $('eBrand'), mBrand = $('mobEBrand');
+        if (dBrand && mBrand) dBrand.value = mBrand.value;
+
+        const dName = $('eName'), mName = $('mobEName');
+        if (dName && mName) dName.value = mName.value;
+
+        const dColor = $('eColor'), mColor = $('mobEColor');
+        if (dColor && mColor) dColor.value = mColor.value;
+
+        const dSize = $('eSize'), mSize = $('mobESize');
+        if (dSize && mSize) dSize.value = mSize.value;
+
+        const dQty = $('eQty'), mQty = $('mobEQty');
+        if (dQty && mQty) dQty.value = mQty.value;
+
+        const dPrice = $('ePrice'), mPrice = $('mobEPrice');
+        if (dPrice && mPrice) dPrice.value = mPrice.value;
+
+        const dBase = $('eBasePrice'), mBase = $('mobEBasePrice');
+        if (dBase && mBase) dBase.value = mBase.value;
+
+        const dFreight = $('eFreight'), mFreight = $('mobEFreight');
+        if (dFreight && mFreight) dFreight.value = mFreight.value;
+
+        const dRemarks = $('eRemarks'), mRemarks = $('mobERemarks');
+        if (dRemarks && mRemarks) dRemarks.value = mRemarks.value;
+
+        updateMobileEditPreview();
+    }
+
+    function syncDesktopEditToMobile() {
+        const dDate = $('eTxDate'), mDate = $('mobETxDate');
+        if (dDate && mDate) mDate.value = dDate.value;
+
+        const dSupp = $('eSupplier'), mSupp = $('mobESupplier');
+        if (dSupp && mSupp) mSupp.value = dSupp.value;
+
+        const dBrand = $('eBrand'), mBrand = $('mobEBrand');
+        if (dBrand && mBrand) mBrand.value = dBrand.value;
+
+        const dName = $('eName'), mName = $('mobEName');
+        if (dName && mName) mName.value = dName.value;
+
+        const dColor = $('eColor'), mColor = $('mobEColor');
+        if (dColor && mColor) dColor.value = mColor.value;
+
+        const dSize = $('eSize'), mSize = $('mobESize');
+        if (dSize && mSize) mSize.value = dSize.value;
+
+        const dQty = $('eQty'), mQty = $('mobEQty');
+        if (dQty && mQty) mQty.value = dQty.value;
+
+        const dPrice = $('ePrice'), mPrice = $('mobEPrice');
+        if (dPrice && mPrice) mPrice.value = dPrice.value;
+
+        const dBase = $('eBasePrice'), mBase = $('mobEBasePrice');
+        if (dBase && mBase) dBase.value = mBase.value;
+
+        const dFreight = $('eFreight'), mFreight = $('mobEFreight');
+        if (dFreight && mFreight) dFreight.value = mFreight.value;
+
+        const dRemarks = $('eRemarks'), mRemarks = $('mobERemarks');
+        if (dRemarks && mRemarks) dRemarks.value = mRemarks.value;
+
+        updateMobileEditPreview();
+    }
+
+    function updateMobileEditPreview() {
+        const dateVal = $('mobETxDate')?.value || $('eTxDate')?.value;
+        if ($('mobModalTxDatePreview')) $('mobModalTxDatePreview').textContent = dateVal || '-';
+
+        const qty = parseNumber($('mobEQty')?.value || $('eQty')?.value) || 0;
+        const price = parseNumber($('mobEPrice')?.value || $('ePrice')?.value) || 0;
+        if ($('mobModalAmountPreview')) $('mobModalAmountPreview').textContent = fmtWon(qty * price);
     }
 
     function recalcEditModal() {
         const qty = parseNumber($('eQty').value) || 0;
         const price = parseNumber($('ePrice').value) || 0;
         $('eTotalAmount').value = fmtWon(qty * price);
+        updateMobileEditPreview();
     }
 
     async function handleSaveEdit(e) {
@@ -960,7 +1208,7 @@
     }
 
     // ==========================================
-    // 삭제 처리
+    // 삭제 처리 (일괄 / 단일)
     // ==========================================
     async function handleDelete() {
         if (selectedIds.size === 0) {
@@ -987,6 +1235,245 @@
         } catch (err) {
             showToast('삭제 중 오류: ' + err.message, 'error');
         }
+    }
+
+    async function deleteSingleTx(id) {
+        const t = transactions.find(x => x.id === id);
+        const title = t ? `[${t.productName || '내역'}]` : '해당';
+        if (!confirm(`${title} 거래 내역을 삭제하시겠습니까?\n(삭제 시 연동된 재고 수량이 복원/감소됩니다)`)) return;
+
+        try {
+            const res = await authFetch(API_BASE + '/transactions/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [id] })
+            });
+            if (!res.ok) throw new Error('삭제 처리 실패');
+            showToast('거래 내역이 삭제되었습니다.', 'success');
+            selectedIds.delete(id);
+            await fetchTransactions();
+            await fetchProducts();
+        } catch (err) {
+            showToast('삭제 중 오류: ' + err.message, 'error');
+        }
+    }
+
+    function addItemToQuoteCart(id) {
+        const tx = transactions.find(item => String(item.id) === String(id));
+        if (!tx) return;
+
+        let cart = [];
+        try {
+            cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
+            if (!Array.isArray(cart)) cart = [];
+        } catch (e) {
+            cart = [];
+        }
+
+        const existing = cart.find(c => c.source_module === 'hq-transactions' && String(c.source_id) === String(tx.id));
+        if (existing) {
+            existing.qty = (Number(existing.qty) || 1) + (Number(tx.qty) || 1);
+        } else {
+            cart.push({
+                source_module: 'hq-transactions',
+                source_id: tx.id,
+                product_name: tx.productName || tx.name || '',
+                spec: [tx.color, tx.size].filter(Boolean).join(' / '),
+                color: tx.color || '',
+                unit: 'EA',
+                qty: Number(tx.qty) || 1,
+                cost_price: Number(tx.price || 0),
+                unit_price: Number(tx.price || 0),
+                image_url: tx.image_url || '',
+                remarks: tx.supplier ? `[거래처: ${tx.supplier}]` : ''
+            });
+        }
+
+        localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
+        showToast(`[${tx.productName || '품목'}] 견적서 장바구니에 담겼습니다.`, 'success');
+        if (confirm(`[${tx.productName || '선택 품목'}] 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
+            location.href = './05_Management/forms/quotation.html';
+        }
+    }
+
+    // ==========================================
+    // 모바일 전용 뷰 전환 & 검색 & 필터 드로어
+    // ==========================================
+    function toggleViewMode() {
+        viewMode = viewMode === 'card' ? 'table' : 'card';
+        const cardContainer = $('mobileCardsContainer');
+        const tableWrapper = $('txGridWrapper');
+        const btn = $('mobileViewToggleBtn');
+
+        if (viewMode === 'card') {
+            if (cardContainer) cardContainer.classList.remove('d-none');
+            if (tableWrapper) tableWrapper.classList.add('mobile-hidden-table');
+            if (btn) {
+                btn.innerHTML = "<i class='bx bx-table'></i>";
+                btn.title = "표 형태로 보기";
+                btn.classList.remove('active');
+            }
+        } else {
+            if (cardContainer) cardContainer.classList.add('d-none');
+            if (tableWrapper) tableWrapper.classList.remove('mobile-hidden-table');
+            if (btn) {
+                btn.innerHTML = "<i class='bx bx-id-card'></i>";
+                btn.title = "카드 형태로 보기";
+                btn.classList.add('active');
+            }
+        }
+    }
+
+    function onMobileSearchKeyup(e) {
+        const val = $('mobileSearchInput')?.value || '';
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.toggle('d-none', !val);
+        if (e.key === 'Enter') {
+            submitMobileSearch();
+        }
+    }
+
+    function submitMobileSearch() {
+        const q = ($('mobileSearchInput')?.value || '').trim();
+        searchQuery = q;
+        if ($('searchInput')) $('searchInput').value = q;
+        if ($('clearSearchBtn')) $('clearSearchBtn').classList.toggle('d-none', !q);
+        page = 1;
+        renderTable();
+    }
+
+    function clearMobileSearch() {
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+        submitMobileSearch();
+    }
+
+    function toggleMobileFilter() {
+        const drawer = $('mobileFilterDrawer');
+        const backdrop = $('mobileFilterBackdrop');
+        if (!drawer) return;
+
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+            drawer.classList.remove('open');
+            if (backdrop) backdrop.classList.add('d-none');
+        } else {
+            // 거래처 드롭다운 구성
+            const suppSelect = $('mobileDrawerSupplier');
+            if (suppSelect) {
+                const curVal = suppSelect.value;
+                const suppliers = Array.from(new Set(transactions.map(t => t.supplier).filter(Boolean))).sort();
+                let suppHtml = '<option value="">전체 거래처</option>';
+                suppliers.forEach(s => {
+                    suppHtml += `<option value="${escHtml(s)}">${escHtml(s)}</option>`;
+                });
+                suppSelect.innerHTML = suppHtml;
+                suppSelect.value = curVal;
+            }
+
+            // 현재 상태 동기화
+            if ($('mobileDrawerType')) $('mobileDrawerType').value = typeFilter;
+            if ($('mobileDrawerStartDate')) $('mobileDrawerStartDate').value = startDate;
+            if ($('mobileDrawerEndDate')) $('mobileDrawerEndDate').value = endDate;
+            if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = searchTarget;
+            if ($('mobileDrawerSort')) $('mobileDrawerSort').value = `${sort.col}_${sort.asc ? 'asc' : 'desc'}`;
+
+            drawer.classList.add('open');
+            if (backdrop) backdrop.classList.remove('d-none');
+        }
+    }
+
+    function onMobileDrawerPresetChange(preset) {
+        if (preset === 'custom') return;
+        const today = new Date();
+        const formatDate = d => d.toISOString().split('T')[0];
+
+        let sDate = '', eDate = '';
+        if (preset === 'today') {
+            sDate = formatDate(today);
+            eDate = formatDate(today);
+        } else if (preset === 'week') {
+            const d = new Date(today);
+            d.setDate(d.getDate() - 7);
+            sDate = formatDate(d);
+            eDate = formatDate(today);
+        } else if (preset === 'month') {
+            const d = new Date(today.getFullYear(), today.getMonth(), 1);
+            sDate = formatDate(d);
+            eDate = formatDate(today);
+        } else if (preset === '3months') {
+            const d = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+            sDate = formatDate(d);
+            eDate = formatDate(today);
+        } else if (preset === 'all') {
+            sDate = '';
+            eDate = '';
+        }
+
+        if ($('mobileDrawerStartDate')) $('mobileDrawerStartDate').value = sDate;
+        if ($('mobileDrawerEndDate')) $('mobileDrawerEndDate').value = eDate;
+    }
+
+    function applyMobileDrawerFilter() {
+        const typeVal = $('mobileDrawerType')?.value || 'all';
+        const sDate = $('mobileDrawerStartDate')?.value || '';
+        const eDate = $('mobileDrawerEndDate')?.value || '';
+        const suppVal = $('mobileDrawerSupplier')?.value || '';
+        const targetVal = $('mobileDrawerTarget')?.value || 'all';
+        const sortVal = $('mobileDrawerSort')?.value || 'txDate_desc';
+
+        typeFilter = typeVal;
+        startDate = sDate;
+        endDate = eDate;
+        if ($('startDate')) $('startDate').value = startDate;
+        if ($('endDate')) $('endDate').value = endDate;
+
+        // 구분 칩 업데이트
+        document.querySelectorAll('#typeTabGroup .erp-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === typeFilter);
+        });
+        document.querySelectorAll('.mobile-type-filter-track .mob-type-chip').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === typeFilter);
+        });
+
+        searchTarget = targetVal;
+        if ($('searchTarget')) $('searchTarget').value = searchTarget;
+
+        if (suppVal) {
+            searchTarget = 'supplier';
+            if ($('searchTarget')) $('searchTarget').value = 'supplier';
+            searchQuery = suppVal;
+            if ($('searchInput')) $('searchInput').value = suppVal;
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = suppVal;
+        }
+
+        // 정렬
+        const sortParts = sortVal.split('_');
+        if (sortParts.length === 2) {
+            sort.col = sortParts[0];
+            sort.asc = sortParts[1] === 'asc';
+        }
+
+        const isFilterActive = typeFilter !== 'all' || startDate !== '' || endDate !== '' || searchTarget !== 'all' || suppVal !== '';
+        if ($('mobileFilterDot')) $('mobileFilterDot').classList.toggle('d-none', !isFilterActive);
+
+        toggleMobileFilter();
+        page = 1;
+        fetchTransactions();
+    }
+
+    function resetMobileDrawerFilter() {
+        if ($('mobileDrawerType')) $('mobileDrawerType').value = 'all';
+        if ($('mobileDrawerDatePreset')) $('mobileDrawerDatePreset').value = 'month';
+        onMobileDrawerPresetChange('month');
+        if ($('mobileDrawerSupplier')) $('mobileDrawerSupplier').value = '';
+        if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = 'all';
+        if ($('mobileDrawerSort')) $('mobileDrawerSort').value = 'txDate_desc';
+
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+        searchQuery = '';
+
+        applyMobileDrawerFilter();
     }
 
     // ==========================================
@@ -1094,6 +1581,9 @@
             document.querySelectorAll('#typeTabGroup .erp-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.type === type);
             });
+            document.querySelectorAll('.mobile-type-filter-track .mob-type-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === type);
+            });
             page = 1;
             fetchTransactions();
         },
@@ -1104,6 +1594,7 @@
             startDate = $('startDate').value;
             endDate = $('endDate').value;
             document.querySelectorAll('.erp-date-presets .erp-preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.mobile-date-presets-track .mob-date-chip').forEach(btn => btn.classList.remove('active'));
             page = 1;
             fetchTransactions();
         },
@@ -1125,11 +1616,15 @@
         clearSearchInput() {
             $('searchInput').value = '';
             $('clearSearchBtn').classList.add('d-none');
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
             this.search();
         },
 
         search() {
             searchQuery = $('searchInput').value.trim();
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = searchQuery;
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.toggle('d-none', !searchQuery);
             page = 1;
             renderTable();
         },
@@ -1139,6 +1634,8 @@
             searchTarget = 'all';
             $('searchInput').value = '';
             $('clearSearchBtn').classList.add('d-none');
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
             searchQuery = '';
             $('subSearchInput').value = '';
             $('clearSubSearchBtn').classList.add('d-none');
@@ -1172,10 +1669,11 @@
             page = p;
             renderTable();
             $('txGridWrapper').scrollTop = 0;
+            if ($('mobileCardsContainer')) $('mobileCardsContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
         },
 
         toggleSelectAll(checked) {
-            const pageChecks = document.querySelectorAll('.row-check');
+            const pageChecks = document.querySelectorAll('.row-check, .mob-item-check');
             pageChecks.forEach(c => {
                 c.checked = checked;
                 if (checked) selectedIds.add(c.value);
@@ -1183,12 +1681,15 @@
             });
             updateSelectedUI();
             document.querySelectorAll('#tableBody tr').forEach(tr => tr.classList.toggle('checked-row', checked));
+            document.querySelectorAll('.mobile-tx-card').forEach(card => card.classList.toggle('checked-card', checked));
         },
 
         toggleSelectOne(id, checked) {
             if (checked) selectedIds.add(id);
             else selectedIds.delete(id);
             updateSelectedUI();
+            const mobCard = $('mobCard_' + id);
+            if (mobCard) mobCard.classList.toggle('checked-card', checked);
         },
 
         onRowClick(e, id, idx) {
@@ -1211,8 +1712,23 @@
 
         openEditModal,
         calcPriceFromBaseAndFreight,
+        calcPriceFromBaseAndFreightMobile,
+        syncMobileEditToDesktop,
+        syncDesktopEditToMobile,
         recalcEditModal,
         handleSaveEdit,
+
+        // 모바일 전용 뷰/검색/필터 제어
+        toggleViewMode,
+        onMobileSearchKeyup,
+        submitMobileSearch,
+        clearMobileSearch,
+        toggleMobileFilter,
+        onMobileDrawerPresetChange,
+        applyMobileDrawerFilter,
+        resetMobileDrawerFilter,
+        addItemToQuoteCart,
+        deleteSingleTx,
 
         addSelectedToQuoteCart() {
             if (selectedIds.size === 0) {
@@ -1240,13 +1756,13 @@
                     cart.push({
                         source_module: 'hq-transactions',
                         source_id: tx.id,
-                        product_name: tx.product_name || tx.name || '',
-                        spec: tx.spec || '',
+                        product_name: tx.productName || tx.product_name || tx.name || '',
+                        spec: [tx.color, tx.size].filter(Boolean).join(' / '),
                         color: tx.color || '',
                         unit: tx.unit || 'EA',
                         qty: Number(tx.qty) || 1,
-                        cost_price: Number(tx.unit_price || 0),
-                        unit_price: Number(tx.unit_price || 0),
+                        cost_price: Number(tx.price || tx.unit_price || 0),
+                        unit_price: Number(tx.price || tx.unit_price || 0),
                         image_url: tx.image_url || '',
                         remarks: tx.supplier ? `[거래처: ${tx.supplier}]` : ''
                     });

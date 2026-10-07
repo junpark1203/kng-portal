@@ -1677,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', function() {
             id: "hq_transactions",
             category: "본사매입현황",
             title: "입출고 내역",
-            path: "hq-transactions.html?v=20261001_2",
+            path: "hq-transactions.html?v=20261007_1",
             icon: "bx-list-ul",
             priority: "5순위",
             tagColor: "amber",
