@@ -111,6 +111,9 @@ const app = {
     searchQuery: '',
     subSearchQuery: '',
     marginFilter: 'all',
+    priceTypeFilter: 'all',
+    freightFilter: 'all',
+    mobileViewMode: 'card', // 'card' | 'table'
     itemsSpecsMap: {},
     viewMode: 'item', // 'item' | 'quote'
     checkedItemIds: new Set(),
@@ -133,7 +136,10 @@ const app = {
     modalRows: [],
 
     init: async function() {
+        this.initViewMode();
         this.bindEvents();
+        this.setupMobileEvents();
+        this.parseUrlParams();
         await this.loadItemSpecs();
         await this.loadPrices();
         await this.loadArchiveList();
@@ -324,12 +330,16 @@ const app = {
         if ($('subSearchInput')) $('subSearchInput').value = '';
         if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
         if ($('marginFilter')) $('marginFilter').value = 'all';
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
         this.focusedRowIndex = -1;
         this.selectedCategory = '';
         this.searchQuery = '';
         this.subSearchQuery = '';
         this.searchTarget = '';
         this.marginFilter = 'all';
+        this.priceTypeFilter = 'all';
+        this.freightFilter = 'all';
         this.sortColumn = '';
         this.sortOrder = 'asc';
         this.updateSortIcons();
@@ -351,27 +361,272 @@ const app = {
         this.applyFiltersAndRender();
     },
 
+    // ─────────────────────────────────────────
+    // 모바일 전용 뷰모드, 검색, 드로어 및 스와이프 제어
+    // ─────────────────────────────────────────
+    initViewMode: function() {
+        const saved = localStorage.getItem('kng_unit_prices_view_mode');
+        if (saved && (saved === 'card' || saved === 'table')) {
+            this.mobileViewMode = saved;
+        } else {
+            this.mobileViewMode = 'card';
+        }
+        this.applyViewMode();
+    },
+
+    setViewMode: function(mode) {
+        this.mobileViewMode = mode;
+        localStorage.setItem('kng_unit_prices_view_mode', mode);
+        this.applyViewMode();
+    },
+
+    applyViewMode: function() {
+        const btnCard = $('btnViewCard');
+        const btnTable = $('btnViewTable');
+        if (btnCard) btnCard.classList.toggle('active', this.mobileViewMode === 'card');
+        if (btnTable) btnTable.classList.toggle('active', this.mobileViewMode === 'table');
+
+        const cardContainer = $('priceCardsContainer');
+        const tableWrapper = $('priceGridWrapper');
+        const pagingBar = $('itemPaginationBar');
+
+        if (this.viewMode === 'item') {
+            if (this.mobileViewMode === 'card') {
+                if (cardContainer) cardContainer.classList.remove('mobile-hidden-cards');
+                if (tableWrapper) tableWrapper.classList.add('mobile-hidden-table');
+                if (pagingBar) pagingBar.classList.add('mobile-hidden-table');
+            } else {
+                if (cardContainer) cardContainer.classList.add('mobile-hidden-cards');
+                if (tableWrapper) tableWrapper.classList.remove('mobile-hidden-table');
+                if (pagingBar) pagingBar.classList.remove('mobile-hidden-table');
+            }
+        } else {
+            if (cardContainer) cardContainer.classList.add('mobile-hidden-cards');
+        }
+    },
+
+    enableDragToScroll: function(el) {
+        if (!el || el._dragScrollEnabled) return;
+        el._dragScrollEnabled = true;
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+        let isDragging = false;
+
+        el.addEventListener('mousedown', (e) => {
+            isDown = true;
+            isDragging = false;
+            startX = e.pageX - el.offsetLeft;
+            scrollLeft = el.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDown) {
+                isDown = false;
+                setTimeout(() => {
+                    isDragging = false;
+                    el.classList.remove('is-dragging');
+                }, 50);
+            }
+        });
+
+        el.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            const x = e.pageX - el.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(walk) > 4) {
+                isDragging = true;
+                el.classList.add('is-dragging');
+                e.preventDefault();
+                el.scrollLeft = scrollLeft - walk;
+            }
+        });
+
+        el.addEventListener('click', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        el.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+                e.preventDefault();
+                el.scrollLeft += (e.deltaY * 0.8);
+            }
+        }, { passive: false });
+    },
+
+    setupMobileEvents: function() {
+        const mobTrack = $('mobileCategoryScrollTrack');
+        if (mobTrack) {
+            this.enableDragToScroll(mobTrack);
+        }
+    },
+
+    parseUrlParams: function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const qSearch = urlParams.get('search') || urlParams.get('item') || urlParams.get('q');
+        const qCategory = urlParams.get('category');
+        if (qSearch) {
+            this.searchQuery = qSearch.trim().toLowerCase();
+            if ($('searchInput')) $('searchInput').value = qSearch;
+            if ($('mobileSearchInput')) $('mobileSearchInput').value = qSearch;
+            if ($('clearSearchBtn')) $('clearSearchBtn').classList.remove('d-none');
+            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.remove('d-none');
+        }
+        if (qCategory) {
+            this.selectedCategory = qCategory.trim();
+        }
+    },
+
+    submitMobileSearch: function() {
+        const val = $('mobileSearchInput') ? $('mobileSearchInput').value : '';
+        this.searchQuery = val.trim().toLowerCase();
+        if ($('searchInput')) $('searchInput').value = val;
+        if ($('clearSearchBtn')) $('clearSearchBtn').classList.toggle('d-none', !val);
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.toggle('d-none', !val);
+        this.applyFiltersAndRender();
+    },
+
+    clearMobileSearch: function() {
+        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
+        if ($('searchInput')) $('searchInput').value = '';
+        if ($('clearSearchBtn')) $('clearSearchBtn').classList.add('d-none');
+        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+        this.searchQuery = '';
+        this.applyFiltersAndRender();
+    },
+
+    toggleMobileFilter: function() {
+        const drawer = $('mobileFilterDrawer');
+        const backdrop = $('mobileFilterBackdrop');
+        if (!drawer || !backdrop) return;
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+            drawer.classList.remove('open');
+            backdrop.classList.add('d-none');
+        } else {
+            if ($('mobileFilterCategory')) $('mobileFilterCategory').value = this.selectedCategory;
+            if ($('mobileFilterMargin')) $('mobileFilterMargin').value = this.marginFilter;
+            if ($('mobileFilterPriceType')) $('mobileFilterPriceType').value = this.priceTypeFilter || 'all';
+            if ($('mobileFilterFreight')) $('mobileFilterFreight').value = this.freightFilter || 'all';
+            if ($('mobileFilterTarget')) $('mobileFilterTarget').value = this.searchTarget;
+            drawer.classList.add('open');
+            backdrop.classList.remove('d-none');
+        }
+    },
+
+    applyMobileDrawerFilter: function() {
+        if ($('mobileFilterCategory')) this.selectedCategory = $('mobileFilterCategory').value;
+        if ($('mobileFilterMargin')) {
+            this.marginFilter = $('mobileFilterMargin').value;
+            if ($('marginFilter')) $('marginFilter').value = this.marginFilter;
+        }
+        if ($('mobileFilterPriceType')) this.priceTypeFilter = $('mobileFilterPriceType').value;
+        if ($('mobileFilterFreight')) this.freightFilter = $('mobileFilterFreight').value;
+        if ($('mobileFilterTarget')) {
+            this.searchTarget = $('mobileFilterTarget').value;
+            if ($('searchTarget')) $('searchTarget').value = this.searchTarget;
+        }
+        this.toggleMobileFilter();
+        this.renderCategoryTabs();
+        this.applyFiltersAndRender();
+    },
+
+    resetMobileDrawerFilter: function() {
+        if ($('mobileFilterCategory')) $('mobileFilterCategory').value = '';
+        if ($('mobileFilterMargin')) $('mobileFilterMargin').value = 'all';
+        if ($('mobileFilterPriceType')) $('mobileFilterPriceType').value = 'all';
+        if ($('mobileFilterFreight')) $('mobileFilterFreight').value = 'all';
+        if ($('mobileFilterTarget')) $('mobileFilterTarget').value = '';
+        this.selectedCategory = '';
+        this.marginFilter = 'all';
+        this.priceTypeFilter = 'all';
+        this.freightFilter = 'all';
+        this.searchTarget = '';
+        if ($('marginFilter')) $('marginFilter').value = 'all';
+        if ($('searchTarget')) $('searchTarget').value = '';
+        this.toggleMobileFilter();
+        this.renderCategoryTabs();
+        this.applyFiltersAndRender();
+    },
+
+    updateFilterDot: function() {
+        const dot = $('mobileFilterDot');
+        if (!dot) return;
+        const hasFilter = !!(this.selectedCategory || (this.marginFilter && this.marginFilter !== 'all') || (this.priceTypeFilter && this.priceTypeFilter !== 'all') || (this.freightFilter && this.freightFilter !== 'all') || this.searchTarget || this.searchQuery);
+        dot.classList.toggle('d-none', !hasFilter);
+    },
+
     renderCategoryTabs: function() {
         const container = $('categoryTabGroup');
-        if (!container) return;
+        const mobileTrack = $('mobileCategoryScrollTrack');
+        const filterCat = $('mobileFilterCategory');
+
         const categories = new Set();
         this.priceList.forEach(p => {
             if (p.category && p.category.trim()) categories.add(p.category.trim());
         });
+        const sortedCats = Array.from(categories).sort();
 
-        let html = `<button type="button" class="erp-tab-btn ${this.selectedCategory === '' ? 'active' : ''}" data-category="" onclick="app.setCategoryFilter('')">전체</button>`;
-        Array.from(categories).sort().forEach(cat => {
-            html += `<button type="button" class="erp-tab-btn ${this.selectedCategory === cat ? 'active' : ''}" data-category="${cat}" onclick="app.setCategoryFilter('${cat}')">${cat}</button>`;
-        });
-        container.innerHTML = html;
+        // 1. 데스크톱 툴바 탭
+        if (container) {
+            let html = `<button type="button" class="erp-tab-btn ${this.selectedCategory === '' ? 'active' : ''}" data-category="" onclick="app.setCategoryFilter('')">전체</button>`;
+            sortedCats.forEach(cat => {
+                html += `<button type="button" class="erp-tab-btn ${this.selectedCategory === cat ? 'active' : ''}" data-category="${cat}" onclick="app.setCategoryFilter('${cat}')">${escapeHtml(cat)}</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // 2. 모바일 가로 스와이프 칩 바
+        if (mobileTrack) {
+            let mobHtml = `<button type="button" class="btn btn-sm ${this.selectedCategory === '' ? 'btn-primary text-white shadow-sm' : 'btn-outline-secondary bg-white'} fw-bold rounded-pill px-3 flex-shrink-0" onclick="app.setCategoryFilter('')">전체보기</button>`;
+            sortedCats.forEach(cat => {
+                const isActive = this.selectedCategory === cat;
+                mobHtml += `<button type="button" class="btn btn-sm ${isActive ? 'btn-primary text-white shadow-sm' : 'btn-outline-secondary bg-white'} fw-bold rounded-pill px-3 flex-shrink-0" onclick="app.setCategoryFilter('${cat}')">${escapeHtml(cat)}</button>`;
+            });
+            mobileTrack.innerHTML = mobHtml;
+            this.enableDragToScroll(mobileTrack);
+            const activeBtn = mobileTrack.querySelector('.btn-primary');
+            if (activeBtn) {
+                setTimeout(() => {
+                    activeBtn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                }, 60);
+            }
+        }
+
+        // 3. 모바일 필터 드로어 카테고리 옵션
+        if (filterCat) {
+            let optHtml = `<option value="">전체 분류</option>`;
+            sortedCats.forEach(cat => {
+                optHtml += `<option value="${escapeHtml(cat)}" ${this.selectedCategory === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`;
+            });
+            filterCat.innerHTML = optHtml;
+        }
     },
 
     setCategoryFilter: function(cat) {
         this.selectedCategory = cat;
-        const btns = $('categoryTabGroup').querySelectorAll('.erp-tab-btn');
-        btns.forEach(b => {
-            b.classList.toggle('active', b.getAttribute('data-category') === cat);
+
+        // 데스크톱 탭 동기화
+        const tabBtns = document.querySelectorAll('#categoryTabGroup .erp-tab-btn');
+        tabBtns.forEach(b => {
+            b.classList.toggle('active', (b.getAttribute('data-category') || '') === cat);
         });
+
+        // 모바일 칩 동기화
+        const mobileBtns = document.querySelectorAll('#mobileCategoryScrollTrack .btn');
+        mobileBtns.forEach(btn => {
+            const text = btn.innerText.trim();
+            const isMatch = (!cat && text === '전체보기') || (text === cat);
+            if (isMatch) {
+                btn.className = 'btn btn-sm btn-primary text-white shadow-sm fw-bold rounded-pill px-3 flex-shrink-0';
+            } else {
+                btn.className = 'btn btn-sm btn-outline-secondary bg-white fw-bold rounded-pill px-3 flex-shrink-0';
+            }
+        });
+
         this.applyFiltersAndRender();
     },
 
@@ -431,6 +686,21 @@ const app = {
             });
         }
 
+        // 5. 단가 구분 필터
+        if (this.priceTypeFilter && this.priceTypeFilter !== 'all') {
+            list = list.filter(item => (item.price_type || '견적가') === this.priceTypeFilter);
+        }
+
+        // 6. 운임 조건 필터
+        if (this.freightFilter && this.freightFilter !== 'all') {
+            list = list.filter(item => {
+                const isFreightIn = (item.freight_type === '하차도') || (item.is_freight_included === 1 || item.is_freight_included === true || (item.note && item.note.includes('[운임포함]')));
+                if (this.freightFilter === '하차도') return isFreightIn;
+                if (this.freightFilter === '상차도') return !isFreightIn;
+                return true;
+            });
+        }
+
         this.filteredList = list;
         if (this.sortColumn) {
             this.applySort();
@@ -438,8 +708,10 @@ const app = {
         this.currentPage = 1;
         this.focusedRowIndex = -1;
         this.renderTable();
+        this.renderMobileCards();
         this.updateSortIcons();
         this.renderStats();
+        this.updateItemSelectionState();
         if (this.viewMode === 'quote') {
             this.renderQuoteComparisonView();
         }
@@ -449,24 +721,186 @@ const app = {
         const totalCount = this.priceList.length;
         const filterCount = this.filteredList.length;
 
-        // 상단 뱃지 갱신
-        $('itemCountBadge').innerText = `관리 ${totalCount} 품목`;
+        // 데스크톱 상단 뱃지 갱신
+        if ($('itemCountBadge')) $('itemCountBadge').innerText = `관리 ${totalCount} 품목`;
 
         let validCount = 0;
         let sumMarginRate = 0;
-        this.priceList.forEach(p => {
+        let highCount = 0;
+        let lossCount = 0;
+
+        this.filteredList.forEach(p => {
             const b = p.buy_price || 0;
             const s = p.sell_price || 0;
             if (s > 0) {
-                sumMarginRate += ((s - b) / s) * 100;
+                const rate = ((s - b) / s) * 100;
+                sumMarginRate += rate;
                 validCount++;
+                if (rate >= 20) highCount++;
+                else if (rate < 0) lossCount++;
+            } else if (b > 0) {
+                lossCount++;
             }
         });
         const avgMargin = validCount > 0 ? Math.round((sumMarginRate / validCount) * 10) / 10 : 0;
-        $('avgMarginBadge').innerText = `평균 마진율: ${avgMargin}%`;
+        if ($('avgMarginBadge')) $('avgMarginBadge').innerText = `평균 마진율: ${avgMargin}%`;
+        if ($('filterResultCount')) $('filterResultCount').innerText = `조회 ${filterCount}건 (전체 ${totalCount}건)`;
 
-        // 필터 결과수
-        $('filterResultCount').innerText = `조회 ${filterCount}건 (전체 ${totalCount}건)`;
+        // 모바일 헤더 및 초슬림 KPI 바 갱신
+        if ($('mobileHeaderItemBadge')) $('mobileHeaderItemBadge').innerText = `${filterCount} 품목`;
+        if ($('mobileKpiAvgMargin')) $('mobileKpiAvgMargin').innerText = `${avgMargin}%`;
+        if ($('mobileKpiHighMargin')) $('mobileKpiHighMargin').innerText = `${highCount}건`;
+        if ($('mobileKpiLossMargin')) $('mobileKpiLossMargin').innerText = `${lossCount}건`;
+        if ($('mobileKpiFilteredText')) {
+            let catText = this.selectedCategory ? `${this.selectedCategory}` : '전체 품목';
+            if (this.marginFilter !== 'all') {
+                const map = { high: '고마진', mid: '표준', low: '저마진', loss: '역마진' };
+                catText += ` · ${map[this.marginFilter] || ''}`;
+            }
+            $('mobileKpiFilteredText').innerText = catText;
+        }
+
+        this.updateFilterDot();
+    },
+
+    renderMobileCards: function() {
+        const container = $('priceCardsContainer');
+        if (!container) return;
+
+        if (this.filteredList.length === 0) {
+            container.innerHTML = `
+                <div class="mobile-empty-state shadow-sm">
+                    <i class='bx bx-search-alt text-muted' style="font-size: 2.5rem;"></i>
+                    <p class="mt-2 mb-1 fw-bold text-dark">일치하는 단가 데이터가 없습니다.</p>
+                    <p class="text-muted small mb-3">검색어나 카테고리 필터를 변경해보세요.</p>
+                    <button type="button" class="btn btn-sm btn-outline-primary px-3 fw-bold" onclick="app.resetSearch()">
+                        <i class='bx bx-reset'></i> 전체 초기화
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        this.filteredList.forEach(r => {
+            const buy = r.buy_price || 0;
+            const sell = r.sell_price || 0;
+            const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
+            let marginRate = 0;
+            let marginRateStr = '-';
+            let badgeClass = 'margin-mid';
+
+            if (sell > 0 && buy > 0) {
+                marginRate = Math.round(((sell - buy) / sell) * 1000) / 10;
+                marginRateStr = (marginRate > 0 ? '+' : '') + `${marginRate}%`;
+                if (marginRate >= 20) badgeClass = 'margin-high';
+                else if (marginRate >= 10) badgeClass = 'margin-mid';
+                else if (marginRate >= 0) badgeClass = 'margin-low';
+                else badgeClass = 'margin-loss';
+            }
+
+            let histCount = 0;
+            try { histCount = JSON.parse(r.history || '[]').length; } catch(e){}
+
+            const pt = r.price_type || '견적가';
+            let ptBadgeClass = 'badge-pt-quote';
+            if (pt === '계약가') ptBadgeClass = 'badge-pt-contract';
+            else if (pt === '일시가') ptBadgeClass = 'badge-pt-spot';
+            else if (pt === '표준가') ptBadgeClass = 'badge-pt-std';
+
+            const isForeign = r.currency && r.currency !== 'KRW';
+            const currSymbol = this.currencySymbols[r.currency] || '$';
+
+            let buyDisplay = buy ? `₩${buy.toLocaleString()}` : '-';
+            let sellDisplay = sell ? `₩${sell.toLocaleString()}` : '-';
+
+            if (isForeign && r.foreign_buy_price > 0) {
+                buyDisplay = `
+                    <div style="font-size: 11px; color: #2563eb; font-weight: 700;">${currSymbol}${parseFloat(r.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div style="font-size: 11px; color: #475569;">₩${buy ? buy.toLocaleString() : '0'}</div>
+                `;
+            }
+            if (isForeign && r.foreign_sell_price > 0) {
+                sellDisplay = `
+                    <div style="font-size: 11px; color: #2563eb; font-weight: 700;">${currSymbol}${parseFloat(r.foreign_sell_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div style="font-size: 11.5px; color: #1e293b; font-weight: 800;">₩${sell ? sell.toLocaleString() : '0'}</div>
+                `;
+            }
+
+            const isFreightIn = (r.freight_type === '하차도') || (r.is_freight_included === 1 || r.is_freight_included === true || (r.note && r.note.includes('[운임포함]')));
+            const freightBadge = isFreightIn
+                ? `<span class="badge-freight-in" style="font-size: 9.5px; padding: 1px 4px;"><i class='bx bx-check-circle'></i> 하차도${r.freight_region ? ` [${escapeHtml(r.freight_region)}]` : ''}</span>`
+                : `<span class="badge-freight-ex" style="font-size: 9.5px; padding: 1px 4px;">상차도</span>`;
+
+            let marginAmtStr = '-';
+            if (sell > 0 && buy > 0) {
+                marginAmtStr = (marginAmt > 0 ? '+' : '') + `₩${marginAmt.toLocaleString()}`;
+            }
+
+            const isChecked = this.checkedItemIds.has(r.id);
+
+            html += `
+                <div class="mobile-price-card ${isChecked ? 'selected-card' : ''}" data-id="${r.id}">
+                    <div class="mobile-price-card-header">
+                        <div class="d-flex align-items-center gap-1 min-w-0" style="overflow: hidden;">
+                            <input type="checkbox" class="form-check-input item-checkbox mt-0 me-1 cursor-pointer flex-shrink-0" 
+                                   data-id="${r.id}" ${isChecked ? 'checked' : ''} 
+                                   onchange="app.onItemCheck(${r.id}, this.checked)">
+                            <span class="category-pill text-truncate" style="max-width: 90px;">${escapeHtml(r.category || '기타')}</span>
+                            <span class="${ptBadgeClass}">${escapeHtml(pt)}</span>
+                            ${freightBadge}
+                        </div>
+                        <div class="flex-shrink-0 ms-1">
+                            <span class="mobile-margin-badge ${badgeClass}">${marginRateStr}</span>
+                        </div>
+                    </div>
+
+                    <div class="mobile-price-card-body" onclick="app.openEditModal(${r.id})">
+                        <div class="mobile-price-title">${escapeHtml(r.item)}</div>
+                        <div class="mobile-price-meta">
+                            ${(r.spec && r.spec.trim()) ? `<span class="spec-pill"><i class='bx bx-cube'></i> ${escapeHtml(r.spec.trim())}</span>` : ''}
+                            <span class="supplier-pill text-truncate" style="max-width: 140px;"><i class='bx bx-building'></i> ${escapeHtml(r.default_supplier || '매입처 미지정')}</span>
+                            ${r.unit ? `<span class="unit-pill">${escapeHtml(r.unit)}</span>` : ''}
+                        </div>
+                        ${r.note ? `<div class="mobile-price-note text-truncate"><i class='bx bx-note'></i> ${escapeHtml(r.note)}</div>` : ''}
+                    </div>
+
+                    <div class="mobile-price-grid">
+                        <div class="price-box buy-box">
+                            <div class="price-box-label">매입단가</div>
+                            <div class="price-box-val">${buyDisplay}</div>
+                        </div>
+                        <div class="price-box sell-box">
+                            <div class="price-box-label">매출단가</div>
+                            <div class="price-box-val">${sellDisplay}</div>
+                        </div>
+                        <div class="price-box margin-box ${marginAmt < 0 ? 'margin-box-loss' : ''}">
+                            <div class="price-box-label">마진액</div>
+                            <div class="price-box-val ${marginAmt < 0 ? 'text-danger' : (marginAmt > 0 ? 'text-success' : '')}">${marginAmtStr}</div>
+                        </div>
+                    </div>
+
+                    <div class="mobile-price-card-footer">
+                        <button type="button" class="btn-card-hist" onclick="app.openHistoryModal(${r.id})">
+                            <i class='bx bx-history text-secondary'></i> 이력 <strong>${histCount}</strong>건
+                        </button>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn-card-action" onclick="app.openAddToQuoteForItem(${r.id})" title="견적 비교 테이블에 담기">
+                                <i class='bx bx-plus-circle text-primary'></i> 비교담기
+                            </button>
+                            <button type="button" class="btn-card-action" onclick="app.openEditModal(${r.id})" title="단가 수정">
+                                <i class='bx bx-edit text-secondary'></i> 수정
+                            </button>
+                            <button type="button" class="btn-card-action btn-del" onclick="app.deletePrice(${r.id})" title="단가 삭제">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
     },
 
     renderTable: function() {
@@ -1861,6 +2295,13 @@ const app = {
         const tr = document.getElementById(`price_row_${id}`);
         if (tr) tr.classList.toggle('selected-row', checked);
 
+        const card = document.querySelector(`.mobile-price-card[data-id="${id}"]`);
+        if (card) {
+            card.classList.toggle('selected-card', checked);
+            const cardCb = card.querySelector('.item-checkbox');
+            if (cardCb && cardCb.checked !== checked) cardCb.checked = checked;
+        }
+
         this.updateItemSelectionState();
     },
 
@@ -1901,6 +2342,31 @@ const app = {
         if (btnTopAddToCompare) btnTopAddToCompare.classList.toggle('d-none', size === 0);
         if (textAddToCompare) textAddToCompare.innerText = `견적 비교 테이블에 담기 (${size})`;
         if (textTopAddToCompare) textTopAddToCompare.innerText = `비교 테이블에 담기 (${size})`;
+
+        // 모바일 플로팅 일괄 선택 액션 바 동기화
+        const mobBatchBar = $('mobileBatchBar');
+        const mobBatchCount = $('mobileBatchCount');
+        if (mobBatchBar) {
+            mobBatchBar.classList.toggle('d-none', size === 0);
+            if (mobBatchCount) mobBatchCount.innerText = `${size}건 선택`;
+        }
+    },
+
+    openAddToQuoteForItem: function(itemId) {
+        this.checkedItemIds.clear();
+        this.checkedItemIds.add(itemId);
+        this.updateItemSelectionState();
+        this.openAddToQuoteModal();
+    },
+
+    clearAllChecks: function() {
+        this.checkedItemIds.clear();
+        this.updateItemSelectionState();
+        const masterCb = $('selectAllItems');
+        if (masterCb) masterCb.checked = false;
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.mobile-price-card').forEach(c => c.classList.remove('selected-card'));
+        document.querySelectorAll('#priceTableBody tr').forEach(r => r.classList.remove('selected-row'));
     },
 
     deleteSelectedItems: async function() {
@@ -2570,6 +3036,8 @@ const app = {
 
         const exportExcelBtn = $('btnExportExcel');
         if (exportExcelBtn) exportExcelBtn.classList.toggle('d-none', mode !== 'item');
+
+        this.applyViewMode();
 
         if (mode === 'quote') {
             this.renderQuoteComparisonView();

@@ -1948,3 +1948,477 @@ body {
     border-color: #fca5a5;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   MOBILE SPECIALIZED UI/UX OPTIMIZATIONS (≤ 768px)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    body {
+        padding: 8px 10px 80px 10px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        background-color: #f8fafc !important;
+    }
+
+    /* 모바일 헤더 */
+    .mobile-price-header {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .mobile-head-btn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 16px;
+        padding: 0;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+    }
+    .mobile-head-btn:active {
+        background: #f1f5f9;
+        transform: scale(0.95);
+    }
+    .mobile-head-btn.btn-outline-primary {
+        border-color: #93c5fd;
+        color: #2563eb;
+        background: #f0f7ff;
+    }
+    .mobile-header-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        letter-spacing: -0.02em;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .mobile-icon-toggle {
+        width: 30px;
+        height: 32px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px !important;
+    }
+    .mobile-view-toggle .btn.active {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+    }
+    .mobile-filter-badge {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 8px;
+        height: 8px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+    }
+
+    /* 모바일 검색창 */
+    .mobile-search-strip .form-control {
+        height: 38px !important;
+        font-size: 13.5px !important;
+        border-color: #cbd5e1 !important;
+    }
+    .mobile-search-strip .btn {
+        height: 38px !important;
+        font-size: 13px !important;
+        font-weight: 600;
+    }
+
+    /* 모바일 카테고리 칩 스와이프 바 */
+    .mobile-cat-scroll-wrapper {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
+    .mobile-cat-scroll-wrapper::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 4px;
+        width: 24px;
+        background: linear-gradient(to right, rgba(248, 250, 252, 0), rgba(241, 245, 249, 0.95));
+        pointer-events: none;
+        border-radius: 0 8px 8px 0;
+    }
+    .category-pills-scroll-track {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px !important;
+        padding: 2px 28px 6px 4px !important;
+        width: 100% !important;
+        scrollbar-width: thin;
+        cursor: grab;
+        user-select: none;
+    }
+    .category-pills-scroll-track.is-dragging {
+        cursor: grabbing !important;
+        scroll-behavior: auto !important;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar {
+        height: 3px;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .category-pills-scroll-track::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .category-pills-scroll-track .btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 4px 12px !important;
+        font-size: 12px !important;
+        height: 28px !important;
+        line-height: 18px !important;
+        border-radius: 14px !important;
+        user-select: none;
+    }
+    .category-pills-scroll-track .btn.btn-primary {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+    }
+
+    /* 초슬림 1라인 KPI 요약 바 */
+    .mobile-price-kpi-bar {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11.5px;
+        color: #334155;
+    }
+    .mobile-price-kpi-bar .kpi-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .mobile-price-kpi-bar .kpi-item strong {
+        font-size: 12.5px;
+        color: #0f172a;
+    }
+
+    /* 모바일 단가 카드 컨테이너 */
+    .price-cards-container {
+        display: block;
+        padding-bottom: 40px;
+    }
+    .mobile-empty-state {
+        text-align: center;
+        padding: 48px 16px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+        margin: 12px 0;
+    }
+
+    /* 모바일 단가 카드 */
+    .mobile-price-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+        transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.15s ease;
+    }
+    .mobile-price-card:active {
+        transform: scale(0.995);
+    }
+    .mobile-price-card.selected-card {
+        border-color: #93c5fd;
+        background-color: #f8faff;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+    }
+
+    .mobile-price-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 8px;
+    }
+
+    /* 마진율 뱃지 */
+    .mobile-margin-badge {
+        font-size: 12px;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 6px;
+        letter-spacing: -0.01em;
+        display: inline-flex;
+        align-items: center;
+    }
+    .mobile-margin-badge.margin-high {
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+    .mobile-margin-badge.margin-mid {
+        background: #eff6ff;
+        color: #2563eb;
+        border: 1px solid #bfdbfe;
+    }
+    .mobile-margin-badge.margin-low {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+    .mobile-margin-badge.margin-loss {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .mobile-price-card-body {
+        cursor: pointer;
+        margin-bottom: 8px;
+    }
+    .mobile-price-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.35;
+        margin-bottom: 5px;
+        word-break: break-all;
+    }
+    .mobile-price-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 4px;
+    }
+    .mobile-price-meta .spec-pill {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .mobile-price-meta .supplier-pill {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .mobile-price-meta .unit-pill {
+        font-size: 10.5px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #ffffff;
+        color: #64748b;
+        border: 1px solid #cbd5e1;
+    }
+    .mobile-price-note {
+        font-size: 11px;
+        color: #64748b;
+        background: #f8fafc;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border-left: 2px solid #cbd5e1;
+        margin-top: 5px;
+    }
+
+    /* 3단 비교 가격 그리드 */
+    .mobile-price-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+    }
+    .price-box {
+        display: flex;
+        flex-direction: column;
+    }
+    .price-box-label {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 2px;
+        letter-spacing: -0.02em;
+    }
+    .price-box-val {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+    }
+    .sell-box .price-box-val {
+        color: #2563eb;
+        font-weight: 800;
+        font-size: 13px;
+    }
+    .margin-box .price-box-val {
+        font-weight: 800;
+    }
+    .margin-box-loss {
+        background: #fff5f5;
+        border-radius: 4px;
+        padding: 2px 4px;
+    }
+
+    /* 카드 푸터 */
+    .mobile-price-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .btn-card-hist {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        transition: all 0.15s ease;
+    }
+    .btn-card-hist:active {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    .btn-card-action {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        transition: all 0.15s ease;
+    }
+    .btn-card-action.btn-del {
+        color: #dc2626;
+        border-color: #fecaca;
+        background: #ffffff;
+    }
+    .btn-card-action:active {
+        background: #f1f5f9;
+        transform: scale(0.96);
+    }
+
+    /* 플로팅 일괄 선택 액션 바 */
+    .mobile-batch-bar {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        background: #1e293b;
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 1050;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+        animation: slideUpBatch 0.2s ease-out;
+    }
+    @keyframes slideUpBatch {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* 뷰 모드 전환 (테이블 모드 시 스타일) */
+    .mobile-hidden-table {
+        display: none !important;
+    }
+    .mobile-hidden-cards {
+        display: none !important;
+    }
+    .erp-grid-wrapper {
+        min-height: 380px !important;
+        height: 65vh !important;
+        border-radius: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* 모바일 필터 바텀시트 드로어 */
+    .mobile-filter-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(2px);
+        z-index: 1055;
+    }
+    .mobile-filter-drawer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        z-index: 1060;
+        border-radius: 20px 20px 0 0;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+    }
+    .mobile-filter-drawer.open {
+        transform: translateY(0);
+    }
+
+    /* 모바일 모달 최적화 */
+    .modal-dialog {
+        margin: 8px !important;
+        max-width: calc(100% - 16px) !important;
+    }
+    .modal-content {
+        border-radius: 12px !important;
+    }
+}
+
+
