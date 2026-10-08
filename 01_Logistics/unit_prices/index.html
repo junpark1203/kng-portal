@@ -207,6 +207,11 @@
                 <i class='bx bx-trash text-danger'></i> <span id="batchDeleteText">선택 삭제 (0)</span>
             </button>
 
+            <!-- 선택 일괄 수정 버튼 (선택 시 활성화) -->
+            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnBatchEdit" onclick="app.openBatchEditModal()" title="체크된 단가 항목들을 일괄 수정합니다" style="background: #0284c7; border-color: #0284c7; color: #fff;">
+                <i class='bx bx-edit'></i> <span id="batchEditText">일괄 수정 (0)</span>
+            </button>
+
             <!-- 결과 내 재검색 인풋 -->
             <div class="input-group input-group-sm erp-subsearch-group">
                 <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
@@ -1337,6 +1342,177 @@
         </div>
     </div>
 
+    <!-- ── 6-3. 단가표 다중 일괄 수정 모달 (Batch Edit) ── -->
+    <div class="modal fade" id="batchEditModal" tabindex="-1" aria-labelledby="batchEditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 8px; overflow: hidden;">
+                <div class="modal-header py-2.5 px-3 text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e293b, #0f172a); border-bottom: 2px solid #0284c7;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class='bx bx-edit text-info fs-5'></i>
+                        <h6 class="modal-title fw-bold mb-0 text-white" id="batchEditModalLabel">단가표 일괄 수정</h6>
+                        <span class="badge bg-primary text-white" id="batchEditTargetBadge">0건 선택됨</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3" style="max-height: calc(85vh - 120px); overflow-y: auto; background: #f8fafc;">
+                    <div class="alert alert-info py-2 px-3 small mb-3 border-0 d-flex align-items-center gap-2" style="background: #e0f2fe; color: #0369a1; border-radius: 6px;">
+                        <i class='bx bx-info-circle fs-5 flex-shrink-0'></i>
+                        <span>수정을 원하는 항목의 <strong>스위치를 켜고</strong> 값을 입력하세요. 스위치를 켜지 않은 항목은 <strong>기존 데이터가 그대로 유지</strong>됩니다.</span>
+                    </div>
+
+                    <div class="d-flex flex-column gap-3">
+                        <!-- 1. 운임조건 및 권역 변경 -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkBatchFreight" onchange="app.toggleBatchFieldSection('freight')">
+                                <label class="form-check-label fw-bold text-dark cursor-pointer" for="chkBatchFreight">
+                                    <i class='bx bx-trip text-primary me-1'></i> 1. 운임조건 및 권역 변경
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4" id="batchFreightFields" style="opacity: 0.45; pointer-events: none; transition: opacity 0.2s;">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">운임조건</label>
+                                    <select class="form-select form-select-sm" id="batchFreightType">
+                                        <option value="하차도" selected>하차도 (도착지 운임포함)</option>
+                                        <option value="상차도">상차도 (운임별도/공장상차)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">도착 권역 / 지역</label>
+                                    <input type="text" class="form-control form-control-sm" id="batchFreightRegion" placeholder="예: 전국, 수도권, 충청권, 현장명" value="전국">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 단가 일괄 인상/인하 조정 -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkBatchPrice" onchange="app.toggleBatchFieldSection('price')">
+                                <label class="form-check-label fw-bold text-dark cursor-pointer" for="chkBatchPrice">
+                                    <i class='bx bx-won text-success me-1'></i> 2. 단가 일괄 인상 / 인하 조정
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4" id="batchPriceFields" style="opacity: 0.45; pointer-events: none; transition: opacity 0.2s;">
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted mb-1">적용 대상</label>
+                                    <select class="form-select form-select-sm" id="batchPriceTarget">
+                                        <option value="both" selected>매입단가 & 매출단가 둘 다</option>
+                                        <option value="buy">매입단가만</option>
+                                        <option value="sell">매출단가만</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted mb-1">조정 방식</label>
+                                    <select class="form-select form-select-sm" id="batchPriceMode" onchange="app.onBatchPriceModeChange()">
+                                        <option value="percent" selected>비율 증감 ( % )</option>
+                                        <option value="amount">금액 증감 ( 원 )</option>
+                                        <option value="fixed">동일 단가 직접 지정 ( 원 )</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted mb-1" id="batchPriceValueLabel">변동치 (인상: +, 인하: -)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control text-end" id="batchPriceValue" placeholder="예: 5 또는 -3" step="any">
+                                        <span class="input-group-text" id="batchPriceValueUnit">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted mb-1">절사 단위 (원)</label>
+                                    <select class="form-select form-select-sm" id="batchRoundUnit">
+                                        <option value="1">1원 단위 (반올림)</option>
+                                        <option value="10" selected>10원 단위 절사 (추천)</option>
+                                        <option value="100">100원 단위 절사</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 자재분류 일괄 변경 -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkBatchCategory" onchange="app.toggleBatchFieldSection('category')">
+                                <label class="form-check-label fw-bold text-dark cursor-pointer" for="chkBatchCategory">
+                                    <i class='bx bx-category text-warning me-1'></i> 3. 자재분류 일괄 변경
+                                </label>
+                            </div>
+                            <div class="ps-4" id="batchCategoryFields" style="opacity: 0.45; pointer-events: none; transition: opacity 0.2s;">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-1">자재분류(카테고리)</label>
+                                        <input type="text" class="form-control form-control-sm" id="batchCategory" placeholder="예: 배관자재, 밸브류, 철강재 등" list="batchCategoryDatalist">
+                                        <datalist id="batchCategoryDatalist"></datalist>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. 단가구분 및 기본 단위 일괄 변경 -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkBatchTypeUnit" onchange="app.toggleBatchFieldSection('typeUnit')">
+                                <label class="form-check-label fw-bold text-dark cursor-pointer" for="chkBatchTypeUnit">
+                                    <i class='bx bx-tag me-1' style="color:#8b5cf6;"></i> 4. 단가구분 및 기본 단위 변경
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4" id="batchTypeUnitFields" style="opacity: 0.45; pointer-events: none; transition: opacity 0.2s;">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">단가구분</label>
+                                    <select class="form-select form-select-sm" id="batchPriceType">
+                                        <option value="견적가">견적가</option>
+                                        <option value="계약가">계약가</option>
+                                        <option value="표준가">표준가</option>
+                                        <option value="일시가">일시가</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">기본 단위</label>
+                                    <input type="text" class="form-control form-control-sm" id="batchUnit" placeholder="예: 개, M, 본, SET, ROLL 등">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. 기본 거래처 일괄 지정 -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkBatchPartner" onchange="app.toggleBatchFieldSection('partner')">
+                                <label class="form-check-label fw-bold text-dark cursor-pointer" for="chkBatchPartner">
+                                    <i class='bx bx-buildings text-secondary me-1'></i> 5. 주 매입처 / 주 매출처 변경
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4" id="batchPartnerFields" style="opacity: 0.45; pointer-events: none; transition: opacity 0.2s;">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">주 매입처 (공급업체)</label>
+                                    <input type="text" class="form-control form-control-sm" id="batchSupplier" placeholder="공급업체 상호 입력">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-1">주 매출처 (납품처)</label>
+                                    <input type="text" class="form-control form-control-sm" id="batchDestination" placeholder="납품처 상호 입력">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. 변경 사유 (이력 비고) -->
+                        <div class="p-3 bg-white border rounded-3 shadow-xs">
+                            <label class="form-label fw-bold small text-dark mb-1">
+                                <i class='bx bx-note text-info me-1'></i> 6. 변경 사유 (단가 이력에 자동 기록)
+                            </label>
+                            <input type="text" class="form-control form-control-sm" id="batchReason" placeholder="예: 운임조건 일괄 정정, 2026년 철강 인상분 반영 등" value="운임조건 일괄 정정">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between align-items-center">
+                    <span class="text-muted small" id="batchEditFooterSummary">선택된 품목에 대해 활성화된 항목만 일괄 반영됩니다.</span>
+                    <div class="d-flex gap-1.5">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="app.submitBatchEdit()" id="btnSubmitBatchEdit" style="background:#0284c7; border-color:#0284c7;">
+                            <i class='bx bx-check me-1'></i> 일괄 수정 실행
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ── 7. 인쇄 전용 렌더링 컨테이너 (화면에서는 숨김, @media print에서 활성화) ── -->
     <div id="printArea" class="print-only"></div>
 
@@ -1347,6 +1523,9 @@
             <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-0" onclick="app.clearAllChecks()">해제</button>
         </div>
         <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn btn-sm text-white fw-bold" onclick="app.openBatchEditModal()" title="선택 품목 일괄 수정" style="background: #0284c7;">
+                <i class='bx bx-edit'></i> 수정
+            </button>
             <button type="button" class="btn btn-sm btn-light fw-bold" onclick="app.openAddToQuoteModal()" title="선택 품목 비교테이블에 담기">
                 <i class='bx bx-plus-circle text-primary'></i> 비교담기
             </button>

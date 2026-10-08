@@ -1136,6 +1136,212 @@ router.post('/unit-prices/batch-delete', async (req, res) => {
     }
 });
 
+// 5-2. 단가 다중 일괄 수정 (운임조건/단가/분류/거래처/단위 등 일괄 갱신 & 고유키 충돌 안전 병합)
+router.post('/unit-prices/batch-update', async (req, res) => {
+    try {
+        const { ids, modifications } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: '수정할 단가 ID 목록이 전달되지 않았습니다.' });
+        }
+        if (!modifications || typeof modifications !== 'object') {
+            return res.status(400).json({ error: '수정할 항목 정보가 전달되지 않았습니다.' });
+        }
+
+        const validIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+        if (validIds.length === 0) {
+            return res.status(400).json({ error: '유효한 단가 ID가 없습니다.' });
+        }
+
+        const {
+            updateFreight, freight_type, freight_region,
+            updatePrice, priceTarget, priceMode, priceValue, roundUnit,
+            updateCategory, category,
+            updatePriceType, price_type,
+            updateUnit, unit,
+            updateSupplier, default_supplier,
+            updateDestination, default_destination,
+            reason
+        } = modifications;
+
+        if (!updateFreight && !updatePrice && !updateCategory && !updatePriceType && !updateUnit && !updateSupplier && !updateDestination) {
+            return res.status(400).json({ error: '최소 1개 이상의 수정 항목을 선택해야 합니다.' });
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        let updatedCount = 0;
+        let mergedCount = 0;
+
+        await dbRun('BEGIN TRANSACTION');
+
+        try {
+            for (const id of validIds) {
+                const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE id = ?`, [id]);
+                if (!existing) continue;
+
+                // 1. 운임조건 및 권역
+                let newFreightType = existing.freight_type || '상차도';
+                let newFreightRegion = existing.freight_region || '';
+                let newIsFreightIncluded = existing.is_freight_included || 0;
+
+                if (updateFreight) {
+                    if (freight_type) newFreightType = freight_type.trim();
+                    if (freight_region !== undefined) newFreightRegion = freight_region.trim();
+                    newIsFreightIncluded = newFreightType === '하차도' ? 1 : 0;
+                }
+
+                // 2. 단가 계산
+                let newBuy = existing.buy_price || 0;
+                let newSell = existing.sell_price || 0;
+
+                if (updatePrice && priceValue !== undefined && !isNaN(parseFloat(priceValue))) {
+                    const val = parseFloat(priceValue);
+                    const rUnit = parseInt(roundUnit, 10) || 1;
+
+                    const calcPrice = (currPrice) => {
+                        let res = currPrice;
+                        if (priceMode === 'percent') {
+                            res = currPrice * (1 + val / 100);
+                        } else if (priceMode === 'amount') {
+                            res = currPrice + val;
+                        } else if (priceMode === 'fixed') {
+                            res = val;
+                        }
+                        if (rUnit > 1) {
+                            res = Math.round(res / rUnit) * rUnit;
+                        } else {
+                            res = Math.round(res);
+                        }
+                        return Math.max(0, res);
+                    };
+
+                    if (priceTarget === 'buy' || priceTarget === 'both') {
+                        newBuy = calcPrice(existing.buy_price || 0);
+                    }
+                    if (priceTarget === 'sell' || priceTarget === 'both') {
+                        newSell = calcPrice(existing.sell_price || 0);
+                    }
+                }
+
+                // 3. 기타 필드
+                const newCategory = updateCategory && category !== undefined ? category.trim() : (existing.category || '');
+                const newPriceType = updatePriceType && price_type !== undefined ? price_type.trim() : (existing.price_type || '견적가');
+                const newUnit = updateUnit && unit !== undefined ? unit.trim() : (existing.unit || '');
+                const newSupplier = updateSupplier && default_supplier !== undefined ? default_supplier.trim() : (existing.default_supplier || '');
+                const newDestination = updateDestination && default_destination !== undefined ? default_destination.trim() : (existing.default_destination || '');
+
+                // 4. 고유키 충돌 확인: (item, spec, freight_type)
+                // 만약 운임조건이 바뀌어 동일한 (item, spec, newFreightType)을 가진 다른 행이 이미 존재하는 경우
+                const conflictRow = await dbGet(
+                    `SELECT id, history, buy_price, sell_price FROM logistics_unit_prices WHERE item = ? AND spec = ? AND freight_type = ? AND id != ?`,
+                    [existing.item, existing.spec, newFreightType, id]
+                );
+
+                let historyList = [];
+                try { historyList = JSON.parse(existing.history || '[]'); } catch (e) { historyList = []; }
+
+                const historyNote = reason && reason.trim() ? reason.trim() : (updateFreight ? `운임조건 일괄 변경 [${newFreightType}]` : '단가표 일괄 수정 반영');
+
+                historyList.unshift({
+                    date: todayStr,
+                    timestamp: new Date().toISOString(),
+                    buy_price: newBuy,
+                    sell_price: newSell,
+                    prev_buy_price: existing.buy_price || 0,
+                    prev_sell_price: existing.sell_price || 0,
+                    source: 'batch_update',
+                    partner: newSupplier || newDestination || existing.default_supplier || existing.default_destination || '',
+                    note: historyNote
+                });
+                if (historyList.length > 50) historyList = historyList.slice(0, 50);
+
+                if (conflictRow) {
+                    // 충돌 발생 시: 기존 충돌 행으로 병합(Merge)하고 현재 행 삭제
+                    let conflictHistory = [];
+                    try { conflictHistory = JSON.parse(conflictRow.history || '[]'); } catch (e) { conflictHistory = []; }
+
+                    const mergedHistory = [...historyList, ...conflictHistory]
+                        .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
+                        .slice(0, 50);
+
+                    await dbRun(`
+                        UPDATE logistics_unit_prices
+                        SET buy_price = ?, sell_price = ?,
+                            category = ?, price_type = ?, unit = ?,
+                            default_supplier = ?, default_destination = ?,
+                            freight_type = ?, freight_region = ?, is_freight_included = ?,
+                            history = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        newBuy, newSell,
+                        newCategory, newPriceType, newUnit,
+                        newSupplier, newDestination,
+                        newFreightType, newFreightRegion, newIsFreightIncluded,
+                        JSON.stringify(mergedHistory), conflictRow.id
+                    ]);
+
+                    await dbRun(`DELETE FROM logistics_unit_prices WHERE id = ?`, [id]);
+                    mergedCount++;
+                } else {
+                    // 일반 업데이트
+                    await dbRun(`
+                        UPDATE logistics_unit_prices
+                        SET buy_price = ?, sell_price = ?,
+                            category = ?, price_type = ?, unit = ?,
+                            default_supplier = ?, default_destination = ?,
+                            freight_type = ?, freight_region = ?, is_freight_included = ?,
+                            history = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        newBuy, newSell,
+                        newCategory, newPriceType, newUnit,
+                        newSupplier, newDestination,
+                        newFreightType, newFreightRegion, newIsFreightIncluded,
+                        JSON.stringify(historyList), id
+                    ]);
+                    updatedCount++;
+                }
+
+                // 견적 비교 테이블(logistics_quote_items) 동기화 (작업대 project_id = 0)
+                try {
+                    await dbRun(`
+                        UPDATE logistics_quote_items
+                        SET item = ?, spec = ?, category = ?, unit = ?,
+                            buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
+                            is_freight_included = ?, price_type = ?, freight_type = ?, freight_region = ?
+                        WHERE unit_price_id = ?
+                          AND section_id IN (
+                              SELECT id FROM logistics_quote_sections
+                              WHERE project_id = 0 OR project_id IS NULL
+                          )
+                    `, [
+                        existing.item, existing.spec, newCategory, newUnit,
+                        newBuy, newSell, newSupplier, newDestination,
+                        newIsFreightIncluded, newPriceType, newFreightType, newFreightRegion,
+                        conflictRow ? conflictRow.id : id
+                    ]);
+                } catch (qErr) {
+                    console.warn('Quote sync error in batch update (ignored):', qErr);
+                }
+            }
+
+            await dbRun('COMMIT');
+
+            res.json({
+                success: true,
+                message: `${updatedCount + mergedCount}건의 단가가 성공적으로 일괄 수정되었습니다.${mergedCount > 0 ? ` (중복 항목 ${mergedCount}건 안전 병합 완료)` : ''}`,
+                updatedCount,
+                mergedCount
+            });
+        } catch (errLoop) {
+            await dbRun('ROLLBACK');
+            throw errLoop;
+        }
+    } catch (err) {
+        console.error('unit-prices batch-update error:', err);
+        res.status(500).json({ error: err.message || '단가 일괄 수정 중 오류가 발생했습니다.' });
+    }
+});
+
 // 6. 기존 입출고 장부에서 초기 단가표 자동 생성/추출
 router.post('/unit-prices/populate-from-history', async (req, res) => {
     try {

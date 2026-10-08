@@ -166,6 +166,9 @@ const app = {
         if ($('editRateModal') && window.bootstrap) {
             this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
         }
+        if ($('batchEditModal') && window.bootstrap) {
+            this.batchEditModalInstance = new bootstrap.Modal($('batchEditModal'));
+        }
     },
 
     bindEvents: function() {
@@ -2603,6 +2606,11 @@ const app = {
         if (textAddToCompare) textAddToCompare.innerText = `견적 비교 테이블에 담기 (${size})`;
         if (textTopAddToCompare) textTopAddToCompare.innerText = `비교 테이블에 담기 (${size})`;
 
+        const btnBatchEdit = $('btnBatchEdit');
+        const textBatchEdit = $('batchEditText');
+        if (btnBatchEdit) btnBatchEdit.classList.toggle('d-none', size === 0);
+        if (textBatchEdit) textBatchEdit.innerText = `일괄 수정 (${size})`;
+
         // 모바일 플로팅 일괄 선택 액션 바 동기화
         const mobBatchBar = $('mobileBatchBar');
         const mobBatchCount = $('mobileBatchCount');
@@ -2667,6 +2675,176 @@ const app = {
         } catch (err) {
             alert('일괄 삭제 중 오류가 발생했습니다: ' + err.message);
             await this.loadPrices();
+        }
+    },
+
+    // ─────────────────────────────────────────
+    // 단가표 다중 일괄 수정 (Batch Edit)
+    // ─────────────────────────────────────────
+    openBatchEditModal: function() {
+        const ids = Array.from(this.checkedItemIds);
+        if (ids.length === 0) {
+            alert('일괄 수정할 단가 항목을 먼저 1건 이상 체크 선택해주세요.');
+            return;
+        }
+
+        const badge = $('batchEditTargetBadge');
+        if (badge) badge.innerText = `${ids.length}건 선택됨`;
+
+        // 카테고리 datalist 동적 주입
+        const dl = $('batchCategoryDatalist');
+        if (dl && this.prices) {
+            const cats = Array.from(new Set(this.prices.map(p => (p.category || '').trim()).filter(Boolean))).sort();
+            dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
+        }
+
+        // 초기 스위치 및 필드 상태 리셋 (운임조건은 기본 체크 활성화, 나머지는 OFF)
+        const chkFreight = $('chkBatchFreight');
+        if (chkFreight) {
+            chkFreight.checked = true;
+            this.toggleBatchFieldSection('freight');
+        }
+        ['price', 'category', 'typeUnit', 'partner'].forEach(sec => {
+            const chk = $(`chkBatch${sec.charAt(0).toUpperCase() + sec.slice(1)}`);
+            if (chk) {
+                chk.checked = false;
+                this.toggleBatchFieldSection(sec);
+            }
+        });
+
+        // 기본값 세팅
+        if ($('batchFreightType')) $('batchFreightType').value = '하차도';
+        if ($('batchFreightRegion')) $('batchFreightRegion').value = '전국';
+        if ($('batchPriceValue')) $('batchPriceValue').value = '';
+        if ($('batchReason')) $('batchReason').value = '운임조건 일괄 정정';
+
+        if (!this.batchEditModalInstance && $('batchEditModal') && window.bootstrap) {
+            this.batchEditModalInstance = new bootstrap.Modal($('batchEditModal'));
+        }
+        if (this.batchEditModalInstance) {
+            this.batchEditModalInstance.show();
+        }
+    },
+
+    toggleBatchFieldSection: function(type) {
+        const typeMap = {
+            freight: { chk: 'chkBatchFreight', container: 'batchFreightFields' },
+            price: { chk: 'chkBatchPrice', container: 'batchPriceFields' },
+            category: { chk: 'chkBatchCategory', container: 'batchCategoryFields' },
+            typeUnit: { chk: 'chkBatchTypeUnit', container: 'batchTypeUnitFields' },
+            partner: { chk: 'chkBatchPartner', container: 'batchPartnerFields' }
+        };
+        const item = typeMap[type];
+        if (!item) return;
+
+        const isChecked = $(item.chk)?.checked;
+        const box = $(item.container);
+        if (box) {
+            box.style.opacity = isChecked ? '1' : '0.45';
+            box.style.pointerEvents = isChecked ? 'auto' : 'none';
+        }
+    },
+
+    onBatchPriceModeChange: function() {
+        const mode = $('batchPriceMode')?.value;
+        const unitEl = $('batchPriceValueUnit');
+        const labelEl = $('batchPriceValueLabel');
+
+        if (mode === 'percent') {
+            if (unitEl) unitEl.innerText = '%';
+            if (labelEl) labelEl.innerText = '변동치 (인상: +, 인하: -)';
+        } else if (mode === 'amount') {
+            if (unitEl) unitEl.innerText = '원';
+            if (labelEl) labelEl.innerText = '변동치 (인상: +, 인하: -)';
+        } else if (mode === 'fixed') {
+            if (unitEl) unitEl.innerText = '원';
+            if (labelEl) labelEl.innerText = '동일 단가 직접 지정 (원)';
+        }
+    },
+
+    submitBatchEdit: async function() {
+        const ids = Array.from(this.checkedItemIds);
+        if (ids.length === 0) {
+            alert('선택된 단가 항목이 없습니다.');
+            return;
+        }
+
+        const chkFreight = $('chkBatchFreight')?.checked;
+        const chkPrice = $('chkBatchPrice')?.checked;
+        const chkCategory = $('chkBatchCategory')?.checked;
+        const chkTypeUnit = $('chkBatchTypeUnit')?.checked;
+        const chkPartner = $('chkBatchPartner')?.checked;
+
+        if (!chkFreight && !chkPrice && !chkCategory && !chkTypeUnit && !chkPartner) {
+            alert('수정을 원하는 항목의 스위치를 최소 1개 이상 켜주세요.');
+            return;
+        }
+
+        const modifications = {
+            updateFreight: !!chkFreight,
+            freight_type: $('batchFreightType')?.value,
+            freight_region: $('batchFreightRegion')?.value,
+
+            updatePrice: !!chkPrice,
+            priceTarget: $('batchPriceTarget')?.value,
+            priceMode: $('batchPriceMode')?.value,
+            priceValue: parseFloat($('batchPriceValue')?.value),
+            roundUnit: parseInt($('batchRoundUnit')?.value, 10) || 10,
+
+            updateCategory: !!chkCategory,
+            category: $('batchCategory')?.value,
+
+            updatePriceType: !!chkTypeUnit,
+            price_type: $('batchPriceType')?.value,
+            updateUnit: !!chkTypeUnit,
+            unit: $('batchUnit')?.value,
+
+            updateSupplier: !!chkPartner,
+            default_supplier: $('batchSupplier')?.value,
+            updateDestination: !!chkPartner,
+            default_destination: $('batchDestination')?.value,
+
+            reason: $('batchReason')?.value || '단가표 일괄 수정 반영'
+        };
+
+        if (chkPrice) {
+            if (isNaN(modifications.priceValue)) {
+                alert('단가 변동 수치를 정확히 입력해주세요.');
+                $('batchPriceValue')?.focus();
+                return;
+            }
+        }
+
+        if (!confirm(`선택한 ${ids.length}개의 단가 항목에 대해 일괄 수정을 실행하시겠습니까?`)) {
+            return;
+        }
+
+        const btnSubmit = $('btnSubmitBatchEdit');
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin me-1'></i> 수정 처리 중...`;
+        }
+
+        try {
+            const res = await authFetch(`${API_BASE}/unit-prices/batch-update`, {
+                method: 'POST',
+                body: JSON.stringify({ ids, modifications })
+            });
+
+            alert(res.message || '일괄 수정이 성공적으로 완료되었습니다.');
+            if (this.batchEditModalInstance) {
+                this.batchEditModalInstance.hide();
+            }
+            this.clearAllChecks();
+            await this.loadPrices();
+            await this.loadItemSpecs();
+        } catch (err) {
+            alert('일괄 수정 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class='bx bx-check me-1'></i> 일괄 수정 실행`;
+            }
         }
     },
 
