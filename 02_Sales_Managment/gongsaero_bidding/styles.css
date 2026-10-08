@@ -1,30 +1,43 @@
+/* ══════════════════════════════════════════════════════════════
+   K&G PORTAL - 공새로 입찰관리 ECOUNT ERP DESIGN SYSTEM
+   ══════════════════════════════════════════════════════════════ */
+
 :root {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success-color: #10b981;
-    --warning-color: #f59e0b;
-    --danger-color: #ef4444;
-    --dark-bg: #0f172a;
-    --card-bg: #ffffff;
-    --border-color: #e2e8f0;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --border: #cbd5e1;
+    --border-light: #e2e8f0;
+    --bg-page: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-header: #f8fafc;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --erp-row-height: 26px;
     --gongsaero-brand: #ff6b35;
 }
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f8fafc;
-    color: var(--text-primary);
+    background-color: var(--bg-page);
+    color: var(--text-main);
     margin: 0;
     padding: 0;
+    font-size: 12px;
+    line-height: 1.4;
 }
 
-/* Header & Breadcrumb */
+/* ── 1. Top ERP Header & Compact KPI Bar ── */
 .app-header {
     background: #ffffff;
-    border-bottom: 1px solid var(--border-color);
-    padding: 1.25rem 2rem;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -36,609 +49,622 @@ body {
 .header-title {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 8px;
 }
 
 .header-title h1 {
-    font-size: 1.4rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin: 0;
     color: #0f172a;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 6px;
 }
 
 .brand-badge {
     background: linear-gradient(135deg, #ff6b35, #ff8c42);
     color: white;
-    font-size: 0.75rem;
+    font-size: 10px;
     font-weight: 700;
-    padding: 0.25rem 0.6rem;
-    border-radius: 9999px;
+    padding: 1px 6px;
+    border-radius: 4px;
     letter-spacing: 0.5px;
 }
 
-/* KPI Cards Strip */
-.kpi-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-    padding: 1.5rem 2rem 0.5rem 2rem;
-}
-
-.kpi-card {
+/* Compact ERP KPI Strip */
+.erp-kpi-bar {
     background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.kpi-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-}
-
-.icon-blue { background: #eff6ff; color: #2563eb; }
-.icon-amber { background: #fffbeb; color: #d97706; }
-.icon-emerald { background: #ecfdf5; color: #059669; }
-.icon-purple { background: #faf5ff; color: #7c3aed; }
-
-.kpi-info .kpi-label {
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-}
-
-.kpi-info .kpi-value {
-    font-size: 1.45rem;
-    font-weight: 700;
-    color: #0f172a;
-    line-height: 1.2;
-}
-
-.kpi-info .kpi-sub {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-top: 0.25rem;
-}
-
-/* Main Container */
-.main-container {
-    padding: 1rem 2rem 3rem 2rem;
-}
-
-/* Nav Tabs */
-.view-tabs-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: 1.5rem;
-    background: transparent;
-}
-
-.view-tabs {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.tab-btn {
-    border: none;
-    background: none;
-    padding: 0.75rem 1.25rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 8px 8px 0 0;
-    transition: color 0.2s, background-color 0.2s;
-}
-
-.tab-btn:hover {
-    color: var(--primary-color);
-    background: rgba(37, 99, 235, 0.04);
-}
-
-.tab-btn.active {
-    color: var(--primary-color);
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-bottom: 2px solid #ffffff;
-    margin-bottom: -2px;
-}
-
-/* Control Bar (Search, Filter, Actions) */
-.control-bar {
+    border-bottom: 1px solid var(--border);
+    padding: 6px 18px;
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    background: #ffffff;
-    padding: 1rem 1.25rem;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    margin-bottom: 1.25rem;
+    gap: 12px;
 }
 
-.control-left {
+.kpi-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid var(--border-light);
+    font-size: 11.5px;
+}
+
+.kpi-pill .kpi-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.kpi-pill .kpi-val {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.kpi-pill.warning .kpi-val { color: #d97706; }
+.kpi-pill.success .kpi-val { color: #059669; }
+.kpi-pill.primary .kpi-val { color: #2563eb; }
+.kpi-pill.purple .kpi-val { color: #7c3aed; }
+
+/* ── 2. Buttons in ECOUNT ERP Style ── */
+.btn-erp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: #1e293b;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+    user-select: none;
+    text-decoration: none;
+}
+
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-erp-primary {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+.btn-erp-primary:hover {
+    background: #1d4ed8;
+    border-color: #1e40af;
+    color: #ffffff;
+}
+
+.btn-erp-success {
+    background: #059669;
+    border-color: #047857;
+    color: #ffffff;
+}
+.btn-erp-success:hover {
+    background: #047857;
+    color: #ffffff;
+}
+
+.btn-erp-warning {
+    background: #d97706;
+    border-color: #b45309;
+    color: #ffffff;
+}
+.btn-erp-warning:hover {
+    background: #b45309;
+    color: #ffffff;
+}
+
+.btn-erp-danger {
+    background: #dc2626;
+    border-color: #b91c1c;
+    color: #ffffff;
+}
+.btn-erp-danger:hover {
+    background: #b91c1c;
+    color: #ffffff;
+}
+
+.btn-erp-xs {
+    height: 20px;
+    padding: 0 6px;
+    font-size: 10.5px;
+}
+
+/* ── 3. ERP Filter Ribbon ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.erp-ribbon-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-    min-width: 300px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.search-input-group {
-    position: relative;
-    flex: 1;
-    max-width: 480px;
+.erp-ribbon-left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
-.search-input-group i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-secondary);
-    font-size: 1.15rem;
+.erp-ribbon-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.search-input-group input {
-    width: 100%;
-    padding: 0.55rem 1rem 0.55rem 2.4rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    font-size: 0.9rem;
-    background: #f8fafc;
-    transition: all 0.2s;
+.date-preset-group {
+    display: inline-flex;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border);
 }
 
-.search-input-group input:focus {
+.date-preset-btn {
+    border: none;
     background: #ffffff;
-    border-color: var(--primary-color);
+    color: #334155;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: all 0.1s ease;
+    height: 24px;
+}
+.date-preset-btn:last-child {
+    border-right: none;
+}
+.date-preset-btn:hover {
+    background: #f1f5f9;
+}
+.date-preset-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.erp-select-sm {
+    height: 26px;
+    font-size: 11.5px;
+    padding: 2px 24px 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background-color: #ffffff;
+    color: #1e293b;
     outline: none;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    cursor: pointer;
+}
+.erp-select-sm:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.erp-search-box {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 280px;
+}
+.erp-search-box i {
+    position: absolute;
+    left: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+.erp-search-box input {
+    width: 100%;
+    height: 26px;
+    padding: 2px 8px 2px 26px;
+    font-size: 11.5px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.15s ease;
+}
+.erp-search-box input:focus {
+    background: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* ── 4. Main View Tabs (공고별 / 품목별) ── */
+.view-tabs-strip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 18px 0 18px;
+    background: var(--bg-page);
+    border-bottom: 1px solid var(--border);
+}
+
+.view-tab-btn {
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: #e2e8f0;
+    color: var(--text-muted);
+    padding: 5px 14px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.12s ease;
+    margin-bottom: -1px;
+}
+.view-tab-btn:hover {
+    background: #edf2f7;
+    color: #0f172a;
+}
+.view-tab-btn.active {
+    background: #ffffff;
+    color: var(--primary);
+    border-color: var(--border);
+    border-bottom: 1px solid #ffffff;
+    z-index: 2;
+}
+
+/* ── 5. ECOUNT ERP High-Density Spreadsheet Data Grid ── */
+.main-content-wrap {
+    padding: 10px 18px 24px 18px;
+}
+
+.erp-grid-wrapper {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 220px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.erp-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    background-color: #ffffff;
+    table-layout: auto;
+}
+
+.erp-sheet-table thead th {
+    background-color: var(--bg-header) !important;
+    color: #334155;
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: 28px;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+.erp-sheet-table tbody td {
+    padding: 3px 6px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    height: var(--erp-row-height);
+    box-sizing: border-box;
+    white-space: nowrap;
+    transition: background-color 0.1s ease;
+}
+
+.erp-sheet-table tbody tr:hover td {
+    background-color: #f1f5f9 !important;
+}
+
+.erp-sheet-table tbody tr.row-won td {
+    background-color: #f0fdf4;
+}
+.erp-sheet-table tbody tr.row-lost td {
+    background-color: #fafaf9;
 }
 
 /* Status Badges */
-.status-badge {
+.status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-size: 10.5px;
+    font-weight: 700;
     white-space: nowrap;
 }
-
-.status-badge.bidding {
+.status-pill.bidding {
     background: #fef3c7;
     color: #92400e;
     border: 1px solid #fde68a;
 }
-
-.status-badge.bidding::before {
-    content: '';
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #d97706;
-    animation: pulse-dot 1.5s infinite;
+.status-pill.won {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
-
-.status-badge.won {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #a7f3d0;
-}
-
-.status-badge.lost {
+.status-pill.lost {
     background: #f1f5f9;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
+    color: #475569;
+    border: 1px solid #cbd5e1;
 }
-
-.status-badge.abandoned {
+.status-pill.abandoned {
     background: #fee2e2;
     color: #991b1b;
     border: 1px solid #fecaca;
 }
 
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(1.3); }
+/* What-If Simulation Badges & Cells */
+.cell-bid-compare {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
 }
 
-/* Urgency Tag */
-.urgency-badge {
-    background: #fee2e2;
-    color: #dc2626;
-    font-size: 0.7rem;
+.winning-amount-label {
     font-weight: 700;
-    padding: 0.15rem 0.4rem;
-    border-radius: 4px;
-    border: 1px solid #fca5a5;
+    color: #0f172a;
+    font-size: 11.5px;
 }
 
-/* Bid Table Card */
-.content-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-}
-
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.bid-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-    text-align: left;
-}
-
-.bid-table th {
-    background: #f8fafc;
-    color: var(--text-secondary);
+.badge-diff-plus {
+    font-size: 9.5px;
     font-weight: 600;
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
-}
-
-.bid-table td {
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-
-.bid-table tr:hover td {
-    background-color: #f8fafc;
-}
-
-.highlight-match {
-    background-color: #fef08a;
-    color: #854d0e;
-    padding: 0.1rem 0.25rem;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 0 4px;
     border-radius: 3px;
-    font-weight: 600;
-}
-
-/* Countdown Clock */
-.countdown-badge {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #dc2626;
-    background: #fff1f2;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #fecdd3;
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
 }
 
-/* Items Table Inside Modal */
-.modal-items-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-
-.modal-items-table th {
-    background: #f1f5f9;
-    padding: 0.65rem 0.5rem;
+.badge-diff-minus {
+    font-size: 9.5px;
     font-weight: 600;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-    text-align: center;
-    white-space: nowrap;
+    color: #15803d;
+    background: #dcfce7;
+    padding: 0 4px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
 }
 
-.modal-items-table td {
-    padding: 0.45rem 0.5rem;
-    border: 1px solid #e2e8f0;
-    vertical-align: middle;
-}
-
-.modal-items-table input,
-.modal-items-table select {
-    width: 100%;
-    padding: 0.35rem 0.45rem;
-    border-radius: 4px;
-    border: 1px solid #cbd5e1;
-    font-size: 0.85rem;
-    box-sizing: border-box;
-}
-
-.modal-items-table input:focus {
-    border-color: var(--primary-color);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
-.cell-calc {
-    background-color: #f8fafc;
-    font-weight: 600;
-    text-align: right;
-}
-
-.cell-highlight {
-    background-color: #eff6ff;
-    color: #1d4ed8;
+.badge-whatif-margin {
+    font-size: 11px;
     font-weight: 700;
-    text-align: right;
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+}
+.badge-whatif-margin.high {
+    background: #dcfce7;
+    color: #15803d;
+}
+.badge-whatif-margin.mid {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+.badge-whatif-margin.low {
+    background: #fef3c7;
+    color: #b45309;
+}
+.badge-whatif-margin.deficit {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 800;
 }
 
-.cell-fee {
-    background-color: #fff7ed;
-    color: #c2410c;
+/* ── 6. ECOUNT ERP Form Table (Modal Header) ── */
+.erp-form-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+
+.erp-form-table th {
+    background-color: var(--bg-header);
+    color: #334155;
+    font-size: 11px;
     font-weight: 600;
-    text-align: right;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+    height: 26px;
 }
 
-/* Summary Float Bar in Modal */
+.erp-form-table td {
+    padding: 0;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 26px;
+}
+
+.erp-form-table .form-control,
+.erp-form-table .form-select {
+    width: 100%;
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 2px 6px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    color: #1e293b;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.erp-form-table td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--primary) !important;
+    background-color: #eff6ff !important;
+    position: relative;
+    z-index: 5;
+}
+
+/* ── 7. What-If Result Analysis Ribbon in Modal ── */
+.erp-result-panel {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+}
+.erp-result-panel.lost-mode {
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.result-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.result-sim-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.sim-box {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sim-box .sim-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.sim-box .sim-val {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0f172a;
+}
+.sim-box .sim-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+/* ── 8. Modal Sticky Summary Bar ── */
 .modal-summary-bar {
     background: #0f172a;
     color: #ffffff;
-    border-radius: 10px;
-    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    padding: 8px 16px;
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .summary-metric {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
 }
 
 .summary-metric .metric-label {
-    font-size: 0.75rem;
+    font-size: 10px;
     color: #94a3b8;
-    margin-bottom: 0.15rem;
+    font-weight: 500;
 }
 
 .summary-metric .metric-val {
-    font-size: 1.25rem;
+    font-size: 13px;
     font-weight: 700;
     color: #f8fafc;
 }
-
-.metric-val.profit {
-    color: #34d399;
+.summary-metric .metric-val.profit {
+    color: #4ade80;
 }
-
-.metric-val.delivery {
+.summary-metric .metric-val.fee {
+    color: #f87171;
+}
+.summary-metric .metric-val.delivery {
     color: #60a5fa;
+    font-size: 14px;
 }
 
-.metric-val.fee {
-    color: #fb923c;
-}
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: var(--text-secondary);
-}
-
-.empty-state i {
-    font-size: 3.5rem;
-    color: #cbd5e1;
-    margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-}
-
-.empty-state p {
-    font-size: 0.88rem;
-    max-width: 400px;
-    margin: 0 auto 1.5rem auto;
-}
-
-/* ── 계산 로직 인포 팝오버 (Tooltip / Popover) ── */
+/* ── 9. Popover & Rule Guidance ── */
 .calc-logic-info-wrapper {
     position: relative;
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
 }
-
-.calc-logic-trigger {
-    color: #2563eb;
-    transition: transform 0.15s ease, color 0.15s ease;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.calc-logic-trigger:hover {
-    color: #1d4ed8;
-    transform: scale(1.18);
-}
-
 .calc-logic-popover {
+    display: none;
     position: absolute;
-    top: calc(100% + 10px);
+    top: 26px;
     left: 0;
-    width: 530px;
-    max-width: calc(100vw - 40px);
+    z-index: 1099;
+    width: 440px;
     background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
-    z-index: 1090;
-    padding: 1.15rem;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-6px);
-    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
-    pointer-events: none;
-    font-size: 0.82rem;
-    color: #1e293b;
-    text-align: left;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    font-size: 11px;
 }
-
-/* 마우스가 trigger에서 popover로 이동할 때 끊김 방지 브릿지 */
-.calc-logic-popover::before {
-    content: '';
-    position: absolute;
-    top: -12px;
-    left: 0;
-    width: 100%;
-    height: 12px;
-}
-
-/* hover 또는 focus 시 표시 */
-.calc-logic-info-wrapper:hover .calc-logic-popover,
-.calc-logic-info-wrapper:focus-within .calc-logic-popover,
 .calc-logic-info-wrapper.active .calc-logic-popover {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-    pointer-events: auto;
+    display: block;
 }
 
-.popover-header-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 0.6rem;
-    margin-bottom: 0.75rem;
+/* ── 10. Responsive ── */
+@media (max-width: 992px) {
+    .result-sim-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .modal-summary-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .summary-metric {
+        flex-direction: row;
+        justify-content: space-between;
+    }
 }
-
-.popover-header-title h6 {
-    margin: 0;
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: #0f172a;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.logic-section-block {
-    margin-bottom: 0.65rem;
-}
-
-.logic-section-title {
-    font-weight: 700;
-    font-size: 0.8rem;
-    color: #334155;
-    margin-bottom: 0.3rem;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.logic-formula-banner {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    font-weight: 600;
-    color: #1e40af;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logic-rules-list {
-    margin: 0;
-    padding-left: 1.2rem;
-    line-height: 1.5;
-}
-
-.logic-rules-list li {
-    margin-bottom: 0.25rem;
-}
-
-.badge-calc-cut {
-    background-color: #fee2e2;
-    color: #b91c1c;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    font-weight: 700;
-}
-
-.badge-calc-up {
-    background-color: #dbeafe;
-    color: #1d4ed8;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    font-weight: 700;
-}
-
-.logic-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-    margin-top: 0.3rem;
-}
-
-.logic-table th {
-    background: #f1f5f9;
-    color: #475569;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid #cbd5e1;
-    text-align: center;
-    font-weight: 600;
-}
-
-.logic-table td {
-    padding: 0.35rem 0.5rem;
-    border: 1px solid #e2e8f0;
-    vertical-align: middle;
-}
-
-.logic-caution-alert {
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 6px;
-    padding: 0.45rem 0.65rem;
-    color: #92400e;
-    font-size: 0.75rem;
-    line-height: 1.4;
-    margin-top: 0.5rem;
-}
-

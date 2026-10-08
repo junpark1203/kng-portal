@@ -75,12 +75,19 @@ function initGongsaeroBiddingTables(database) {
                     total_delivery_amount INTEGER DEFAULT 0,
                     total_profit INTEGER DEFAULT 0,
                     profit_rate REAL DEFAULT 0,
+                    winning_bid_amount INTEGER DEFAULT 0,
+                    winning_company TEXT,
+                    result_note TEXT,
                     remarks TEXT,
                     created_at TEXT,
                     updated_at TEXT
                 )
             `, (err) => {
                 if (err) console.error('gongsaero_bids table error:', err.message);
+                // Safe migration for existing DB
+                targetDb.run("ALTER TABLE gongsaero_bids ADD COLUMN winning_bid_amount INTEGER DEFAULT 0", () => {});
+                targetDb.run("ALTER TABLE gongsaero_bids ADD COLUMN winning_company TEXT", () => {});
+                targetDb.run("ALTER TABLE gongsaero_bids ADD COLUMN result_note TEXT", () => {});
             });
 
             // 2. 투찰 품목 테이블
@@ -337,7 +344,7 @@ router.post('/bids', async (req, res) => {
         title, client_name, bid_type, urgency, issue_date, bid_deadline,
         delivery_deadline, delivery_address, delivery_condition, delivery_method,
         shipping_included, estimated_shipping_fee, author_info, manager_info,
-        status, remarks, items
+        status, winning_bid_amount, winning_company, result_note, remarks, items
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -418,8 +425,8 @@ router.post('/bids', async (req, res) => {
                     delivery_deadline, delivery_address, delivery_condition, delivery_method,
                     shipping_included, estimated_shipping_fee, author_info, manager_info,
                     status, total_buy_cost, total_settlement, total_fee, total_delivery_amount,
-                    total_profit, profit_rate, remarks, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    total_profit, profit_rate, winning_bid_amount, winning_company, result_note, remarks, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             const bidParams = [
                 bidId, title.trim(), client_name || '', bid_type || '공개 입찰', urgency || '일반',
@@ -429,6 +436,7 @@ router.post('/bids', async (req, res) => {
                 Number(estimated_shipping_fee) || 0,
                 author_info || '', manager_info || '', status || '입찰중',
                 totalBuyCost, totalSettlement, totalFee, totalDeliveryAmount, totalProfit, profitRate,
+                Number(winning_bid_amount) || 0, winning_company || '', result_note || '',
                 remarks || '', now, now
             ];
 
@@ -489,7 +497,7 @@ router.put('/bids/:id', async (req, res) => {
         title, client_name, bid_type, urgency, issue_date, bid_deadline,
         delivery_deadline, delivery_address, delivery_condition, delivery_method,
         shipping_included, estimated_shipping_fee, author_info, manager_info,
-        status, remarks, items
+        status, winning_bid_amount, winning_company, result_note, remarks, items
     } = req.body;
 
     const existing = await dbGet('SELECT id FROM gongsaero_bids WHERE id = ?', [bidId]);
@@ -565,7 +573,7 @@ router.put('/bids/:id', async (req, res) => {
                     delivery_method = ?, shipping_included = ?, estimated_shipping_fee = ?,
                     author_info = ?, manager_info = ?, status = ?, total_buy_cost = ?,
                     total_settlement = ?, total_fee = ?, total_delivery_amount = ?,
-                    total_profit = ?, profit_rate = ?, remarks = ?, updated_at = ?
+                    total_profit = ?, profit_rate = ?, winning_bid_amount = ?, winning_company = ?, result_note = ?, remarks = ?, updated_at = ?
                 WHERE id = ?
             `;
             const updateParams = [
@@ -576,6 +584,7 @@ router.put('/bids/:id', async (req, res) => {
                 Number(estimated_shipping_fee) || 0,
                 author_info || '', manager_info || '', status || '입찰중',
                 totalBuyCost, totalSettlement, totalFee, totalDeliveryAmount, totalProfit, profitRate,
+                Number(winning_bid_amount) || 0, winning_company || '', result_note || '',
                 remarks || '', now, bidId
             ];
 
@@ -638,22 +647,38 @@ router.put('/bids/:id', async (req, res) => {
     res.json({ success: true, message: '공고가 성공적으로 수정되었습니다.' });
 });
 
-// 6. 공고 상태 변경 API (입찰중 / 낙찰 / 미선정 / 입찰포기)
+// 6. 공고 상태 및 입찰결과(낙찰가) 변경 API (입찰중 / 낙찰 / 미선정 / 입찰포기)
 router.patch('/bids/:id/status', async (req, res) => {
-    const { status } = req.body;
+    const { status, winning_bid_amount, winning_company, result_note } = req.body;
     if (!status) {
         return res.status(400).json({ error: '변경할 상태값을 입력해주세요.' });
     }
     try {
         const now = new Date().toISOString();
-        const result = await dbRun(
-            'UPDATE gongsaero_bids SET status = ?, updated_at = ? WHERE id = ?',
-            [status, now, req.params.id]
-        );
+        let sql = 'UPDATE gongsaero_bids SET status = ?, updated_at = ?';
+        let params = [status, now];
+
+        if (winning_bid_amount !== undefined) {
+            sql += ', winning_bid_amount = ?';
+            params.push(Number(winning_bid_amount) || 0);
+        }
+        if (winning_company !== undefined) {
+            sql += ', winning_company = ?';
+            params.push(winning_company || '');
+        }
+        if (result_note !== undefined) {
+            sql += ', result_note = ?';
+            params.push(result_note || '');
+        }
+
+        sql += ' WHERE id = ?';
+        params.push(req.params.id);
+
+        const result = await dbRun(sql, params);
         if (result.changes === 0) {
             return res.status(404).json({ error: '해당 공고를 찾을 수 없습니다.' });
         }
-        res.json({ success: true, status, message: `공고 상태가 '${status}'(으)로 변경되었습니다.` });
+        res.json({ success: true, status, message: `공고 상태 및 입찰 결과가 저장되었습니다.` });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
