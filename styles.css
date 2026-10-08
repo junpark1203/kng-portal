@@ -3093,6 +3093,295 @@ th.sortable.active.asc i {
     font-size: 14px;
 }
 
+/* ══════════════════════════════════════════════════════
+   PORTAL MDI MULTI-TAB BAR SYSTEM (크롬 / 엑셀 스타일 멀티 탭 시스템)
+   ══════════════════════════════════════════════════════ */
+.portal-tab-bar {
+    height: 38px;
+    background: #f1f5f9;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 5px 12px 0 12px;
+    flex-shrink: 0;
+    z-index: 15;
+    user-select: none;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.portal-tab-scroll-wrap {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    min-width: 0;
+}
+.portal-tab-scroll-wrap::-webkit-scrollbar {
+    display: none;
+}
+
+.portal-tab-list {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 100%;
+}
+
+.portal-tab-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    height: 33px;
+    border-radius: 8px 8px 0 0;
+    background: #e2e8f0;
+    color: var(--gray-600);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-bottom: none;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    max-width: 180px;
+    min-width: 95px;
+}
+
+.portal-tab-item:hover {
+    background: #edf2f7;
+    color: var(--gray-900);
+}
+
+.portal-tab-item.active {
+    background: #ffffff;
+    color: var(--primary);
+    font-weight: 600;
+    border-color: var(--border);
+    border-bottom: 1px solid #ffffff;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    z-index: 2;
+}
+
+.portal-tab-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 4px;
+    right: 4px;
+    height: 2.5px;
+    background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+    border-radius: 2px 2px 0 0;
+}
+
+.portal-tab-item i.tab-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.portal-tab-item .tab-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.portal-tab-item .tab-close-btn {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--gray-400);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    margin-left: 2px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.portal-tab-item .tab-close-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.portal-tab-item.pinned .tab-close-btn {
+    display: none;
+}
+
+.portal-tab-controls {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+    margin-bottom: 3px;
+}
+
+.portal-tab-ctrl-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.portal-tab-ctrl-btn:hover {
+    background: #ffffff;
+    border-color: var(--border);
+    color: var(--gray-900);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.portal-tab-ctrl-btn.btn-close-all:hover {
+    color: #ef4444;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.portal-tab-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #e2e8f0;
+    color: var(--gray-700);
+    margin-left: 4px;
+    letter-spacing: -0.2px;
+}
+
+/* ── Multi-Iframe Panes ── */
+.iframe-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+.iframe-container.hidden {
+    display: none !important;
+}
+
+.tab-iframe-pane {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    display: none;
+    position: relative;
+}
+
+.tab-iframe-pane.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-iframe-pane iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex: 1;
+}
+
+/* ── Context Menu ── */
+.portal-tab-context-menu {
+    position: fixed;
+    z-index: 10000;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    padding: 4px;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    animation: fadeInFast 0.12s ease-out;
+}
+.portal-tab-context-menu.hidden {
+    display: none !important;
+}
+.tab-context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--gray-700);
+    transition: all 0.1s ease;
+}
+.tab-context-item:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+.tab-context-item.danger:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+.tab-context-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 3px 0;
+}
+
+@keyframes fadeInFast {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive adjustments for Tab Bar ── */
+@media (max-width: 768px) {
+    .portal-tab-bar {
+        height: 35px;
+        padding: 3px 6px 0 6px;
+    }
+    .portal-tab-item {
+        height: 30px;
+        padding: 0 8px;
+        font-size: 11px;
+        max-width: 125px;
+        min-width: 70px;
+        gap: 4px;
+    }
+    .portal-tab-controls {
+        gap: 2px;
+        padding-left: 4px;
+    }
+    #btnTabScrollLeft, #btnTabScrollRight {
+        display: none;
+    }
+    .portal-tab-ctrl-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 13.5px;
+    }
+    .portal-tab-badge {
+        font-size: 9.5px;
+        padding: 1px 4px;
+    }
+}
+
 .phone-topbar {
     background: #1e293b;
     padding: 8px 14px;

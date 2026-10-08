@@ -250,9 +250,34 @@
                 </div>
             </header>
 
-            <!-- ═══ IFRAME CONTAINER (외부 앱 로드용) ═══ -->
+            <!-- ═══ PORTAL MDI MULTI-TAB BAR (크롬 / 엑셀 스타일 멀티 탭 시스템) ═══ -->
+            <div class="portal-tab-bar" id="portalTabBar">
+                <div class="portal-tab-scroll-wrap" id="portalTabScrollWrap">
+                    <div class="portal-tab-list" id="portalTabList">
+                        <!-- 동적으로 탭들이 렌더링됩니다 (기본: 대시보드 고정 탭) -->
+                    </div>
+                </div>
+                <div class="portal-tab-controls">
+                    <button type="button" class="portal-tab-ctrl-btn" id="btnTabScrollLeft" title="탭 왼쪽으로 스크롤"><i class='bx bx-chevron-left'></i></button>
+                    <button type="button" class="portal-tab-ctrl-btn" id="btnTabScrollRight" title="탭 오른쪽으로 스크롤"><i class='bx bx-chevron-right'></i></button>
+                    <button type="button" class="portal-tab-ctrl-btn" id="btnTabRefresh" title="현재 탭 새로고침"><i class='bx bx-refresh'></i></button>
+                    <button type="button" class="portal-tab-ctrl-btn btn-close-all" id="btnTabCloseAll" title="모든 탭 닫기 (최대 10개)"><i class='bx bx-x-circle'></i></button>
+                    <span class="portal-tab-badge" id="tabCountBadge" title="열린 탭 / 최대 허용 탭">1/10</span>
+                </div>
+            </div>
+
+            <!-- 탭 우클릭 컨텍스트 메뉴 -->
+            <div class="portal-tab-context-menu hidden" id="tabContextMenu">
+                <div class="tab-context-item" data-action="refresh"><i class='bx bx-refresh'></i> 탭 새로고침</div>
+                <div class="tab-context-divider"></div>
+                <div class="tab-context-item" data-action="close"><i class='bx bx-x'></i> 현재 탭 닫기</div>
+                <div class="tab-context-item" data-action="close-others"><i class='bx bx-window-close'></i> 다른 탭 모두 닫기</div>
+                <div class="tab-context-item danger" data-action="close-all"><i class='bx bx-trash'></i> 모든 탭 닫기</div>
+            </div>
+
+            <!-- ═══ IFRAME CONTAINER (외부 앱 멀티 탭 풀) ═══ -->
             <div class="iframe-container hidden" id="iframeContainer">
-                <iframe id="appIframe" src="about:blank" frameborder="0" allowfullscreen allow="clipboard-read; clipboard-write"></iframe>
+                <iframe id="appIframe" src="about:blank" frameborder="0" allowfullscreen allow="clipboard-read; clipboard-write" style="display: none;"></iframe>
             </div>
 
             <!-- ═══ INTERNAL PAGES ═══ -->

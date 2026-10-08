@@ -1452,140 +1452,609 @@ document.addEventListener('DOMContentLoaded', function() {
     /** 내부 페이지 모드로 전환 — 선택한 섹션만 표시 */
     var internalSections = ['mobileRoadmapSection', 'dashboard', 'forms', 'inventory', 'transactions'];
 
-    function showInternalView(href, label) {
-    // iframe 숨기고 내부 페이지 표시
-    if (iframeContainer) iframeContainer.classList.add('hidden');
-    if (appIframe) appIframe.src = 'about:blank';
-    if (internalPages) internalPages.style.display = '';
-    var fab = document.getElementById('mobileRoadmapFab');
-    if (fab) fab.style.display = '';
+    // ==========================================
+    // 포털 MDI 멀티 탭 매니저 (Portal MDI Multi-Tab Manager) - 최대 10개
+    // ==========================================
+    const MAX_PORTAL_TABS = 10;
 
-    var targetId = href.replace('#', '');
+    const portalTabManager = {
+        MAX_TABS: MAX_PORTAL_TABS,
+        tabs: [],
+        activeTabId: null,
+        contextTargetTabId: null,
 
-    // dashboard, quickmenu, mobileRoadmapSection 클릭 시 표시
-    if (targetId === 'dashboard' || targetId === 'quickmenu' || targetId === 'mobileRoadmapSection') {
-        internalSections.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.style.display = '';
-        });
-        if (targetId === 'mobileRoadmapSection') {
-            var body = document.getElementById('mobileRoadmapBody');
-            var btn = document.getElementById('btnToggleRoadmapBody');
-            if (body && body.classList.contains('collapsed')) {
-                body.classList.remove('collapsed');
-                if (btn) btn.classList.remove('collapsed');
-            }
-            setTimeout(function() {
-                var sec = document.getElementById('mobileRoadmapSection');
-                if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 60);
-        }
-    } else {
-        // 다른 탭일 경우 해당 섹션만 표시
-        internalSections.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        var targetEl = document.getElementById(targetId);
-        if (targetEl) targetEl.style.display = '';
-    }
+        init: function() {
+            var self = this;
+            // 1. 기본 고정 탭: 대시보드
+            this.tabs = [
+                {
+                    id: 'tab_dashboard',
+                    title: '대시보드',
+                    icon: 'bx-grid-alt',
+                    url: '#dashboard',
+                    type: 'internal',
+                    internalTarget: 'dashboard',
+                    pinned: true
+                }
+            ];
+            this.activeTabId = 'tab_dashboard';
 
-    // 검색바 / VAT 버튼: dashboard 및 로드맵 포함해서 표시
-    var showControls = ['dashboard', 'quickmenu', 'forms', 'inventory', 'transactions', 'mobileRoadmapSection'].indexOf(targetId) !== -1;
-    if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
-    if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
+            this.renderTabBar();
+            this.bindEvents();
 
-    // 페이지 제목 업데이트
-    if (topbarPageTitle) topbarPageTitle.textContent = label || '요약정보';
-
-    // 스크롤 맨위로
-    if (internalPages) internalPages.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-    /** iframe 모드로 전환 */
-    function showIframeView(src, label) {
-        // 내부 페이지 숨기고 iframe 표시
-        if (internalPages) internalPages.style.display = 'none';
-        if (iframeContainer) iframeContainer.classList.remove('hidden');
-        var fab = document.getElementById('mobileRoadmapFab');
-        if (fab) fab.style.display = 'none';
-        // embed 파라미터 추가 — 해시(#) 앞에 삽입
-        var hashIdx = src.indexOf('#');
-        var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
-        var hash = hashIdx !== -1 ? src.substring(hashIdx) : '';
-        var userName = localStorage.getItem('kngCurrentUser') || '';
-        var timestamp = new Date().getTime();
-        var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true');
-        embedSrc += '&author=' + encodeURIComponent(userName) + '&_t=' + timestamp + hash;
-
-        if (appIframe) {
-            // 같은 base URL이 이미 로드되어 있으면 해시만 변경 (깜빡임 방지)
-            var currentSrc = '';
-            try { currentSrc = appIframe.contentWindow.location.href; } catch(e) {}
-            var currentBase = currentSrc.split('#')[0].split('?')[0];
-            var newBase = base.split('?')[0];
-            // 상대 경로 비교를 위해 끝부분만 비교
-            var currentEnd = currentBase.split('/').slice(-2).join('/');
-            var newEnd = newBase.split('/').slice(-2).join('/');
-
-            if (currentEnd && newEnd && currentEnd === newEnd && hash) {
-                // 같은 앱 — 해시만 변경 (리로드 없이)
-                try {
-                    appIframe.contentWindow.location.hash = hash;
-                    // hashchange 이벤트 강제 트리거
-                    appIframe.contentWindow.dispatchEvent(new HashChangeEvent('hashchange'));
-                } catch(e) {
-                    appIframe.src = embedSrc;
+            // 2. 이전에 접속했던 페이지 복원 (sessionStorage)
+            var lastNav = sessionStorage.getItem('lastNavHref');
+            if (lastNav && lastNav !== '#dashboard' && lastNav !== '#quickmenu') {
+                var matchLink = document.querySelector(`.sidebar .menu a[href="${lastNav}"], .sidebar .menu a[href^="${lastNav.split('?')[0]}"]`);
+                if (matchLink) {
+                    var label = matchLink.querySelector('span') ? matchLink.querySelector('span').textContent.trim() : '';
+                    var iconEl = matchLink.querySelector('i');
+                    var iconClass = iconEl ? iconEl.className : '';
+                    var navType = matchLink.getAttribute('data-nav') || 'iframe';
+                    setTimeout(function() {
+                        self.openTab(lastNav, label, iconClass, navType);
+                    }, 50);
+                } else {
+                    this.activateTab('tab_dashboard');
                 }
             } else {
-                appIframe.src = embedSrc;
+                this.activateTab('tab_dashboard');
             }
-        }
+        },
 
-        // 검색바 / VAT 버튼 숨김 (외부 앱에서는 불필요)
-        if (searchWrap) searchWrap.style.display = 'none';
-        if (globalVatBtn) globalVatBtn.style.display = 'none';
+        normalizeUrl: function(url) {
+            if (!url || url.startsWith('#')) return url;
+            try {
+                var a = document.createElement('a');
+                a.href = url;
+                var currentOrigin = window.location.origin;
+                var basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                var fullUrl = a.href;
+                if (fullUrl.indexOf(currentOrigin + basePath) === 0) {
+                    return './' + fullUrl.substring((currentOrigin + basePath).length);
+                }
+                return url;
+            } catch(e) {
+                return url;
+            }
+        },
 
-        // 페이지 타이틀 업데이트
-        if (topbarPageTitle) topbarPageTitle.textContent = label || '';
-    }
+        generateTabId: function(href) {
+            if (!href) return 'tab_' + Date.now();
+            if (href.startsWith('#')) {
+                return 'tab_internal_' + href.replace('#', '');
+            }
+            var normalized = this.normalizeUrl(href);
+            var clean = normalized.split('?')[0].split('#')[0];
+            return 'tab_' + clean.replace(/[^a-zA-Z0-9]/g, '_');
+        },
 
-    // 모든 메뉴 링크에 클릭 핸들러 연결
-    document.querySelectorAll('a[data-nav]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            // [미저장 변경사항 보호] 현재 iframe 페이지에서 작성 중인 내용이 있는지 체크
-            if (appIframe && appIframe.contentWindow) {
+        openTab: function(href, label, iconClass, navType) {
+            if (!href) return;
+            var normalizedHref = this.normalizeUrl(href);
+            var isInternal = (navType === 'internal') || normalizedHref.startsWith('#');
+            var tabId = this.generateTabId(normalizedHref);
+
+            // 이미 열려 있는 탭이면 해당 탭 활성화만 수행 (0초 인스턴트 전환, 기존 입력폼/스크롤 100% 보존)
+            var existingTab = this.tabs.find(function(t) { return t.id === tabId; });
+            if (existingTab) {
+                this.activateTab(tabId);
+                return;
+            }
+
+            // 최대 탭 개수(10개) 초과 시 알림 및 방지
+            if (this.tabs.length >= this.MAX_TABS) {
+                showToast(`탭은 최대 ${this.MAX_TABS}개까지 열 수 있습니다. 불필요한 탭을 닫아주세요.`, 'warning');
+                return;
+            }
+
+            // 라벨이나 아이콘이 누락된 경우 사이드바 메뉴 링크에서 자동 탐색
+            if (!label || !iconClass) {
+                var cleanHref = normalizedHref.split('?')[0].split('#')[0];
+                var matchLink = document.querySelector(`.sidebar .menu a[href="${normalizedHref}"], .sidebar .menu a[href^="${cleanHref}"], .sidebar .menu a[href$="${cleanHref}"]`);
+                if (matchLink) {
+                    if (!label) label = matchLink.querySelector('span') ? matchLink.querySelector('span').textContent.trim() : '';
+                    if (!iconClass) {
+                        var iconEl = matchLink.querySelector('i');
+                        if (iconEl) iconClass = iconEl.className;
+                    }
+                    if (!navType) navType = matchLink.getAttribute('data-nav') || (isInternal ? 'internal' : 'iframe');
+                }
+            }
+
+            // 새 탭 생성
+            var newTab = {
+                id: tabId,
+                title: label || (isInternal ? '요약정보' : '페이지'),
+                icon: iconClass || (isInternal ? 'bx-file' : 'bx-window'),
+                url: normalizedHref,
+                type: isInternal ? 'internal' : 'iframe',
+                internalTarget: isInternal ? normalizedHref.replace('#', '') : null,
+                pinned: (tabId === 'tab_dashboard')
+            };
+
+            this.tabs.push(newTab);
+
+            // iframe 모듈인 경우 전용 pane & iframe 동적 생성
+            if (!isInternal) {
+                this.createIframePane(newTab);
+            }
+
+            this.renderTabBar();
+            this.activateTab(tabId);
+        },
+
+        createIframePane: function(tab) {
+            var self = this;
+            var container = document.getElementById('iframeContainer');
+            if (!container) return;
+
+            var pane = document.createElement('div');
+            pane.className = 'tab-iframe-pane';
+            pane.id = 'pane-' + tab.id;
+            pane.setAttribute('data-tab-id', tab.id);
+
+            var src = tab.url;
+            var hashIdx = src.indexOf('#');
+            var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
+            var hash = hashIdx !== -1 ? src.substring(hashIdx) : '';
+            var userName = localStorage.getItem('kngCurrentUser') || '';
+            var timestamp = new Date().getTime();
+            var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true');
+            embedSrc += '&author=' + encodeURIComponent(userName) + '&_t=' + timestamp + hash;
+
+            var iframe = document.createElement('iframe');
+            iframe.src = embedSrc;
+            iframe.frameBorder = '0';
+            iframe.allowFullscreen = true;
+            iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
+
+            // 서브모듈 내부에서 다른 모듈(단가표, 실시간재고 등)로 이동하는 a 링크 클릭 시 상위 포털 멀티 탭으로 가로채기
+            iframe.addEventListener('load', function() {
                 try {
-                    if (typeof appIframe.contentWindow.hasUnsavedChanges === 'function' && appIframe.contentWindow.hasUnsavedChanges()) {
-                        if (!confirm('작성 중이거나 변경된 내용이 저장되지 않았습니다.\n저장하지 않고 다른 메뉴로 이동하시겠습니까?')) {
-                            e.preventDefault();
-                            return;
+                    var doc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (doc) {
+                        doc.addEventListener('click', function(e) {
+                            var link = e.target.closest('a');
+                            if (!link) return;
+                            var href = link.getAttribute('href');
+                            if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+                            // 서브모듈 링크 클릭 (예: 단가표, 실시간재고, 외부입출 등)
+                            if (href.indexOf('.html') !== -1 && (href.startsWith('../') || href.startsWith('./'))) {
+                                e.preventDefault();
+                                var fullUrl = link.href;
+                                var currentOrigin = window.location.origin;
+                                var basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                                var relUrl = fullUrl;
+                                if (fullUrl.indexOf(currentOrigin + basePath) === 0) {
+                                    relUrl = './' + fullUrl.substring((currentOrigin + basePath).length);
+                                }
+                                var title = link.textContent.trim();
+                                var iconEl = link.querySelector('i');
+                                var iconClass = iconEl ? iconEl.className : '';
+                                self.openTab(relUrl, title, iconClass, 'iframe');
+                            }
+                        }, true);
+                    }
+                } catch(err) {
+                    // 동일 도메인이 아닐 경우 통과
+                }
+            });
+
+            pane.appendChild(iframe);
+            container.appendChild(pane);
+        },
+
+        activateTab: function(tabId) {
+            var tab = this.tabs.find(function(t) { return t.id === tabId; });
+            if (!tab) return;
+
+            this.activeTabId = tabId;
+
+            // 1. 탭 바 DOM 활성화
+            var tabListEl = document.getElementById('portalTabList');
+            if (tabListEl) {
+                tabListEl.querySelectorAll('.portal-tab-item').forEach(function(el) {
+                    var match = (el.getAttribute('data-tab-id') === tabId);
+                    el.classList.toggle('active', match);
+                });
+                var activeEl = tabListEl.querySelector(`[data-tab-id="${tabId}"]`);
+                if (activeEl) {
+                    activeEl.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }
+            }
+
+            // 2. 탑바 페이지 타이틀
+            if (topbarPageTitle) topbarPageTitle.textContent = tab.title || '';
+
+            // 3. 뷰 전환
+            var fab = document.getElementById('mobileRoadmapFab');
+            if (tab.type === 'internal') {
+                if (iframeContainer) iframeContainer.classList.add('hidden');
+                document.querySelectorAll('.tab-iframe-pane').forEach(function(p) { p.classList.remove('active'); });
+
+                if (internalPages) internalPages.style.display = '';
+
+                var targetId = tab.internalTarget || 'dashboard';
+                if (targetId === 'dashboard' || targetId === 'quickmenu' || targetId === 'mobileRoadmapSection') {
+                    internalSections.forEach(function(id) {
+                        var el = document.getElementById(id);
+                        if (el) el.style.display = '';
+                    });
+                    if (targetId === 'mobileRoadmapSection') {
+                        var body = document.getElementById('mobileRoadmapBody');
+                        var btn = document.getElementById('btnToggleRoadmapBody');
+                        if (body && body.classList.contains('collapsed')) {
+                            body.classList.remove('collapsed');
+                            if (btn) btn.classList.remove('collapsed');
+                        }
+                        setTimeout(function() {
+                            var sec = document.getElementById('mobileRoadmapSection');
+                            if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                        }, 60);
+                    }
+                } else {
+                    internalSections.forEach(function(id) {
+                        var el = document.getElementById(id);
+                        if (el) el.style.display = 'none';
+                    });
+                    var targetEl = document.getElementById(targetId);
+                    if (targetEl) targetEl.style.display = '';
+                }
+
+                var showControls = ['dashboard', 'quickmenu', 'forms', 'inventory', 'transactions', 'mobileRoadmapSection'].indexOf(targetId) !== -1;
+                if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
+                if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
+                if (fab) fab.style.display = '';
+            } else {
+                // Iframe 모듈 활성화
+                if (internalPages) internalPages.style.display = 'none';
+                if (iframeContainer) iframeContainer.classList.remove('hidden');
+
+                document.querySelectorAll('.tab-iframe-pane').forEach(function(p) {
+                    var isCurrent = (p.getAttribute('data-tab-id') === tabId);
+                    p.classList.toggle('active', isCurrent);
+                });
+
+                if (searchWrap) searchWrap.style.display = 'none';
+                if (globalVatBtn) globalVatBtn.style.display = 'none';
+                if (fab) fab.style.display = 'none';
+            }
+
+            // 4. 사이드바 활성 동기화
+            this.syncSidebar(tab);
+
+            // 5. 세션 상태 저장
+            sessionStorage.setItem('lastNavHref', tab.url);
+        },
+
+        closeTab: function(tabId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+
+            var idx = this.tabs.findIndex(function(t) { return t.id === tabId; });
+            if (idx === -1) return;
+            var tab = this.tabs[idx];
+            if (tab.pinned) return;
+
+            // 미저장 변경사항 보호 체크
+            var pane = document.getElementById('pane-' + tabId);
+            if (pane) {
+                var iframe = pane.querySelector('iframe');
+                if (iframe && iframe.contentWindow && typeof iframe.contentWindow.hasUnsavedChanges === 'function') {
+                    try {
+                        if (iframe.contentWindow.hasUnsavedChanges()) {
+                            if (!confirm('작성 중인 내용이 저장되지 않았습니다.\n정말 이 탭을 닫으시겠습니까?')) {
+                                return;
+                            }
+                        }
+                    } catch(e) {}
+                }
+            }
+
+            var wasActive = (this.activeTabId === tabId);
+
+            if (pane) pane.remove();
+            this.tabs.splice(idx, 1);
+
+            if (wasActive) {
+                var nextTab = this.tabs[idx] || this.tabs[idx - 1] || this.tabs[0];
+                if (nextTab) {
+                    this.activeTabId = nextTab.id;
+                }
+            }
+
+            this.renderTabBar();
+            if (wasActive && this.activeTabId) {
+                this.activateTab(this.activeTabId);
+            }
+        },
+
+        closeOtherTabs: function(tabId) {
+            var keepTabs = this.tabs.filter(function(t) { return t.id === tabId || t.pinned; });
+            var tabsToClose = this.tabs.filter(function(t) { return t.id !== tabId && !t.pinned; });
+
+            tabsToClose.forEach(function(t) {
+                var pane = document.getElementById('pane-' + t.id);
+                if (pane) pane.remove();
+            });
+
+            this.tabs = keepTabs;
+            this.renderTabBar();
+            this.activateTab(tabId);
+        },
+
+        closeAllTabs: function() {
+            var keepTabs = this.tabs.filter(function(t) { return t.pinned; });
+            var tabsToClose = this.tabs.filter(function(t) { return !t.pinned; });
+
+            tabsToClose.forEach(function(t) {
+                var pane = document.getElementById('pane-' + t.id);
+                if (pane) pane.remove();
+            });
+
+            this.tabs = keepTabs;
+            this.renderTabBar();
+            if (keepTabs.length > 0) {
+                this.activateTab(keepTabs[0].id);
+            }
+        },
+
+        refreshTab: function(tabId) {
+            var targetId = tabId || this.activeTabId;
+            var tab = this.tabs.find(function(t) { return t.id === targetId; });
+            if (!tab) return;
+
+            if (tab.type === 'iframe') {
+                var pane = document.getElementById('pane-' + tab.id);
+                if (pane) {
+                    var iframe = pane.querySelector('iframe');
+                    if (iframe) {
+                        try {
+                            iframe.contentWindow.location.reload();
+                        } catch(e) {
+                            iframe.src = iframe.src;
+                        }
+                        showToast(`[${tab.title}] 탭을 새로고침했습니다.`, 'info');
+                    }
+                }
+            } else {
+                if (typeof renderTable === 'function') renderTable();
+                if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                showToast(`[${tab.title}] 화면을 새로고침했습니다.`, 'info');
+            }
+        },
+
+        renderTabBar: function() {
+            var listEl = document.getElementById('portalTabList');
+            if (!listEl) return;
+
+            var html = '';
+            var activeId = this.activeTabId;
+            this.tabs.forEach(function(tab) {
+                var isActive = (tab.id === activeId);
+                var isPinned = !!tab.pinned;
+                html += `
+                    <div class="portal-tab-item ${isActive ? 'active' : ''} ${isPinned ? 'pinned' : ''}" 
+                         data-tab-id="${tab.id}" 
+                         title="${escapeHtml(tab.title)}">
+                        <i class="tab-icon ${tab.icon || 'bx-file'}"></i>
+                        <span class="tab-title">${escapeHtml(tab.title)}</span>
+                        ${isPinned ? '' : `<button type="button" class="tab-close-btn" title="탭 닫기" data-tab-id="${tab.id}"><i class='bx bx-x'></i></button>`}
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+
+            var countEl = document.getElementById('tabCountBadge');
+            if (countEl) {
+                countEl.textContent = `${this.tabs.length}/${this.MAX_TABS}`;
+                if (this.tabs.length >= this.MAX_TABS) {
+                    countEl.style.background = '#fee2e2';
+                    countEl.style.color = '#ef4444';
+                    countEl.style.fontWeight = '800';
+                    countEl.title = `최대 탭 수 한도(${this.MAX_TABS}개)에 도달했습니다.`;
+                } else {
+                    countEl.style.background = '';
+                    countEl.style.color = '';
+                    countEl.style.fontWeight = '';
+                    countEl.title = '열린 탭 / 최대 허용 탭 (10개)';
+                }
+            }
+        },
+
+        syncSidebar: function(tab) {
+            document.querySelectorAll('.sidebar .menu a').forEach(function(a) {
+                var href = a.getAttribute('href');
+                var isMatch = false;
+                if (tab.type === 'internal') {
+                    isMatch = (href === '#' + tab.internalTarget || (tab.internalTarget === 'dashboard' && href === '#dashboard'));
+                } else {
+                    if (href) {
+                        var cleanHref = href.split('?')[0].split('#')[0];
+                        var cleanTabUrl = tab.url.split('?')[0].split('#')[0];
+                        isMatch = (cleanHref === cleanTabUrl || cleanHref.endsWith(cleanTabUrl) || cleanTabUrl.endsWith(cleanHref));
+                    }
+                }
+                a.classList.toggle('active', isMatch);
+            });
+        },
+
+        bindEvents: function() {
+            var self = this;
+            var listEl = document.getElementById('portalTabList');
+            var scrollWrap = document.getElementById('portalTabScrollWrap');
+            var contextMenu = document.getElementById('tabContextMenu');
+
+            if (listEl) {
+                // 탭 클릭 및 닫기 버튼 클릭
+                listEl.addEventListener('click', function(e) {
+                    var closeBtn = e.target.closest('.tab-close-btn');
+                    if (closeBtn) {
+                        var id = closeBtn.getAttribute('data-tab-id');
+                        self.closeTab(id, e);
+                        return;
+                    }
+                    var item = e.target.closest('.portal-tab-item');
+                    if (item) {
+                        var id = item.getAttribute('data-tab-id');
+                        self.activateTab(id);
+                    }
+                });
+
+                // 마우스 휠 클릭 (가운데 버튼)으로 탭 닫기
+                listEl.addEventListener('auxclick', function(e) {
+                    if (e.button === 1) {
+                        e.preventDefault();
+                        var item = e.target.closest('.portal-tab-item');
+                        if (item) {
+                            var id = item.getAttribute('data-tab-id');
+                            self.closeTab(id);
                         }
                     }
-                } catch(err) {}
+                });
+
+                // 더블 클릭: 탭 새로고침
+                listEl.addEventListener('dblclick', function(e) {
+                    var item = e.target.closest('.portal-tab-item');
+                    if (item && !e.target.closest('.tab-close-btn')) {
+                        var id = item.getAttribute('data-tab-id');
+                        self.refreshTab(id);
+                    }
+                });
+
+                // 우클릭 컨텍스트 메뉴
+                listEl.addEventListener('contextmenu', function(e) {
+                    var item = e.target.closest('.portal-tab-item');
+                    if (!item) return;
+                    e.preventDefault();
+                    self.contextTargetTabId = item.getAttribute('data-tab-id');
+
+                    if (contextMenu) {
+                        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+                        contextMenu.style.top = e.clientY + 'px';
+                        contextMenu.classList.remove('hidden');
+                    }
+                });
             }
 
+            // 가로 스크롤 (마우스 휠)
+            if (scrollWrap) {
+                scrollWrap.addEventListener('wheel', function(e) {
+                    if (e.deltaY !== 0) {
+                        e.preventDefault();
+                        scrollWrap.scrollLeft += e.deltaY;
+                    }
+                }, { passive: false });
+            }
+
+            // 컨텍스트 메뉴 외부 클릭 시 닫기
+            document.addEventListener('click', function(e) {
+                if (contextMenu && !contextMenu.classList.contains('hidden') && !e.target.closest('#tabContextMenu')) {
+                    contextMenu.classList.add('hidden');
+                }
+            });
+
+            // 컨텍스트 메뉴 액션 클릭
+            if (contextMenu) {
+                contextMenu.addEventListener('click', function(e) {
+                    var actionItem = e.target.closest('.tab-context-item');
+                    if (!actionItem) return;
+                    var action = actionItem.getAttribute('data-action');
+                    var targetId = self.contextTargetTabId || self.activeTabId;
+
+                    if (action === 'refresh') {
+                        self.refreshTab(targetId);
+                    } else if (action === 'close') {
+                        self.closeTab(targetId);
+                    } else if (action === 'close-others') {
+                        self.closeOtherTabs(targetId);
+                    } else if (action === 'close-all') {
+                        self.closeAllTabs();
+                    }
+                    contextMenu.classList.add('hidden');
+                });
+            }
+
+            // 탭 바 컨트롤 버튼들
+            var btnLeft = document.getElementById('btnTabScrollLeft');
+            var btnRight = document.getElementById('btnTabScrollRight');
+            var btnRefresh = document.getElementById('btnTabRefresh');
+            var btnCloseAll = document.getElementById('btnTabCloseAll');
+
+            if (btnLeft && scrollWrap) {
+                btnLeft.addEventListener('click', function() {
+                    scrollWrap.scrollBy({ left: -220, behavior: 'smooth' });
+                });
+            }
+            if (btnRight && scrollWrap) {
+                btnRight.addEventListener('click', function() {
+                    scrollWrap.scrollBy({ left: 220, behavior: 'smooth' });
+                });
+            }
+            if (btnRefresh) {
+                btnRefresh.addEventListener('click', function() {
+                    self.refreshTab();
+                });
+            }
+            if (btnCloseAll) {
+                btnCloseAll.addEventListener('click', function() {
+                    self.closeAllTabs();
+                });
+            }
+        }
+    };
+
+    // 전역 노출
+    window.portalTabManager = portalTabManager;
+    window.openPortalTab = function(href, label, icon, navType) {
+        portalTabManager.openTab(href, label, icon, navType);
+    };
+
+    // 서브모듈(Iframe)에서 postMessage로 새 탭 요청 시 수신
+    window.addEventListener('message', function(e) {
+        if (e.data && (e.data.type === 'KNG_PORTAL_OPEN_TAB' || e.data.action === 'openPortalTab')) {
+            portalTabManager.openTab(e.data.url || e.data.href, e.data.title || e.data.label, e.data.icon, e.data.navType);
+        }
+    });
+
+    function showInternalView(href, label) {
+        portalTabManager.openTab(href, label, 'bx-grid-alt', 'internal');
+    }
+
+    function showIframeView(src, label) {
+        portalTabManager.openTab(src, label, 'bx-window', 'iframe');
+    }
+
+    // 모든 메뉴 링크에 클릭 핸들러 연결 (MDI 멀티 탭 시스템으로 라우팅)
+    document.querySelectorAll('a[data-nav]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
             e.preventDefault();
             var navType = link.getAttribute('data-nav');
             var href = link.getAttribute('href');
-            var label = link.querySelector('span') ? link.querySelector('span').textContent : '';
+            var label = link.querySelector('span') ? link.querySelector('span').textContent.trim() : '';
+            var iconEl = link.querySelector('i');
+            var iconClass = iconEl ? iconEl.className : '';
 
-            // active 상태 업데이트
-            document.querySelectorAll('.menu a').forEach(function(a) { a.classList.remove('active'); });
-            link.classList.add('active');
-
-            if (navType === 'iframe') {
-                showIframeView(href, label);
-            } else {
-                showInternalView(href, label);
-            }
-
-            // 현재 접속 중인 페이지 상태 저장 (새로고침 시 유지용)
-            sessionStorage.setItem('lastNavHref', href);
-
+            portalTabManager.openTab(href, label, iconClass, navType);
             closeMobileMenu();
         });
     });
+
+    var brandLink = document.querySelector('.brand-link');
+    if (brandLink) {
+        brandLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            portalTabManager.activateTab('tab_dashboard');
+            closeMobileMenu();
+        });
+    }
+
+    // 탭 매니저 가동
+    portalTabManager.init();
 
     // 모바일 햄버거 메뉴
     var hamburgerBtn = document.getElementById('hamburgerBtn');
