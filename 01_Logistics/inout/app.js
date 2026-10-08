@@ -1056,9 +1056,22 @@ const app = {
     autoFillPricesForRow: function(row, type, item, spec) {
         if (!item) return;
         const freightSelect = row.querySelector(type === 'inbound' ? '.in-freight-type' : (type === 'direct' ? '.dir-freight-type' : '.out-freight-type'));
-        const curFreight = freightSelect ? freightSelect.value : null;
+        
+        let curFreight = null;
+        if (freightSelect) {
+            curFreight = freightSelect.value;
+        } else if (type === 'direct') {
+            const outFee = parseFloat($('dir_out_shipping') ? $('dir_out_shipping').value : 0) || 0;
+            const inFee = parseFloat($('dir_in_shipping') ? $('dir_in_shipping').value : 0) || 0;
+            curFreight = (outFee > 0 || inFee > 0) ? '상차도' : '하차도';
+        } else if (type === 'outbound') {
+            const shippingFee = parseFloat($('out_shipping') ? $('out_shipping').value : 0) || 0;
+            curFreight = shippingFee > 0 ? '상차도' : '하차도';
+        } else {
+            curFreight = '상차도';
+        }
 
-        // 1. 단가표 조회 (현재 선택된 운임조건 일치 항목 우선, 없으면 기본 항목)
+        // 1. 단가표 조회 (현재 선택/판별된 운임조건 일치 항목 우선, 없으면 기본 항목)
         let priceInfo = this.getUnitPriceInfo(item, spec, curFreight) || this.getUnitPriceInfo(item, spec);
 
         const manuallySet = row.dataset.freightManuallySet === 'true';
@@ -1078,9 +1091,9 @@ const app = {
 
         if (!priceInfo) return;
 
-        const effectiveFreight = freightSelect ? freightSelect.value : (priceInfo.freight_type || '상차도');
-        // 마스터에 등록된 운임조건과 현재 행의 운임조건이 불일치하는지 여부
-        const isFreightMismatch = !!(priceInfo.freight_type && priceInfo.freight_type !== effectiveFreight);
+        const effectiveFreight = freightSelect ? freightSelect.value : curFreight;
+        // 마스터에 등록된 운임조건과 현재 행의 운임조건이 불일치하는지 여부 (수동 셀렉트가 있을 때만 경고)
+        const isFreightMismatch = freightSelect ? !!(priceInfo.freight_type && priceInfo.freight_type !== effectiveFreight) : false;
 
         const applyWarningOrClear = (inputEl, masterType, rowType) => {
             if (!inputEl) return;
@@ -2082,13 +2095,6 @@ const app = {
             const txIdDisplay = r.transaction_group_id || (r.is_direct === 1 ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
             const dateStr = (r.date || '').split('T')[0];
 
-            let freightBadge = '';
-            if (r.freight_type === '하차도') {
-                freightBadge = ` <span class="badge-freight-in" title="운임: 하차도">하차도</span>`;
-            } else if (r.freight_type === '상차도') {
-                freightBadge = ` <span class="badge-freight-ex" title="운임: 상차도">상차도</span>`;
-            }
-
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)"></td>
@@ -2101,7 +2107,7 @@ const app = {
                 <td class="text-center tabular-nums">${dateStr}</td>
                 <td title="${r.supplier || ''}">${renderCell(r.supplier)}</td>
                 <td title="${r.destination || ''}">${destHtml}</td>
-                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong>${freightBadge}</td>
+                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong></td>
                 <td class="text-center" title="${r.spec || ''}">${r.spec || '-'}</td>
                 <td class="text-center">${r.unit || '-'}</td>
                 <td class="text-end tabular-nums ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
@@ -2284,7 +2290,6 @@ const app = {
                 }
 
                 const catBadge = item.category ? `<span class="erp-badge erp-badge-cat ms-1">${item.category}</span>` : '';
-                const fBadge = item.freight_type ? `<span class="${item.freight_type === '하차도' ? 'badge-freight-in' : 'badge-freight-ex'} ms-1">${item.freight_type}</span>` : '';
 
                 if (isDirect) {
                     return `
@@ -2293,7 +2298,6 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
-                                ${fBadge}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
@@ -2311,7 +2315,6 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
-                                ${fBadge}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
@@ -2328,7 +2331,6 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
-                                ${fBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
@@ -3027,12 +3029,6 @@ const app = {
                         <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
                     </div>
                 </td>
-                <td class="text-center">
-                    <select class="erp-cell-select in-freight-type">
-                        <option value="상차도" selected>상차도</option>
-                        <option value="하차도">하차도</option>
-                    </select>
-                </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
                         <input type="text" class="erp-cell-input in-category category-input" placeholder="분류" autocomplete="off">
@@ -3369,12 +3365,6 @@ const app = {
                         <input type="text" class="erp-cell-input dir-spec" placeholder="규격" autocomplete="off">
                         <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
                     </div>
-                </td>
-                <td class="text-center">
-                    <select class="erp-cell-select dir-freight-type">
-                        <option value="하차도" selected>하차도</option>
-                        <option value="상차도">상차도</option>
-                    </select>
                 </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
@@ -3761,12 +3751,6 @@ const app = {
                 <td>
                     <select class="erp-cell-input out-spec" disabled required onchange="app.handleOutboundSpecChange('${rowId}', this)">
                         <option value="">품목 먼저 선택</option>
-                    </select>
-                </td>
-                <td class="text-center">
-                    <select class="erp-cell-select out-freight-type">
-                        <option value="상차도" selected>상차도</option>
-                        <option value="하차도">하차도</option>
                     </select>
                 </td>
                 <td>
@@ -6471,13 +6455,6 @@ const app = {
             const txIdDisplay = r.transaction_group_id || (isDirect ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
             const dateStr = (r.date || '').split('T')[0];
 
-            let freightBadge = '';
-            if (r.freight_type === '하차도') {
-                freightBadge = ` <span class="badge-freight-in" title="운임: 하차도">하차도</span>`;
-            } else if (r.freight_type === '상차도') {
-                freightBadge = ` <span class="badge-freight-ex" title="운임: 상차도">상차도</span>`;
-            }
-
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = isDirect
                 ? `app.openEditDirectOutboundTx('${r.transaction_group_id || ''}', ${r.id})`
@@ -6527,7 +6504,6 @@ const app = {
                 <div class="mobile-tx-card-body" onclick="app.toggleMobileCardAccordion(${r.id}, '${r.type}')">
                     <div class="mobile-tx-item-title">
                         <span class="item-name">${r.item || '-'}</span>
-                        ${freightBadge}
                     </div>
 
                     <div class="mobile-tx-meta-chips">
