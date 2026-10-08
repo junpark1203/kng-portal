@@ -1072,7 +1072,7 @@ const app = {
                 freightSelect.value = shippingFee > 0 ? '상차도' : '하차도';
             } else if (type === 'outbound') {
                 const shippingFee = parseFloat($('out_shipping') ? $('out_shipping').value : 0) || 0;
-                freightSelect.value = shippingFee > 0 ? '상차도' : '상차도';
+                freightSelect.value = shippingFee > 0 ? '상차도' : '하차도';
             }
         }
 
@@ -3420,7 +3420,8 @@ const app = {
         const freightSelect = newRow.querySelector('.dir-freight-type');
         if (freightSelect) {
             const outShippingFee = parseFloat($('dir_out_shipping') ? $('dir_out_shipping').value : 0) || 0;
-            if (outShippingFee > 0) freightSelect.value = '상차도';
+            const inShippingFee = parseFloat($('dir_in_shipping') ? $('dir_in_shipping').value : 0) || 0;
+            freightSelect.value = (outShippingFee > 0 || inShippingFee > 0) ? '상차도' : '하차도';
 
             freightSelect.addEventListener('change', () => {
                 newRow.dataset.freightManuallySet = 'true';
@@ -3573,11 +3574,12 @@ const app = {
         const inShippingVat = $('dir_in_shipping_vat')?.checked ? 0 : Math.round(inShipping * 0.1);
         const outShippingVat = $('dir_out_shipping_vat')?.checked ? 0 : Math.round(outShipping * 0.1);
 
-        // 매출 배송비 변경 시 수동 변경되지 않은 행들의 운임조건 기본값 동적 추천
+        // 배송비 변경 시 수동 변경되지 않은 행들의 운임조건 기본값 동적 추천
+        const hasDirectFreight = (inShipping > 0 || outShipping > 0);
         rows.forEach(r => {
             if (!r.dataset.freightManuallySet) {
                 const sel = r.querySelector('.dir-freight-type');
-                if (sel) sel.value = outShipping > 0 ? '상차도' : '하차도';
+                if (sel) sel.value = hasDirectFreight ? '상차도' : '하차도';
             }
         });
 
@@ -3616,6 +3618,9 @@ const app = {
         const docOutShippingFeeVatIncluded = $('dir_out_shipping_vat') && $('dir_out_shipping_vat').checked ? 1 : 0;
         const docNote = $('dir_note') ? $('dir_note').value.trim() : '';
 
+        const hasDirectFreight = (docInShippingFee > 0 || docOutShippingFee > 0);
+        const productFreightType = hasDirectFreight ? '상차도' : '하차도';
+
         rows.forEach((row, idx) => {
             const item = row.querySelector('.dir-item').value.trim();
             const spec = row.querySelector('.dir-spec').value.trim();
@@ -3627,14 +3632,15 @@ const app = {
             const outPriceVal = row.querySelector('.dir-out-price') ? row.querySelector('.dir-out-price').value.trim() : '';
             const out_price = outPriceVal !== '' ? (parseFloat(outPriceVal) || 0) : 0;
             const category = row.querySelector('.dir-category') ? row.querySelector('.dir-category').value.trim() : '';
-            const in_shipping_fee = idx === 0 ? docInShippingFee : 0;
-            const in_shipping_fee_vat_included = idx === 0 ? docInShippingFeeVatIncluded : 0;
-            const shipping_fee = idx === 0 ? docOutShippingFee : 0;
-            const shipping_fee_vat_included = idx === 0 ? docOutShippingFeeVatIncluded : 0;
+            // 배송비는 전표 하단에 독립 품목 행으로 생성되므로 제품 행에는 0 설정 (중복 방지)
+            const in_shipping_fee = 0;
+            const in_shipping_fee_vat_included = 0;
+            const shipping_fee = 0;
+            const shipping_fee_vat_included = 0;
             const rowNote = row.querySelector('.dir-note') ? row.querySelector('.dir-note').value.trim() : '';
             const note = rowNote || docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
-            const freight_type = row.querySelector('.dir-freight-type') ? row.querySelector('.dir-freight-type').value : (shipping_fee > 0 ? '상차도' : '하차도');
+            const freight_type = row.querySelector('.dir-freight-type') ? row.querySelector('.dir-freight-type').value : productFreightType;
 
             // 완전히 빈 행은 무시
             if (!item && !spec && !unit && !qtyVal && !inPriceVal && !outPriceVal && !rowNote) {
@@ -3658,6 +3664,29 @@ const app = {
 
         if (hasError) return alert('공급 품목 내역의 품목명과 수량을 올바르게 입력해주세요.');
         if (items.length === 0) return alert('입력된 품목이 없습니다. 최소 1개 이상의 품목을 입력해주세요.');
+
+        // 배송비가 0보다 큰 경우 독립된 '운반비' 품목 행 자동 추가 (기존 목록에 없을 때만)
+        if (hasDirectFreight && !items.some(i => (i.item || '').trim() === '운반비' || (i.item || '').trim() === '배송비')) {
+            items.push({
+                item: '운반비',
+                spec: '',
+                unit: '건',
+                qty: 1,
+                unit_price: docInShippingFee,
+                inbound_price: docInShippingFee,
+                selling_price: docOutShippingFee,
+                outbound_price: docOutShippingFee,
+                in_shipping_fee: 0,
+                in_shipping_fee_vat_included: 0,
+                shipping_fee: 0,
+                shipping_fee_vat_included: 0,
+                freight_type: '상차도',
+                freight_region: actual_destination || destination || '',
+                note: docNote || '운반비',
+                trade_type: $('dir_trade_type') ? $('dir_trade_type').value : '내수',
+                category: '운반비'
+            });
+        }
 
         const payload = {
             date: date,
@@ -3923,14 +3952,12 @@ const app = {
         const shippingVat = $('out_shipping_vat')?.checked ? 0 : Math.round(shipping * 0.1);
         const grandTotal = totalSupply + totalVat + shipping + shippingVat;
 
-        if (shipping > 0) {
-            rows.forEach(r => {
-                if (!r.dataset.freightManuallySet) {
-                    const sel = r.querySelector('.out-freight-type');
-                    if (sel) sel.value = '상차도';
-                }
-            });
-        }
+        rows.forEach(r => {
+            if (!r.dataset.freightManuallySet) {
+                const sel = r.querySelector('.out-freight-type');
+                if (sel) sel.value = shipping > 0 ? '상차도' : '하차도';
+            }
+        });
 
         if ($('out_total_qty')) $('out_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
         if ($('out_total_supply')) $('out_total_supply').innerText = totalSupply.toLocaleString() + '원';
@@ -4219,7 +4246,7 @@ const app = {
             const note = rowNote || docNote;
             const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
             const consumed_lots = this.outboundRows[rowId] ? this.outboundRows[rowId].consumedLots : [];
-            const freight_type = row.querySelector('.out-freight-type') ? row.querySelector('.out-freight-type').value : (shipping_fee > 0 ? '상차도' : '상차도');
+            const freight_type = row.querySelector('.out-freight-type') ? row.querySelector('.out-freight-type').value : (docShippingFee > 0 ? '상차도' : '하차도');
 
             // 완전히 빈 행은 무시
             if (!item && !spec && !qtyStr && !priceStr && !rowNote) {
@@ -4996,12 +5023,25 @@ const app = {
             if ($('dir_actual_destination')) $('dir_actual_destination').value = first.actual_destination || '';
             if ($('dir_note')) $('dir_note').value = first.note || '';
             if ($('dir_trade_type')) $('dir_trade_type').value = first.trade_type || '내수';
-            if ($('dir_in_shipping')) $('dir_in_shipping').value = first.in_shipping_fee || 0;
-            if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = first.in_shipping_vat === 1;
-            if ($('dir_out_shipping')) $('dir_out_shipping').value = first.shipping_fee || 0;
-            if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
+            
+            // 운반비 품목 감지 (하이브리드 지원: 신규 운반비 품목 행 vs 과거 헤더 배송비)
+            const detectedFreightItem = items.find(i => (i.item || '').trim() === '운반비' || (i.item || '').trim() === '배송비');
+            if (detectedFreightItem) {
+                if ($('dir_in_shipping')) $('dir_in_shipping').value = detectedFreightItem.inbound_price !== undefined ? detectedFreightItem.inbound_price : (detectedFreightItem.unit_price || 0);
+                if ($('dir_out_shipping')) $('dir_out_shipping').value = detectedFreightItem.selling_price !== undefined ? detectedFreightItem.selling_price : (detectedFreightItem.outbound_price || 0);
+                if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = false;
+                if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = false;
+            } else {
+                if ($('dir_in_shipping')) $('dir_in_shipping').value = first.in_shipping_fee || 0;
+                if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = first.in_shipping_vat === 1;
+                if ($('dir_out_shipping')) $('dir_out_shipping').value = first.shipping_fee || 0;
+                if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
+            }
 
-            items.forEach(item => {
+            // 운반비 행은 품목 그리드에 중복 추가되지 않도록 제외하고 실제 제품 품목만 렌더링
+            const productItems = items.filter(i => (i.item || '').trim() !== '운반비' && (i.item || '').trim() !== '배송비');
+
+            productItems.forEach(item => {
                 const rowId = this.addDirectItemRow();
                 const newRow = $(rowId);
                 newRow.dataset.dbId = item.id;
@@ -5703,8 +5743,9 @@ const app = {
                     </tr>`;
             });
 
-            // 배송비가 등록되어 있는 경우 행 추가
-            if (data.shipping_fee && Number(data.shipping_fee) > 0) {
+            // 배송비가 등록되어 있는 경우 행 추가 (단, items 내에 이미 운반비/배송비 품목이 포함되어 있는 경우는 2중 출력 방지)
+            const hasFreightItemInList = items.some(i => (i.item || '').trim() === '운반비' || (i.item || '').trim() === '배송비');
+            if (!hasFreightItemInList && data.shipping_fee && Number(data.shipping_fee) > 0) {
                 const shipFeeNum = Number(data.shipping_fee);
                 const isVatIncluded = data.shipping_fee_vat_included === 1;
                 let shipAmount, shipVat, shipTotal;
@@ -5737,7 +5778,7 @@ const app = {
             }
 
             // 빈 행 채우기 (기본 14행으로 A4 용지 밸런스 유지)
-            const currentCount = items.length + (data.shipping_fee && Number(data.shipping_fee) > 0 ? 1 : 0);
+            const currentCount = items.length + (!hasFreightItemInList && data.shipping_fee && Number(data.shipping_fee) > 0 ? 1 : 0);
             const emptyRowsCount = Math.max(0, 14 - currentCount);
             let emptyRowsHtml = "";
             for (let i = 0; i < emptyRowsCount; i++) {
@@ -5906,6 +5947,9 @@ const app = {
             let totalQty = 0;
             let itemRowsHtml = "";
 
+            const hasFreightItemInReceipt = items.some(i => (i.item || '').trim() === '운반비' || (i.item || '').trim() === '배송비');
+            const showHeaderShip = !hasFreightItemInReceipt && data.shipping_fee && Number(data.shipping_fee) > 0;
+
             items.forEach((item, idx) => {
                 const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty) : (Number(item.qty_initial) || 0);
                 totalQty += itemQty;
@@ -5922,7 +5966,7 @@ const app = {
                         <td>${item.unit || 'EA'}</td>
                         <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
                         <td class="spec-cell">${lotsInfo}</td>
-                        <td>${idx === 0 && data.shipping_fee ? Number(data.shipping_fee).toLocaleString() + '원' : '-'}</td>
+                        <td>${idx === 0 && showHeaderShip ? Number(data.shipping_fee).toLocaleString() + '원' : '-'}</td>
                         <td>출고완료</td>
                     </tr>`;
             });
@@ -5936,7 +5980,7 @@ const app = {
                     </tr>`;
             }
 
-            const shipSummary = (data.shipping_fee && Number(data.shipping_fee) > 0)
+            const shipSummary = showHeaderShip
                 ? ` | 배송비 : ${Number(data.shipping_fee).toLocaleString()}원 (${data.shipping_fee_vat_included === 1 ? 'VAT포함' : '별도'})`
                 : '';
 

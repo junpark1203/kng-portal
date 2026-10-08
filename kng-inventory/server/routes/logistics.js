@@ -543,6 +543,8 @@ async function syncUnitPricesFromTransaction(items, source, date) {
         const item = (row.item || '').trim();
         const spec = (row.spec || '').trim();
         if (!item) continue;
+        // 운반비/배송비 품목은 변동 비용이므로 단가표 마스터 등록에서 완전 제외
+        if (item === '운반비' || item === '배송비') continue;
 
         const category = (row.category || '').trim();
         const unit = (row.unit || '').trim();
@@ -553,7 +555,7 @@ async function syncUnitPricesFromTransaction(items, source, date) {
         const buyPrice = parseFloat(row.inbound_price !== undefined ? row.inbound_price : (row.unit_price !== undefined ? row.unit_price : row.buy_price)) || 0;
         const sellPrice = parseFloat(row.outbound_price !== undefined ? row.outbound_price : (row.selling_price !== undefined ? row.selling_price : row.sell_price)) || 0;
 
-        // 운임조건 결정 (방안 1: 전표 입력값 우선 / 방안 2: 미지정 시 스마트 자동 판별)
+        // 운임조건 결정: 배송비 유무(>0 상차도 / ==0 하차도) 및 전표 지정값 우선 반영
         let freightType = (row.freight_type || '').trim();
         let freightRegion = (row.freight_region || '').trim();
 
@@ -564,8 +566,8 @@ async function syncUnitPricesFromTransaction(items, source, date) {
                 freightType = '하차도';
             } else if (shipFee > 0) {
                 freightType = '상차도';
-            } else if (source === 'direct') {
-                freightType = '하차도';
+            } else if (source === 'direct' || source === 'outbound') {
+                freightType = shipFee > 0 ? '상차도' : '하차도';
             } else {
                 freightType = '상차도';
             }
@@ -2112,7 +2114,11 @@ router.post('/outbound', async (req, res) => {
         }
 
         await dbRun("COMMIT");
-        syncUnitPricesFromTransaction(items.map(i => ({ ...i, destination })), 'outbound', date);
+        syncUnitPricesFromTransaction(items.map(i => {
+            const shipFee = parseFloat(i.shipping_fee) || 0;
+            const fType = i.freight_type || (shipFee > 0 ? '상차도' : '하차도');
+            return { ...i, destination, freight_type: fType };
+        }), 'outbound', date);
         res.status(201).json({ message: 'Outbound success' });
     } catch (err) {
         try { await dbRun("ROLLBACK"); } catch (e) {}
@@ -3192,6 +3198,28 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             const txInGroupId = `IN-${dateStr}-${timeStr}${randSuffix}`;
             const txOutGroupId = `OUT-${dateStr}-${timeStr}${randSuffix}`;
 
+            // 운반비 품목 자동 생성 (배송비가 입력되어 있고 품목 목록에 아직 운반비가 없는 경우)
+            const inShip = parseFloat(g.in_shipping_fee) || 0;
+            const outShip = parseFloat(g.out_shipping_fee) || 0;
+            const hasFreightFee = (inShip > 0 || outShip > 0);
+            const alreadyHasFreightRow = g.items.some(i => (i.item || '').trim() === '운반비' || (i.item || '').trim() === '배송비');
+
+            if (hasFreightFee && !alreadyHasFreightRow) {
+                g.items.push({
+                    item: '운반비',
+                    spec: '',
+                    unit: '건',
+                    qty: 1,
+                    category: '운반비',
+                    in_price: inShip,
+                    out_price: outShip,
+                    is_freight_item: true
+                });
+            }
+
+            const groupFreightType = hasFreightFee ? '상차도' : '하차도';
+            const groupRegion = g.actual_destination || g.destination || '';
+
             await new Promise((resolve, reject) => {
                 db.serialize(() => {
                     db.run("BEGIN TRANSACTION");
@@ -3208,14 +3236,16 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                         }
 
                         const currentItem = g.items[idx];
-                        // 1. Insert Inbound
-                        const itemInShipping = idx === 0 ? g.in_shipping_fee : 0;
-                        const itemInShippingVat = idx === 0 ? g.in_shipping_fee_vat_included : 0;
+                        // 운반비가 품목 행으로 생성되었으므로 행 레벨 shipping_fee는 0으로 처리 (중복 계산 방지)
+                        const itemInShipping = 0;
+                        const itemInShippingVat = 0;
+                        const itemFreight = currentItem.is_freight_item ? '상차도' : groupFreightType;
 
+                        // 1. Insert Inbound
                         db.run(`
-                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?, ?, ?)
-                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, itemInShipping, itemInShippingVat, g.note, currentItem.category || '', txInGroupId, g.trade_type || '내수'], function(err) {
+                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?, ?, ?, ?, ?)
+                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, itemInShipping, itemInShippingVat, g.note, currentItem.category || '', txInGroupId, g.trade_type || '내수', itemFreight, groupRegion], function(err) {
                             if (err) {
                                 hasError = true;
                                 db.run("ROLLBACK");
@@ -3224,13 +3254,13 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                             const inboundId = this.lastID;
 
                             // 2. Insert Outbound
-                            const itemOutShipping = idx === 0 ? g.out_shipping_fee : 0;
-                            const itemOutShippingVat = idx === 0 ? g.out_shipping_fee_vat_included : 0;
+                            const itemOutShipping = 0;
+                            const itemOutShippingVat = 0;
 
                             db.run(`
-                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-                            `, [g.date, g.destination, g.actual_destination || '', currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemOutShipping, itemOutShippingVat, g.note, currentItem.category || '', txOutGroupId, g.trade_type || '내수'], function(err) {
+                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type, freight_type, freight_region)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+                            `, [g.date, g.destination, g.actual_destination || '', currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemOutShipping, itemOutShippingVat, g.note, currentItem.category || '', txOutGroupId, g.trade_type || '내수', itemFreight, groupRegion], function(err) {
                                 if (err) {
                                     hasError = true;
                                     db.run("ROLLBACK");
@@ -3257,6 +3287,35 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                     processItem(0);
                 });
             });
+        }
+
+        // 단가표 마스터 자동 동기화 (운반비 품목은 제외, 배송비 유무에 따라 상차도 / 하차도 자동 연동)
+        for (const g of groups) {
+            const inShip = parseFloat(g.in_shipping_fee) || 0;
+            const outShip = parseFloat(g.out_shipping_fee) || 0;
+            const hasFreightFee = (inShip > 0 || outShip > 0);
+            const groupFreightType = hasFreightFee ? '상차도' : '하차도';
+
+            const syncItems = g.items
+                .filter(i => (i.item || '').trim() !== '운반비' && (i.item || '').trim() !== '배송비')
+                .map(i => ({
+                    ...i,
+                    supplier: g.supplier,
+                    destination: g.destination,
+                    actual_destination: g.actual_destination,
+                    inbound_price: i.in_price,
+                    outbound_price: i.out_price,
+                    freight_type: groupFreightType,
+                    freight_region: g.actual_destination || g.destination || ''
+                }));
+
+            if (syncItems.length > 0) {
+                try {
+                    await syncUnitPricesFromTransaction(syncItems, 'direct', g.date);
+                } catch (syncErr) {
+                    console.error('Unit prices sync error during excel upload:', syncErr);
+                }
+            }
         }
 
         res.json({ success: true, count: rows.length });
