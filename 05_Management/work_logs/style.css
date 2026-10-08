@@ -825,11 +825,22 @@ button {
     justify-content: center;
     font-size: 20px;
     cursor: pointer;
-    z-index: 990;
+    z-index: 1000;
     transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes fabPulse {
+    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.55); }
+    70% { box-shadow: 0 0 0 14px rgba(79, 70, 229, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+.mobile-fab-newlog {
+    animation: fabPulse 2.5s infinite;
 }
 .mobile-fab-newlog:active {
     transform: scale(0.92);
+}
+body:has(#editView.active) .mobile-fab-newlog {
+    display: none !important;
 }
 
 /* Mobile Sticky Bottom Action Bar for Editor */
@@ -838,15 +849,16 @@ button {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--border-color);
     padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     display: none;
     gap: 10px;
-    z-index: 900;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+    z-index: 1100;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
 }
 .btn-mobile-draft {
     flex: 1;
@@ -930,6 +942,18 @@ button {
     cursor: pointer;
 }
 
+.btn-header-write {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-header-write .btn-text-short {
+    display: none;
+}
+.btn-header-write .btn-text-full {
+    display: inline;
+}
+
 /* ══════════════════════════════════════════════════════
    RESPONSIVE BREAKPOINTS
    ══════════════════════════════════════════════════════ */
@@ -975,8 +999,31 @@ button {
         font-size: 15px; /* Prevent iOS zoom */
         padding: 10px 36px 10px 38px;
     }
-    .desktop-new-log-btn {
-        display: none !important; /* Replaced by FAB on mobile */
+    .btn-header-write {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 9px 13px;
+        font-size: 13.5px;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+        color: #ffffff;
+        border: none;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-header-write:active {
+        transform: scale(0.96);
+    }
+    .btn-header-write .btn-text-full {
+        display: none;
+    }
+    .btn-header-write .btn-text-short {
+        display: inline;
     }
     .btn-toggle-filter {
         display: flex;
@@ -1063,18 +1110,31 @@ button {
     /* Editor View */
     .editor-header {
         margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .editor-header .desktop-only-btn {
+        display: none !important; /* Handled by sticky bottom bar on mobile */
     }
     .editor-header .editor-actions {
-        display: none; /* Handled by sticky bottom bar on mobile */
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
-    .editor-header .btn-outline {
+    .editor-header .btn-outline,
+    .editor-header .btn-danger {
         display: inline-flex;
-        padding: 7px 12px;
-        font-size: 12px;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 11px;
+        font-size: 12.5px;
+        border-radius: var(--radius-sm);
     }
     .editor-form {
         padding: 14px;
-        margin-bottom: 60px; /* Space for sticky bottom bar */
+        margin-bottom: 75px; /* Space for sticky bottom bar */
     }
     .form-grid-2 {
         grid-template-columns: 1fr;

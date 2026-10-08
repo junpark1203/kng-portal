@@ -1457,6 +1457,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (iframeContainer) iframeContainer.classList.add('hidden');
     if (appIframe) appIframe.src = 'about:blank';
     if (internalPages) internalPages.style.display = '';
+    var fab = document.getElementById('mobileRoadmapFab');
+    if (fab) fab.style.display = '';
 
     var targetId = href.replace('#', '');
 
@@ -1505,6 +1507,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 내부 페이지 숨기고 iframe 표시
         if (internalPages) internalPages.style.display = 'none';
         if (iframeContainer) iframeContainer.classList.remove('hidden');
+        var fab = document.getElementById('mobileRoadmapFab');
+        if (fab) fab.style.display = 'none';
         // embed 파라미터 추가 — 해시(#) 앞에 삽입
         var hashIdx = src.indexOf('#');
         var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
@@ -1692,7 +1696,7 @@ document.addEventListener('DOMContentLoaded', function() {
             id: "work_logs",
             category: "개인 업무일지",
             title: "개인 업무일지",
-            path: "./05_Management/work_logs/index.html?v=4",
+            path: "./05_Management/work_logs/index.html?v=5",
             icon: "bx-edit",
             priority: "1순위 (추천)",
             tagColor: "indigo",

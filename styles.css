@@ -3220,6 +3220,11 @@ th.sortable.active.asc i {
     border: 2px solid #ffffff;
 }
 
+/* iframe 서브모듈(업무일지, 입출고 등) 로드 시 로드맵 FAB 숨김 (서브모듈 버튼 및 하단 액션 간섭 방지) */
+body:has(#iframeContainer:not(.hidden)) .mobile-roadmap-fab {
+    display: none !important;
+}
+
 @media (max-width: 768px) {
     .mobile-roadmap-btn span {
         display: none;

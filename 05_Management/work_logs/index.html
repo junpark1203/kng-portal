@@ -32,7 +32,11 @@
                         <i class="fa-solid fa-sliders"></i>
                         <span class="filter-count-badge hidden" id="filterCountBadge">0</span>
                     </button>
-                    <button class="btn-primary desktop-new-log-btn" id="btnNewLog"><i class="fa-solid fa-pen"></i> 업무일지 작성</button>
+                    <button class="btn-primary btn-header-write" id="btnNewLog">
+                        <i class="fa-solid fa-pen"></i>
+                        <span class="btn-text-full">업무일지 작성</span>
+                        <span class="btn-text-short">작성</span>
+                    </button>
                 </div>
             </div>
 
@@ -108,8 +112,8 @@
                 <button class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> 목록으로</button>
                 <div class="editor-actions">
                     <button class="btn-outline" id="btnToggleHistory"><i class="fa-solid fa-clock-rotate-left"></i> 과거 내역</button>
-                    <button class="btn-secondary" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
-                    <button class="btn-primary" id="btnSave"><i class="fa-solid fa-check"></i> 저장완료</button>
+                    <button class="btn-secondary desktop-only-btn" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
+                    <button class="btn-primary desktop-only-btn" id="btnSave"><i class="fa-solid fa-check"></i> 저장완료</button>
                     <button class="btn-danger" id="btnDelete" style="display: none;"><i class="fa-solid fa-trash"></i> 삭제</button>
                 </div>
             </div>
@@ -210,6 +214,6 @@
     </div>
 
     <!-- Script Entry -->
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>
