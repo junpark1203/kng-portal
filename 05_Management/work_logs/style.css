@@ -808,36 +808,41 @@ button {
     border-color: var(--primary-color);
 }
 
-/* Mobile Floating Action Button (FAB) */
+/* Mobile Floating Action Button (FAB) - 60% compact size (~35px) */
 .mobile-fab-newlog {
     position: fixed;
-    bottom: 24px;
-    right: 20px;
-    width: 56px;
-    height: 56px;
+    bottom: 22px;
+    right: 18px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
     color: white;
     border: none;
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
     display: none;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 14px;
     cursor: pointer;
     z-index: 1000;
     transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.mobile-fab-newlog::after {
+    content: '';
+    position: absolute;
+    inset: -8px; /* 터치 타깃 확장 (약 51px 영역으로 터치 편의성 확보) */
+}
 @keyframes fabPulse {
-    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.55); }
-    70% { box-shadow: 0 0 0 14px rgba(79, 70, 229, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
     100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
 }
 .mobile-fab-newlog {
     animation: fabPulse 2.5s infinite;
 }
 .mobile-fab-newlog:active {
-    transform: scale(0.92);
+    transform: scale(0.90);
 }
 body:has(#editView.active) .mobile-fab-newlog {
     display: none !important;
@@ -947,12 +952,6 @@ body:has(#editView.active) .mobile-fab-newlog {
     align-items: center;
     gap: 8px;
 }
-.btn-header-write .btn-text-short {
-    display: none;
-}
-.btn-header-write .btn-text-full {
-    display: inline;
-}
 
 /* ══════════════════════════════════════════════════════
    RESPONSIVE BREAKPOINTS
@@ -1000,30 +999,7 @@ body:has(#editView.active) .mobile-fab-newlog {
         padding: 10px 36px 10px 38px;
     }
     .btn-header-write {
-        display: inline-flex !important;
-        align-items: center;
-        justify-content: center;
-        gap: 5px;
-        padding: 9px 13px;
-        font-size: 13.5px;
-        font-weight: 600;
-        border-radius: var(--radius-sm);
-        flex-shrink: 0;
-        background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
-        color: #ffffff;
-        border: none;
-        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .btn-header-write:active {
-        transform: scale(0.96);
-    }
-    .btn-header-write .btn-text-full {
-        display: none;
-    }
-    .btn-header-write .btn-text-short {
-        display: inline;
+        display: none !important; /* 모바일에서는 하단 콤팩트 FAB로 대체 */
     }
     .btn-toggle-filter {
         display: flex;
