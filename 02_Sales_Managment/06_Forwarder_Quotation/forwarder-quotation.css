@@ -476,6 +476,35 @@ body {
     background: transparent !important;
 }
 
+.erp-form-table textarea.form-control,
+.erp-form-table #docRemarks {
+    width: 100%;
+    height: auto !important;
+    min-height: 64px !important;
+    font-size: 11.5px !important;
+    padding: 6px 8px !important;
+    line-height: 1.5 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    color: #1e293b;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    resize: vertical !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-y: auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
+}
+
+.erp-form-table textarea.form-control:focus,
+.erp-form-table #docRemarks:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .erp-form-table input[type=number]::-webkit-inner-spin-button,
 .erp-form-table input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;

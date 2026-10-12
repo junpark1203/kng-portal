@@ -89,6 +89,16 @@ const formatCurrency = (amount, currency, decimals = null) => {
     return formatNum(amount || 0, targetDecimals);
 };
 
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 const showToast = (msg, isError = false) => {
     const container = document.getElementById('toastContainer');
     if (!container) return alert(msg);
@@ -919,8 +929,9 @@ function renderList() {
                 <td class="text-center">
                     <span class="status-badge ${item.status}">${statusMap[item.status] || item.status}</span>
                 </td>
-                <td class="text-start ps-2" style="font-weight: 600; color: #1e293b;">
-                    ${item.title || '(무제 견적)'}
+                <td class="text-start ps-2" style="font-weight: 600; color: #1e293b;" title="${item.remarks ? `[비고]\n${escapeHtml(item.remarks)}` : ''}">
+                    ${escapeHtml(item.title) || '(무제 견적)'}
+                    ${item.remarks ? `<i class='bx bx-notepad text-primary ms-1' style="font-size: 13px; vertical-align: -1px;" title="${escapeHtml(item.remarks)}"></i>` : ''}
                 </td>
                 <td class="text-center tabular-nums">${dateStr}</td>
                 <td class="text-start ps-2">${ratesHtml}</td>
@@ -2299,8 +2310,8 @@ function generatePrintHTML() {
                 </tr>
                 ${state.doc.remarks ? `
                 <tr>
-                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">상단 비고</th>
-                    <td colspan="3" style="padding:5px 8px; border:1px solid #e2e8f0; white-space:pre-line; color:#334155;">${state.doc.remarks}</td>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:600; vertical-align:middle;">상단 비고</th>
+                    <td colspan="3" style="padding:5px 8px; border:1px solid #e2e8f0; white-space:pre-wrap; word-break:break-word; line-height:1.5; color:#334155;">${escapeHtml(state.doc.remarks)}</td>
                 </tr>` : ''}
             </table>
 
@@ -3241,6 +3252,11 @@ function generateExcelHTML() {
                     <strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY, 2)}
                 </td>
             </tr>
+            ${state.doc.remarks ? `
+            <tr>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">비고 (메모)</th>
+                <td colspan="8" style="padding:8px; border:1px solid #ccc; text-align:left; white-space:pre-wrap; word-break:break-word; line-height:1.4;">${escapeHtml(state.doc.remarks).replace(/\n/g, '<br>')}</td>
+            </tr>` : ''}
             <tr><th colspan="10" style="height:20px; border:none; background:white;"></th></tr>
         </thead>
         <tbody>
