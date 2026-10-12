@@ -775,7 +775,7 @@ function openNewQuote() {
     renderForwarderTabs();
     renderForwarderContent();
     renderOtherCosts();
-    updateValueAllocUI();
+    updateAllocationUI();
     renderAllCalculations();
     
     switchView('edit');

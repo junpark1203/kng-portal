@@ -454,7 +454,7 @@ body {
     position: relative;
 }
 
-.erp-form-table .form-control,
+.erp-form-table input.form-control,
 .erp-form-table .form-select {
     width: 100%;
     height: 26px !important;
@@ -469,7 +469,7 @@ body {
     box-shadow: none !important;
 }
 
-.erp-form-table .form-control:focus,
+.erp-form-table input.form-control:focus,
 .erp-form-table .form-select:focus {
     outline: none !important;
     box-shadow: none !important;
@@ -477,10 +477,12 @@ body {
 }
 
 .erp-form-table textarea.form-control,
-.erp-form-table #docRemarks {
+.erp-form-table textarea,
+.erp-form-table #docRemarks,
+.erp-remarks-textarea {
     width: 100%;
-    height: auto !important;
-    min-height: 64px !important;
+    min-height: 52px;
+    height: 72px;
     font-size: 11.5px !important;
     padding: 6px 8px !important;
     line-height: 1.5 !important;
@@ -488,21 +490,35 @@ body {
     border: none !important;
     outline: none !important;
     color: #1e293b;
-    background: transparent !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    resize: vertical !important;
+    background: #ffffff;
+    resize: vertical;
     white-space: pre-wrap !important;
     word-break: break-word !important;
     overflow-y: auto !important;
-    display: block !important;
-    box-sizing: border-box !important;
+    display: block;
+    box-sizing: border-box;
 }
 
 .erp-form-table textarea.form-control:focus,
-.erp-form-table #docRemarks:focus {
+.erp-form-table textarea:focus,
+.erp-form-table #docRemarks:focus,
+.erp-remarks-textarea:focus {
     outline: none !important;
     box-shadow: none !important;
+    background-color: #f8faff !important;
+}
+
+/* 비고 (추가 메모) 셀 전용 높이 해제 및 유연한 리사이즈 대응 */
+.erp-form-table tr:has(#docRemarks) th,
+.erp-form-table th.remarks-th {
+    vertical-align: middle !important;
+    height: auto !important;
+}
+
+.erp-form-table td.remarks-td,
+.erp-form-table tr:has(#docRemarks) td {
+    height: auto !important;
+    vertical-align: top !important;
 }
 
 .erp-form-table input[type=number]::-webkit-inner-spin-button,

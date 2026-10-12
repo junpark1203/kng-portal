@@ -52,8 +52,11 @@ h4 {
     background-color: #f8fafc !important;
     transition: all 0.2s ease !important;
     box-shadow: none !important;
-    height: 42px !important;
     line-height: 1.5 !important;
+}
+
+input.form-control, select.form-control, .form-select {
+    height: 42px !important;
 }
 
 .form-control {

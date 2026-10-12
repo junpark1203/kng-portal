@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css">
     
     <!-- 전용 CSS -->
-    <link rel="stylesheet" href="forwarder-quotation.css?v=20261012_1">
+    <link rel="stylesheet" href="forwarder-quotation.css?v=20261012_3">
     
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -216,9 +216,9 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th style="vertical-align: middle;">비고 (추가 메모)</th>
-                                <td colspan="7" style="padding: 0;">
-                                    <textarea class="form-control" id="docRemarks" rows="3" placeholder="추가 메모 또는 특이사항 입력 (Enter 키로 자유롭게 줄바꿈 가능)"></textarea>
+                                <th class="remarks-th" style="vertical-align: middle;">비고 (추가 메모)</th>
+                                <td colspan="7" class="remarks-td" style="padding: 0; height: auto; vertical-align: top;">
+                                    <textarea class="erp-remarks-textarea" id="docRemarks" rows="3" placeholder="추가 메모 또는 특이사항 입력 (Enter 키로 자유롭게 줄바꿈 가능)"></textarea>
                                 </td>
                             </tr>
                         </tbody>
@@ -585,6 +585,6 @@
     <div id="printContainer" class="print-only"></div>
 
     <!-- 스크립트 모듈 -->
-    <script type="module" src="forwarder-quotation.js?v=20261012_1"></script>
+    <script type="module" src="forwarder-quotation.js?v=20261012_2"></script>
 </body>
 </html>
