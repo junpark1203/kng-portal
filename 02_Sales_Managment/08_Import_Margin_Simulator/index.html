@@ -44,22 +44,35 @@
                 <span>USD 환율: <strong id="currentRateText">1,350.00</strong>원</span>
                 <span class="rate-time" id="rateTimeText">(실시간)</span>
             </div>
+            <div class="erp-rate-badge" id="docStatusBadge" style="background: #f1f5f9; border-color: #cbd5e1; color: #334155;">
+                <i class="bx bx-file"></i>
+                <span id="docStatusText">문서: 신규 작성</span>
+            </div>
             <button type="button" class="btn-erp" id="btnRefreshRate" title="실시간 환율 새로고침">
                 <i class="bx bx-refresh"></i> 환율 갱신
             </button>
         </div>
         <div class="erp-toolbar-right">
-            <button type="button" class="btn-erp btn-secondary" id="btnOpenQuotationModal">
-                <i class="bx bx-file-find"></i> 포워더 견적 불러오기
+            <button type="button" class="btn-erp" id="btnNewSimulation" title="빈 양식으로 새로 작성">
+                <i class="bx bx-plus"></i> 새로 작성
+            </button>
+            <button type="button" class="btn-erp btn-primary" id="btnSaveSimulation" title="서버 DB에 시뮬레이션 저장">
+                <i class="bx bx-save"></i> 저장하기
+            </button>
+            <button type="button" class="btn-erp btn-secondary" id="btnOpenSavedList" title="저장된 시뮬레이션 목록 열기">
+                <i class="bx bx-folder-open"></i> 시뮬레이션 목록
+            </button>
+            <button type="button" class="btn-erp" id="btnOpenQuotationModal">
+                <i class="bx bx-file-find"></i> 포워더 견적
             </button>
             <button type="button" class="btn-erp" id="btnCopyReport">
                 <i class="bx bx-copy"></i> 기안문 복사
             </button>
             <button type="button" class="btn-erp" id="btnExportCsv">
-                <i class="bx bx-download"></i> 엑셀 내보내기
+                <i class="bx bx-download"></i> 엑셀
             </button>
-            <button type="button" class="btn-erp btn-primary" id="btnPrint">
-                <i class="bx bx-printer"></i> 인쇄 / PDF 출력
+            <button type="button" class="btn-erp" id="btnPrint">
+                <i class="bx bx-printer"></i> 인쇄
             </button>
         </div>
     </header>
@@ -443,6 +456,50 @@
                 <button type="button" class="btn-erp btn-primary" id="btnApplyForwarderQuote">
                     <i class="bx bx-check"></i> 선택 견적 부대비용 적용
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         4. 저장된 시뮬레이션 목록 모달 (.erp-modal-overlay)
+         ───────────────────────────────────────────────────────────── -->
+    <div class="erp-modal-overlay" id="simulationListModal">
+        <div class="erp-modal-container" style="width: 840px;">
+            <div class="erp-modal-header">
+                <div class="erp-modal-title">
+                    <i class="bx bx-folder-open"></i>
+                    <span>저장된 수입 원가·마진 시뮬레이션 목록</span>
+                </div>
+                <button type="button" class="erp-modal-close" id="btnCloseSimulationListModal">&times;</button>
+            </div>
+            <div class="erp-modal-body">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 11px; color: var(--erp-text-muted);">
+                        서버 DB에 저장된 시뮬레이션을 선택하여 즉시 불러오거나 삭제할 수 있습니다.
+                    </div>
+                    <button type="button" class="btn-erp" id="btnRefreshSavedList">
+                        <i class="bx bx-refresh"></i> 새로고침
+                    </button>
+                </div>
+                <table class="erp-table" id="tableSavedSimulations">
+                    <thead>
+                        <tr>
+                            <th style="width: 85px;">작성일자</th>
+                            <th>품목명 / 시뮬레이션명</th>
+                            <th style="width: 85px;">FOB 단가</th>
+                            <th style="width: 85px;">적용환율</th>
+                            <th style="width: 95px;">개당 입고원가</th>
+                            <th style="width: 95px;">주력 마진율</th>
+                            <th style="width: 115px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodySavedSimulations">
+                        <!-- 동적 렌더링 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="erp-modal-footer">
+                <button type="button" class="btn-erp" id="btnCancelSimulationListModal">닫기</button>
             </div>
         </div>
     </div>

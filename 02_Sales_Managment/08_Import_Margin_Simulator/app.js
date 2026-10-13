@@ -4,6 +4,8 @@
  * ══════════════════════════════════════════════════════════════
  * - ECOUNT ERP 단가표 테마 고밀도 UI 컨트롤
  * - 실시간 입력 반응형 렌더링
+ * - 백엔드 SQLite DB 저장/수정/삭제/불러오기 완전 연동 (/api/import-simulator)
+ * - 로컬스토리지 자동 Fallback 지원 (네트워크 단절 시에도 데이터 보존)
  * - 오픈 환율 API 및 포워더 견적 API 연동
  * - 이모지 완전 배제 (Boxicons 전용)
  */
@@ -13,6 +15,9 @@ import { MarginEngine } from './margin-engine.js';
 // ─────────────────────────────────────────────────────────────
 // 1. 상태 관리 (State)
 // ─────────────────────────────────────────────────────────────
+let currentSimulationId = null;
+let currentSimulationTitle = '형광 안전조끼 OEM';
+
 const state = {
     product: {
         productName: '형광 안전조끼 OEM',
@@ -38,10 +43,11 @@ const state = {
         existingPurchasePrice: 8433,
         annualVolume: 3000
     },
-    remarks: '',
+    remarks: '한·중 FTA 원산지증명서(C/O) 적용을 통해 기본관세 13%를 면세 처리하여 입고원가 6,993원을 달성함.\n채널B(표준 대리점/B2B 9,000원) 판매 시 22.3%의 안정적 마진율을 확보하며, 환율이 1,450원까지 상승하더라도 16.9% 수준의 이익 방어가 가능함.\n사내 기존 매입단가(8,433원) 대체 시 연간 4,320,000원의 구매 원가 절감 효과 발생.',
     forwarderQuotes: [],
     selectedQuoteId: null,
-    isForwarderApplied: false
+    isForwarderApplied: false,
+    savedSimulations: []
 };
 
 // 기본 초기값 스냅샷
@@ -49,6 +55,8 @@ const DEFAULT_STATE = JSON.parse(JSON.stringify(state));
 
 // API 및 서버 설정
 const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000' : 'https://kng.junparks.com';
+const API_SIMULATOR = '/api/import-simulator';
+const LOCAL_STORAGE_KEY = 'kng_import_simulations_backup';
 
 // ─────────────────────────────────────────────────────────────
 // 2. 유틸리티 함수 (이모지 없음)
@@ -119,6 +127,24 @@ async function authFetch(url, opts = {}) {
     return res.json();
 }
 
+function updateDocStatusBadge() {
+    const badgeEl = document.getElementById('docStatusBadge');
+    const textEl = document.getElementById('docStatusText');
+    if (!badgeEl || !textEl) return;
+
+    if (currentSimulationId) {
+        textEl.textContent = `문서: ${currentSimulationTitle || '저장됨'}`;
+        badgeEl.style.background = '#eff6ff';
+        badgeEl.style.borderColor = '#93c5fd';
+        badgeEl.style.color = '#1d4ed8';
+    } else {
+        textEl.textContent = `문서: 신규 작성`;
+        badgeEl.style.background = '#f1f5f9';
+        badgeEl.style.borderColor = '#cbd5e1';
+        badgeEl.style.color = '#334155';
+    }
+}
+
 // ─────────────────────────────────────────────────────────────
 // 3. UI 바인딩 및 이벤트 리스너 등록
 // ─────────────────────────────────────────────────────────────
@@ -127,10 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
     attachEventListeners();
     fetchRealtimeExchangeRate(); // 실시간 환율 자동 호출
     recalculateAndRender();
+    updateDocStatusBadge();
 });
 
 function initElements() {
-    // 오늘 날짜 인쇄 헤더에 설정
     const today = new Date().toISOString().slice(0, 10);
     const printDateEl = document.getElementById('printDate');
     if (printDateEl) printDateEl.textContent = today;
@@ -146,6 +172,8 @@ function attachEventListeners() {
 
     inputProduct.addEventListener('input', (e) => {
         state.product.productName = e.target.value.trim();
+        currentSimulationTitle = state.product.productName;
+        updateDocStatusBadge();
         recalculateAndRender();
     });
 
@@ -259,7 +287,26 @@ function attachEventListeners() {
         });
     }
 
-    // 7) 액션 버튼들
+    // 7) 새로 작성 / 저장 / 목록 불러오기 버튼
+    const btnNew = document.getElementById('btnNewSimulation');
+    if (btnNew) btnNew.addEventListener('click', handleNewSimulation);
+
+    const btnSave = document.getElementById('btnSaveSimulation');
+    if (btnSave) btnSave.addEventListener('click', handleSaveSimulation);
+
+    const btnOpenList = document.getElementById('btnOpenSavedList');
+    if (btnOpenList) btnOpenList.addEventListener('click', openSavedListModal);
+
+    const btnCloseList = document.getElementById('btnCloseSimulationListModal');
+    if (btnCloseList) btnCloseList.addEventListener('click', closeSavedListModal);
+
+    const btnCancelList = document.getElementById('btnCancelSimulationListModal');
+    if (btnCancelList) btnCancelList.addEventListener('click', closeSavedListModal);
+
+    const btnRefreshList = document.getElementById('btnRefreshSavedList');
+    if (btnRefreshList) btnRefreshList.addEventListener('click', loadSavedSimulations);
+
+    // 8) 기타 액션 버튼들
     document.getElementById('btnOpenQuotationModal').addEventListener('click', openForwarderModal);
     document.getElementById('btnCloseForwarderModal').addEventListener('click', closeForwarderModal);
     document.getElementById('btnCancelForwarderModal').addEventListener('click', closeForwarderModal);
@@ -274,19 +321,11 @@ function attachEventListeners() {
 // 4. 핵심 계산 및 UI 렌더링 파이프라인
 // ─────────────────────────────────────────────────────────────
 function recalculateAndRender() {
-    // 1) 개당 입고원가 계산
     const landed = MarginEngine.calculateLandedCost(state.product, state.costs);
-
-    // 2) 채널별 마진 계산
     const calculatedChannels = MarginEngine.calculateChannelMargins(landed.landedCost, state.channels);
-
-    // 3) 환율 민감도 매트릭스 계산
     const sensitivity = MarginEngine.calculateSensitivityMatrix(state.product, state.costs, state.channels);
-
-    // 4) 사내 기존 매입단가 대체 ROI 절감액
     const savings = MarginEngine.calculateInternalSavings(landed.landedCost, state.savings);
 
-    // ── UI 동기화 ──
     renderLandedSummary(landed);
     renderCostBar(landed);
     renderChannelTable(calculatedChannels, landed.landedCost);
@@ -303,7 +342,6 @@ function renderLandedSummary(landed) {
     document.getElementById('displayLandedFormula').textContent = 
         `FOB 원화 ${num(landed.fobKrwPrice)}원 + 부대비용 ${num(landed.logisticsTotal)}원 + 관세 ${ftaText}`;
 
-    // 부대비용 소계
     const logisticsSubtotalEl = document.getElementById('textLogisticsSubtotal');
     if (logisticsSubtotalEl) {
         logisticsSubtotalEl.textContent = `${num(landed.logisticsTotal)} 원`;
@@ -349,13 +387,11 @@ function renderCostBar(landed) {
         }
     }
 
-    // 요약 텍스트
     const summaryEl = document.getElementById('costBreakdownSummary');
     if (summaryEl) {
         summaryEl.textContent = `FOB 물품대 ${r.goods}% | 부대비용 ${r.logistics}% ${!state.costs.isFtaExempt ? `| 관세 ${r.tariff}%` : ''}`;
     }
 
-    // 범례 수치
     document.getElementById('legGoodsVal').textContent = `${num(landed.fobKrwPrice)}원`;
     document.getElementById('legOceanVal').textContent = `${num(state.costs.oceanFreight)}원`;
     document.getElementById('legCustomsVal').textContent = `${num(state.costs.customsFee)}원`;
@@ -417,7 +453,6 @@ function renderChannelTable(channels, landedCost) {
         tbody.appendChild(tr);
     });
 
-    // 판매가 실시간 변경 리스너
     tbody.querySelectorAll('.ch-price-input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx, 10);
@@ -431,7 +466,6 @@ function renderChannelTable(channels, landedCost) {
 function renderSensitivityTable(sensitivity) {
     const { rateSteps, matrix } = sensitivity;
 
-    // 헤더 환율 레이블 동기화
     if (rateSteps.length === 5) {
         document.getElementById('thRateMinus100').textContent = `${num(rateSteps[0])}원 (-100)`;
         document.getElementById('thRateMinus50').textContent = `${num(rateSteps[1])}원 (-50)`;
@@ -489,7 +523,354 @@ function renderPrintHeader() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 5. 실시간 환율 조회 (오픈 환율 API & Fallback)
+// 5. 새로 작성, 저장, 목록 불러오기, 삭제 (백엔드 DB 연동)
+// ─────────────────────────────────────────────────────────────
+
+// 5-1. 신규 작성 (초기화)
+function handleNewSimulation() {
+    if (confirm('현재 작성 중인 내용을 비우고, 새로운 품목의 시뮬레이션을 작성하시겠습니까?')) {
+        currentSimulationId = null;
+        currentSimulationTitle = '신규 수입 품목';
+
+        // 빈 상태로 세팅
+        state.product.productName = '';
+        state.product.fobForeignPrice = 0;
+        state.product.quantity = 1000;
+        state.costs.oceanFreight = 0;
+        state.costs.customsFee = 0;
+        state.costs.inlandFreight = 0;
+        state.costs.otherCost = 0;
+        state.costs.isFtaExempt = true;
+        state.costs.tariffRate = 13.0;
+
+        state.channels = [
+            { channelId: 'ch_a', channelName: '채널A (대량 납품/도매)', targetPrice: 0, isPrimary: false },
+            { channelId: 'ch_b', channelName: '채널B (표준 대리점/B2B)', targetPrice: 0, isPrimary: true },
+            { channelId: 'ch_c', channelName: '채널C (소량 직납/소매)', targetPrice: 0, isPrimary: false }
+        ];
+
+        state.savings.existingPurchasePrice = 0;
+        state.savings.annualVolume = 1000;
+        state.remarks = '';
+        state.isForwarderApplied = false;
+
+        syncFormInputs();
+        updateDocStatusBadge();
+        recalculateAndRender();
+        showToast('새 시뮬레이션 작성을 시작합니다.');
+    }
+}
+
+// 5-2. 서버 DB에 저장하기 (신규 생성 또는 기존 수정)
+async function handleSaveSimulation() {
+    const productName = (state.product.productName || '').trim();
+    if (!productName) {
+        showToast('품목명을 입력해 주세요.', true);
+        document.getElementById('inputProductName').focus();
+        return;
+    }
+
+    const landed = MarginEngine.calculateLandedCost(state.product, state.costs);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const payload = {
+        title: productName,
+        simDate: today,
+        productName: state.product.productName,
+        currency: state.product.currency,
+        fobPrice: state.product.fobForeignPrice,
+        exchangeRate: state.product.exchangeRate,
+        quantity: state.product.quantity,
+        oceanFreight: state.costs.oceanFreight,
+        customsFee: state.costs.customsFee,
+        inlandFreight: state.costs.inlandFreight,
+        otherCost: state.costs.otherCost,
+        isFtaExempt: state.costs.isFtaExempt,
+        tariffRate: state.costs.tariffRate,
+        landedCost: landed.landedCost,
+        channels: state.channels,
+        savings: state.savings,
+        remarks: state.remarks,
+        authorName: '소싱담당'
+    };
+
+    try {
+        let resData;
+        if (currentSimulationId) {
+            // 수정 (PUT)
+            resData = await authFetch(`${API_SIMULATOR}/${currentSimulationId}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            showToast(`'${productName}' 시뮬레이션이 서버에 수정 저장되었습니다.`);
+        } else {
+            // 신규 저장 (POST)
+            resData = await authFetch(API_SIMULATOR, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            currentSimulationId = resData.id;
+            showToast(`'${productName}' 시뮬레이션이 서버에 새로 저장되었습니다.`);
+        }
+
+        currentSimulationTitle = productName;
+        updateDocStatusBadge();
+
+        // 로컬 백업 동시 갱신
+        saveToLocalStorageBackup(payload, currentSimulationId);
+
+    } catch (err) {
+        console.warn('서버 저장 실패, 로컬스토리지 백업 저장 진행:', err);
+        // 서버 에러 시 로컬스토리지에 저장하여 작업 유실 방지
+        const backupId = currentSimulationId || `local_sim_${Date.now()}`;
+        currentSimulationId = backupId;
+        currentSimulationTitle = productName;
+        saveToLocalStorageBackup(payload, backupId);
+        updateDocStatusBadge();
+        showToast(`서버 접속 불가로 브라우저 로컬 저장소에 안전하게 보관되었습니다.`);
+    }
+}
+
+// 로컬스토리지 백업 함수
+function saveToLocalStorageBackup(data, id) {
+    try {
+        let list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+        const existingIdx = list.findIndex(item => item.id === id);
+        const record = { ...data, id, updatedAt: new Date().toISOString() };
+        if (existingIdx >= 0) {
+            list[existingIdx] = record;
+        } else {
+            list.unshift(record);
+        }
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+        console.error('LocalStorage 저장 실패:', e);
+    }
+}
+
+// 5-3. 저장된 시뮬레이션 목록 모달 열기
+async function openSavedListModal() {
+    const modal = document.getElementById('simulationListModal');
+    if (modal) modal.classList.add('active');
+    await loadSavedSimulations();
+}
+
+function closeSavedListModal() {
+    const modal = document.getElementById('simulationListModal');
+    if (modal) modal.classList.remove('active');
+}
+
+// 5-4. 저장 목록 조회 (서버 우선 + 로컬 병합)
+async function loadSavedSimulations() {
+    const tbody = document.getElementById('tbodySavedSimulations');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 20px;">저장된 시뮬레이션 목록을 조회 중입니다...</td></tr>`;
+
+    let serverList = [];
+    try {
+        serverList = await authFetch(API_SIMULATOR);
+    } catch (err) {
+        console.warn('서버 목록 조회 실패, 로컬 백업 확인:', err);
+    }
+
+    let localList = [];
+    try {
+        localList = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+    } catch (e) {}
+
+    // 서버 목록과 로컬 목록 병합 (id 기준 중복 제거)
+    const combinedMap = new Map();
+    (serverList || []).forEach(item => combinedMap.set(item.id, item));
+    (localList || []).forEach(item => {
+        if (!combinedMap.has(item.id)) combinedMap.set(item.id, item);
+    });
+
+    state.savedSimulations = Array.from(combinedMap.values());
+    renderSavedSimulationsTable(state.savedSimulations);
+}
+
+function renderSavedSimulationsTable(list) {
+    const tbody = document.getElementById('tbodySavedSimulations');
+    if (!tbody) return;
+
+    if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 25px; color: var(--erp-text-muted);">저장된 수입 시뮬레이션 내역이 없습니다.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    list.forEach(sim => {
+        const tr = document.createElement('tr');
+        if (sim.id === currentSimulationId) {
+            tr.style.backgroundColor = '#eff6ff';
+        }
+
+        // 주력 채널 마진율 계산
+        let primaryMarginRateStr = '-';
+        if (sim.channels && Array.isArray(sim.channels) && sim.channels.length > 0) {
+            const primaryCh = sim.channels.find(c => c.isPrimary) || sim.channels[1] || sim.channels[0];
+            if (primaryCh && primaryCh.targetPrice > 0 && sim.landedCost > 0) {
+                const margin = primaryCh.targetPrice - sim.landedCost;
+                const rate = ((margin / primaryCh.targetPrice) * 100).toFixed(1);
+                primaryMarginRateStr = `${rate}% (${num(margin)}원)`;
+            }
+        }
+
+        tr.innerHTML = `
+            <td class="text-center">${sim.simDate || sim.createdAt?.slice(0, 10) || '-'}</td>
+            <td class="text-left" style="font-weight: 700; color: #0f172a;">
+                ${sim.title || sim.productName || '무제'}
+                ${sim.id === currentSimulationId ? '<span class="primary-badge">현재 열람중</span>' : ''}
+            </td>
+            <td class="text-right">${sim.currency || 'USD'} ${num(sim.fobPrice, 2)}</td>
+            <td class="text-right">${num(sim.exchangeRate, 1)}원</td>
+            <td class="text-right" style="font-weight: 700; color: #0284c7;">${num(sim.landedCost)}원</td>
+            <td class="text-center" style="font-weight: 600;">${primaryMarginRateStr}</td>
+            <td class="text-center">
+                <button type="button" class="btn-erp btn-primary btn-load-sim" data-id="${sim.id}" style="height: 20px; font-size: 10px; padding: 0 6px;">
+                    <i class="bx bx-check"></i> 불러오기
+                </button>
+                <button type="button" class="btn-erp btn-delete-sim" data-id="${sim.id}" data-name="${sim.title || sim.productName}" style="height: 20px; font-size: 10px; padding: 0 5px; color: #dc2626;">
+                    <i class="bx bx-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+
+    // 불러오기 이벤트 연결
+    tbody.querySelectorAll('.btn-load-sim').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.dataset.id;
+            loadSimulationById(id);
+        });
+    });
+
+    // 삭제 이벤트 연결
+    tbody.querySelectorAll('.btn-delete-sim').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.dataset.id;
+            const name = e.currentTarget.dataset.name;
+            deleteSimulationById(id, name);
+        });
+    });
+}
+
+// 5-5. ID로 시뮬레이션 불러오기
+async function loadSimulationById(id) {
+    let simData = state.savedSimulations.find(s => s.id === id);
+
+    // 서버 단일 조회 시도
+    try {
+        const fetched = await authFetch(`${API_SIMULATOR}/${id}`);
+        if (fetched) simData = fetched;
+    } catch (err) {
+        console.warn('서버 상세 조회 실패, 캐시 데이터 활용:', err);
+    }
+
+    if (!simData) {
+        showToast('시뮬레이션 데이터를 찾을 수 없습니다.', true);
+        return;
+    }
+
+    currentSimulationId = simData.id;
+    currentSimulationTitle = simData.title || simData.productName;
+
+    // 상태 바인딩
+    state.product.productName = simData.productName || '';
+    state.product.currency = simData.currency || 'USD';
+    state.product.fobForeignPrice = Number(simData.fobPrice) || 0;
+    state.product.exchangeRate = Number(simData.exchangeRate) || 1350.0;
+    state.product.quantity = Number(simData.quantity) || 1000;
+
+    state.costs.oceanFreight = Number(simData.oceanFreight) || 0;
+    state.costs.customsFee = Number(simData.customsFee) || 0;
+    state.costs.inlandFreight = Number(simData.inlandFreight) || 0;
+    state.costs.otherCost = Number(simData.otherCost) || 0;
+    state.costs.isFtaExempt = !!simData.isFtaExempt;
+    state.costs.tariffRate = Number(simData.tariffRate) || 13.0;
+
+    if (simData.channels && Array.isArray(simData.channels) && simData.channels.length > 0) {
+        state.channels = simData.channels;
+    }
+    if (simData.savings && typeof simData.savings === 'object') {
+        state.savings = simData.savings;
+    }
+    state.remarks = simData.remarks || '';
+
+    // 인풋 폼 동기화
+    syncFormInputs();
+    updateDocStatusBadge();
+    closeSavedListModal();
+    recalculateAndRender();
+    showToast(`'${currentSimulationTitle}' 시뮬레이션을 불러왔습니다.`);
+}
+
+// 5-6. 시뮬레이션 삭제
+async function deleteSimulationById(id, name) {
+    if (!confirm(`'${name || '해당'}' 시뮬레이션을 정말 삭제하시겠습니까?`)) return;
+
+    try {
+        await authFetch(`${API_SIMULATOR}/${id}`, { method: 'DELETE' });
+    } catch (err) {
+        console.warn('서버 삭제 실패:', err);
+    }
+
+    // 로컬 백업에서도 삭제
+    try {
+        let list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+        list = list.filter(item => item.id !== id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+
+    // 만약 현재 열린 문서가 삭제된 문서라면 초기화
+    if (currentSimulationId === id) {
+        currentSimulationId = null;
+        currentSimulationTitle = '신규 작성';
+        updateDocStatusBadge();
+    }
+
+    showToast(`시뮬레이션이 삭제되었습니다.`);
+    await loadSavedSimulations();
+}
+
+// 인풋 폼 필드와 상태 동기화 헬퍼
+function syncFormInputs() {
+    document.getElementById('inputProductName').value = state.product.productName;
+    document.getElementById('inputFobPrice').value = state.product.fobForeignPrice;
+    document.getElementById('selectCurrency').value = state.product.currency;
+    document.getElementById('unitCurrency').textContent = state.product.currency;
+    document.getElementById('inputExchangeRate').value = state.product.exchangeRate;
+    document.getElementById('inputQuantity').value = state.product.quantity;
+
+    document.getElementById('inputOceanFreight').value = state.costs.oceanFreight;
+    document.getElementById('inputCustomsFee').value = state.costs.customsFee;
+    document.getElementById('inputInlandFreight').value = state.costs.inlandFreight;
+    document.getElementById('inputOtherCost').value = state.costs.otherCost;
+
+    const checkFta = document.getElementById('checkFtaExempt');
+    checkFta.checked = state.costs.isFtaExempt;
+    const rowTariff = document.getElementById('rowTariffRate');
+    const badgeFta = document.getElementById('badgeFtaStatus');
+    if (rowTariff) rowTariff.style.display = state.costs.isFtaExempt ? 'none' : 'table-row';
+    if (badgeFta) {
+        badgeFta.textContent = state.costs.isFtaExempt ? 'FTA 0%' : '기본관세';
+        badgeFta.style.background = state.costs.isFtaExempt ? 'var(--erp-success-bg)' : 'var(--erp-warning-bg)';
+        badgeFta.style.color = state.costs.isFtaExempt ? '#065f46' : '#92400e';
+    }
+    document.getElementById('inputTariffRate').value = state.costs.tariffRate;
+
+    document.getElementById('inputExistingPrice').value = state.savings.existingPurchasePrice;
+    document.getElementById('inputAnnualVolume').value = state.savings.annualVolume;
+    document.getElementById('textRemarks').value = state.remarks;
+
+    const badge = document.getElementById('forwarderAppliedBadge');
+    if (badge) badge.style.display = state.isForwarderApplied ? 'inline-flex' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────────
+// 6. 실시간 환율 조회 (오픈 환율 API & Fallback)
 // ─────────────────────────────────────────────────────────────
 async function fetchRealtimeExchangeRate(currency = 'USD', isManual = false) {
     const rateTextEl = document.getElementById('currentRateText');
@@ -498,7 +879,6 @@ async function fetchRealtimeExchangeRate(currency = 'USD', isManual = false) {
     try {
         if (rateTimeEl) rateTimeEl.textContent = '(조회중...)';
         
-        // 1) 오픈 실시간 환율 API 호출
         const res = await fetch(`https://open.er-api.com/v6/latest/${currency}`);
         if (!res.ok) throw new Error('환율 API 응답 오류');
         const data = await res.json();
@@ -507,7 +887,6 @@ async function fetchRealtimeExchangeRate(currency = 'USD', isManual = false) {
             const liveKrwRate = Number(data.rates.KRW.toFixed(1));
             state.product.exchangeRate = liveKrwRate;
 
-            // UI 반영
             if (rateTextEl) rateTextEl.textContent = num(liveKrwRate, 1);
             if (rateTimeEl) {
                 const now = new Date();
@@ -530,7 +909,7 @@ async function fetchRealtimeExchangeRate(currency = 'USD', isManual = false) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 6. 포워더 견적 불러오기 모달 및 자동 채우기 연동
+// 7. 포워더 견적 불러오기 모달 및 자동 채우기 연동
 // ─────────────────────────────────────────────────────────────
 async function openForwarderModal() {
     const modal = document.getElementById('forwarderModal');
@@ -564,7 +943,6 @@ function renderForwarderQuotesList(quotes) {
     quotes.forEach((q, idx) => {
         const tr = document.createElement('tr');
         
-        // 포워더 중 최저가 견적 또는 첫 번째 견적 추출
         let forwarderName = '-';
         let totalCostKrw = 0;
         if (q.forwarders && q.forwarders.length > 0) {
@@ -617,10 +995,8 @@ function applySelectedForwarderQuote() {
         return;
     }
 
-    // 견적서의 물류 수량 파악 (컨테이너 수량 또는 사용자 인풋 수량)
     const qty = state.product.quantity > 0 ? state.product.quantity : 3000;
 
-    // 포워더 비용 항목 집계 (해상운임 / 통관창고 / 내륙운송)
     let oceanTotal = 0;
     let customsTotal = 0;
     let inlandTotal = 0;
@@ -628,7 +1004,6 @@ function applySelectedForwarderQuote() {
 
     if (quote.forwarders && quote.forwarders.length > 0) {
         const f = quote.forwarders[0];
-        // 항목별 비용 배열 분해 (EXW/FOB 조건에 따른 항목)
         if (f.costs && Array.isArray(f.costs)) {
             f.costs.forEach(c => {
                 const amount = Number(c.amountKrw || c.totalKrw || c.amount || 0);
@@ -645,7 +1020,6 @@ function applySelectedForwarderQuote() {
             });
         }
 
-        // 총액만 있는 경우 기본 비중으로 배부
         const totalKrw = f.totalKrw || (oceanTotal + customsTotal + inlandTotal + otherTotal);
         if (oceanTotal === 0 && inlandTotal === 0 && totalKrw > 0) {
             oceanTotal = Math.round(totalKrw * 0.40);
@@ -654,20 +1028,17 @@ function applySelectedForwarderQuote() {
         }
     }
 
-    // 개당 배부액 산출
     const perOcean = Math.round(oceanTotal / qty);
     const perCustoms = Math.round(customsTotal / qty);
     const perInland = Math.round(inlandTotal / qty);
     const perOther = Math.round(otherTotal / qty);
 
-    // 상태 업데이트
     state.costs.oceanFreight = perOcean || state.costs.oceanFreight;
     state.costs.customsFee = perCustoms || state.costs.customsFee;
     state.costs.inlandFreight = perInland || state.costs.inlandFreight;
     state.costs.otherCost = perOther;
     state.isForwarderApplied = true;
 
-    // 인풋 필드 업데이트
     document.getElementById('inputOceanFreight').value = state.costs.oceanFreight;
     document.getElementById('inputCustomsFee').value = state.costs.customsFee;
     document.getElementById('inputInlandFreight').value = state.costs.inlandFreight;
@@ -682,7 +1053,7 @@ function applySelectedForwarderQuote() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 7. 기안문 복사 & CSV 엑셀 다운로드
+// 8. 기안문 복사 & CSV 엑셀 다운로드
 // ─────────────────────────────────────────────────────────────
 async function copyReportToClipboard() {
     const landed = MarginEngine.calculateLandedCost(state.product, state.costs);
@@ -702,7 +1073,6 @@ async function copyReportToClipboard() {
         await navigator.clipboard.writeText(reportText);
         showToast('기안문 텍스트가 클립보드에 복사되었습니다.');
     } catch (e) {
-        // Fallback
         const textarea = document.createElement('textarea');
         textarea.value = reportText;
         document.body.appendChild(textarea);
@@ -718,7 +1088,7 @@ function exportToCsv() {
     const calculatedChannels = MarginEngine.calculateChannelMargins(landed.landedCost, state.channels);
     const savings = MarginEngine.calculateInternalSavings(landed.landedCost, state.savings);
 
-    let csvContent = '\uFEFF'; // UTF-8 BOM
+    let csvContent = '\uFEFF';
     csvContent += `수입 소싱 원가 분석 및 채널별 마진 시뮬레이션 보고서\n\n`;
 
     csvContent += `[1. 품목 기본정보]\n`;
@@ -771,6 +1141,9 @@ function exportToCsv() {
 
 function resetToDefault() {
     const d = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    currentSimulationId = null;
+    currentSimulationTitle = d.product.productName;
+
     Object.assign(state.product, d.product);
     Object.assign(state.costs, d.costs);
     state.channels = JSON.parse(JSON.stringify(d.channels));
@@ -778,27 +1151,8 @@ function resetToDefault() {
     state.remarks = d.remarks;
     state.isForwarderApplied = false;
 
-    // 인풋 폼 값 복원
-    document.getElementById('inputProductName').value = state.product.productName;
-    document.getElementById('inputFobPrice').value = state.product.fobForeignPrice;
-    document.getElementById('selectCurrency').value = state.product.currency;
-    document.getElementById('inputExchangeRate').value = state.product.exchangeRate;
-    document.getElementById('inputQuantity').value = state.product.quantity;
-
-    document.getElementById('inputOceanFreight').value = state.costs.oceanFreight;
-    document.getElementById('inputCustomsFee').value = state.costs.customsFee;
-    document.getElementById('inputInlandFreight').value = state.costs.inlandFreight;
-    document.getElementById('inputOtherCost').value = state.costs.otherCost;
-    document.getElementById('checkFtaExempt').checked = state.costs.isFtaExempt;
-    document.getElementById('inputTariffRate').value = state.costs.tariffRate;
-
-    document.getElementById('inputExistingPrice').value = state.savings.existingPurchasePrice;
-    document.getElementById('inputAnnualVolume').value = state.savings.annualVolume;
-    document.getElementById('textRemarks').value = state.remarks;
-
-    const badge = document.getElementById('forwarderAppliedBadge');
-    if (badge) badge.style.display = 'none';
-
+    syncFormInputs();
+    updateDocStatusBadge();
     recalculateAndRender();
     showToast('기본 형광 안전조끼 OEM 파라미터로 초기화되었습니다.');
 }

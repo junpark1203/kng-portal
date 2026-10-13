@@ -34,6 +34,10 @@ const { initImportQuotationTables } = importQuotationRoutes;
 const importSettlementRoutes = require('./routes/import-settlement');
 const { initImportSettlementTables } = importSettlementRoutes;
 
+// 수입 원가·마진 시뮬레이터 모듈
+const importSimulatorRoutes = require('./routes/import-simulator');
+const { initImportSimulatorTables } = importSimulatorRoutes;
+
 // 계약서 관리 모듈
 const contractManagementRoutes = require('./routes/contract-management');
 const { initContractManagementTables } = contractManagementRoutes;
@@ -341,6 +345,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             importSettlementRoutes.setDb(db);
             console.log('import_settlement API 준비 완료');
         });
+        // 수입 원가·마진 시뮬레이터 테이블 초기화 + 라우트에 DB 주입
+        initImportSimulatorTables(db).then(() => {
+            importSimulatorRoutes.setDb(db);
+            console.log('import_simulator API 준비 완료');
+        }).catch(err => console.error('import_simulator 초기화 실패:', err));
         // 계약서 관리 테이블 초기화 + 라우트에 DB 주입
         initContractManagementTables(db).then(() => {
             contractManagementRoutes.setDb(db);
@@ -1439,6 +1448,9 @@ app.use('/api/forwarder-quotation', forwarderQuotationRoutes);
 
 // 실수입비용 정산
 app.use('/api/import-settlement', importSettlementRoutes);
+
+// 수입 원가·마진 시뮬레이터
+app.use('/api/import-simulator', importSimulatorRoutes.router);
 
 // 현장별 소모품 규격 관리
 app.use('/api/site-consumables', siteConsumablesRoutes.router);
