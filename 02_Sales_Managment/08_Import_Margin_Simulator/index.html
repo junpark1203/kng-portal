@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수입 원가·마진 시뮬레이터 | K&amp;G Portal</title>
+    <!-- Pretendard Web Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <!-- Boxicons CDN (이모지 대체) -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Simulator ECOUNT ERP Stylesheet -->
+    <link rel="stylesheet" href="./simulator.css">
+</head>
+<body>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         0. 인쇄 전용 공식 비즈니스 보고서 헤더 (@media print 전용)
+         - 결재란 제외
+         - 문서번호 제외
+         - 이모지 완전 제외
+         ───────────────────────────────────────────────────────────── -->
+    <div class="print-only-header" style="display: none;">
+        <h1 class="print-report-title">수입 소싱 원가 분석 및 채널별 마진 시뮬레이션 보고서</h1>
+        <div class="print-meta-grid">
+            <div><strong>보고 품목:</strong> <span id="printProductName">형광 안전조끼 OEM</span></div>
+            <div><strong>기준 일자:</strong> <span id="printDate">2026-10-13</span></div>
+            <div><strong>적용 환율:</strong> <span id="printExchangeRate">1,350</span> 원/USD</div>
+            <div><strong>소싱 본부:</strong> K&amp;G Global Sourcing Team</div>
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         1. ECOUNT ERP 1행 탑 액션 툴바 (.erp-top-toolbar)
+         ───────────────────────────────────────────────────────────── -->
+    <header class="erp-top-toolbar">
+        <div class="erp-toolbar-left">
+            <div class="erp-title-tag">
+                <i class="bx bx-calculator"></i>
+                <span>수입 원가·마진 시뮬레이터</span>
+            </div>
+            <!-- 실시간 환율 배지 -->
+            <div class="erp-rate-badge" id="rateBadge">
+                <i class="bx bx-dollar"></i>
+                <span>USD 환율: <strong id="currentRateText">1,350.00</strong>원</span>
+                <span class="rate-time" id="rateTimeText">(실시간)</span>
+            </div>
+            <button type="button" class="btn-erp" id="btnRefreshRate" title="실시간 환율 새로고침">
+                <i class="bx bx-refresh"></i> 환율 갱신
+            </button>
+        </div>
+        <div class="erp-toolbar-right">
+            <button type="button" class="btn-erp btn-secondary" id="btnOpenQuotationModal">
+                <i class="bx bx-file-find"></i> 포워더 견적 불러오기
+            </button>
+            <button type="button" class="btn-erp" id="btnCopyReport">
+                <i class="bx bx-copy"></i> 기안문 복사
+            </button>
+            <button type="button" class="btn-erp" id="btnExportCsv">
+                <i class="bx bx-download"></i> 엑셀 내보내기
+            </button>
+            <button type="button" class="btn-erp btn-primary" id="btnPrint">
+                <i class="bx bx-printer"></i> 인쇄 / PDF 출력
+            </button>
+        </div>
+    </header>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         2. 메인 워크스페이스 그리드 (좌 420px 인풋 / 우 나머지 분석)
+         ───────────────────────────────────────────────────────────── -->
+    <main class="sim-container">
+        
+        <!-- ── 좌측 컬럼: 시뮬레이션 입력 파라미터 시트 ── -->
+        <section class="sim-col sim-col-input">
+            
+            <!-- 패널 1: 수입 기본 사양 & FOB 물품대 -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-package"></i> 1. 품목 기본정보 &amp; FOB 물품대
+                    </span>
+                    <span class="erp-panel-header-action">
+                        <button type="button" class="btn-erp" id="btnResetDefault" title="기본 시드 데이터 복원" style="height: 20px; font-size: 10px; padding: 0 5px;">
+                            <i class="bx bx-reset"></i> 기본값
+                        </button>
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <table class="erp-form-table">
+                        <tbody>
+                            <tr>
+                                <th>품목명</th>
+                                <td>
+                                    <input type="text" id="inputProductName" class="erp-input" value="형광 안전조끼 OEM" placeholder="예: 형광 안전조끼 OEM">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>통화 / FOB 단가</th>
+                                <td>
+                                    <div style="display: flex; gap: 4px;">
+                                        <select id="selectCurrency" class="erp-select" style="width: 75px;">
+                                            <option value="USD" selected>USD ($)</option>
+                                            <option value="CNY">CNY (¥)</option>
+                                            <option value="EUR">EUR (€)</option>
+                                        </select>
+                                        <div class="input-with-unit" style="flex: 1;">
+                                            <input type="number" id="inputFobPrice" class="erp-input text-right" step="0.01" value="4.90">
+                                            <span class="unit" id="unitCurrency">USD</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>적용 환율</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputExchangeRate" class="erp-input text-right" step="0.1" value="1350.0">
+                                        <span class="unit">원</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>선적 수량 (배부용)</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputQuantity" class="erp-input text-right" step="100" value="3000">
+                                        <span class="unit">PCS / 벌</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 패널 2: 수입 통관 및 물류 부대비용 (개당 배부) -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-ship"></i> 2. 물류 통관 부대비용 (개당 배부)
+                    </span>
+                    <span class="erp-panel-header-action" id="forwarderAppliedBadge" style="display: none;">
+                        <span class="primary-badge"><i class="bx bx-check"></i> 포워더 견적 연동됨</span>
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <table class="erp-form-table">
+                        <tbody>
+                            <tr>
+                                <th>해상운임 / 보험료</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputOceanFreight" class="erp-input text-right" step="1" value="135">
+                                        <span class="unit">원 / 개</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>통관 / 창고 / 하역비</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputCustomsFee" class="erp-input text-right" step="1" value="108">
+                                        <span class="unit">원 / 개</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>국내 내륙운송비</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputInlandFreight" class="erp-input text-right" step="1" value="135">
+                                        <span class="unit">원 / 개</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>기타 부대비용</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputOtherCost" class="erp-input text-right" step="1" value="0">
+                                        <span class="unit">원 / 개</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>부대비용 소계</th>
+                                <td>
+                                    <div style="font-weight: 700; text-align: right; color: #0284c7; padding-right: 4px;" id="textLogisticsSubtotal">
+                                        378 원
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>한·중 FTA 적용</th>
+                                <td>
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <label class="fta-switch-container">
+                                            <input type="checkbox" id="checkFtaExempt" checked>
+                                            <span style="font-size: 11px; font-weight: 600;">C/O 발급 적용 (0% 무관세)</span>
+                                        </label>
+                                        <span class="fta-badge" id="badgeFtaStatus">FTA 0%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="rowTariffRate" style="display: none;">
+                                <th>기본 관세율 (%)</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputTariffRate" class="erp-input text-right" step="0.5" value="13.0">
+                                        <span class="unit">% (미적용 시)</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 패널 3: 사내 기존 매입단가 (대체 원가 절감 분석용) -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-transfer-alt"></i> 3. 사내 기존 매입단가 (대체 절감용)
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <table class="erp-form-table">
+                        <tbody>
+                            <tr>
+                                <th>기존 사내 매입단가</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputExistingPrice" class="erp-input text-right" step="10" value="8433">
+                                        <span class="unit">원 / 개</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>사내 연간 소요량</th>
+                                <td>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="inputAnnualVolume" class="erp-input text-right" step="100" value="3000">
+                                        <span class="unit">개 / 연간</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ── 우측 컬럼: 원가 분해, 마진 시뮬레이션, 민감도 분석 ── -->
+        <section class="sim-col sim-col-output">
+
+            <!-- 1. 최종 입고원가 대형 하이라이트 스트립 -->
+            <div class="landed-summary-strip">
+                <div class="landed-left">
+                    <span class="landed-label">
+                        <i class="bx bx-check-shield"></i> 개당 최종 입고원가 (Landed Cost)
+                    </span>
+                    <span class="landed-title" id="displayLandedTitle">형광 안전조끼 OEM</span>
+                    <span class="landed-sub" id="displayLandedFormula">
+                        FOB 원화 6,615원 + 부대비용 378원 + 관세 0원 (FTA 적용)
+                    </span>
+                </div>
+                <div class="landed-right">
+                    <span class="landed-value-num" id="displayLandedCost">6,993</span>
+                    <span class="landed-unit">원 / 개</span>
+                </div>
+            </div>
+
+            <!-- 2. 원가 구성 비주얼 누적 가로 바 -->
+            <div class="cost-bar-container">
+                <div class="cost-bar-title">
+                    <span>원가 구성 비중 (Cost Breakdown)</span>
+                    <span id="costBreakdownSummary">FOB 물품대 94.6% | 부대비용 5.4%</span>
+                </div>
+                <div class="cost-stacked-bar">
+                    <div class="cost-segment seg-goods" id="barGoods" style="width: 94.6%;" title="FOB 물품대: 94.6%">FOB 94.6%</div>
+                    <div class="cost-segment seg-ocean" id="barOcean" style="width: 1.9%;" title="해상운임: 1.9%">해상 1.9%</div>
+                    <div class="cost-segment seg-customs" id="barCustoms" style="width: 1.5%;" title="통관비: 1.5%">통관 1.5%</div>
+                    <div class="cost-segment seg-inland" id="barInland" style="width: 1.9%;" title="내륙비: 1.9%">내륙 1.9%</div>
+                    <div class="cost-segment seg-tariff" id="barTariff" style="width: 0%; display: none;" title="관세: 0%">관세 0%</div>
+                </div>
+                <div class="cost-legend">
+                    <span class="legend-item"><span class="legend-color seg-goods"></span> FOB 물품대 (<span id="legGoodsVal">6,615원</span>)</span>
+                    <span class="legend-item"><span class="legend-color seg-ocean"></span> 해상운임 (<span id="legOceanVal">135원</span>)</span>
+                    <span class="legend-item"><span class="legend-color seg-customs"></span> 통관·하역 (<span id="legCustomsVal">108원</span>)</span>
+                    <span class="legend-item"><span class="legend-color seg-inland"></span> 국내운송 (<span id="legInlandVal">135원</span>)</span>
+                    <span class="legend-item" id="legTariffItem" style="display: none;"><span class="legend-color seg-tariff"></span> 관세 (<span id="legTariffVal">0원</span>)</span>
+                </div>
+            </div>
+
+            <!-- 패널 4: 채널별 목표 판매가 및 수익성 분석 -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-bar-chart-alt-2"></i> 4. 채널별 목표 판매가 및 마진 분석
+                    </span>
+                    <span class="erp-panel-header-action">
+                        <span style="font-size: 10.5px; color: var(--erp-text-muted);">* 판매가 변경 시 실시간 재계산</span>
+                    </span>
+                </div>
+                <div class="erp-panel-body" style="padding: 0;">
+                    <table class="erp-table" id="tableChannels">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">판매 채널</th>
+                                <th style="width: 100px;">목표 판매가</th>
+                                <th style="width: 85px;">개당 마진액</th>
+                                <th style="width: 130px;">마진율 (Margin)</th>
+                                <th style="width: 80px;">원가가산율</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JavaScript 동적 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 패널 5: 환율 민감도 2차원 매트릭스 -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-grid-alt"></i> 5. 환율 변동 민감도 매트릭스 (Sensitivity Matrix)
+                    </span>
+                    <span class="erp-panel-header-action">
+                        <span style="font-size: 10px; color: var(--erp-text-muted);">
+                            <span class="heat-safe" style="padding: 1px 4px; border-radius: 2px;">안전(20%+)</span>
+                            <span class="heat-fair" style="padding: 1px 4px; border-radius: 2px;">적정(15%+)</span>
+                            <span class="heat-warn" style="padding: 1px 4px; border-radius: 2px;">주의(10%+)</span>
+                            <span class="heat-crit" style="padding: 1px 4px; border-radius: 2px;">위험(&lt;10%)</span>
+                        </span>
+                    </span>
+                </div>
+                <div class="erp-panel-body" style="padding: 0;">
+                    <table class="sensitivity-table" id="tableSensitivity">
+                        <thead>
+                            <tr>
+                                <th style="width: 130px;">채널 \ 환율</th>
+                                <th id="thRateMinus100">1,250원</th>
+                                <th id="thRateMinus50">1,300원</th>
+                                <th class="base-rate-th" id="thRateBase">1,350원 (기준)</th>
+                                <th id="thRatePlus50">1,400원</th>
+                                <th id="thRatePlus100">1,450원</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JavaScript 동적 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 패널 6: 사내 기존 매입단가 대체 ROI 절감 효과 -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-trending-up"></i> 6. 사내 기존 매입단가 대체 절감 효과 (ROI Summary)
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <div class="roi-grid">
+                        <div class="roi-card">
+                            <div class="roi-card-label">기존 사내 매입단가</div>
+                            <div class="roi-card-val" id="roiExistPrice">8,433 원</div>
+                        </div>
+                        <div class="roi-card">
+                            <div class="roi-card-label">해외 직수입 입고원가</div>
+                            <div class="roi-card-val" id="roiLandedCost">6,993 원</div>
+                        </div>
+                        <div class="roi-card">
+                            <div class="roi-card-label">개당 원가 절감액</div>
+                            <div class="roi-card-val highlight" id="roiSavingPerUnit">1,440 원 (17.1%)</div>
+                        </div>
+                        <div class="roi-card">
+                            <div class="roi-card-label">연간 총 절감액 (3,000벌)</div>
+                            <div class="roi-card-val highlight" id="roiAnnualTotalSaving">4,320,000 원</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 패널 7: 종합 검토의견 & 기안 비고 -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-edit"></i> 7. 종합 검토 의견 (기안문 및 결재 보고용)
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <textarea id="textRemarks" class="erp-textarea" placeholder="수입 소싱 검토 의견 및 의사결정 참고사항을 기재하세요. (예: 한·중 FTA C/O 수취를 통한 13% 무관세 확보 완료. 채널B(9,000원) 판매 시 22.3%의 안정적 영업이익률 확보 가능. 사내 안전용품 3,000벌 전량 대체 시 연간 432만원의 확정 원가 절감 달성.)">한·중 FTA 원산지증명서(C/O) 적용을 통해 기본관세 13%를 면세 처리하여 입고원가 6,993원을 달성함.
+채널B(표준 대리점/B2B 9,000원) 판매 시 22.3%의 안정적 마진율을 확보하며, 환율이 1,450원까지 상승하더라도 16.9% 수준의 이익 방어가 가능함.
+사내 기존 매입단가(8,433원) 대체 시 연간 4,320,000원의 구매 원가 절감 효과 발생.</textarea>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         3. 포워더 견적 불러오기 팝업 모달 (.erp-modal-overlay)
+         ───────────────────────────────────────────────────────────── -->
+    <div class="erp-modal-overlay" id="forwarderModal">
+        <div class="erp-modal-container">
+            <div class="erp-modal-header">
+                <div class="erp-modal-title">
+                    <i class="bx bx-file-find"></i>
+                    <span>해외무역 포워더 견적 목록 불러오기</span>
+                </div>
+                <button type="button" class="erp-modal-close" id="btnCloseForwarderModal">&times;</button>
+            </div>
+            <div class="erp-modal-body">
+                <div style="font-size: 11px; color: var(--erp-text-muted); margin-bottom: 8px;">
+                    등록된 포워더 견적서 중 하나를 선택하면, 컨테이너/물품 수량 기준 개당 운임 및 부대비용을 자동 배부하여 시뮬레이터에 적용합니다.
+                </div>
+                <table class="erp-table" id="tableForwarderQuotes">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">선택</th>
+                            <th style="width: 90px;">견적일자</th>
+                            <th>견적명 / 프로젝트</th>
+                            <th style="width: 80px;">구분</th>
+                            <th style="width: 100px;">추천 포워더</th>
+                            <th style="width: 95px;">총 부대비용</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyForwarderQuotes">
+                        <!-- 동적 렌더링 -->
+                        <tr>
+                            <td colspan="6" class="text-center" style="padding: 20px; color: var(--erp-text-muted);">
+                                견적 목록을 불러오는 중입니다...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="erp-modal-footer">
+                <button type="button" class="btn-erp" id="btnCancelForwarderModal">닫기</button>
+                <button type="button" class="btn-erp btn-primary" id="btnApplyForwarderQuote">
+                    <i class="bx bx-check"></i> 선택 견적 부대비용 적용
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 메시지 컨테이너 -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 100000; display: flex; flex-direction: column; gap: 6px;"></div>
+
+    <!-- 스크립트 모듈 로드 -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

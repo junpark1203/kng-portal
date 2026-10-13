@@ -1,0 +1,916 @@
+/* ==========================================================================
+   K&G Sourcing & Margin Simulator - ECOUNT ERP High-Density Stylesheet
+   규격: ECOUNT ERP 단가표/입출고 테마, 이모지 완전 배제, A4 1장 인쇄 최적화
+   ========================================================================== */
+
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-primary-border: #bfdbfe;
+    
+    --erp-success: #10b981;
+    --erp-success-bg: #ecfdf5;
+    --erp-success-border: #a7f3d0;
+    
+    --erp-warning: #f59e0b;
+    --erp-warning-bg: #fffbeb;
+    --erp-warning-border: #fde68a;
+    
+    --erp-danger: #ef4444;
+    --erp-danger-bg: #fef2f2;
+    --erp-danger-border: #fecaca;
+    
+    --erp-dark: #1e293b;
+    --erp-header-bg: #1e293b;
+    --erp-th-bg: #f8fafc;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-bg: #f1f5f9;
+    --erp-panel-bg: #ffffff;
+    
+    --erp-row-hover: #f8fafc;
+    --erp-row-active: #eff6ff;
+    --erp-row-height: 26px;
+    --erp-font-size: 11.5px;
+    --erp-font-title: 13px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    background-color: var(--erp-bg);
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: var(--erp-font-size);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar)
+   ───────────────────────────────────────────────────────────── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 10px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-toolbar-left,
+.erp-toolbar-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.erp-title-tag {
+    font-size: var(--erp-font-title);
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+.erp-title-tag i {
+    font-size: 16px;
+    color: var(--erp-primary);
+}
+
+/* 환율 배지 및 인풋 그룹 */
+.erp-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--erp-primary-light);
+    border: 1px solid var(--erp-primary-border);
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    color: var(--erp-primary);
+    font-weight: 600;
+}
+
+.erp-rate-badge i {
+    font-size: 13px;
+}
+
+.erp-rate-badge .rate-time {
+    color: var(--erp-text-muted);
+    font-weight: normal;
+    font-size: 10px;
+    margin-left: 2px;
+}
+
+/* 버튼 스타일 (ECOUNT ERP 표준 버튼) */
+.btn-erp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 9px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+    background: #ffffff;
+    color: var(--erp-text);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.btn-erp i {
+    font-size: 13px;
+    color: var(--erp-text-muted);
+}
+
+.btn-erp:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-erp:hover i {
+    color: #0f172a;
+}
+
+.btn-erp.btn-primary {
+    background: var(--erp-primary);
+    border-color: var(--erp-primary);
+    color: #ffffff;
+}
+
+.btn-erp.btn-primary i {
+    color: #ffffff;
+}
+
+.btn-erp.btn-primary:hover {
+    background: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
+}
+
+.btn-erp.btn-secondary {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.btn-erp.btn-secondary:hover {
+    background: #e2e8f0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2. 메인 워크스페이스 그리드 (좌 42% 입력 / 우 58% 분석)
+   ───────────────────────────────────────────────────────────── */
+.sim-container {
+    display: grid;
+    grid-template-columns: 420px minmax(0, 1fr);
+    gap: 6px;
+    align-items: start;
+}
+
+@media (max-width: 1180px) {
+    .sim-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sim-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   3. ERP 고밀도 패널 (.erp-panel)
+   ───────────────────────────────────────────────────────────── */
+.erp-panel {
+    background: var(--erp-panel-bg);
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.erp-panel-header {
+    background: var(--erp-th-bg);
+    border-bottom: 1px solid var(--erp-border);
+    padding: 5px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 28px;
+}
+
+.erp-panel-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    letter-spacing: -0.2px;
+}
+
+.erp-panel-title i {
+    font-size: 13px;
+    color: var(--erp-primary);
+}
+
+.erp-panel-header-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-panel-body {
+    padding: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   4. 고밀도 인풋 테이블 & 폼 필드
+   ───────────────────────────────────────────────────────────── */
+.erp-form-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6px;
+}
+
+.erp-form-table:last-child {
+    margin-bottom: 0;
+}
+
+.erp-form-table th,
+.erp-form-table td {
+    padding: 4px 6px;
+    border: 1px solid var(--erp-border-light);
+    font-size: 11px;
+}
+
+.erp-form-table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    width: 115px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.erp-form-table td {
+    background-color: #ffffff;
+}
+
+.erp-input,
+.erp-select {
+    width: 100%;
+    height: 24px;
+    padding: 2px 6px;
+    font-size: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 2px;
+    color: #1e293b;
+    background-color: #ffffff;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.erp-input:focus,
+.erp-select:focus {
+    outline: none;
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.erp-input.text-right {
+    text-align: right;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.input-with-unit .unit {
+    font-size: 10.5px;
+    color: var(--erp-text-muted);
+    white-space: nowrap;
+}
+
+/* FTA 토글 스위치 */
+.fta-switch-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.fta-switch-container input[type="checkbox"] {
+    accent-color: var(--erp-success);
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.fta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--erp-success-bg);
+    border: 1px solid var(--erp-success-border);
+    color: #065f46;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   5. 입고원가 대형 하이라이트 스트립 (.landed-summary-strip)
+   ───────────────────────────────────────────────────────────── */
+.landed-summary-strip {
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 2px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.landed-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.landed-label {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.landed-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.landed-right {
+    text-align: right;
+}
+
+.landed-value-num {
+    font-size: 22px;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: -0.5px;
+}
+
+.landed-unit {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-left: 2px;
+    font-weight: normal;
+}
+
+.landed-sub {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 1px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   6. 원가 구성 비주얼 누적 가로 바 (.cost-bar-container)
+   ───────────────────────────────────────────────────────────── */
+.cost-bar-container {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+
+.cost-bar-title {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.cost-stacked-bar {
+    display: flex;
+    height: 18px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #e2e8f0;
+    margin-bottom: 6px;
+}
+
+.cost-segment {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: width 0.3s ease;
+    padding: 0 4px;
+}
+
+.seg-goods { background-color: #2563eb; }    /* FOB 원화물품대 */
+.seg-ocean { background-color: #0284c7; }    /* 해상운임/보험 */
+.seg-customs { background-color: #0d9488; }  /* 통관/창고/하역 */
+.seg-inland { background-color: #d97706; }   /* 국내운송비 */
+.seg-tariff { background-color: #dc2626; }   /* 관세 */
+
+.cost-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+    color: #475569;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   7. ECOUNT ERP 표준 데이터 테이블 (.erp-table)
+   ───────────────────────────────────────────────────────────── */
+.erp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.erp-table th,
+.erp-table td {
+    padding: 4px 6px;
+    border: 1px solid var(--erp-border);
+    height: var(--erp-row-height);
+}
+
+.erp-table th {
+    background-color: var(--erp-th-bg);
+    color: #334155;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.erp-table td {
+    background-color: #ffffff;
+}
+
+.erp-table tbody tr:hover td {
+    background-color: var(--erp-row-hover);
+}
+
+.erp-table tr.primary-row td {
+    background-color: #f0fdf4 !important;
+}
+
+.erp-table .text-center { text-align: center; }
+.erp-table .text-right { text-align: right; }
+.erp-table .text-left { text-align: left; }
+
+.primary-badge {
+    background: #059669;
+    color: #ffffff;
+    font-size: 9.5px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: 600;
+    margin-left: 3px;
+}
+
+/* 마진율 시각 게이지 */
+.margin-meter-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.margin-meter-track {
+    width: 50px;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.margin-meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--erp-primary);
+}
+
+.margin-rate-num {
+    font-weight: 700;
+    width: 42px;
+    text-align: right;
+}
+
+.rate-high { color: #059669; }
+.rate-mid { color: #2563eb; }
+.rate-low { color: #d97706; }
+.rate-danger { color: #dc2626; }
+
+/* ─────────────────────────────────────────────────────────────
+   8. 환율 민감도 2차원 매트릭스 테이블 (.sensitivity-table)
+   ───────────────────────────────────────────────────────────── */
+.sensitivity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+}
+
+.sensitivity-table th,
+.sensitivity-table td {
+    padding: 3px 5px;
+    border: 1px solid var(--erp-border);
+    text-align: center;
+    height: 24px;
+}
+
+.sensitivity-table th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sensitivity-table th.base-rate-th {
+    background: #eff6ff;
+    color: #1e40af;
+    border-left: 2px solid var(--erp-primary);
+    border-right: 2px solid var(--erp-primary);
+}
+
+.sensitivity-table td.base-rate-col {
+    background: #f8fafc;
+    border-left: 2px solid var(--erp-primary);
+    border-right: 2px solid var(--erp-primary);
+    font-weight: 700;
+}
+
+.heat-cell {
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.heat-safe { background-color: #ecfdf5; color: #065f46; }
+.heat-fair { background-color: #eff6ff; color: #1e40af; }
+.heat-warn { background-color: #fffbeb; color: #92400e; }
+.heat-crit { background-color: #fef2f2; color: #991b1b; }
+
+/* ─────────────────────────────────────────────────────────────
+   9. 사내 기존 매입단가 대체 ROI 패널 (.roi-panel)
+   ───────────────────────────────────────────────────────────── */
+.roi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background: #f8fafc;
+    border: 1px solid var(--erp-border-light);
+    border-radius: 2px;
+    padding: 8px;
+}
+
+.roi-card {
+    background: #ffffff;
+    border: 1px solid var(--erp-border-light);
+    padding: 6px 8px;
+    border-radius: 2px;
+}
+
+.roi-card-label {
+    font-size: 10px;
+    color: var(--erp-text-muted);
+    margin-bottom: 2px;
+}
+
+.roi-card-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.roi-card-val.highlight {
+    color: #059669;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   10. 종합 검토의견 텍스트에리어
+   ───────────────────────────────────────────────────────────── */
+.erp-textarea {
+    width: 100%;
+    height: 48px;
+    padding: 6px;
+    font-size: 11px;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    font-family: inherit;
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.erp-textarea:focus {
+    outline: none;
+    border-color: var(--erp-primary);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   11. 포워더 견적 선택 모달 (.erp-modal)
+   ───────────────────────────────────────────────────────────── */
+.erp-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.erp-modal-overlay.active {
+    display: flex;
+}
+
+.erp-modal-container {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 3px;
+    width: 720px;
+    max-width: 95vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.erp-modal-header {
+    background: var(--erp-dark);
+    color: #ffffff;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.erp-modal-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.erp-modal-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.erp-modal-close:hover {
+    color: #ffffff;
+}
+
+.erp-modal-body {
+    padding: 10px 12px;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.erp-modal-footer {
+    background: #f8fafc;
+    border-top: 1px solid var(--erp-border-light);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   12. 인쇄 전용 스타일 (@media print) - A4 세로 1장 완결형
+   - 상단 결재란 제외
+   - 문서번호 제외
+   - 이모지 완전 제외
+   ───────────────────────────────────────────────────────────── */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm 10mm 10mm 10mm;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        font-size: 9.5pt !important;
+        line-height: 1.3 !important;
+    }
+
+    /* 화면용 툴바, 버튼, 모달 완전 숨김 */
+    .erp-top-toolbar,
+    .btn-erp,
+    .erp-modal-overlay,
+    .no-print {
+        display: none !important;
+    }
+
+    /* 1컬럼 플랫 배치 */
+    .sim-container {
+        display: block !important;
+    }
+
+    .sim-col {
+        display: block !important;
+        gap: 0 !important;
+    }
+
+    .erp-panel {
+        border: 1px solid #64748b !important;
+        box-shadow: none !important;
+        margin-bottom: 6mm !important;
+        page-break-inside: avoid !important;
+    }
+
+    .erp-panel-header {
+        background: #f1f5f9 !important;
+        border-bottom: 1px solid #64748b !important;
+        padding: 2mm 3mm !important;
+        min-height: auto !important;
+    }
+
+    .erp-panel-title {
+        font-size: 10pt !important;
+        color: #000000 !important;
+    }
+
+    .erp-panel-title i {
+        display: none !important;
+    }
+
+    .erp-panel-body {
+        padding: 2.5mm !important;
+    }
+
+    /* 인쇄 전용 공식 보고서 헤더 (상단 결재란/문서번호 없음) */
+    .print-only-header {
+        display: block !important;
+        border-bottom: 2px solid #0f172a;
+        padding-bottom: 3mm;
+        margin-bottom: 4mm;
+    }
+
+    .print-report-title {
+        font-size: 16pt;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        text-align: center;
+        margin: 0 0 2mm 0;
+        color: #000000;
+    }
+
+    .print-meta-grid {
+        display: flex;
+        justify-content: space-between;
+        font-size: 8.5pt;
+        color: #334155;
+    }
+
+    /* 테이블 인쇄 최적화 */
+    .erp-table,
+    .erp-form-table,
+    .sensitivity-table {
+        border: 1px solid #475569 !important;
+        font-size: 8pt !important;
+    }
+
+    .erp-table th,
+    .erp-table td,
+    .erp-form-table th,
+    .erp-form-table td,
+    .sensitivity-table th,
+    .sensitivity-table td {
+        border: 1px solid #94a3b8 !important;
+        padding: 1.5mm 2mm !important;
+        color: #000000 !important;
+    }
+
+    .erp-table th,
+    .erp-form-table th,
+    .sensitivity-table th {
+        background: #e2e8f0 !important;
+        font-weight: 700 !important;
+    }
+
+    /* 인쇄 시 원가 바 및 인디케이터 유지 */
+    .cost-bar-container {
+        border: 1px solid #94a3b8 !important;
+        padding: 2mm !important;
+        margin-bottom: 3mm !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .cost-stacked-bar {
+        height: 14px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .landed-summary-strip {
+        background: #f8fafc !important;
+        color: #000000 !important;
+        border: 1.5px solid #0f172a !important;
+        padding: 2.5mm 3.5mm !important;
+        margin-bottom: 3mm !important;
+    }
+
+    .landed-value-num {
+        color: #0f172a !important;
+        font-size: 16pt !important;
+    }
+
+    .landed-label,
+    .landed-title,
+    .landed-unit,
+    .landed-sub {
+        color: #334155 !important;
+    }
+
+    .margin-meter-track {
+        display: none !important;
+    }
+
+    .heat-safe { background-color: #f0fdf4 !important; }
+    .heat-fair { background-color: #f8fafc !important; }
+    .heat-warn { background-color: #fffbeb !important; }
+    .heat-crit { background-color: #fef2f2 !important; }
+
+    .erp-input,
+    .erp-select {
+        border: none !important;
+        padding: 0 !important;
+        height: auto !important;
+        background: transparent !important;
+    }
+
+    .erp-textarea {
+        border: 1px solid #cbd5e1 !important;
+        height: auto !important;
+        min-height: 15mm !important;
+        font-size: 8.5pt !important;
+    }
+}
