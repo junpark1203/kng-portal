@@ -314,6 +314,16 @@ function attachEventListeners() {
     const btnRefreshList = document.getElementById('btnRefreshSavedList');
     if (btnRefreshList) btnRefreshList.addEventListener('click', loadSavedSimulations);
 
+    // 하단 대형 액션 바 버튼 연결
+    const btnBottomSave = document.getElementById('btnBottomSave');
+    if (btnBottomSave) btnBottomSave.addEventListener('click', handleSaveSimulation);
+
+    const btnBottomNew = document.getElementById('btnBottomNew');
+    if (btnBottomNew) btnBottomNew.addEventListener('click', handleNewSimulation);
+
+    const btnBottomList = document.getElementById('btnBottomList');
+    if (btnBottomList) btnBottomList.addEventListener('click', openSavedListModal);
+
     // 8) 검토의견 수치 자동반영 버튼
     const btnAutoRemarks = document.getElementById('btnAutoGenerateRemarks');
     if (btnAutoRemarks) {
@@ -337,6 +347,20 @@ function attachEventListeners() {
     document.getElementById('btnCopyReport').addEventListener('click', copyReportToClipboard);
     document.getElementById('btnExportCsv').addEventListener('click', exportToCsv);
     document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+    // 10) 전역 키보드 단축키 지원 (F8 / Ctrl+S: 저장, F4: 목록)
+    window.addEventListener('keydown', (e) => {
+        // F8 또는 Ctrl+S: 저장
+        if (e.key === 'F8' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's')) {
+            e.preventDefault();
+            handleSaveSimulation();
+        }
+        // F4: 목록 열기
+        if (e.key === 'F4') {
+            e.preventDefault();
+            openSavedListModal();
+        }
+    });
 }
 
 // ─────────────────────────────────────────────────────────────

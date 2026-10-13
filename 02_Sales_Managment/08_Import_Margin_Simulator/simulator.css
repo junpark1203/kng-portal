@@ -690,8 +690,41 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   11. 포워더 견적 선택 모달 (.erp-modal)
+   10-1. ECOUNT ERP 하단 메인 액션 바 (.erp-bottom-action-bar)
    ───────────────────────────────────────────────────────────── */
+.erp-bottom-action-bar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 6px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    margin-top: 4px;
+}
+
+.btn-save-large {
+    height: 32px !important;
+    padding: 0 16px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    background: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+}
+
+.btn-save-large:hover {
+    background: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+}
+
+.btn-save-large i {
+    font-size: 15px !important;
+    color: #ffffff !important;
+}
+
 .erp-modal-overlay {
     position: fixed;
     top: 0;

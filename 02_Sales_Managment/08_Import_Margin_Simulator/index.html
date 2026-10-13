@@ -9,7 +9,7 @@
     <!-- Boxicons CDN (이모지 대체) -->
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Simulator ECOUNT ERP Stylesheet -->
-    <link rel="stylesheet" href="./simulator.css">
+    <link rel="stylesheet" href="./simulator.css?v=20261013_1755">
 </head>
 <body>
 
@@ -57,8 +57,8 @@
             <button type="button" class="btn-erp" id="btnNewSimulation" title="빈 양식으로 새로 작성">
                 <i class="bx bx-plus"></i> 새로 작성
             </button>
-            <button type="button" class="btn-erp btn-primary" id="btnSaveSimulation" title="서버 DB에 시뮬레이션 저장">
-                <i class="bx bx-save"></i> 저장하기
+            <button type="button" class="btn-erp btn-primary" id="btnSaveSimulation" title="서버 DB에 시뮬레이션 저장 (단축키: F8 또는 Ctrl+S)" style="background: #1d4ed8; font-weight: 700;">
+                <i class="bx bx-save"></i> 저장하기 (F8)
             </button>
             <button type="button" class="btn-erp btn-secondary" id="btnOpenSavedList" title="저장된 시뮬레이션 목록 열기">
                 <i class="bx bx-folder-open"></i> 시뮬레이션 목록
@@ -285,6 +285,19 @@
                 <div class="erp-panel-body">
                     <textarea id="textRemarks" class="erp-textarea" placeholder="수입 소싱 검토 의견 및 의사결정 참고사항을 기재하세요. (예: 한·중 FTA C/O 수취를 통한 13% 무관세 확보 완료. 채널B(9,000원) 판매 시 22.3%의 안정적 영업이익률 확보 가능. 사내 안전용품 3,000벌 전량 대체 시 연간 432만원의 확정 원가 절감 달성.)"></textarea>
                 </div>
+            </div>
+
+            <!-- 좌측 하단 메인 액션 바 (저장 / 새로작성 / 목록) -->
+            <div class="erp-bottom-action-bar">
+                <button type="button" class="btn-erp btn-primary btn-save-large" id="btnBottomSave" title="서버 DB에 시뮬레이션 저장 (단축키: F8 또는 Ctrl+S)">
+                    <i class="bx bx-save"></i> 시뮬레이션 저장하기 (F8)
+                </button>
+                <button type="button" class="btn-erp btn-secondary" id="btnBottomNew" title="빈 양식으로 새로 작성">
+                    <i class="bx bx-plus"></i> 새로 작성
+                </button>
+                <button type="button" class="btn-erp" id="btnBottomList" title="저장된 시뮬레이션 목록 열기">
+                    <i class="bx bx-folder-open"></i> 저장 목록
+                </button>
             </div>
 
         </section>
@@ -520,6 +533,6 @@
     <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 100000; display: flex; flex-direction: column; gap: 6px;"></div>
 
     <!-- 스크립트 모듈 로드 -->
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./app.js?v=20261013_1755"></script>
 </body>
 </html>
