@@ -444,7 +444,7 @@ async function loadDashboardData() {
         if (!res.ok) throw new Error('데이터 불러오기 실패');
         const data = await res.json();
 
-        renderApprovals(data.pendingExpenses, data.pendingExhibitions);
+        renderApprovals(data.pendingExpenses, data.pendingExhibitions, data.pendingLeaves);
         renderInvoices(data.pendingInvoices);
         renderLowStock(data.lowStockHqProducts);
         renderRecentSellerK(data.recentSellerKProducts);
@@ -539,15 +539,41 @@ async function loadCalendarEvents() {
 /* ════════════════════════════════
    결재 대기함
    ════════════════════════════════ */
-function renderApprovals(expenses, exhibitions) {
+function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
     const container = document.getElementById('approvalWidget');
     let html = '';
 
-    if (expenses.length === 0 && exhibitions.length === 0) {
+    if (expenses.length === 0 && exhibitions.length === 0 && leaves.length === 0) {
         container.innerHTML = '<div class="empty-state"><i class="bx bx-check-circle"></i> 대기 중인 결재 문서가 없습니다.</div>';
         return;
     }
 
+    // 1. 휴가원 결재 대기 목록
+    leaves.forEach(doc => {
+        const period = doc.leaveStart === doc.leaveEnd ? (doc.leaveStart || '') : `${doc.leaveStart} ~ ${doc.leaveEnd}`;
+        html += `
+            <div class="list-item">
+                <div class="item-header">
+                    <span class="item-title"><i class='bx bx-calendar-event' style='color:#059669;margin-right:4px;'></i>[휴가원] ${doc.name || '신청자'} (${doc.leaveType || '연차'} ${doc.daysCount || 1}일)</span>
+                    <select class="status-select" onchange="updateStatus('leave-request', '${doc.id}', this.value)">
+                        <option value="임시작성" ${doc.status === '임시작성' ? 'selected' : ''}>임시작성</option>
+                        <option value="결재대기" ${doc.status === '결재대기' ? 'selected' : ''}>결재대기</option>
+                        <option value="결재요청" ${doc.status === '결재요청' ? 'selected' : ''}>결재요청</option>
+                        <option value="결재진행중" ${doc.status === '결재진행중' ? 'selected' : ''}>결재진행중</option>
+                        <option value="결재보류">결재보류</option>
+                        <option value="결재완료">결재완료</option>
+                    </select>
+                </div>
+                <div class="item-meta">
+                    <span>기간: ${period}</span>
+                    <span>사유: ${doc.reason || '-'}</span>
+                    <span>${(doc.createdAt || '').split('T')[0]}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // 2. 지출결의서 목록
     expenses.forEach(doc => {
         const getCurrencySymbol = (c) => {
             if (c === 'USD') return '$';
@@ -582,6 +608,7 @@ function renderApprovals(expenses, exhibitions) {
         `;
     });
 
+    // 3. 전시회 참관 보고서 목록
     exhibitions.forEach(doc => {
         html += `
             <div class="list-item">

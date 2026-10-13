@@ -3,247 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>휴가원</title>
+    <title>휴가원 관리 - KNG ERP</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="leave.css">
+    <link rel="stylesheet" href="leave.css?v=2">
 </head>
 <body>
     <div class="app-container">
-        <main class="main-content">
-            <!-- ═══ 목록 뷰 ═══ -->
-            <div id="listView" class="view-section active">
-                <div class="section-block">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <h2><i class='bx bx-calendar-event'></i> 휴가원 목록</h2>
-                            <div class="header-actions">
-                                <button id="btnNewLeave" class="btn-primary"><i class='bx bx-plus'></i> 새 휴가원</button>
-                                <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
-                            </div>
+        <!-- ═══ 1. Top ERP Header ═══ -->
+        <header class="app-header">
+            <div class="header-title">
+                <h1><i class='bx bx-calendar-event'></i> 근태 관리 <span>휴가원 (Leave Requests)</span></h1>
+                <span class="header-subtitle">사내 공식 서식 1:1 정품 PDF & 전사 결재 대기함 연동</span>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="btnOpenAllowanceModal" class="btn btn-outline">
+                    <i class='bx bx-cog'></i> 직원별 연차 설정
+                </button>
+                <button type="button" id="btnNewLeave" class="btn btn-primary">
+                    <i class='bx bx-plus'></i> 새 휴가원 신청
+                </button>
+                <button type="button" id="btnDeleteSelected" class="btn btn-outline btn-danger">
+                    <i class='bx bx-trash'></i> 선택 삭제
+                </button>
+            </div>
+        </header>
+
+        <!-- ═══ 2. Top KPI Summary Cards ═══ -->
+        <section class="summary-container">
+            <div class="summary-cards">
+                <!-- 카드 1: 내 연차 현황 -->
+                <div class="summary-card">
+                    <div class="summary-icon blue"><i class='bx bx-user-check'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label">
+                            <span id="kpiUserLabel">내 잔여 연차</span>
+                            <span id="kpiYearLabel">2026</span>
                         </div>
-                        <div class="print-warning">
-                            <i class='bx bxs-file-pdf'></i>
-                            <span>사내 공식 양식 <b>1:1 원본 정품 PDF</b>가 자동 생성되어 브라우저 인쇄 및 PDF 다운로드를 지원합니다.</span>
+                        <div class="summary-val" id="kpiRemainDays">0.0 <small>/ 0.0일</small></div>
+                        <div class="summary-progress">
+                            <div class="summary-progress-bar" id="kpiProgressBar" style="width: 0%;"></div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th>작성일자</th>
-                                        <th>소속</th>
-                                        <th>직급</th>
-                                        <th>성명</th>
-                                        <th>기간</th>
-                                        <th>구분</th>
-                                        <th class="col-action">관리</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leaveListBody">
-                                    <tr class="loading-row"><td colspan="8"><div class="skeleton"></div></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    </div>
+                </div>
+
+                <!-- 카드 2: 결재 대기 건수 -->
+                <div class="summary-card">
+                    <div class="summary-icon amber"><i class='bx bx-time-five'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>결재 대기함</span><span>진행중</span></div>
+                        <div class="summary-val" id="kpiPendingCount">0 <small>건</small></div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">대시보드 실시간 연동</div>
+                    </div>
+                </div>
+
+                <!-- 카드 3: 올해 승인 연차 -->
+                <div class="summary-card">
+                    <div class="summary-icon green"><i class='bx bx-check-circle'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>올해 승인 연차</span><span>누적</span></div>
+                        <div class="summary-val" id="kpiApprovedDays">0.0 <small>일</small></div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">구글 캘린더 자동 등록</div>
+                    </div>
+                </div>
+
+                <!-- 카드 4: 금일 전사 휴가자 -->
+                <div class="summary-card">
+                    <div class="summary-icon purple"><i class='bx bx-sun'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>오늘의 부재 현황</span><span>전사</span></div>
+                        <div class="summary-val" id="kpiTodayCount">0 <small>명</small></div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="kpiTodayNames">휴가자 없음</div>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- ═══ 편집/작성 모달 ═══ -->
-            <div id="leaveEditModal" class="modal">
-                <div class="modal-content" style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding: 20px;">
-                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
-                        <h2 id="editViewTitle" style="margin: 0;"><i class='bx bx-edit'></i> 휴가원 작성</h2>
-                        <div class="header-actions" style="display: flex; gap: 8px;">
-                            <button type="button" id="btnSaveLeave" class="btn-primary"><i class='bx bx-check'></i> 저장</button>
-                            <button type="button" id="btnPrintLeave" class="btn-outline btn-outline-success"><i class='bx bx-printer'></i> 인쇄</button>
-                            <button type="button" id="btnCloseEdit" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
-                        </div>
-                    </div>
-                    
-                    <div class="modal-body" style="overflow-y: auto; flex: 1; padding-right: 10px; display: flex; gap: 20px;">
-                        <!-- 좌측: 입력 폼 -->
-                        <div style="flex: 1; border-right: 1px solid #e2e8f0; padding-right: 20px;">
-                            <form id="leaveForm" onsubmit="return false;">
-                                <div class="leave-form-grid">
-                                    <div class="fg">
-                                        <label for="fDepartment">소속</label>
-                                        <input type="text" id="fDepartment" value="주식회사 케앤지">
-                                    </div>
-                                    <div class="fg">
-                                        <label for="fRank">직급</label>
-                                        <input type="text" id="fRank" placeholder="예: 차장">
-                                    </div>
-                                    <div class="fg full-width">
-                                        <label for="fName">성명</label>
-                                        <input type="text" id="fName" placeholder="예: 박준영">
-                                    </div>
-                                    <div class="fg">
-                                        <label for="fLeaveStart">휴가 시작일</label>
-                                        <input type="date" id="fLeaveStart">
-                                    </div>
-                                    <div class="fg">
-                                        <label for="fLeaveEnd">휴가 종료일</label>
-                                        <input type="date" id="fLeaveEnd">
-                                    </div>
-                                    <div class="fg">
-                                        <label for="fLeaveType">구분 (연차/반차)</label>
-                                        <input type="text" id="fLeaveType" placeholder="예: 반차-오전">
-                                    </div>
-                                    <div class="fg">
-                                        <label for="fSubmitDate">작성일자</label>
-                                        <input type="date" id="fSubmitDate">
-                                    </div>
-                                    <div class="fg full-width">
-                                        <label for="fReason">사유</label>
-                                        <input type="text" id="fReason" placeholder="예: 개인일정 (잔여일수 7.5/13일)">
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                        
-                        <!-- 우측: 인쇄 미리보기 레이아웃 (축소해서 보여줌) -->
-                        <div style="flex: 1; background: #e2e8f0; padding: 20px; display: flex; justify-content: center; overflow: hidden; border-radius: 8px;">
-                            <div style="transform: scale(0.45); transform-origin: top center; pointer-events: none;">
-                                <!-- 인쇄 양식 영역 (여기에 실시간 렌더링) -->
-                                <div id="printPreviewClone"></div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- ═══ 안내 배너 ═══ -->
+        <div class="print-warning">
+            <i class='bx bxs-file-pdf' style="font-size: 16px;"></i>
+            <span>사내 공식 양식 <b>1:1 원본 정품 PDF</b>가 자동 생성되며, 결재완료 시 사내 <b>공유 구글 캘린더</b>에 일정이 자동 등록됩니다.</span>
+        </div>
+
+        <!-- ═══ 3. Toolbar & Filters (ECOUNT Style) ═══ -->
+        <section class="toolbar-container">
+            <div class="toolbar-card">
+                <div class="filter-group">
+                    <span class="filter-label"><i class='bx bx-filter-alt'></i> 필터:</span>
+                    <select id="filterStatus" class="erp-select">
+                        <option value="">모든 결재상태</option>
+                        <option value="결재요청">결재요청</option>
+                        <option value="결재진행중">결재진행중</option>
+                        <option value="결재완료">결재완료</option>
+                        <option value="결재보류">결재보류</option>
+                        <option value="임시작성">임시작성</option>
+                    </select>
+
+                    <select id="filterType" class="erp-select">
+                        <option value="">모든 휴가구분</option>
+                        <option value="연차">연차</option>
+                        <option value="반차">반차(오전/오후)</option>
+                        <option value="공가">공가</option>
+                        <option value="병가">병가</option>
+                    </select>
+
+                    <input type="text" id="filterKeyword" class="erp-input" placeholder="사원명 / 소속 / 사유 검색..." style="width: 200px;">
+                    <button type="button" id="btnResetFilter" class="btn btn-outline" title="필터 초기화">
+                        <i class='bx bx-refresh'></i>
+                    </button>
                 </div>
+
+                <div class="filter-group">
+                    <button type="button" id="btnExportExcel" class="btn btn-outline">
+                        <i class='bx bx-download'></i> 엑셀 내보내기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 4. Compact ERP Data Grid ═══ -->
+        <main class="table-container">
+            <div class="erp-table-card">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAll"></th>
+                            <th style="width: 100px;">결재상태</th>
+                            <th style="width: 80px;">구분</th>
+                            <th style="width: 80px;">신청자</th>
+                            <th style="width: 130px;">소속 / 직급</th>
+                            <th style="width: 190px;">휴가 기간</th>
+                            <th style="width: 70px; text-align: center;">사용일수</th>
+                            <th style="width: 95px;">작성일자</th>
+                            <th>휴가 사유</th>
+                            <th style="width: 120px; text-align: center;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaveListBody">
+                        <tr class="loading-row"><td colspan="10" style="text-align: center; padding: 20px;"><div class="skeleton"></div> 로딩 중...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </main>
     </div>
 
-    <!-- ═══ 인쇄용 화면 (화면엔 안 보이고 인쇄 시에만 나타남) ═══ -->
-    <div id="printArea" class="print-preview-container">
-        <div class="print-page">
-            <div class="doc-border">
-                <!-- 빈 줄 (원본 첫줄 빈줄) -->
-                <div style="height: 4mm;"></div>
-
-                <!-- 제목 -->
-                <div class="doc-title">휴&emsp;&emsp;가&emsp;&emsp;원</div>
-
-                <!-- 인적사항 (원본: 4열 테이블 -> 2열로 단순화) -->
-                <table class="doc-info-table">
-                    <tr style="height:18pt">
-                        <td class="col-label">소&emsp;&emsp;&emsp;&emsp;속 :</td>
-                        <td class="col-value" id="pDepartment"></td>
-                    </tr>
-                    <tr class="row-rank" style="height:24pt">
-                        <td class="col-label">직&emsp;&emsp;&emsp;&emsp;급 :</td>
-                        <td class="col-value" id="pRank"></td>
-                    </tr>
-                    <tr class="row-name" style="height:18pt">
-                        <td class="col-label">성&emsp;&emsp;&emsp;&emsp;명 :</td>
-                        <td class="col-value" id="pName"></td>
-                    </tr>
-                </table>
-
-                <!-- 빈 줄 2개 -->
-                <div style="height: 8mm;"></div>
-
-                <!-- 본문 -->
-                <div class="doc-statement">
-                    상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기 바랍니다.
-                </div>
-
-                <!-- 빈 줄 -->
-                <div style="height: 4mm;"></div>
-
-                <!-- 기간 / 사유 -->
-                <div class="doc-detail-block">
-                    <div class="doc-detail-row">
-                        <span class="doc-detail-label">기&emsp;&emsp;간 :&nbsp;</span>
-                        <span id="pPeriod"></span>
-                    </div>
-                    <div class="doc-detail-row">
-                        <span class="doc-detail-label">사&emsp;&emsp;유 :&nbsp;</span>
-                        <span id="pReason"></span>
+    <!-- ═══ 5. 휴가원 작성/수정 모달 ═══ -->
+    <div id="leaveEditModal" class="modal">
+        <div class="modal-content" style="width: 620px;">
+            <div class="modal-header">
+                <h2 id="editViewTitle"><i class='bx bx-edit'></i> 휴가원 작성</h2>
+                <button type="button" id="btnCloseEdit" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- 실시간 내 연차 현황 알림 박스 -->
+                <div class="notice-box" id="formAllowanceNotice">
+                    <i class='bx bx-info-circle'></i>
+                    <div>
+                        <span id="formNoticeUser">박준영 님</span>의 2026년 기준 연차: 
+                        총 <b id="formNoticeTotal">13.0</b>일 중 <b id="formNoticeUsed">6.5</b>일 사용 
+                        (신청 가능 잔여: <b id="formNoticeRemain" style="color:#2563eb;">6.5일</b>)
                     </div>
                 </div>
 
-                <!-- 빈 줄 -->
-                <div style="height: 6mm;"></div>
+                <form id="leaveForm" onsubmit="return false;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="fDepartment">소속 부서</label>
+                            <input type="text" id="fDepartment" class="erp-input" value="주식회사 케앤지">
+                        </div>
+                        <div class="form-group">
+                            <label for="fRank">직급</label>
+                            <input type="text" id="fRank" class="erp-input" placeholder="예: 차장">
+                        </div>
 
-                <!-- 작성일자 (우측) -->
-                <div class="doc-date" id="pDate"></div>
+                        <div class="form-group">
+                            <label for="fName">성명 *</label>
+                            <input type="text" id="fName" class="erp-input" placeholder="예: 박준영" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fLeaveType">휴가 구분 *</label>
+                            <select id="fLeaveType" class="erp-select">
+                                <option value="연차">연차 (종일)</option>
+                                <option value="반차-오전">반차 (오전 0.5일)</option>
+                                <option value="반차-오후">반차 (오후 0.5일)</option>
+                                <option value="공가">공가 (유급)</option>
+                                <option value="병가">병가</option>
+                                <option value="경조휴가">경조휴가</option>
+                            </select>
+                        </div>
 
-                <!-- 빈 줄 -->
-                <div style="height: 4mm;"></div>
+                        <div class="form-group">
+                            <label for="fLeaveStart">휴가 시작일 *</label>
+                            <input type="date" id="fLeaveStart" class="erp-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fLeaveEnd">휴가 종료일 *</label>
+                            <input type="date" id="fLeaveEnd" class="erp-input" required>
+                        </div>
 
-                <!-- 서명란 (우측) -->
-                <div class="doc-sign-block">
-                    <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>성</span><span>명</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value">
-                            <span id="pSignName"></span>
-                            <span class="stamp">(印)</span>
+                        <!-- 실시간 평일 계산 배지 박스 -->
+                        <div class="form-group full">
+                            <div class="calc-badge-box">
+                                <span class="calc-text">
+                                    <i class='bx bx-calculator'></i> 계산된 실제 소진 일수: 
+                                    <span class="calc-highlight" id="calcDaysDisplay">1.0 일</span>
+                                    <small style="color:var(--text-muted); margin-left:4px;">(주말 제외)</small>
+                                </span>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:11px; color:var(--text-muted);">일수 직접조정:</span>
+                                    <input type="number" id="fDaysCount" class="erp-input" step="0.5" min="0.5" value="1.0" style="width: 60px; height: 24px; text-align: center;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fSubmitDate">작성일자</label>
+                            <input type="date" id="fSubmitDate" class="erp-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="fStatus">결재 상태</label>
+                            <select id="fStatus" class="erp-select">
+                                <option value="결재요청">결재요청 (대시보드 상신)</option>
+                                <option value="임시작성">임시작성 (내부 보관)</option>
+                                <option value="결재완료">결재완료 (구글 캘린더 자동 등록)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="fReason">휴가 사유</label>
+                            <input type="text" id="fReason" class="erp-input" placeholder="예: 개인 용무 및 재충전">
                         </div>
                     </div>
-                    <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>부</span><span>서</span><span>장</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value">
-                            <span></span>
-                            <span class="stamp">(印)</span>
-                        </div>
-                    </div>
-                    <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>담</span><span>당</span><span>임</span><span>원</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value">
-                            <span></span>
-                            <span class="stamp">(印)</span>
-                        </div>
-                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="btnPrintLeave" class="btn btn-outline btn-success" title="원본 1:1 양식 PDF 인쇄 및 미리보기">
+                    <i class='bx bx-printer'></i> 정품 PDF 인쇄/다운로드
+                </button>
+                <button type="button" id="btnSaveLeave" class="btn btn-primary">
+                    <i class='bx bx-check'></i> 저장 및 상신
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ 6. 직원별 연차 기준 설정 팝업 모달 ═══ -->
+    <div id="allowanceModal" class="modal">
+        <div class="modal-content" style="width: 650px;">
+            <div class="modal-header">
+                <h2><i class='bx bx-cog'></i> 직원별 2026년 기준 연차 설정</h2>
+                <button type="button" id="btnCloseAllowance" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px;">
+                    직원의 로그인 계정(이메일)과 부여된 총 연차 일수를 관리합니다. 여기서 설정된 일수를 기준으로 잔여 연차가 자동 차감됩니다.
                 </div>
-
-                <!-- 빈 줄 -->
-                <div style="height: 4mm;"></div>
-
-                <!-- 결재란 -->
-                <div class="doc-approval-wrap">
-                    <div class="doc-approval-header"><span>결</span><span>재</span></div>
-                    <table class="doc-approval-table">
+                <div class="erp-table-card">
+                    <table class="erp-table">
                         <thead>
                             <tr>
-                                <th>담당</th><th>대리</th><th>과장</th><th>차장</th><th>부장</th>
-                                <th>이사</th><th>상무</th><th>전무</th><th>부사장</th><th>사장</th>
+                                <th>계정 이메일</th>
+                                <th style="width: 100px;">사원명</th>
+                                <th style="width: 120px;">소속 부서</th>
+                                <th style="width: 90px; text-align: center;">총 연차(일)</th>
+                                <th style="width: 65px; text-align: center;">관리</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td></td><td></td><td></td><td></td><td></td>
-                                <td></td><td></td><td></td><td></td><td></td>
-                            </tr>
+                        <tbody id="allowanceTableBody">
+                            <!-- JS에서 렌더링 -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- 수신자 -->
-                <div class="doc-recipient">주식회사 케앤지 대표이사 귀하</div>
-
-                <!-- 비고 -->
-                <div class="doc-remarks">
-                    <div class="doc-remarks-grid">
-                        <div style="margin-right: 6px; white-space: nowrap;">비고</div>
-                        <div style="display: flex; flex-direction: column;">
-                            <div>1. 취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은</div>
-                            <div style="padding-left: 14px;">무급을 원칙으로 한다.</div>
-                            <div>2. 모든 서류는 원본으로 제출한다.</div>
-                        </div>
+                <div style="margin-top: 14px; background: var(--bg-header); padding: 12px; border-radius: 6px; border: 1px dashed var(--border);">
+                    <div style="font-weight: 600; font-size: 11.5px; margin-bottom: 8px;">+ 신규 직원 연차 등록</div>
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto; gap: 8px; align-items: center;">
+                        <input type="email" id="newAllowEmail" class="erp-input" placeholder="이메일 (계정 ID)">
+                        <input type="text" id="newAllowName" class="erp-input" placeholder="사원명">
+                        <input type="text" id="newAllowDept" class="erp-input" placeholder="소속 부서" value="주식회사 케앤지">
+                        <input type="number" id="newAllowDays" class="erp-input" step="0.5" value="15.0" style="text-align: center;">
+                        <button type="button" id="btnAddAllowance" class="btn btn-primary" style="height: 28px;">추가</button>
                     </div>
                 </div>
             </div>
-            <!-- 문서번호 -->
-            <div class="doc-id">KG-A4-A15-0</div>
+            <div class="modal-footer">
+                <button type="button" id="btnDoneAllowance" class="btn btn-outline">닫기</button>
+            </div>
         </div>
     </div>
 
     <!-- ═══ Scripts ═══ -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../../app.js"></script>
-    <script type="module" src="leave.js?v=6"></script>
+    <script type="module" src="leave.js?v=7"></script>
 </body>
 </html>

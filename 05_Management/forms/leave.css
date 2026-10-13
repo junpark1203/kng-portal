@@ -1,341 +1,495 @@
-/* ====================================================
-   휴가원 공통 UI 스타일
-   ==================================================== */
+/* ══════════════════════════════════════════════════════════════
+   K&G PORTAL - 휴가원 관리 ECOUNT ERP DESIGN SYSTEM
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --border: #cbd5e1;
+    --border-light: #e2e8f0;
+    --bg-page: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-header: #f8fafc;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --erp-row-height: 28px;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* ── 1. Top ERP Header ── */
+.app-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-title h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-title h1 i {
+    color: var(--primary);
+    font-size: 1.4rem;
+}
+
+.header-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── 2. Top KPI Summary Cards ── */
+.summary-container {
+    padding: 14px 20px 0 20px;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.summary-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+}
+
+.summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.summary-icon.blue { background: #eff6ff; color: #2563eb; }
+.summary-icon.green { background: #ecfdf5; color: #059669; }
+.summary-icon.amber { background: #fffbeb; color: #d97706; }
+.summary-icon.purple { background: #f5f3ff; color: #7c3aed; }
+
+.summary-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.summary-val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-top: 2px;
+    line-height: 1.2;
+}
+
+.summary-val small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 3px;
+}
+
+.summary-progress {
+    width: 100%;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.summary-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+/* ── 3. Toolbar & Filters (ECOUNT Style) ── */
+.toolbar-container {
+    padding: 12px 20px;
+}
+
+.toolbar-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.erp-input, .erp-select {
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-main);
+    background: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.erp-input:focus, .erp-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* ── Buttons ── */
+.btn {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #047857; }
+
+.btn-outline {
+    background: #ffffff;
+    border-color: var(--border);
+    color: var(--text-main);
+}
+.btn-outline:hover {
+    background: var(--bg-header);
+    border-color: #94a3b8;
+}
+
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+
+.btn-icon {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    background: #ffffff;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+.btn-icon:hover {
+    background: var(--bg-header);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* ── 4. Compact ERP Table ── */
+.table-container {
+    padding: 0 20px 20px 20px;
+}
+
+.erp-table-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.erp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    text-align: left;
+}
+
+.erp-table thead {
+    background: var(--bg-header);
+    border-bottom: 2px solid var(--border);
+}
+
+.erp-table th {
+    padding: 7px 10px;
+    font-weight: 600;
+    color: #334155;
+    font-size: 11.5px;
+    border-right: 1px solid var(--border-light);
+    white-space: nowrap;
+    user-select: none;
+}
+.erp-table th:last-child { border-right: none; }
+
+.erp-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    height: var(--erp-row-height);
+    transition: background 0.1s;
+}
+.erp-table tbody tr:hover { background: #f8fafc; }
+.erp-table tbody tr.selected { background: #f0fdf4; }
+
+.erp-table td {
+    padding: 5px 10px;
+    border-right: 1px solid var(--border-light);
+    color: var(--text-main);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 250px;
+}
+.erp-table td:last-child { border-right: none; }
+
+/* Status Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.badge-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.badge-approved { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.badge-hold { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+.badge-draft { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+
+.badge-type-annual { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+.badge-type-half { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+/* ── 5. Modal Windows ── */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease-in-out;
+}
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: 92vh;
+}
+
+.modal-header {
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    background: var(--bg-header);
+    border-top: 1px solid var(--border);
+    padding: 10px 18px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Form Styles */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.form-group.full {
+    grid-column: 1 / -1;
+}
+.form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.notice-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 11.5px;
+    color: #1e40af;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.notice-box i { font-size: 18px; }
+
+/* Real-time Days Calculator Box */
+.calc-badge-box {
+    background: #f8fafc;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+.calc-badge-box .calc-text {
+    font-weight: 600;
+    color: var(--text-main);
+}
+.calc-badge-box .calc-highlight {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Notice Banner */
 .print-warning {
     display: flex;
     align-items: center;
     gap: 8px;
-    background-color: #fff3cd;
-    color: #856404;
-    padding: 10px 15px;
-    margin: 0 20px 15px 20px;
-    border-radius: 4px;
-    border-left: 4px solid #ffeeba;
-    font-size: 14px;
+    background-color: #ecfdf5;
+    color: #065f46;
+    padding: 8px 14px;
+    margin: 10px 20px 0 20px;
+    border-radius: 6px;
+    border: 1px solid #a7f3d0;
+    font-size: 12px;
 }
 
-/* 휴가원 작성 폼 (화면용) */
-.leave-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    padding: 15px;
-}
-
-.leave-form-grid .fg.full-width {
-    grid-column: 1 / -1;
-}
-
-/* ====================================================
-   휴가원 인쇄용 (A4) 스타일 — 원본 워드 파일 기준 정밀 복원
-   폰트: 굴림체 (GulimChe, monospace)
-   기본 본문: 12pt Bold
-   ==================================================== */
-.print-only {
-    display: none;
-}
-
-/* 인쇄 뷰 컨테이너 (화면에서 미리보기) */
-.print-preview-container {
-    background: #525659;
-    padding: 20px;
-    display: none;
-    justify-content: center;
-    overflow-y: auto;
-    height: 100%;
-}
-
-.print-page {
-    background: white;
-    width: 210mm;
-    height: 297mm;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    padding: 20mm 18mm 15mm 18mm;
-    box-sizing: border-box;
-    font-family: 'GulimChe', '굴림체', monospace;
-    color: #000;
-    position: relative;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-}
-
-/* 인쇄용 양식 내부 레이아웃 — 원본은 테두리 없음 */
-.doc-border {
-    width: 100%;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    font-family: 'GulimChe', '굴림체', monospace;
-    overflow: hidden;
-    flex: 1;
-}
-
-/* ── 제목 ── */
-.doc-title {
+/* Empty State */
+.empty-state {
+    padding: 40px;
     text-align: center;
-    font-size: 24pt;
-    font-weight: bold;
-    text-decoration: underline;
-    text-underline-offset: 4px;
-    margin-top: 10mm;
-    margin-bottom: 12mm;
-    /* 원본은 tab으로 분리, HTML에서 &emsp; 사용 */
+    color: var(--text-muted);
+    font-size: 13px;
 }
-
-/* ── 상단 인적사항 (테이블 기반) ── */
-.doc-info-table {
-    border-collapse: collapse;
-    margin-left: 16pt;
-    font-size: 12pt;
-    font-weight: bold;
-    margin-bottom: 6mm;
-    width: 100%;
-}
-.doc-info-table td {
-    vertical-align: top;
-    padding: 0;
-    line-height: 14pt;
-}
-.doc-info-table tr {
-    height: 18pt;
-}
-.doc-info-table tr.row-rank {
-    height: 24pt;
-}
-.doc-info-table tr.row-rank td {
-    padding-top: 4pt;
-}
-.doc-info-table tr.row-name td {
-    padding-top: 3pt;
-    line-height: 13pt;
-}
-.doc-info-table td.col-label {
-    width: 80pt;
-    vertical-align: top;
-    white-space: nowrap;
-}
-.doc-info-table td.col-value {
-    padding-left: 10pt;
-    vertical-align: top;
-}
-
-/* ── 본문 문구 ── */
-.doc-statement {
-    text-align: left;
-    font-size: 12pt;
-    font-weight: bold;
-    line-height: 160%;
-    margin-bottom: 2mm;
-    word-break: keep-all;
-    padding-left: 24pt;
-    text-indent: 48pt;
-}
-
-/* ── 기간/사유 블록 ── */
-.doc-detail-block {
-    display: flex;
-    flex-direction: column;
-    font-size: 12pt;
-    font-weight: bold;
-    margin-bottom: 8mm;
-    padding-left: 18pt;
-}
-.doc-detail-row {
-    display: flex;
-    align-items: baseline;
-}
-.doc-detail-row + .doc-detail-row {
-    padding-top: 9pt;
-}
-.doc-detail-label {
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-/* ── 작성일자 ── */
-.doc-date {
-    text-align: right;
-    font-size: 12pt;
-    font-weight: bold;
-    margin-bottom: 5mm;
-}
-
-/* ── 서명란 (우측) ── */
-.doc-sign-block {
-    display: flex;
-    flex-direction: column;
-    font-size: 12pt;
-    font-weight: bold;
-    align-items: flex-end;
-    margin-bottom: 5mm;
-}
-.doc-sign-row {
-    display: flex;
-    justify-content: flex-start;
-    width: 280px;
-    line-height: 2.2;
-}
-.doc-sign-label {
-    display: flex;
-    justify-content: space-between;
-    width: 70px;
-    flex-shrink: 0;
-    white-space: nowrap;
-}
-.doc-sign-value {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-    padding-left: 10px;
-}
-.doc-sign-value .stamp {
-    margin-left: auto;
-}
-
-/* ── 결재선 (하단) ── */
-.doc-approval-wrap {
-    display: flex;
+.empty-state i {
+    font-size: 32px;
+    display: block;
     margin-bottom: 8px;
-    width: 100%;
-    margin-left: 28pt;
-}
-.doc-approval-header {
-    width: 22pt;
-    border: 2pt solid #000;
-    border-right: 1pt solid #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    text-align: center;
-    font-size: 12pt;
-    font-weight: bold;
-    line-height: 118%;
-    padding: 2pt 5pt 2pt 5pt;
-}
-.doc-approval-table {
-    border-collapse: collapse;
-    text-align: center;
-    font-size: 12pt;
-    font-weight: bold;
-    table-layout: fixed;
-}
-.doc-approval-table th {
-    width: 44pt;
-    height: 18pt;
-    border: 1pt solid #000;
-    font-weight: bold;
-    padding-top: 1pt;
-    line-height: 15pt;
-}
-.doc-approval-table td {
-    width: 44pt;
-    height: 43pt;
-    border: 1pt solid #000;
-}
-/* 외곽 테두리 2pt */
-.doc-approval-table th:first-child { border-left: none; }
-.doc-approval-table td:first-child { border-left: none; }
-.doc-approval-table th:last-child { border-right: 2pt solid #000; }
-.doc-approval-table td:last-child { border-right: 2pt solid #000; }
-.doc-approval-table thead tr th { border-top: 2pt solid #000; }
-.doc-approval-table tbody tr:last-child td { border-bottom: 2pt solid #000; }
-
-/* ── 수신자 ── */
-.doc-recipient {
-    font-size: 12pt;
-    font-weight: bold;
-    margin-bottom: 8px;
-    padding-left: 26pt;
-    padding-top: 3pt;
+    color: #cbd5e1;
 }
 
-/* ── 하단 비고 ── */
-.doc-remarks {
-    border: 1px solid #000;
-    padding: 8px 12px;
-    font-size: 10pt;
-    font-weight: normal;
-    line-height: 1.5;
-    margin-top: auto;
-}
-.doc-remarks-grid {
-    display: flex;
-}
-.doc-remarks-label {
-    width: 30px;
-    flex-shrink: 0;
-}
-
-/* ── 문서 번호 ── */
-.doc-id {
-    font-size: 13pt;
-    font-family: 'Century', serif;
-    font-weight: normal;
-    margin-top: 6pt;
-    padding-left: 5pt;
-}
-
-
-/* ====================================================
-   실제 인쇄(Ctrl+P) 시 동작할 미디어 쿼리
-   ==================================================== */
-@media print {
-    @page {
-        size: A4;
-        margin: 0;
-    }
-    
-    body * {
-        visibility: hidden;
-    }
-    
-    /* 화면용 모달이나 컨테이너 등 숨김 */
-    .app-container, .sidebar, .header, .modal-header, .print-warning {
-        display: none !important;
-    }
-
-    /* 프린트 영역만 보이게 처리 */
-    #printArea, #printArea * {
-        visibility: visible;
-    }
-    
-    #printArea {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 210mm;
-        background: #fff;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        font-family: 'GulimChe', '굴림체', monospace;
-    }
-    
-    /* 인쇄 미리보기 컨테이너 배경 제거 */
-    .print-preview-container {
-        display: block !important;
-        background: none !important;
-        padding: 0 !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-    
-    .print-page {
-        box-shadow: none;
-        margin: 0;
-        padding: 20mm 18mm 15mm 18mm;
-        width: 210mm;
-        height: 297mm;
-        page-break-after: always;
-    }
-    
-    /* 폰트 강제 검정색 */
-    .print-page * {
-        color: #000 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+/* Responsive */
+@media (max-width: 900px) {
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
 }

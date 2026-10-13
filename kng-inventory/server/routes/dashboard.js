@@ -89,9 +89,23 @@ router.get('/summary', async (req, res) => {
             }
         }
 
+        // 2-1. 진행중인 휴가원 (대시보드 결재대기함 연동)
+        let pendingLeaves = [];
+        try {
+            pendingLeaves = await dbAll(`
+                SELECT id, name, department, rank, leaveType, leaveStart, leaveEnd, daysCount, status, createdAt, userEmail 
+                FROM leave_requests 
+                WHERE status NOT IN ('결재보류', '결재완료')
+                ORDER BY createdAt DESC
+            `);
+        } catch (e) {
+            console.warn('[Dashboard] leave_requests 조회 건너뜀:', e.message);
+        }
+
         res.json({
             pendingExpenses,
             pendingExhibitions,
+            pendingLeaves,
             pendingInvoices: pendingInvoices.map(inv => {
                 try { inv.shipper = JSON.parse(inv.shipper || '{}'); } catch(e) { inv.shipper = {}; }
                 try { inv.consignee = JSON.parse(inv.consignee || '{}'); } catch(e) { inv.consignee = {}; }
