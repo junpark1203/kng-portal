@@ -252,10 +252,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 저장된 휴가원 PDF 열기 (인증 헤더 포함 및 팝업 차단 방어)
+    async function openSavedLeavePdf(id) {
+        if (!id) return;
+        const newWin = window.open('about:blank', '_blank');
+        if (newWin) {
+            newWin.document.write('<div style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;color:#333;"><p style="font-size:18px;font-weight:600;">휴가원 PDF 로딩 중...</p><p style="color:#666;">잠시만 기다려주세요.</p></div>');
+        }
+
+        try {
+            showToast('정품 PDF 생성 중...', 'info');
+            const res = await authFetch(`${API_URL}/${id}/pdf`);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'PDF 로딩 실패');
+            }
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            if (newWin) {
+                newWin.location.href = blobUrl;
+            } else {
+                window.open(blobUrl, '_blank');
+            }
+        } catch (err) {
+            console.error(err);
+            if (newWin) newWin.close();
+            showToast(err.message || 'PDF 로딩 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
     // 정품 PDF 생성 및 출력 (Node.js 네이티브 1:1 템플릿 연동)
     async function printLeave() {
         if (currentEditId) {
-            window.open(`${API_URL}/${currentEditId}/pdf`, '_blank');
+            return openSavedLeavePdf(currentEditId);
         } else {
             // 아직 저장 전인 신규 작성 상태면 preview-pdf 호출
             const payload = {
@@ -286,7 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                if (!res.ok) throw new Error('PDF 생성 실패');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || 'PDF 생성 실패');
+                }
                 const blob = await res.blob();
                 const blobUrl = URL.createObjectURL(blob);
                 if (newWin) {
@@ -297,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error(err);
                 if (newWin) newWin.close();
-                showToast('PDF 생성 중 오류가 발생했습니다.', 'error');
+                showToast(err.message || 'PDF 생성 중 오류가 발생했습니다.', 'error');
             }
         }
     }
@@ -372,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnDelete = e.target.closest('.btn-delete');
         
         if (btnPdf) {
-            window.open(`${API_URL}/${btnPdf.dataset.id}/pdf`, '_blank');
+            openSavedLeavePdf(btnPdf.dataset.id);
         } else if (btnEdit) {
             openModal(btnEdit.dataset.id);
         } else if (btnDelete) {

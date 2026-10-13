@@ -40,11 +40,12 @@ try {
 const verifyToken = async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
 
-    // 이미지 프록시 및 표준 엑셀 양식 등 인증 없이 접근해야 하는 공개 경로 예외 처리
+    // 이미지 프록시 및 표준 엑셀 양식, 인쇄용 PDF 등 인증 없이 직접 새 창으로 열어야 하는 경로 예외 처리
     const publicPaths = [
         '/exhibition-report/proxy',
         '/external-logistics/template',
-        '/external-logistics/categories'
+        '/external-logistics/categories',
+        '/leave-request/'
     ];
     if (publicPaths.some(p => req.originalUrl && req.originalUrl.includes(p))) {
         return next();
