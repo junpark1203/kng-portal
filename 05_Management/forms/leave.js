@@ -1,4 +1,5 @@
-const API_URL = 'https://kng.junparks.com/api/leave-request';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_URL = isLocal ? 'http://localhost:3000/api/leave-request' : 'https://kng.junparks.com/api/leave-request';
 
 async function authFetch(url, options = {}) {
     let token = null;
@@ -103,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.leaveStart} ~ ${item.leaveEnd}</td>
                 <td><span class="badge ${item.leaveType.includes('반차') ? 'badge-warning' : 'badge-primary'}">${item.leaveType || '-'}</span></td>
                 <td class="col-action">
-                    <button class="btn-icon btn-edit" data-id="${item.id}" title="수정/인쇄"><i class='bx bx-edit-alt'></i></button>
+                    <button class="btn-icon btn-pdf text-success" data-id="${item.id}" title="원본 1:1 정품 PDF 인쇄/다운로드"><i class='bx bx-printer'></i></button>
+                    <button class="btn-icon btn-edit" data-id="${item.id}" title="수정"><i class='bx bx-edit-alt'></i></button>
                     <button class="btn-icon btn-delete text-danger" data-id="${item.id}" title="삭제"><i class='bx bx-trash'></i></button>
                 </td>
             </tr>
@@ -250,12 +252,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 인쇄
-    function printLeave() {
-        updatePreview(); // 혹시 모를 누락 방지
-        setTimeout(() => {
-            window.print();
-        }, 100);
+    // 정품 PDF 생성 및 출력 (Node.js 네이티브 1:1 템플릿 연동)
+    async function printLeave() {
+        if (currentEditId) {
+            window.open(`${API_URL}/${currentEditId}/pdf`, '_blank');
+        } else {
+            // 아직 저장 전인 신규 작성 상태면 preview-pdf 호출
+            const payload = {
+                department: els.fDepartment.value.trim(),
+                rank: els.fRank.value.trim(),
+                name: els.fName.value.trim(),
+                leaveStart: els.fLeaveStart.value,
+                leaveEnd: els.fLeaveEnd.value,
+                leaveType: els.fLeaveType.value.trim(),
+                submitDate: els.fSubmitDate.value,
+                reason: els.fReason.value.trim()
+            };
+            if (!payload.name) {
+                showToast('성명을 입력해주세요.', 'warning');
+                return;
+            }
+
+            // 비동기 호출 전 빈 창을 미리 띄워 브라우저 팝업 차단 방지
+            const newWin = window.open('about:blank', '_blank');
+            if (newWin) {
+                newWin.document.write('<div style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;color:#333;"><p style="font-size:18px;font-weight:600;">휴가원 PDF 생성 중...</p><p style="color:#666;">잠시만 기다려주세요.</p></div>');
+            }
+
+            try {
+                showToast('정품 PDF 생성 중...', 'info');
+                const res = await authFetch(`${API_URL}/preview-pdf`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('PDF 생성 실패');
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                if (newWin) {
+                    newWin.location.href = blobUrl;
+                } else {
+                    window.open(blobUrl, '_blank');
+                }
+            } catch (err) {
+                console.error(err);
+                if (newWin) newWin.close();
+                showToast('PDF 생성 중 오류가 발생했습니다.', 'error');
+            }
+        }
     }
 
     // 단일 삭제
@@ -323,10 +367,13 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnDeleteSelected.addEventListener('click', deleteSelected);
 
     els.leaveListBody.addEventListener('click', (e) => {
+        const btnPdf = e.target.closest('.btn-pdf');
         const btnEdit = e.target.closest('.btn-edit');
         const btnDelete = e.target.closest('.btn-delete');
         
-        if (btnEdit) {
+        if (btnPdf) {
+            window.open(`${API_URL}/${btnPdf.dataset.id}/pdf`, '_blank');
+        } else if (btnEdit) {
             openModal(btnEdit.dataset.id);
         } else if (btnDelete) {
             deleteItem(btnDelete.dataset.id);

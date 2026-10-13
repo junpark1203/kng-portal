@@ -126,6 +126,37 @@ router.delete('/:id', (req, res) => {
     });
 });
 
+// 6. 휴가원 원본 1:1 정품 PDF 생성 및 출력 (Node.js 네이티브 pdf-lib 방식)
+const { generateLeavePdf } = require('../services/leave-pdf');
+
+async function serveLeavePdf(data, res) {
+    try {
+        const pdfBuffer = await generateLeavePdf(data);
+        const fileName = encodeURIComponent(`휴가원_${data.name || '신청'}_${data.submitDate || ''}.pdf`);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${fileName}"; filename*=UTF-8''${fileName}`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        return res.end(pdfBuffer);
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        return res.status(500).json({ error: 'PDF 생성에 실패했습니다.', details: err.message });
+    }
+}
+
+router.get('/:id/pdf', (req, res) => {
+    if (!_db) return res.status(500).json({ error: 'DB not initialized' });
+    
+    _db.get('SELECT * FROM leave_requests WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '휴가원을 찾을 수 없습니다.' });
+        serveLeavePdf(row, res);
+    });
+});
+
+router.post('/preview-pdf', (req, res) => {
+    serveLeavePdf(req.body, res);
+});
+
 module.exports = {
     router,
     setDb,

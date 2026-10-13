@@ -157,8 +157,9 @@ app.use(cors({
     credentials: true
 }));
 
-// JSON 바디 파싱
+// JSON 및 URL-encoded 바디 파싱
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // API 접속 횟수 제한 (IP당 15분에 100회)
 const apiLimiter = rateLimit({
