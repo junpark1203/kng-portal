@@ -53,6 +53,7 @@
             </button>
         </div>
         <div class="erp-toolbar-right">
+            <!-- 그룹 1: 문서 저장 및 관리 -->
             <button type="button" class="btn-erp" id="btnNewSimulation" title="빈 양식으로 새로 작성">
                 <i class="bx bx-plus"></i> 새로 작성
             </button>
@@ -62,16 +63,24 @@
             <button type="button" class="btn-erp btn-secondary" id="btnOpenSavedList" title="저장된 시뮬레이션 목록 열기">
                 <i class="bx bx-folder-open"></i> 시뮬레이션 목록
             </button>
-            <button type="button" class="btn-erp" id="btnOpenQuotationModal">
+
+            <span class="erp-toolbar-divider"></span>
+
+            <!-- 그룹 2: 포워더 견적 연동 -->
+            <button type="button" class="btn-erp" id="btnOpenQuotationModal" title="해외무역 포워더 견적 목록 불러오기">
                 <i class="bx bx-file-find"></i> 포워더 견적
             </button>
-            <button type="button" class="btn-erp" id="btnCopyReport">
+
+            <span class="erp-toolbar-divider"></span>
+
+            <!-- 그룹 3: 보고서 복사, 엑셀, 인쇄 -->
+            <button type="button" class="btn-erp" id="btnCopyReport" title="결재용 기안문 텍스트 복사">
                 <i class="bx bx-copy"></i> 기안문 복사
             </button>
-            <button type="button" class="btn-erp" id="btnExportCsv">
+            <button type="button" class="btn-erp" id="btnExportCsv" title="엑셀(CSV) 다운로드">
                 <i class="bx bx-download"></i> 엑셀
             </button>
-            <button type="button" class="btn-erp" id="btnPrint">
+            <button type="button" class="btn-erp" id="btnPrint" title="A4 1장 보고서 인쇄 / PDF">
                 <i class="bx bx-printer"></i> 인쇄
             </button>
         </div>
@@ -261,6 +270,23 @@
                 </div>
             </div>
 
+            <!-- 패널 4: 종합 검토 의견 (기안문 및 결재 보고용) -->
+            <div class="erp-panel">
+                <div class="erp-panel-header">
+                    <span class="erp-panel-title">
+                        <i class="bx bx-edit"></i> 4. 종합 검토 의견 (기안문/결재용)
+                    </span>
+                    <span class="erp-panel-header-action">
+                        <button type="button" class="btn-erp" id="btnAutoGenerateRemarks" title="현재 시뮬레이션 계산 결과 수치로 의견 자동완성" style="height: 20px; font-size: 10px; padding: 0 6px;">
+                            <i class="bx bx-sync"></i> 수치 자동반영
+                        </button>
+                    </span>
+                </div>
+                <div class="erp-panel-body">
+                    <textarea id="textRemarks" class="erp-textarea" placeholder="수입 소싱 검토 의견 및 의사결정 참고사항을 기재하세요. (예: 한·중 FTA C/O 수취를 통한 13% 무관세 확보 완료. 채널B(9,000원) 판매 시 22.3%의 안정적 영업이익률 확보 가능. 사내 안전용품 3,000벌 전량 대체 시 연간 432만원의 확정 원가 절감 달성.)"></textarea>
+                </div>
+            </div>
+
         </section>
 
         <!-- ── 우측 컬럼: 원가 분해, 마진 시뮬레이션, 민감도 분석 ── -->
@@ -305,11 +331,11 @@
                 </div>
             </div>
 
-            <!-- 패널 4: 채널별 목표 판매가 및 수익성 분석 -->
+            <!-- 채널별 목표 판매가 및 수익성 분석 -->
             <div class="erp-panel">
                 <div class="erp-panel-header">
                     <span class="erp-panel-title">
-                        <i class="bx bx-bar-chart-alt-2"></i> 4. 채널별 목표 판매가 및 마진 분석
+                        <i class="bx bx-bar-chart-alt-2"></i> 채널별 목표 판매가 및 마진 분석
                     </span>
                     <span class="erp-panel-header-action">
                         <span style="font-size: 10.5px; color: var(--erp-text-muted);">* 판매가 변경 시 실시간 재계산</span>
@@ -333,11 +359,11 @@
                 </div>
             </div>
 
-            <!-- 패널 5: 환율 민감도 2차원 매트릭스 -->
+            <!-- 환율 민감도 2차원 매트릭스 -->
             <div class="erp-panel">
                 <div class="erp-panel-header">
                     <span class="erp-panel-title">
-                        <i class="bx bx-grid-alt"></i> 5. 환율 변동 민감도 매트릭스 (Sensitivity Matrix)
+                        <i class="bx bx-grid-alt"></i> 환율 변동 민감도 매트릭스 (Sensitivity Matrix)
                     </span>
                     <span class="erp-panel-header-action">
                         <span style="font-size: 10px; color: var(--erp-text-muted);">
@@ -367,11 +393,11 @@
                 </div>
             </div>
 
-            <!-- 패널 6: 사내 기존 매입단가 대체 ROI 절감 효과 -->
+            <!-- 사내 기존 매입단가 대체 ROI 절감 효과 -->
             <div class="erp-panel">
                 <div class="erp-panel-header">
                     <span class="erp-panel-title">
-                        <i class="bx bx-trending-up"></i> 6. 사내 기존 매입단가 대체 절감 효과 (ROI Summary)
+                        <i class="bx bx-trending-up"></i> 사내 기존 매입단가 대체 절감 효과 (ROI Summary)
                     </span>
                 </div>
                 <div class="erp-panel-body">
@@ -393,20 +419,6 @@
                             <div class="roi-card-val highlight" id="roiAnnualTotalSaving">4,320,000 원</div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 패널 7: 종합 검토의견 & 기안 비고 -->
-            <div class="erp-panel">
-                <div class="erp-panel-header">
-                    <span class="erp-panel-title">
-                        <i class="bx bx-edit"></i> 7. 종합 검토 의견 (기안문 및 결재 보고용)
-                    </span>
-                </div>
-                <div class="erp-panel-body">
-                    <textarea id="textRemarks" class="erp-textarea" placeholder="수입 소싱 검토 의견 및 의사결정 참고사항을 기재하세요. (예: 한·중 FTA C/O 수취를 통한 13% 무관세 확보 완료. 채널B(9,000원) 판매 시 22.3%의 안정적 영업이익률 확보 가능. 사내 안전용품 3,000벌 전량 대체 시 연간 432만원의 확정 원가 절감 달성.)">한·중 FTA 원산지증명서(C/O) 적용을 통해 기본관세 13%를 면세 처리하여 입고원가 6,993원을 달성함.
-채널B(표준 대리점/B2B 9,000원) 판매 시 22.3%의 안정적 마진율을 확보하며, 환율이 1,450원까지 상승하더라도 16.9% 수준의 이익 방어가 가능함.
-사내 기존 매입단가(8,433원) 대체 시 연간 4,320,000원의 구매 원가 절감 효과 발생.</textarea>
                 </div>
             </div>
 

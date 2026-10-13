@@ -160,6 +160,14 @@ function initElements() {
     const today = new Date().toISOString().slice(0, 10);
     const printDateEl = document.getElementById('printDate');
     if (printDateEl) printDateEl.textContent = today;
+
+    // 초기 검토 의견 스마트 템플릿 세팅
+    const textarea = document.getElementById('textRemarks');
+    if (textarea && !textarea.value.trim()) {
+        const smartText = generateSmartRemarks();
+        textarea.value = smartText;
+        state.remarks = smartText;
+    }
 }
 
 function attachEventListeners() {
@@ -306,7 +314,21 @@ function attachEventListeners() {
     const btnRefreshList = document.getElementById('btnRefreshSavedList');
     if (btnRefreshList) btnRefreshList.addEventListener('click', loadSavedSimulations);
 
-    // 8) 기타 액션 버튼들
+    // 8) 검토의견 수치 자동반영 버튼
+    const btnAutoRemarks = document.getElementById('btnAutoGenerateRemarks');
+    if (btnAutoRemarks) {
+        btnAutoRemarks.addEventListener('click', () => {
+            const smartText = generateSmartRemarks();
+            const textarea = document.getElementById('textRemarks');
+            if (textarea) {
+                textarea.value = smartText;
+                state.remarks = smartText;
+                showToast('현재 시뮬레이션 계산 수치로 검토의견이 갱신되었습니다.');
+            }
+        });
+    }
+
+    // 9) 기타 액션 버튼들
     document.getElementById('btnOpenQuotationModal').addEventListener('click', openForwarderModal);
     document.getElementById('btnCloseForwarderModal').addEventListener('click', closeForwarderModal);
     document.getElementById('btnCancelForwarderModal').addEventListener('click', closeForwarderModal);
@@ -358,29 +380,29 @@ function renderCostBar(landed) {
 
     if (barGoods) {
         barGoods.style.width = `${r.goods}%`;
-        barGoods.textContent = `FOB ${r.goods}%`;
+        barGoods.textContent = r.goods >= 8 ? `FOB ${r.goods}%` : '';
         barGoods.title = `FOB 물품대: ${num(landed.fobKrwPrice)}원 (${r.goods}%)`;
     }
     if (barOcean) {
         barOcean.style.width = `${r.ocean}%`;
-        barOcean.textContent = r.ocean >= 2 ? `해상 ${r.ocean}%` : '';
+        barOcean.textContent = r.ocean >= 6 ? `해상 ${r.ocean}%` : '';
         barOcean.title = `해상운임: ${num(state.costs.oceanFreight)}원 (${r.ocean}%)`;
     }
     if (barCustoms) {
         barCustoms.style.width = `${r.customs}%`;
-        barCustoms.textContent = r.customs >= 2 ? `통관 ${r.customs}%` : '';
+        barCustoms.textContent = r.customs >= 6 ? `통관 ${r.customs}%` : '';
         barCustoms.title = `통관·하역: ${num(state.costs.customsFee)}원 (${r.customs}%)`;
     }
     if (barInland) {
         barInland.style.width = `${r.inland}%`;
-        barInland.textContent = r.inland >= 2 ? `내륙 ${r.inland}%` : '';
+        barInland.textContent = r.inland >= 6 ? `내륙 ${r.inland}%` : '';
         barInland.title = `내륙운송: ${num(state.costs.inlandFreight)}원 (${r.inland}%)`;
     }
     if (barTariff) {
         if (!state.costs.isFtaExempt && landed.tariffAmount > 0) {
             barTariff.style.display = 'flex';
             barTariff.style.width = `${r.tariff}%`;
-            barTariff.textContent = r.tariff >= 2 ? `관세 ${r.tariff}%` : '';
+            barTariff.textContent = r.tariff >= 6 ? `관세 ${r.tariff}%` : '';
             barTariff.title = `관세: ${num(landed.tariffAmount)}원 (${r.tariff}%)`;
         } else {
             barTariff.style.display = 'none';
@@ -497,8 +519,8 @@ function renderSensitivityTable(sensitivity) {
 
             html += `
                 <td class="heat-cell ${heatClass} ${isBase}">
-                    ${cell.marginRate}%
-                    <span style="font-size: 9px; display: block; font-weight: normal; opacity: 0.85;">(${num(cell.marginAmount)}원)</span>
+                    <span class="heat-rate">${cell.marginRate}%</span>
+                    <span class="heat-amt">(${num(cell.marginAmount)}원)</span>
                 </td>
             `;
         });
@@ -506,6 +528,31 @@ function renderSensitivityTable(sensitivity) {
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+}
+
+/**
+ * 4-1. 현재 계산된 수치 기준 스마트 검토의견 텍스트 생성
+ */
+function generateSmartRemarks() {
+    const landed = MarginEngine.calculateLandedCost(state.product, state.costs);
+    const channels = MarginEngine.calculateChannelMargins(landed.landedCost, state.channels);
+    const savings = MarginEngine.calculateInternalSavings(landed.landedCost, state.savings);
+    const primaryCh = channels.find(c => c.isPrimary) || channels[1] || channels[0];
+
+    const ftaPart = state.costs.isFtaExempt 
+        ? `한·중 FTA 원산지증명서(C/O) 적용을 통해 기본관세 ${state.costs.tariffRate}%를 전액 면세 처리하여 개당 최종 입고원가 ${num(landed.landedCost)}원을 달성함.`
+        : `기본관세 ${state.costs.tariffRate}%(${num(landed.tariffAmount)}원)를 반영하여 개당 최종 입고원가 ${num(landed.landedCost)}원을 산출함.`;
+
+    const channelPart = primaryCh 
+        ? `${primaryCh.channelName}(판매가 ${num(primaryCh.targetPrice)}원) 기준 ${primaryCh.marginRate}%(개당 ${num(primaryCh.marginAmount)}원)의 안정적인 영업이익률 확보가 가능함.`
+        : '';
+
+    let savingPart = '';
+    if (savings && savings.existingPurchasePrice > 0) {
+        savingPart = `사내 기존 매입단가(${num(savings.existingPurchasePrice)}원) 대비 개당 ${num(savings.savingPerUnit)}원(${savings.savingRate}%) 절감되며, 연간 ${num(savings.annualVolume)}개 전량 대체 시 연간 ${num(savings.annualTotalSaving)}원의 확정 구매원가 절감 효과 발생.`;
+    }
+
+    return `${ftaPart}\n${channelPart}\n${savingPart}`.trim();
 }
 
 function renderRoiSummary(savings, landedCost) {
@@ -896,6 +943,16 @@ async function fetchRealtimeExchangeRate(currency = 'USD', isManual = false) {
 
             const inputRate = document.getElementById('inputExchangeRate');
             if (inputRate) inputRate.value = liveKrwRate;
+
+            // 신규 작성 상태일 경우 검토 의견도 실시간 환율 수치로 자연스럽게 동기화
+            if (!currentSimulationId) {
+                const textarea = document.getElementById('textRemarks');
+                if (textarea) {
+                    const smartText = generateSmartRemarks();
+                    textarea.value = smartText;
+                    state.remarks = smartText;
+                }
+            }
 
             recalculateAndRender();
             if (isManual) showToast(`실시간 환율 (${currency} 1 = ${num(liveKrwRate, 1)}원) 갱신 완료`);

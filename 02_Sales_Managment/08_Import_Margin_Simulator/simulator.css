@@ -33,9 +33,9 @@
     
     --erp-row-hover: #f8fafc;
     --erp-row-active: #eff6ff;
-    --erp-row-height: 26px;
-    --erp-font-size: 11.5px;
-    --erp-font-title: 13px;
+    --erp-row-height: 28px;
+    --erp-font-size: 12px;
+    --erp-font-title: 13.5px;
 }
 
 * {
@@ -49,7 +49,7 @@ body {
     margin: 0;
     padding: 6px 10px;
     font-size: var(--erp-font-size);
-    line-height: 1.35;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -61,7 +61,7 @@ body {
     border: 1px solid var(--erp-border);
     border-radius: 2px;
     padding: 4px 10px;
-    min-height: 34px;
+    min-height: 36px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -75,8 +75,16 @@ body {
 .erp-toolbar-right {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
+}
+
+.erp-toolbar-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--erp-border-light);
+    margin: 0 3px;
+    display: inline-block;
 }
 
 .erp-title-tag {
@@ -261,16 +269,16 @@ body {
 
 .erp-form-table th,
 .erp-form-table td {
-    padding: 4px 6px;
+    padding: 5px 8px;
     border: 1px solid var(--erp-border-light);
-    font-size: 11px;
+    font-size: 11.5px;
 }
 
 .erp-form-table th {
     background-color: #f8fafc;
     color: #334155;
     font-weight: 600;
-    width: 115px;
+    width: 125px;
     text-align: left;
     white-space: nowrap;
 }
@@ -282,9 +290,9 @@ body {
 .erp-input,
 .erp-select {
     width: 100%;
-    height: 24px;
-    padding: 2px 6px;
-    font-size: 11px;
+    height: 26px;
+    padding: 3px 6px;
+    font-size: 11.5px;
     border: 1px solid #cbd5e1;
     border-radius: 2px;
     color: #1e293b;
@@ -427,7 +435,7 @@ body {
 
 .cost-stacked-bar {
     display: flex;
-    height: 18px;
+    height: 20px;
     border-radius: 2px;
     overflow: hidden;
     background: #e2e8f0;
@@ -439,7 +447,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 600;
     color: #ffffff;
     white-space: nowrap;
@@ -447,6 +455,7 @@ body {
     text-overflow: ellipsis;
     transition: width 0.3s ease;
     padding: 0 4px;
+    min-width: 0;
 }
 
 .seg-goods { background-color: #2563eb; }    /* FOB 원화물품대 */
@@ -481,12 +490,12 @@ body {
 .erp-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 11.5px;
 }
 
 .erp-table th,
 .erp-table td {
-    padding: 4px 6px;
+    padding: 5px 8px;
     border: 1px solid var(--erp-border);
     height: var(--erp-row-height);
 }
@@ -565,15 +574,15 @@ body {
 .sensitivity-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 10.5px;
+    font-size: 11px;
 }
 
 .sensitivity-table th,
 .sensitivity-table td {
-    padding: 3px 5px;
+    padding: 4px 6px;
     border: 1px solid var(--erp-border);
     text-align: center;
-    height: 24px;
+    height: 36px;
 }
 
 .sensitivity-table th {
@@ -581,6 +590,7 @@ body {
     color: #334155;
     font-weight: 600;
     white-space: nowrap;
+    font-size: 11px;
 }
 
 .sensitivity-table th.base-rate-th {
@@ -591,15 +601,30 @@ body {
 }
 
 .sensitivity-table td.base-rate-col {
-    background: #f8fafc;
     border-left: 2px solid var(--erp-primary);
     border-right: 2px solid var(--erp-primary);
-    font-weight: 700;
 }
 
 .heat-cell {
     font-weight: 600;
     transition: background 0.15s;
+    vertical-align: middle;
+}
+
+.heat-rate {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    display: block;
+}
+
+.heat-amt {
+    font-size: 9.5px;
+    font-weight: normal;
+    color: #475569;
+    margin-top: 2px;
+    display: block;
+    letter-spacing: -0.2px;
 }
 
 .heat-safe { background-color: #ecfdf5; color: #065f46; }
@@ -648,14 +673,15 @@ body {
    ───────────────────────────────────────────────────────────── */
 .erp-textarea {
     width: 100%;
-    height: 48px;
-    padding: 6px;
-    font-size: 11px;
+    height: 82px;
+    min-height: 82px;
+    padding: 8px;
+    font-size: 11.5px;
     border: 1px solid var(--erp-border);
     border-radius: 2px;
     font-family: inherit;
     resize: vertical;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .erp-textarea:focus {
