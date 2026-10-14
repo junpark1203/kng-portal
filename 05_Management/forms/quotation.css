@@ -975,6 +975,191 @@ body {
     font-weight: 400;
 }
 
+/* ── 품목 테이블 2단 마진 복합 셀 (.margin-compact-cell) ── */
+.margin-compact-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 1px 0;
+}
+
+.margin-rate-input-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border, #cbd5e1);
+    border-radius: 3px;
+    padding: 1px 4px;
+    width: 100%;
+    max-width: 82px;
+    transition: border-color 0.15s ease;
+}
+
+.margin-rate-input-wrap:focus-within {
+    border-color: var(--erp-primary, #2563eb);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.margin-rate-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-align: right !important;
+    width: 50px !important;
+    outline: none !important;
+    color: #0f172a !important;
+}
+
+.margin-rate-unit {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 600;
+    user-select: none;
+}
+
+.margin-amount-disp {
+    font-size: 9.5px;
+    color: #059669;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.cost-price-input {
+    font-size: 11px !important;
+    color: #475569 !important;
+}
+
+/* ── 내부 검토용 워터마크 (.watermark-internal-review) ── */
+.watermark-internal-review {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-28deg);
+    font-size: 32pt;
+    font-weight: 900;
+    color: rgba(225, 29, 72, 0.14) !important;
+    border: 5px dashed rgba(225, 29, 72, 0.22) !important;
+    padding: 14px 28px;
+    border-radius: 12px;
+    letter-spacing: 2px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+    text-align: center;
+    user-select: none;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+}
+
+/* ── 결재란 스타일 (.approval-table) ── */
+.approval-container {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.approval-table {
+    border-collapse: collapse;
+    border: 1px solid #111111;
+    font-size: 8.5pt;
+    background: #ffffff;
+}
+
+.approval-table th,
+.approval-table td {
+    border: 1px solid #111111;
+    text-align: center;
+    vertical-align: middle;
+    padding: 2px 4px;
+}
+
+.approval-table th {
+    background-color: #f1f5f9 !important;
+    font-weight: 700;
+    height: 20px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.approval-table .vertical-th {
+    width: 20px;
+    writing-mode: vertical-lr;
+    letter-spacing: 4px;
+    padding: 4px 2px !important;
+    background-color: #f8fafc !important;
+}
+
+.approval-table .approval-cell {
+    width: 55px;
+    height: 50px;
+    position: relative;
+}
+
+/* ── 내부 검토용 마진 분석 요약 박스 ── */
+.internal-margin-summary {
+    margin-top: 10px;
+    border: 1.5px solid #0f172a;
+    background: #f8fafc !important;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.internal-margin-summary-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.internal-margin-summary-item .label {
+    color: #475569;
+    font-size: 8pt;
+}
+
+.internal-margin-summary-item .value {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.internal-margin-summary-item .value.text-success {
+    color: #059669 !important;
+}
+
+.internal-margin-summary-item .value.text-primary {
+    color: #2563eb !important;
+}
+
+/* ── A4 인쇄 다중 페이지 나눔 제어 ── */
+@media print {
+    .a4-quote-page {
+        position: relative !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        min-height: 275mm;
+        box-sizing: border-box;
+    }
+
+    .a4-quote-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+    }
+
+    .watermark-internal-review {
+        color: rgba(225, 29, 72, 0.16) !important;
+        border-color: rgba(225, 29, 72, 0.25) !important;
+    }
+}
+
 .print-suboption-nested {
     margin-left: 24px;
     padding-left: 10px;

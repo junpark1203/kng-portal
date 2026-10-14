@@ -109,6 +109,32 @@ function numberToKorean(number) {
 }
 
 // ==========================================
+// ── 마진 계산 엔진 (방식 A: 매출총이익률 Gross Margin) ──
+// 마진율(%) = ((제안단가 - 매입가) / 제안단가) * 100
+// 역산 제안단가 = 매입가 / (1 - (마진율 / 100))
+// ==========================================
+function calcGrossMargin(costPrice, unitPrice) {
+    const cost = Number(costPrice) || 0;
+    const unit = Number(unitPrice) || 0;
+    if (unit <= 0) {
+        return { rate: 0, amount: 0 };
+    }
+    const amount = unit - cost;
+    const rate = Math.round(((unit - cost) / unit) * 1000) / 10; // 소수점 1자리 반올림
+    return { rate, amount };
+}
+
+function calcUnitFromGrossMargin(costPrice, marginRate) {
+    const cost = Number(costPrice) || 0;
+    let rate = Number(marginRate) || 0;
+    if (rate >= 100) rate = 99.9; // 100% 이상일 때 나눗셈 0 방지
+    if (rate <= -900) rate = -900;
+    const factor = 1 - (rate / 100);
+    if (factor <= 0) return cost;
+    return Math.round(cost / factor);
+}
+
+// ==========================================
 // 애플리케이션 메인 엔진
 // ==========================================
 const app = {
@@ -179,6 +205,7 @@ const app = {
             spec: it.spec || '',
             qty: Number(it.qty) || 0,
             unit: it.unit || '',
+            cost: Number(it.cost_price) || 0,
             price: Number(it.unit_price) || 0,
             remarks: it.remarks || '',
             img: it.image_url || ''
@@ -192,6 +219,7 @@ const app = {
                 const specEl = tr.querySelector('input[placeholder*="규격"]');
                 const qtyEl = tr.querySelector('input[type="number"]');
                 const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
+                const costEl = tr.querySelector('.cost-price-input');
                 const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
                 const remarksEl = tr.querySelector('input[placeholder*="비고"]');
 
@@ -199,6 +227,7 @@ const app = {
                 if (specEl) items[idx].spec = specEl.value.trim();
                 if (qtyEl) items[idx].qty = Number(qtyEl.value) || 0;
                 if (unitEl) items[idx].unit = unitEl.value.trim();
+                if (costEl) items[idx].cost = Number(String(costEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (priceEl) items[idx].price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (remarksEl) items[idx].remarks = remarksEl.value.trim();
             }
@@ -682,7 +711,7 @@ const app = {
         document.getElementById('itemCountBadge').textContent = `${items.length}개 품목`;
 
         if (items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="13" class="text-center py-4 text-muted">등록된 품목이 없습니다. 상단 [불러오기] 또는 [직접 추가] 버튼을 클릭하세요.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-muted">등록된 품목이 없습니다. 상단 [불러오기] 또는 [직접 추가] 버튼을 클릭하세요.</td></tr>`;
             return;
         }
 
@@ -691,6 +720,11 @@ const app = {
             const thumbHtml = hasImg
                 ? `<img src="${escHtml(it.image_url)}" class="quote-item-thumb-img" alt="사진">`
                 : `<div class="quote-item-thumb-empty"><i class='bx bx-camera'></i><span>사진</span></div>`;
+
+            // 방식 A: 매출총이익률 마진 계산
+            const margin = calcGrossMargin(it.cost_price, it.unit_price);
+            const qty = Number(it.qty) || 1;
+            const totalMarginAmt = margin.amount * qty;
 
             return `
                 <tr data-index="${idx}">
@@ -717,9 +751,18 @@ const app = {
                     <td>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center" value="${escHtml(it.unit || 'EA')}" style="width:45px;" oninput="app.updateItemField(${idx}, 'unit', this.value)">
                     </td>
-                    <!-- 참고원가 (화면 전용) -->
-                    <td class="col-cost text-end pe-2 text-muted" style="font-size:11px;">
-                        ${fmtWon(it.cost_price || 0)}
+                    <!-- 매입가 (수정 가능 - 원가) -->
+                    <td class="col-cost">
+                        <input type="text"
+                               inputmode="numeric"
+                               class="form-control form-control-sm border-0 bg-transparent text-end pe-2 cost-price-input"
+                               value="${fmtWon(it.cost_price || 0)}"
+                               data-cost-idx="${idx}"
+                               title="실제 매입단가(원가) - 마진 계산의 기준값"
+                               oninput="app.formatCostInput(this, ${idx})"
+                               onfocus="this.select()"
+                               onblur="app.formatCostBlur(this, ${idx})"
+                               onkeydown="if(event.key==='Enter'){this.blur();}">
                     </td>
                     <!-- 제안단가 (원화기호 ₩ 및 3자리 콤마 포맷팅) -->
                     <td>
@@ -739,6 +782,24 @@ const app = {
                     <td class="text-end pe-2 text-dark" id="cellVat_${idx}">${(this.currentQuote?.vat_type === 'exclusive') ? '별도' : fmtWon(it.vat || 0)}</td>
                     <!-- 합계 -->
                     <td class="text-end pe-2 fw-bold text-dark" id="cellTotal_${idx}">${fmtWon(it.total_price || 0)}</td>
+                    <!-- 마진율(마진액) 2단 복합 셀 [가로공간 최적화 & 양방향 역산] -->
+                    <td class="text-center p-1">
+                        <div class="margin-compact-cell">
+                            <div class="margin-rate-input-wrap">
+                                <input type="number"
+                                       step="0.1"
+                                       class="margin-rate-input"
+                                       id="inputMarginRate_${idx}"
+                                       value="${margin.rate}"
+                                       title="마진율(%) 입력 시 제안단가가 자동 역산됩니다 (매출총이익률 기준)"
+                                       oninput="app.updateItemMarginRate(${idx}, this.value)">
+                                <span class="margin-rate-unit">%</span>
+                            </div>
+                            <div class="margin-amount-disp" id="cellMarginAmt_${idx}" title="단가당 마진: ${fmtWon(margin.amount)} / 총 마진: ${fmtWon(totalMarginAmt)}">
+                                ${fmtWon(margin.amount)}
+                            </div>
+                        </div>
+                    </td>
                     <!-- 비고 -->
                     <td>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent" value="${escHtml(it.remarks || '')}" placeholder="비고 입력" oninput="app.updateItemField(${idx}, 'remarks', this.value)">
@@ -770,17 +831,14 @@ const app = {
             const baseAmount = Math.round(qty * price);
 
             if (vatType === 'exclusive') {
-                // [부가세 별도]: 합계금액에 부가세를 가산하지 않음 (단가 합계 그대로)
                 it.supply_price = baseAmount;
                 it.vat = 0;
                 it.total_price = baseAmount;
             } else if (vatType === 'inclusive') {
-                // [부가세 포함]: 단가 합계에 부가세 10%를 더함
                 it.supply_price = baseAmount;
                 it.vat = Math.round(baseAmount * 0.1);
                 it.total_price = it.supply_price + it.vat;
             } else {
-                // [영세 / 면세]: 부가세 0원
                 it.supply_price = baseAmount;
                 it.vat = 0;
                 it.total_price = baseAmount;
@@ -794,9 +852,59 @@ const app = {
             if (cellV) cellV.textContent = (vatType === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (cellT) cellT.textContent = fmtWon(it.total_price);
 
+            // 마진 표시 동기화
+            this.syncItemMarginDisplay(idx);
             this.recalcTotals();
         } else {
             it[field] = val;
+        }
+    },
+
+    // ── 매입가(원가) 입력 실시간 포맷팅 ──
+    formatCostInput: function(el, idx) {
+        const rawDigits = el.value.replace(/[^0-9]/g, '');
+        const num = rawDigits ? parseInt(rawDigits, 10) : 0;
+
+        if (this.currentQuote?.items && this.currentQuote.items[idx]) {
+            this.currentQuote.items[idx].cost_price = num;
+            this.syncItemMarginDisplay(idx);
+            this.recalcTotals();
+        }
+
+        if (rawDigits === '') {
+            el.value = '₩';
+            try { el.setSelectionRange(1, 1); } catch(e) {}
+        } else {
+            const prevVal = el.value;
+            const curEnd = el.selectionEnd || prevVal.length;
+            const digitsRight = prevVal.slice(curEnd).replace(/[^0-9]/g, '').length;
+            const formatted = fmtWon(num);
+            el.value = formatted;
+
+            let newPos = formatted.length;
+            let counted = 0;
+            for (let i = formatted.length - 1; i >= 0; i--) {
+                if (/\d/.test(formatted[i])) {
+                    counted++;
+                    if (counted === digitsRight) {
+                        newPos = i;
+                        break;
+                    }
+                }
+            }
+            if (newPos < 1) newPos = 1;
+            try { el.setSelectionRange(newPos, newPos); } catch(e) {}
+        }
+    },
+
+    formatCostBlur: function(el, idx) {
+        const rawDigits = el.value.replace(/[^0-9]/g, '');
+        const num = rawDigits ? parseInt(rawDigits, 10) : 0;
+        el.value = fmtWon(num);
+        if (this.currentQuote?.items && this.currentQuote.items[idx]) {
+            this.currentQuote.items[idx].cost_price = num;
+            this.syncItemMarginDisplay(idx);
+            this.recalcTotals();
         }
     },
 
@@ -814,7 +922,6 @@ const app = {
             el.value = '₩';
             try { el.setSelectionRange(1, 1); } catch(e) {}
         } else {
-            // 커서 위치(우측 기준 잔여 숫자 개수) 계산하여 자연스러운 타이핑 유지
             const prevVal = el.value;
             const curEnd = el.selectionEnd || prevVal.length;
             const digitsRight = prevVal.slice(curEnd).replace(/[^0-9]/g, '').length;
@@ -847,12 +954,86 @@ const app = {
         }
     },
 
-    // ── 총 견적금액 및 한글 금액 재계산 ──
+    // ── 마진율 입력 시 제안단가 역산 및 실시간 연동 (방식 A: 매출총이익률) ──
+    updateItemMarginRate: function(idx, rateVal) {
+        if (!this.currentQuote?.items || !this.currentQuote.items[idx]) return;
+        const it = this.currentQuote.items[idx];
+        const rateNum = parseFloat(rateVal) || 0;
+
+        // 역산: 제안단가 = 매입가 / (1 - (마진율 / 100))
+        const newUnitPrice = calcUnitFromGrossMargin(it.cost_price, rateNum);
+        it.unit_price = newUnitPrice;
+
+        // 제안단가 인풋 DOM 갱신
+        const tr = document.querySelector(`#quoteItemsTbody tr[data-index="${idx}"]`);
+        if (tr) {
+            const priceInput = tr.querySelector(`input[data-idx="${idx}"]`);
+            if (priceInput) priceInput.value = fmtWon(newUnitPrice);
+        }
+
+        // 수량 및 과세구분에 따른 금액 재계산
+        const vatType = document.getElementById('vatTypeSelect')?.value || 'inclusive';
+        const qty = Number(it.qty) || 0;
+        const baseAmount = Math.round(qty * newUnitPrice);
+
+        if (vatType === 'exclusive') {
+            it.supply_price = baseAmount;
+            it.vat = 0;
+            it.total_price = baseAmount;
+        } else if (vatType === 'inclusive') {
+            it.supply_price = baseAmount;
+            it.vat = Math.round(baseAmount * 0.1);
+            it.total_price = it.supply_price + it.vat;
+        } else {
+            it.supply_price = baseAmount;
+            it.vat = 0;
+            it.total_price = baseAmount;
+        }
+
+        const cellS = document.getElementById(`cellSupply_${idx}`);
+        const cellV = document.getElementById(`cellVat_${idx}`);
+        const cellT = document.getElementById(`cellTotal_${idx}`);
+        if (cellS) cellS.textContent = fmtWon(it.supply_price);
+        if (cellV) cellV.textContent = (vatType === 'exclusive') ? '별도' : fmtWon(it.vat);
+        if (cellT) cellT.textContent = fmtWon(it.total_price);
+
+        // 마진액 라벨 동기화
+        const marginAmt = newUnitPrice - (Number(it.cost_price) || 0);
+        const amtDiv = document.getElementById(`cellMarginAmt_${idx}`);
+        if (amtDiv) {
+            amtDiv.textContent = fmtWon(marginAmt);
+            amtDiv.title = `단가당 마진: ${fmtWon(marginAmt)} / 총 마진: ${fmtWon(marginAmt * qty)}`;
+        }
+
+        this.recalcTotals();
+    },
+
+    // ── 특정 행의 마진 표시 동기화 (단가/매입가/수량 변경 시 호출) ──
+    syncItemMarginDisplay: function(idx) {
+        if (!this.currentQuote?.items || !this.currentQuote.items[idx]) return;
+        const it = this.currentQuote.items[idx];
+        const margin = calcGrossMargin(it.cost_price, it.unit_price);
+        const qty = Number(it.qty) || 1;
+
+        const rateInp = document.getElementById(`inputMarginRate_${idx}`);
+        const amtDiv = document.getElementById(`cellMarginAmt_${idx}`);
+
+        if (rateInp && document.activeElement !== rateInp) {
+            rateInp.value = margin.rate;
+        }
+        if (amtDiv) {
+            amtDiv.textContent = fmtWon(margin.amount);
+            amtDiv.title = `단가당 마진: ${fmtWon(margin.amount)} / 총 마진: ${fmtWon(margin.amount * qty)}`;
+        }
+    },
+
+    // ── 총 견적금액 및 실시간 마진 지표 재계산 ──
     recalcTotals: function() {
         const items = this.currentQuote.items || [];
         const vatType = document.getElementById('vatTypeSelect')?.value || 'inclusive';
         this.currentQuote.vat_type = vatType;
 
+        let sumCost = 0;
         let sumSupply = 0;
         let sumVat = 0;
         let sumTotal = 0;
@@ -860,26 +1041,24 @@ const app = {
         items.forEach((it, idx) => {
             const qty = Number(it.qty) || 0;
             const price = Number(it.unit_price) || 0;
+            const cost = Number(it.cost_price) || 0;
             const baseAmount = Math.round(qty * price);
 
             if (vatType === 'exclusive') {
-                // 부가세 별도: 부가세가 빠진 금액이 합계
                 it.supply_price = baseAmount;
                 it.vat = 0;
                 it.total_price = baseAmount;
             } else if (vatType === 'inclusive') {
-                // 부가세 포함: 부가세 10%가 더해진 금액이 합계
                 it.supply_price = baseAmount;
                 it.vat = Math.round(baseAmount * 0.1);
                 it.total_price = it.supply_price + it.vat;
             } else {
-                // 영세 / 면세
                 it.supply_price = baseAmount;
                 it.vat = 0;
                 it.total_price = baseAmount;
             }
 
-            // [DOM 셀 즉시 반영 - 과세 구분 변경 시에도 품목 테이블 각 행 즉각 동기화]
+            // 셀 DOM 동기화
             const cellS = document.getElementById(`cellSupply_${idx}`);
             const cellV = document.getElementById(`cellVat_${idx}`);
             const cellT = document.getElementById(`cellTotal_${idx}`);
@@ -887,20 +1066,35 @@ const app = {
             if (cellV) cellV.textContent = (vatType === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (cellT) cellT.textContent = fmtWon(it.total_price);
 
+            sumCost += (cost * qty);
             sumSupply += it.supply_price;
             sumVat += it.vat;
             sumTotal += it.total_price;
         });
 
+        this.currentQuote.total_cost_price = sumCost;
         this.currentQuote.total_supply_price = sumSupply;
         this.currentQuote.total_vat = sumVat;
         this.currentQuote.total_amount = sumTotal;
 
+        // 마진 집계 (매출총이익률: (공급가합 - 매입원가합) / 공급가합)
+        const sumMargin = sumSupply - sumCost;
+        const avgMarginRate = sumSupply > 0 ? (Math.round((sumMargin / sumSupply) * 1000) / 10) : 0;
+        this.currentQuote.total_margin_amount = sumMargin;
+        this.currentQuote.avg_margin_rate = avgMarginRate;
+
+        // 상단 요약 리본 엘리먼트 갱신
+        const elCost = document.getElementById('sumCostPrice');
+        const elMarginAmt = document.getElementById('sumMarginAmount');
+        const elMarginRate = document.getElementById('sumMarginRate');
         const elSupply = document.getElementById('sumSupplyPrice');
         const elVat = document.getElementById('sumVat');
         const elTotal = document.getElementById('sumTotalAmount');
         const elKorean = document.getElementById('amountKoreanText');
 
+        if (elCost) elCost.textContent = fmtWon(sumCost);
+        if (elMarginAmt) elMarginAmt.textContent = fmtWon(sumMargin);
+        if (elMarginRate) elMarginRate.textContent = `${avgMarginRate.toFixed(1)}%`;
         if (elSupply) elSupply.textContent = fmtWon(sumSupply);
         if (elVat) elVat.textContent = (vatType === 'exclusive') ? '별도 (0원)' : fmtWon(sumVat);
         if (elTotal) elTotal.textContent = fmtWon(sumTotal);
@@ -1307,6 +1501,7 @@ const app = {
                 const specEl = tr.querySelector('input[placeholder*="규격"]');
                 const qtyEl = tr.querySelector('input[type="number"]');
                 const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
+                const costEl = tr.querySelector('.cost-price-input');
                 const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
                 const remarksEl = tr.querySelector('input[placeholder*="비고"]');
 
@@ -1314,6 +1509,7 @@ const app = {
                 if (specEl) item.spec = specEl.value.trim();
                 if (qtyEl) item.qty = Number(qtyEl.value) || 1;
                 if (unitEl && unitEl.value.trim()) item.unit = unitEl.value.trim();
+                if (costEl) item.cost_price = Number(String(costEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (priceEl) item.unit_price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
                 if (remarksEl) item.remarks = remarksEl.value.trim();
             });
@@ -1478,6 +1674,13 @@ const app = {
             lastOpt = JSON.parse(localStorage.getItem('kng_last_print_options') || '{}');
         } catch(e) {}
 
+        // 1. 출력 구분 (external | both | internal)
+        const targetMode = lastOpt.targetMode || 'external';
+        const targetRadio = document.querySelector(`input[name="printTargetMode"][value="${targetMode}"]`);
+        if (targetRadio) targetRadio.checked = true;
+        this.handlePrintTargetChange(targetMode);
+
+        // 2. 문서 대제목
         const title = lastOpt.title || '견  적  서';
         const titleInput = document.getElementById('printCustomTitle');
         if (titleInput) {
@@ -1492,10 +1695,18 @@ const app = {
             btn.classList.toggle('active', btn.textContent.trim() === title.replace(/\s+/g, ''));
         });
 
+        // 3. 금액 표시 모드
         const priceMode = lastOpt.priceMode || 'all';
         const radio = document.querySelector(`input[name="printPriceMode"][value="${priceMode}"]`);
         if (radio) radio.checked = true;
 
+        // 4. 출력 세부 옵션
+        if (document.getElementById('printOptIncludeApproval')) {
+            document.getElementById('printOptIncludeApproval').checked = (lastOpt.includeApproval !== false);
+        }
+        if (document.getElementById('printOptWatermark')) {
+            document.getElementById('printOptWatermark').checked = (lastOpt.includeWatermark !== false);
+        }
         if (document.getElementById('printOptIncludeRecipient')) {
             document.getElementById('printOptIncludeRecipient').checked = (lastOpt.includeRecipient !== false);
         }
@@ -1515,6 +1726,34 @@ const app = {
 
         const modal = document.getElementById('printOptionsModal');
         if (modal) modal.style.display = 'block';
+    },
+
+    // ── 인쇄 대상(출력 구분) 변경 시 안내 및 하위 옵션 가시성 처리 ──
+    handlePrintTargetChange: function(mode) {
+        const noticeEl = document.getElementById('printTargetNotice');
+        const wrapApproval = document.getElementById('wrapPrintOptIncludeApproval');
+        const wrapWatermark = document.getElementById('wrapPrintOptWatermark');
+
+        if (mode === 'both') {
+            if (noticeEl) {
+                noticeEl.innerHTML = `<i class='bx bx-check-double text-primary'></i> <b>내부+외부 모두 인쇄</b>: 1페이지는 결재·검토용(원가/마진/워터마크/결재란 포함), 2페이지는 외부 발송용(공식 견적서)으로 자동 분리 인쇄됩니다.`;
+            }
+            if (wrapApproval) wrapApproval.style.opacity = '1';
+            if (wrapWatermark) wrapWatermark.style.opacity = '1';
+        } else if (mode === 'internal') {
+            if (noticeEl) {
+                noticeEl.innerHTML = `<i class='bx bx-shield-quarter text-warning'></i> <b>내부 검토용만 인쇄</b>: 매입단가, 마진액, 마진율 및 사내 결재란과 대외비 워터마크가 포함된 1장의 사내 품의서입니다.`;
+            }
+            if (wrapApproval) wrapApproval.style.opacity = '1';
+            if (wrapWatermark) wrapWatermark.style.opacity = '1';
+        } else {
+            // external
+            if (noticeEl) {
+                noticeEl.innerHTML = `<i class='bx bx-send text-primary'></i> <b>외부 발송용만 인쇄</b>: 매입원가와 마진이 철저히 비공개된 고객 전달용 공식 견적서 1장입니다.`;
+            }
+            if (wrapApproval) wrapApproval.style.opacity = '0.4';
+            if (wrapWatermark) wrapWatermark.style.opacity = '0.4';
+        }
     },
 
     togglePrintSupplierOption: function(enabled) {
@@ -1557,8 +1796,11 @@ const app = {
         const q = this.targetQuoteForPrint || this.currentQuote;
         if (!q) return;
 
+        const targetMode = document.querySelector('input[name="printTargetMode"]:checked')?.value || 'external';
         const title = document.getElementById('printCustomTitle')?.value.trim() || '견  적  서';
         const priceMode = document.querySelector('input[name="printPriceMode"]:checked')?.value || 'all';
+        const includeApproval = document.getElementById('printOptIncludeApproval')?.checked !== false;
+        const includeWatermark = document.getElementById('printOptWatermark')?.checked !== false;
         const includeRecipient = document.getElementById('printOptIncludeRecipient')?.checked !== false;
         const includeSupplier = document.getElementById('printOptIncludeSupplier')?.checked !== false;
         const showImages = document.getElementById('printOptShowImages')?.checked !== false;
@@ -1566,8 +1808,11 @@ const app = {
         const includeNotes = document.getElementById('printOptIncludeNotes')?.checked !== false;
 
         const options = {
+            targetMode: targetMode,
             title: title,
             priceMode: priceMode,
+            includeApproval: includeApproval,
+            includeWatermark: includeWatermark,
             includeRecipient: includeRecipient,
             includeSupplier: includeSupplier,
             showImages: showImages,
@@ -1616,13 +1861,10 @@ const app = {
             });
     },
 
-    renderPrintArea: function(q, options = {}) {
-        const printArea = document.getElementById('printArea');
-        if (!printArea) return;
-
-        const s = this.supplierSettings;
+    // ── 외부 발송용 정규 견적서 페이지 생성기 (원가/마진 비공개) ──
+    generateExternalQuotePage: function(q, options, s) {
         const title = options.title || '견  적  서';
-        const priceMode = options.priceMode || 'all'; // 'all' | 'unit' | 'none'
+        const priceMode = options.priceMode || 'all';
         const includeRecipient = (typeof options.includeRecipient === 'boolean') ? options.includeRecipient : true;
         const includeSupplier = (typeof options.includeSupplier === 'boolean') ? options.includeSupplier : true;
         const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
@@ -1630,17 +1872,14 @@ const app = {
         const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
         const items = q.items || [];
 
-        // 일자 및 건명 라벨 (견적서 계열은 '견적일자', 그 외 제안서/명세서/리스트/단가표 등은 '작성일자')
         const isQuote = title.replace(/\s+/g, '').includes('견적');
         const dateLabel = isQuote ? '견적일자' : '작성일자';
         const projectLabel = isQuote ? '견적건명' : '건명';
 
-        // 직인 이미지 HTML
         const sealHtml = (includeSeal && s.sealUrl)
             ? `<img src="${s.sealUrl}" class="stamp" alt="직인" onerror="this.style.display='none'">`
             : '';
 
-        // 금액란 HTML [사용자 요청: 합 계 금 액 : ₩ 3,410,880]
         let amountBoxHtml = '';
         if (priceMode !== 'none') {
             amountBoxHtml = `
@@ -1650,7 +1889,6 @@ const app = {
             `;
         }
 
-        // 품목 테이블 행 HTML
         const itemRowsHtml = items.map((it, idx) => {
             const imgCell = showImg
                 ? `<td class="text-center p-1" style="width: 50px;">
@@ -1686,7 +1924,6 @@ const app = {
             `;
         }).join('');
 
-        // 품목 테이블 헤더 및 푸터 구성
         let priceHeaders = '';
         let tfootHtml = '';
         if (priceMode === 'all') {
@@ -1711,11 +1948,9 @@ const app = {
             priceHeaders = `<th style="width: 85px;">단가</th>`;
         }
 
-        // 하단 특기사항 영역 [사용자 요청: 견적서가 아닐 때는 납품조건 메타정보(작성일자, 유효기간, 납기일, 납품장소, 결제조건) 제외]
         let notesHtml = '';
         if (includeNotes) {
             if (isQuote) {
-                // [견적서]: 특기사항 및 납품조건 타이틀 + 메타 정보 바(견적일자, 유효기간, 납기, 장소, 결제조건) + 메모 본문
                 notesHtml = `
                     <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
                         <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
@@ -1730,7 +1965,6 @@ const app = {
                     </div>
                 `;
             } else {
-                // [견적서 외(제안 리스트, 단가표, 거래명세서 등)]: 작성일자/유효기간/납기일/납품장소/결제조건 메타 제외, 순수 메모 본문만 깔끔하게 출력
                 notesHtml = `
                     <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
                         <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 ]</div>
@@ -1740,14 +1974,12 @@ const app = {
             }
         }
 
-        // 수신처 정보 블록 (선택 여부에 따라 출력)
         const recipientHtml = includeRecipient ? `
             <div class="recipient-box">
                 <span class="recipient-name">${escHtml(q.customer_name || '거래처')}</span> 貴中
             </div>
         ` : '';
 
-        // 일자 및 건명 블록
         const dateInfoHtml = `
             <div class="date-info">
                 ${dateLabel} : ${escHtml(q.issue_date || '-')}
@@ -1755,10 +1987,8 @@ const app = {
             </div>
         `;
 
-        // 상단 헤더 컨테이너 HTML (공급자 포함 여부에 따른 레이아웃 분기)
         let headerContainerHtml = '';
         if (includeSupplier) {
-            // [공급자 포함]: 기존 좌측(제목/수신처/일자) + 우측(4행 공급자 테이블)
             headerContainerHtml = `
                 <div class="header-container">
                     <div class="header-left">
@@ -1799,7 +2029,6 @@ const app = {
                 </div>
             `;
         } else {
-            // [공급자 미포함]: 제목 및 수신처/일자 중앙 정렬 레이아웃 (간단한 제안 리스트/단가표 전용)
             headerContainerHtml = `
                 <div class="header-container no-supplier">
                     <div class="title-box">
@@ -1811,12 +2040,12 @@ const app = {
             `;
         }
 
-        const html = `
-            <div class="a4-quote-page">
-                <!-- 1. 상단 헤더 컨테이너 (공급자/수신처 옵션에 따른 가변 레이아웃) -->
+        return `
+            <div class="a4-quote-page external-quote-page">
+                <!-- 1. 상단 헤더 컨테이너 -->
                 ${headerContainerHtml}
 
-                <!-- 2. 금액란 (사용자 요청: 합 계 금 액 : ₩ 3,410,880) -->
+                <!-- 2. 금액란 -->
                 ${amountBoxHtml}
 
                 <!-- 3. 견적 품목 테이블 -->
@@ -1843,6 +2072,225 @@ const app = {
                 ${notesHtml}
             </div>
         `;
+    },
+
+    // ── 내부 검토용 견적서 페이지 생성기 (원가/마진/워터마크/결재란 포함) ──
+    generateInternalReviewPage: function(q, options, s) {
+        const title = '견  적  서 (내 부 검 토 용)';
+        const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
+        const includeApproval = (typeof options.includeApproval === 'boolean') ? options.includeApproval : true;
+        const includeWatermark = (typeof options.includeWatermark === 'boolean') ? options.includeWatermark : true;
+        const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
+        const items = q.items || [];
+
+        // 워터마크 HTML
+        const watermarkHtml = includeWatermark
+            ? `<div class="watermark-internal-review">[ 대외비 / 사내 검토용 - 외부 발송 금지 ]</div>`
+            : '';
+
+        // 우측 결재란 또는 공급자 정보
+        let headerRightHtml = '';
+        if (includeApproval) {
+            headerRightHtml = `
+                <div class="approval-container">
+                    <table class="approval-table">
+                        <tr>
+                            <th rowspan="2" class="vertical-th">결<br>재</th>
+                            <th style="width: 56px;">담당</th>
+                            <th style="width: 56px;">검토</th>
+                            <th style="width: 56px;">승인</th>
+                        </tr>
+                        <tr>
+                            <td class="approval-cell"></td>
+                            <td class="approval-cell"></td>
+                            <td class="approval-cell"></td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        } else {
+            headerRightHtml = `
+                <div class="header-right">
+                    <table class="supplier-table">
+                        <tr>
+                            <th rowspan="2" class="vertical-th">작<br>성</th>
+                            <th style="width: 60px;">상호</th>
+                            <td>${escHtml(s.name || '주식회사 케이엔지')}</td>
+                        </tr>
+                        <tr>
+                            <th>작성자</th>
+                            <td>${escHtml(q.author || '관리자')}</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        }
+
+        // 품목별 마진 집계 계산
+        let sumCost = 0;
+        let sumSupply = 0;
+        let sumMargin = 0;
+
+        const itemRowsHtml = items.map((it, idx) => {
+            const qty = Number(it.qty) || 1;
+            const cost = Number(it.cost_price) || 0;
+            const unit = Number(it.unit_price) || 0;
+            const supply = it.supply_price || (qty * unit);
+            const totalCost = cost * qty;
+            const margin = calcGrossMargin(cost, unit);
+            const totalMargin = (unit - cost) * qty;
+
+            sumCost += totalCost;
+            sumSupply += supply;
+            sumMargin += totalMargin;
+
+            const imgCell = showImg
+                ? `<td class="text-center p-1" style="width: 45px;">
+                     ${it.image_url ? `<img src="${escHtml(it.image_url)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
+                   </td>`
+                : '';
+
+            return `
+                <tr>
+                    <td class="text-center" style="width: 30px;">${idx + 1}</td>
+                    ${imgCell}
+                    <td class="text-start ps-2 fw-semibold">${escHtml(it.product_name)}</td>
+                    <td class="text-center" style="font-size: 8pt;">${escHtml(it.spec || '-')}</td>
+                    <td class="text-center">${fmtNum(qty)}</td>
+                    <td class="text-center">${escHtml(it.unit || 'EA')}</td>
+                    <td class="text-end pe-2 text-muted" style="font-size: 8.5pt;">${fmtWon(cost)}</td>
+                    <td class="text-end pe-2">${fmtWon(unit)}</td>
+                    <td class="text-end pe-2 fw-semibold">${fmtWon(supply)}</td>
+                    <td class="text-end pe-2 text-success fw-bold" style="font-size: 8.5pt;">${fmtWon(totalMargin)}</td>
+                    <td class="text-center fw-bold ${margin.rate < 15 ? 'text-danger' : 'text-primary'}" style="font-size: 8.5pt;">${margin.rate.toFixed(1)}%</td>
+                    <td class="text-start ps-2" style="font-size: 8pt;">${escHtml(it.remarks || '')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const avgMarginRate = sumSupply > 0 ? (Math.round((sumMargin / sumSupply) * 1000) / 10) : 0;
+        const leadCols = showImg ? 7 : 6;
+
+        return `
+            <div class="a4-quote-page internal-review-page position-relative">
+                <!-- 0. 대외비 사내 검토용 워터마크 -->
+                ${watermarkHtml}
+
+                <!-- 1. 상단 헤더 컨테이너 (좌측: 건명/수신처 + 우측: 3단 결재란) -->
+                <div class="header-container mb-2">
+                    <div class="header-left">
+                        <div class="title-box mb-1">
+                            <h1 style="font-size: 16pt; font-weight: 800; letter-spacing: 2px; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 3px; display: inline-block;">
+                                ${title}
+                            </h1>
+                        </div>
+                        <div class="recipient-box" style="margin-top: 3px;">
+                            <span class="recipient-name fw-bold" style="font-size: 11pt;">${escHtml(q.customer_name || '거래처')}</span> 貴中
+                        </div>
+                        <div class="date-info" style="font-size: 8.5pt; color: #334155; margin-top: 2px;">
+                            견적일자: <b>${escHtml(q.issue_date || '-')}</b>
+                            ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;견적건명: <b>${escHtml(q.project_name)}</b>` : ''}
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        ${headerRightHtml}
+                    </div>
+                </div>
+
+                <!-- 2. 핵심 마진 분석 요약 리본 박스 -->
+                <div class="internal-margin-summary">
+                    <div class="internal-margin-summary-item">
+                        <span class="label">총 매입원가:</span>
+                        <span class="value">${fmtWon(sumCost)}</span>
+                    </div>
+                    <div class="internal-margin-summary-item">
+                        <span class="label">총 공급가액:</span>
+                        <span class="value text-primary">${fmtWon(sumSupply)}</span>
+                    </div>
+                    <div class="internal-margin-summary-item">
+                        <span class="label">총 마진액:</span>
+                        <span class="value text-success">${fmtWon(sumMargin)}</span>
+                    </div>
+                    <div class="internal-margin-summary-item">
+                        <span class="label">평균 마진율(매출총이익률):</span>
+                        <span class="value ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}">${avgMarginRate.toFixed(1)}%</span>
+                    </div>
+                    <div class="internal-margin-summary-item">
+                        <span class="label">총 견적금액(VAT포함):</span>
+                        <span class="value">${fmtWon(q.total_amount)}</span>
+                    </div>
+                </div>
+
+                <!-- 3. 원가/마진 상세 견적 품목 테이블 -->
+                <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; margin-top: 8px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">No.</th>
+                            ${showImg ? '<th style="width: 45px;">사진</th>' : ''}
+                            <th>품목명 및 사양</th>
+                            <th style="width: 75px;">규격</th>
+                            <th style="width: 40px;">수량</th>
+                            <th style="width: 35px;">단위</th>
+                            <th style="width: 70px;">매입가</th>
+                            <th style="width: 70px;">제안단가</th>
+                            <th style="width: 80px;">공급가액</th>
+                            <th style="width: 75px;">마진액(총)</th>
+                            <th style="width: 55px;">마진율</th>
+                            <th style="width: 70px;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemRowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="${leadCols}" class="text-center" style="font-size: 8.5pt; background: #f8fafc; letter-spacing: 2px;">합 계</th>
+                            <td class="text-end pe-2 text-muted fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumCost)}</td>
+                            <td class="text-center text-muted" style="background: #f8fafc; font-size: 8pt;">-</td>
+                            <td class="text-end pe-2 fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumSupply)}</td>
+                            <td class="text-end pe-2 text-success fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumMargin)}</td>
+                            <td class="text-center fw-bold ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}" style="background: #f8fafc; font-size: 8.5pt;">${avgMarginRate.toFixed(1)}%</td>
+                            <td class="text-center text-muted" style="background: #f8fafc; font-size: 8pt;">-</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- 4. 하단 사내 검토 의견 및 특기사항 -->
+                ${includeNotes ? `
+                    <div class="a4-footer-notes" style="margin-top: 8px; border: 1px solid #333; padding: 6px 10px; font-size: 8pt;">
+                        <div class="a4-footer-notes-title fw-bold mb-1" style="color: #0f172a;">[ 사내 검토 및 거래 조건 ]</div>
+                        <div class="a4-notes-meta" style="display: flex; gap: 14px; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #cbd5e1; font-size: 8pt; flex-wrap: wrap;">
+                            <span>• <b>납기일</b>: ${escHtml(q.delivery_date || '발주 후 3일 이내')}</span>
+                            <span>• <b>납품장소</b>: ${escHtml(q.delivery_place || '지정 장소')}</span>
+                            <span>• <b>결제조건</b>: ${escHtml(q.payment_terms || '현금결제')}</span>
+                            <span>• <b>과세구분</b>: ${q.vat_type === 'exclusive' ? '부가세 별도' : (q.vat_type === 'inclusive' ? '부가세 포함' : '영세/면세')}</span>
+                        </div>
+                        <div style="white-space: pre-wrap; line-height: 1.4;">${escHtml(q.notes_instructions || '특기사항 없음')}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    // ── 통합 인쇄 영역 렌더링 (외부 발송용 / 내부+외부 / 내부 검토용) ──
+    renderPrintArea: function(q, options = {}) {
+        const printArea = document.getElementById('printArea');
+        if (!printArea) return;
+
+        const s = this.supplierSettings;
+        const targetMode = options.targetMode || 'external';
+
+        let html = '';
+        if (targetMode === 'both') {
+            // 1페이지: 내부 검토용 결재 서식 + 2페이지: 외부 발송용 고객 견적서
+            html = this.generateInternalReviewPage(q, options, s) + this.generateExternalQuotePage(q, options, s);
+        } else if (targetMode === 'internal') {
+            // 내부 검토용만 1장
+            html = this.generateInternalReviewPage(q, options, s);
+        } else {
+            // 외부 발송용만 1장 (기본)
+            html = this.generateExternalQuotePage(q, options, s);
+        }
 
         printArea.innerHTML = html;
     },

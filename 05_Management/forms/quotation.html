@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="./quotation.css?v=20260930_14">
+    <link rel="stylesheet" href="./quotation.css?v=20261014_margin_v1">
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -289,9 +289,9 @@
                 </div>
             </div>
 
-            <!-- 총 견적금액 요약 리본 & 부가세 옵션 -->
+            <!-- 총 견적금액 요약 리본 & 부가세 옵션 & 실시간 마진 지표 -->
             <div class="quote-summary-ribbon mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 rounded">
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="d-flex align-items-center gap-1">
                         <span class="fw-bold" style="font-size: 12px;">과세 구분:</span>
                         <select class="form-select form-select-sm" id="vatTypeSelect" style="width: 110px;" onchange="app.recalcTotals()">
@@ -303,6 +303,19 @@
                     <!-- 한글 금액 대신 심플 총금액 표기 -->
                     <div class="quote-amount-korean fw-bold text-primary" id="amountKoreanText" style="font-size: 13px;">
                         0원 (부가세 포함)
+                    </div>
+
+                    <!-- 실시간 마진 분석 배지 그룹 (영업관리 검토용) -->
+                    <div class="d-flex align-items-center gap-2 ps-2 border-start margin-summary-group">
+                        <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 11px;">
+                            총 원가: <strong class="ms-1 text-dark" id="sumCostPrice">₩0</strong>
+                        </span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 11px;">
+                            총 마진: <strong class="ms-1 text-success" id="sumMarginAmount">₩0</strong>
+                        </span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 11px;">
+                            평균 마진율: <strong class="ms-1" id="sumMarginRate">0.0%</strong>
+                        </span>
                     </div>
                 </div>
 
@@ -322,7 +335,7 @@
                 </div>
             </div>
 
-            <!-- ── 3. 견적 품목 그리드 (사진 썸네일 & 실시간 계산 & 품목 불러오기) ── -->
+            <!-- ── 3. 견적 품목 그리드 (사진 썸네일 & 실시간 계산 & 품목 불러오기 & 실시간 마진) ── -->
             <div class="card shadow-none border mb-3">
                 <div class="card-header py-1 px-3 bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
@@ -359,19 +372,20 @@
                 <div class="table-responsive erp-table-wrapper" style="max-height: 480px;">
                     <table class="erp-table sk-table table-bordered mb-0" id="quoteItemsTable">
                         <colgroup>
-                            <col style="width: 36px;">
-                            <col class="col-item-img" style="width: 64px;">
-                            <col style="width: auto; min-width: 170px;">
-                            <col style="width: 110px;">
-                            <col style="width: 60px;">
-                            <col style="width: 55px;">
-                            <col class="col-cost" style="width: 85px;">
-                            <col style="width: 95px;">
-                            <col style="width: 100px;">
-                            <col style="width: 85px;">
-                            <col style="width: 105px;">
-                            <col style="width: 110px;">
-                            <col style="width: 40px;">
+                            <col style="width: 34px;"> <!-- No -->
+                            <col class="col-item-img" style="width: 58px;"> <!-- 사진 -->
+                            <col style="width: auto; min-width: 150px;"> <!-- 품목명 -->
+                            <col style="width: 100px;"> <!-- 규격 -->
+                            <col style="width: 55px;"> <!-- 수량 -->
+                            <col style="width: 48px;"> <!-- 단위 -->
+                            <col class="col-cost" style="width: 90px;"> <!-- 매입가 -->
+                            <col style="width: 95px;"> <!-- 제안단가 -->
+                            <col style="width: 90px;"> <!-- 공급가액 -->
+                            <col style="width: 75px;"> <!-- 부가세 -->
+                            <col style="width: 95px;"> <!-- 합계금액 -->
+                            <col style="width: 98px;"> <!-- 마진율/마진액(2단) -->
+                            <col style="width: 100px;"> <!-- 비고 -->
+                            <col style="width: 36px;"> <!-- 삭제 -->
                         </colgroup>
                         <thead>
                             <tr>
@@ -381,11 +395,12 @@
                                 <th class="text-center">규격 / 사양</th>
                                 <th class="text-center">수량</th>
                                 <th class="text-center">단위</th>
-                                <th class="col-cost text-end pe-2 text-muted" title="화면에서만 보이며 인쇄 시는 숨겨집니다">참고원가</th>
+                                <th class="col-cost text-end pe-2 text-muted" title="실제 매입단가(원가) - 마진 계산의 기준">매입가</th>
                                 <th class="text-end pe-2">제안 단가 <span class="text-danger">*</span></th>
                                 <th class="text-end pe-2">공급가액</th>
                                 <th class="text-end pe-2">세액(VAT)</th>
                                 <th class="text-end pe-2 fw-bold text-primary">합계금액</th>
+                                <th class="text-center" title="매출총이익률: (단가-매입가)/단가, 마진율 수정 시 단가 역산">마진율(마진액)</th>
                                 <th class="text-start ps-2">비고</th>
                                 <th class="text-center no-print"><i class='bx bx-trash text-danger'></i></th>
                             </tr>
@@ -640,10 +655,43 @@
                 </div>
                 
                 <div class="modal-body p-3 d-flex flex-column gap-3">
-                    <!-- 1. 문서 대제목 (출력 서식 제목) -->
+                    <!-- 1. 출력 구분 (3-Way: 외부 발송용 / 내부+외부 / 내부 검토용) -->
                     <div class="print-option-section">
                         <label class="print-section-label">
-                            <i class='bx bx-heading text-primary'></i> 1. 문서 대제목 (출력 서식 제목)
+                            <i class='bx bx-file-find text-primary'></i> 1. 출력 구분 (발송 및 검토 용도)
+                        </label>
+                        <div class="print-mode-cards-grid">
+                            <label class="print-mode-card" for="printTargetExternal">
+                                <input class="form-check-input" type="radio" name="printTargetMode" id="printTargetExternal" value="external" checked onchange="app.handlePrintTargetChange(this.value)">
+                                <div class="print-mode-card-content">
+                                    <div class="print-mode-card-title">외부 발송용만</div>
+                                    <div class="print-mode-card-desc">고객 전달용 (원가/마진 비공개)</div>
+                                </div>
+                            </label>
+                            <label class="print-mode-card" for="printTargetBoth">
+                                <input class="form-check-input" type="radio" name="printTargetMode" id="printTargetBoth" value="both" onchange="app.handlePrintTargetChange(this.value)">
+                                <div class="print-mode-card-content">
+                                    <div class="print-mode-card-title">내부+외부 모두</div>
+                                    <div class="print-mode-card-desc">1p 내부검토 + 2p 외부발송</div>
+                                </div>
+                            </label>
+                            <label class="print-mode-card" for="printTargetInternal">
+                                <input class="form-check-input" type="radio" name="printTargetMode" id="printTargetInternal" value="internal" onchange="app.handlePrintTargetChange(this.value)">
+                                <div class="print-mode-card-content">
+                                    <div class="print-mode-card-title">내부 검토용만</div>
+                                    <div class="print-mode-card-desc">원가/마진/워터마크/결재란</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="small text-muted mt-1 px-1" id="printTargetNotice" style="font-size: 10.5px;">
+                            <i class='bx bx-info-circle text-primary'></i> <b>외부 발송용</b>: 매입가와 마진이 제외된 깔끔한 고객 제출용 공식 견적서입니다.
+                        </div>
+                    </div>
+
+                    <!-- 2. 문서 대제목 (출력 서식 제목) -->
+                    <div class="print-option-section">
+                        <label class="print-section-label">
+                            <i class='bx bx-heading text-primary'></i> 2. 문서 대제목 (출력 서식 제목)
                         </label>
                         <div class="print-preset-chips-wrap mb-2" id="printPresetChips">
                             <button type="button" class="print-preset-chip active" onclick="app.selectPrintTitlePreset('견  적  서')">견적서</button>
@@ -659,10 +707,10 @@
                         </div>
                     </div>
 
-                    <!-- 2. 금액 표시 모드 (세그먼트 카드 3분할) -->
+                    <!-- 3. 금액 표시 모드 (세그먼트 카드 3분할) -->
                     <div class="print-option-section">
                         <label class="print-section-label">
-                            <i class='bx bx-won text-primary'></i> 2. 금액 표시 모드
+                            <i class='bx bx-won text-primary'></i> 3. 금액 표시 모드 (외부 발송용 견적 기준)
                         </label>
                         <div class="print-mode-cards-grid">
                             <label class="print-mode-card" for="priceModeAll">
@@ -689,12 +737,30 @@
                         </div>
                     </div>
 
-                    <!-- 3. 출력 세부 옵션 -->
+                    <!-- 4. 출력 세부 옵션 -->
                     <div class="print-option-section">
                         <label class="print-section-label">
-                            <i class='bx bx-slider-alt text-primary'></i> 3. 출력 세부 옵션
+                            <i class='bx bx-slider-alt text-primary'></i> 4. 출력 세부 옵션
                         </label>
                         <div class="print-suboptions-box">
+                            <!-- 내부 검토용 결재란 옵션 -->
+                            <label class="print-suboption-row" id="wrapPrintOptIncludeApproval">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeApproval" checked>
+                                <div class="print-suboption-text">
+                                    <span class="fw-semibold text-primary"><i class='bx bx-check-shield'></i> 내부 검토용 결재란 포함 (담당 / 검토 / 승인)</span>
+                                    <span class="sub-hint">(내부 검토용 서식 우측 상단 3단 결재도장칸)</span>
+                                </div>
+                            </label>
+
+                            <!-- 내부 검토용 워터마크 옵션 -->
+                            <label class="print-suboption-row" id="wrapPrintOptWatermark">
+                                <input type="checkbox" class="form-check-input m-0" id="printOptWatermark" checked>
+                                <div class="print-suboption-text">
+                                    <span class="fw-semibold text-danger"><i class='bx bx-shield-x'></i> 내부 검토용 [대외비 / 사내 검토용] 워터마크 삽입</span>
+                                    <span class="sub-hint">(사내 품의용 식별 및 외부 오발송 방지)</span>
+                                </div>
+                            </label>
+
                             <label class="print-suboption-row">
                                 <input type="checkbox" class="form-check-input m-0" id="printOptIncludeRecipient" checked>
                                 <div class="print-suboption-text">
@@ -707,7 +773,7 @@
                                 <input type="checkbox" class="form-check-input m-0" id="printOptIncludeSupplier" checked onchange="app.togglePrintSupplierOption(this.checked)">
                                 <div class="print-suboption-text">
                                     <span class="fw-semibold">공급자 (케이엔지) 정보 표 포함</span>
-                                    <span class="sub-hint">(해제 시 상단 헤더 중앙 정렬)</span>
+                                    <span class="sub-hint">(외부 발송용 서식 우측 상단)</span>
                                 </div>
                             </label>
 
@@ -767,6 +833,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20261001_02"></script>
+    <script src="./quotation.js?v=20261014_margin_v1"></script>
 </body>
 </html>
