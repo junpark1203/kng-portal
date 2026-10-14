@@ -378,7 +378,12 @@
     <div class="inv-drawer" id="partnerDrawer">
         <div class="inv-drawer-header">
             <h2><i class='bx bx-user-circle'></i> 거래처 템플릿</h2>
-            <button class="inv-modal-close" id="closeDrawerBtn"><i class='bx bx-x'></i></button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button type="button" class="btn-outline" id="btnGoPartnersManageDrawer" style="font-size:11px; padding:4px 8px; border-radius:6px;" title="정산/거래처 관리 페이지로 이동">
+                    <i class='bx bx-link-external'></i> 정산/거래처 관리
+                </button>
+                <button class="inv-modal-close" id="closeDrawerBtn"><i class='bx bx-x'></i></button>
+            </div>
         </div>
         <div class="inv-drawer-body">
             <!-- Add Form -->
@@ -438,18 +443,36 @@
         </div>
     </div>
 
-    <!-- ═══ Template Picker Modal (for load-from-template) ═══ -->
+    <!-- ═══ Template Picker Modal (정산/거래처 연동) ═══ -->
     <div class="inv-modal-overlay" id="tplPickerModal" style="z-index:1200;">
-        <div class="inv-modal" style="width:460px;">
+        <div class="inv-modal" style="width:680px; max-width:92vw;">
             <div class="inv-modal-header">
                 <h2><i class='bx bx-user-check'></i> <span id="tplPickerTitle">거래처 선택</span></h2>
-                <button class="inv-modal-close" id="closeTplPickerBtn"><i class='bx bx-x'></i></button>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn-outline" id="btnGoPartnersManage" style="font-size:11px; padding:4px 8px; border-radius:6px;" title="정산/거래처 관리 페이지로 이동">
+                        <i class='bx bx-link-external'></i> 정산/거래처 관리
+                    </button>
+                    <button class="inv-modal-close" id="closeTplPickerBtn"><i class='bx bx-x'></i></button>
+                </div>
             </div>
-            <div class="inv-modal-body" style="max-height:50vh;">
-                <div id="tplPickerList"></div>
-                <div id="tplPickerEmpty" style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">
+            <div class="inv-modal-body" style="max-height:65vh; padding:16px;">
+                <!-- Search & Filters -->
+                <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                    <div class="inv-search-box" style="flex:1; min-width:200px;">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="tplSearchInput" placeholder="거래처명, 사업자명, 영문 상호, 주소 검색...">
+                    </div>
+                    <div style="display:flex; gap:4px;" id="tplFilterTabs">
+                        <button type="button" class="btn-outline tpl-tab active" data-type="ALL" style="font-size:11px; padding:4px 10px;">전체</button>
+                        <button type="button" class="btn-outline tpl-tab" data-type="OVERSEAS" style="font-size:11px; padding:4px 10px;"><i class='bx bx-globe'></i> 해외/영문</button>
+                        <button type="button" class="btn-outline tpl-tab" data-type="매입처" style="font-size:11px; padding:4px 10px;">매입처</button>
+                        <button type="button" class="btn-outline tpl-tab" data-type="매출처" style="font-size:11px; padding:4px 10px;">매출처</button>
+                    </div>
+                </div>
+                <div id="tplPickerList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <div id="tplPickerEmpty" style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px; display:none;">
                     <i class='bx bx-user-x' style="font-size:32px;display:block;margin-bottom:6px;"></i>
-                    등록된 거래처가 없습니다.<br>먼저 거래처를 등록해주세요.
+                    일치하는 거래처가 없습니다.
                 </div>
             </div>
         </div>
@@ -474,7 +497,7 @@
     <!-- Toast -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="invoice-packing.js?v=20261014_pi"></script>
+    <script src="invoice-packing.js?v=20261014_partners_fix"></script>
 </body>
 
 </html>

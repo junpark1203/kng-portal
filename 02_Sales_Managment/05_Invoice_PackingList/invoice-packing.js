@@ -57,6 +57,7 @@ const els = {
     // Template Picker
     tplPickerModal: document.getElementById('tplPickerModal'),
     tplPickerList: document.getElementById('tplPickerList'),
+    tplSearchInput: document.getElementById('tplSearchInput'),
     closeTplPickerBtn: document.getElementById('closeTplPickerBtn'),
     
     // Preview & Print
@@ -185,9 +186,85 @@ function checkTransferData() {
     }
 }
 
+let erpPartners = [];
+let customPartners = [];
+let currentTplFilterTab = 'ALL';
+
 async function loadPartners() {
     try {
-        allPartners = await authFetch('/api/invoice-packing/partners');
+        // 1. 중앙 ERP 거래처 (정산/거래처: /api/partners) 연동 불러오기
+        try {
+            const erpRes = await authFetch('/api/partners');
+            erpPartners = Array.isArray(erpRes) ? erpRes : (erpRes.partners || []);
+        } catch (e) {
+            console.warn('ERP partners fetch failed:', e);
+            erpPartners = [];
+        }
+
+        // 2. 인보이스 전용 템플릿 (/api/invoice-packing/partners) 불러오기
+        try {
+            const customRes = await authFetch('/api/invoice-packing/partners');
+            customPartners = Array.isArray(customRes) ? customRes : [];
+        } catch (e) {
+            console.warn('Custom invoice partners fetch failed:', e);
+            customPartners = [];
+        }
+
+        // 3. 정규화 및 통합
+        const erpMapped = erpPartners.map(p => {
+            const engName = p.company_name_en ? p.company_name_en.trim() : '';
+            const korName = (p.company_name || p.name || '').trim();
+            const primaryName = engName || korName;
+            
+            // 영문 주소 및 정보 우선 매핑
+            const addr = (p.address_en || p.address || '').trim();
+            const tel = (p.phone_en || p.phone || p.manager1_phone || '').trim();
+            const fax = (p.fax || '').trim();
+            const email = (p.email_en || p.manager1_email || '').trim();
+
+            let swift = (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '';
+            let bankAddress = (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '';
+
+            return {
+                id: 'erp_' + p.id,
+                erpId: p.id,
+                source: 'erp',
+                role: p.type === '매출처' ? 'consignee' : (p.type === '매입처' ? 'shipper' : 'all'),
+                type: p.type || '기타',
+                name: primaryName,
+                korName: korName,
+                engName: engName,
+                address: addr,
+                tel: tel,
+                fax: fax,
+                email: email,
+                bankInfo: {
+                    bankName: p.bank_name || '',
+                    accountNo: p.account_number || '',
+                    swift: swift,
+                    bankAddress: bankAddress
+                },
+                raw: p
+            };
+        });
+
+        const customMapped = customPartners.map(p => ({
+            id: String(p.id),
+            source: 'custom',
+            role: p.role || 'shipper',
+            type: '인보이스 템플릿',
+            name: p.name,
+            korName: p.name,
+            engName: '',
+            address: p.address || '',
+            tel: p.tel || '',
+            fax: p.fax || '',
+            email: p.email || '',
+            bankInfo: p.bankInfo || {},
+            raw: p
+        }));
+
+        allPartners = [...erpMapped, ...customMapped];
         renderPartnerList();
     } catch (e) {
         console.error('Failed to load partners', e);
@@ -245,7 +322,7 @@ function renderTable() {
         if (d.status === '진행중') statusBadge = `<span class="badge" style="background:#dbeafe;color:#2563eb;font-size:11px;padding:2px 6px;border-radius:4px;">진행중</span>`;
         else if (d.status === '완료') statusBadge = `<span class="badge" style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 6px;border-radius:4px;">완료</span>`;
         
-        return `<tr data-id="${d.id}">
+        return `<tr data-id="${d.id}" onclick="editDoc('${d.id}')" title="클릭하여 거래 내역 수정">
             <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
             <td><div style="display:flex;flex-direction:column;gap:4px;">${docHtml.join('')}</div></td>
             <td>${dateStr}</td>
@@ -670,7 +747,20 @@ els.saveDocBtn.addEventListener('click', async () => {
     }
 });
 
-// ── Partner Templates Logic ──
+// ── Partner Templates & ERP Integration ──
+function openPartnersManagement() {
+    try {
+        if (window.parent && window.parent.document) {
+            const link = window.parent.document.querySelector('a[href*="03_monthly_closing/partners"]');
+            if (link) {
+                link.click();
+                return;
+            }
+        }
+    } catch (e) {}
+    window.open('../../03_monthly_closing/partners/index.html', '_blank');
+}
+
 function openPartnerDrawer() {
     renderPartnerList();
     els.drawerOverlay.classList.add('active');
@@ -684,26 +774,45 @@ function closePartnerDrawer() {
 }
 
 function renderPartnerList() {
-    if (allPartners.length === 0) {
-        els.partnerList.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray-400);">등록된 거래처가 없습니다.</div>`;
-        return;
-    }
-    els.partnerList.innerHTML = allPartners.map(p => {
-        return `<div class="ptr-card">
-            <div class="ptr-card-header">
-                <div class="ptr-card-name">${p.name}</div>
-                <div class="ptr-card-role ${p.role}">${p.role}</div>
+    const customList = allPartners.filter(p => p.source === 'custom');
+    const erpCount = allPartners.filter(p => p.source === 'erp').length;
+
+    let html = `
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:11.5px; color:#1e40af; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <i class='bx bx-check-shield' style="font-size:16px; vertical-align:middle;"></i>
+                <strong>정산/거래처 관리 연동 중</strong>: <b>${erpCount}</b>개 등록됨
             </div>
-            <div class="ptr-card-detail">
-                ${p.address ? `<div>${p.address}</div>` : ''}
-                ${p.tel ? `<div>Tel: ${p.tel}</div>` : ''}
-            </div>
-            <div class="ptr-card-actions">
-                <button type="button" onclick="editPartner('${p.id}')"><i class='bx bx-edit-alt'></i></button>
-                <button type="button" class="ptr-del" onclick="deletePartner('${p.id}')"><i class='bx bx-trash'></i></button>
-            </div>
+            <button type="button" class="btn-outline" onclick="openPartnersManagement()" style="font-size:10.5px; padding:3px 8px; background:#fff; border-radius:4px;">
+                <i class='bx bx-link-external'></i> 거래처 관리
+            </button>
+        </div>
+    `;
+
+    if (customList.length === 0) {
+        html += `<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:12px;line-height:1.6;">
+            등록된 인보이스 전용 템플릿이 없습니다.<br>
+            <span style="font-size:11px;color:var(--gray-500);">(정산/거래처에 등록된 모든 거래처는 [템플릿 불러오기]를 통해 즉시 선택 및 입력 가능합니다.)</span>
         </div>`;
-    }).join('');
+    } else {
+        html += customList.map(p => {
+            return `<div class="ptr-card">
+                <div class="ptr-card-header">
+                    <div class="ptr-card-name">${p.name}</div>
+                    <div class="ptr-card-role ${p.role}">${p.role}</div>
+                </div>
+                <div class="ptr-card-detail">
+                    ${p.address ? `<div>${p.address}</div>` : ''}
+                    ${p.tel ? `<div>Tel: ${p.tel}</div>` : ''}
+                </div>
+                <div class="ptr-card-actions">
+                    <button type="button" onclick="editPartner('${p.id}')"><i class='bx bx-edit-alt'></i></button>
+                    <button type="button" class="ptr-del" onclick="deletePartner('${p.id}')"><i class='bx bx-trash'></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    els.partnerList.innerHTML = html;
 }
 
 function resetPartnerForm() {
@@ -722,7 +831,7 @@ function resetPartnerForm() {
 }
 
 window.editPartner = function(id) {
-    const p = allPartners.find(x => x.id === id);
+    const p = allPartners.find(x => String(x.id) === String(id));
     if (!p) return;
     document.getElementById('ptrEditId').value = p.id;
     document.getElementById('ptrRole').value = p.role || 'shipper';
@@ -782,39 +891,114 @@ els.ptrSaveBtn.addEventListener('click', async () => {
 });
 els.ptrCancelBtn.addEventListener('click', resetPartnerForm);
 
-// ── Template Picker Logic ──
+// ── Template Picker Logic (정산/거래처 연동) ──
+function renderTplPickerList() {
+    const search = (els.tplSearchInput?.value || '').toLowerCase().trim();
+    let filtered = allPartners;
+
+    // 1. 구분 필터
+    if (currentTplFilterTab === 'OVERSEAS') {
+        filtered = filtered.filter(p => p.engName || p.type === '해외/무역' || /[a-zA-Z]/.test(p.name));
+    } else if (currentTplFilterTab === '매입처') {
+        filtered = filtered.filter(p => p.type === '매입처' || p.role === 'shipper');
+    } else if (currentTplFilterTab === '매출처') {
+        filtered = filtered.filter(p => p.type === '매출처' || p.role === 'consignee');
+    }
+
+    // 2. 검색어 필터
+    if (search) {
+        filtered = filtered.filter(p => 
+            (p.name && p.name.toLowerCase().includes(search)) ||
+            (p.korName && p.korName.toLowerCase().includes(search)) ||
+            (p.engName && p.engName.toLowerCase().includes(search)) ||
+            (p.address && p.address.toLowerCase().includes(search)) ||
+            (p.tel && p.tel.includes(search)) ||
+            (p.email && p.email.toLowerCase().includes(search)) ||
+            (p.bankInfo?.bankName && p.bankInfo.bankName.toLowerCase().includes(search))
+        );
+    }
+
+    const emptyEl = document.getElementById('tplPickerEmpty');
+    if (filtered.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        els.tplPickerList.innerHTML = '';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    els.tplPickerList.innerHTML = filtered.map(p => {
+        const isErp = p.source === 'erp';
+        const typeBadge = isErp 
+            ? `<span class="badge" style="background:#eff6ff;color:#2563eb;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #bfdbfe;">정산·${p.type || '거래처'}</span>`
+            : `<span class="badge" style="background:#f1f5f9;color:#475569;font-size:10px;padding:2px 6px;border-radius:4px;">인보이스 템플릿</span>`;
+
+        const engBadge = p.engName ? `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:10px;padding:2px 6px;border-radius:4px;"><i class='bx bx-globe'></i> 영문</span>` : '';
+
+        return `<div class="tpl-picker-card" onclick="applyTemplate('${p.id}')">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <div>
+                    <div style="font-weight:700; font-size:13px; color:var(--gray-900);">
+                        ${p.name}
+                        ${p.engName && p.korName && p.engName !== p.korName ? `<span style="font-weight:normal; font-size:11.5px; color:var(--gray-500); margin-left:4px;">(${p.korName})</span>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+                    ${engBadge}
+                    ${typeBadge}
+                </div>
+            </div>
+            <div style="margin-top:5px; font-size:11px; color:var(--gray-600); line-height:1.45;">
+                ${p.address ? `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><i class='bx bx-map-pin' style="color:var(--gray-400);"></i> ${p.address}</div>` : ''}
+                <div style="display:flex; gap:12px; margin-top:2px; flex-wrap:wrap;">
+                    ${p.tel ? `<div><i class='bx bx-phone' style="color:var(--gray-400);"></i> ${p.tel}</div>` : ''}
+                    ${p.email ? `<div><i class='bx bx-envelope' style="color:var(--gray-400);"></i> ${p.email}</div>` : ''}
+                </div>
+                ${p.bankInfo?.bankName ? `<div style="margin-top:2px; color:var(--primary); font-size:10.5px;"><i class='bx bxs-bank'></i> ${p.bankInfo.bankName} ${p.bankInfo.accountNo ? '(' + p.bankInfo.accountNo + ')' : ''}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
 document.querySelectorAll('.load-tpl-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         currentTplRole = btn.dataset.role; // 'shipper', 'consignee', 'notify'
         
-        let targetRole = 'shipper';
-        if (currentTplRole === 'consignee' || currentTplRole === 'notify') targetRole = 'consignee';
-        
-        const list = allPartners.filter(p => p.role === targetRole || p.role === currentTplRole);
-        
-        if (list.length === 0) {
-            document.getElementById('tplPickerEmpty').style.display = 'block';
-            els.tplPickerList.innerHTML = '';
+        if (currentTplRole === 'shipper') {
+            document.getElementById('tplPickerTitle').textContent = '판매자 (Shipper) 거래처 선택 [정산/거래처 연동]';
+            currentTplFilterTab = 'OVERSEAS';
+        } else if (currentTplRole === 'consignee') {
+            document.getElementById('tplPickerTitle').textContent = '구매자 (Consignee) 거래처 선택 [정산/거래처 연동]';
+            currentTplFilterTab = 'ALL';
         } else {
-            document.getElementById('tplPickerEmpty').style.display = 'none';
-            els.tplPickerList.innerHTML = list.map(p => {
-                return `<div class="ptr-card" onclick="applyTemplate('${p.id}')">
-                    <div class="ptr-card-header"><div class="ptr-card-name">${p.name}</div></div>
-                    <div class="ptr-card-detail">${p.address ? `<div>${p.address}</div>` : ''}</div>
-                </div>`;
-            }).join('');
+            document.getElementById('tplPickerTitle').textContent = 'Notify Party 거래처 선택 [정산/거래처 연동]';
+            currentTplFilterTab = 'ALL';
         }
         
-        document.getElementById('tplPickerTitle').textContent = 
-            currentTplRole === 'shipper' ? '판매자 템플릿 선택' :
-            (currentTplRole === 'consignee' ? '구매자 템플릿 선택' : 'Notify 템플릿 선택');
-            
+        document.querySelectorAll('.tpl-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.type === currentTplFilterTab);
+        });
+        
+        if (els.tplSearchInput) els.tplSearchInput.value = '';
+        renderTplPickerList();
         els.tplPickerModal.classList.add('active');
+        setTimeout(() => { if (els.tplSearchInput) els.tplSearchInput.focus(); }, 100);
+    });
+});
+
+if (els.tplSearchInput) {
+    els.tplSearchInput.addEventListener('input', () => renderTplPickerList());
+}
+document.querySelectorAll('.tpl-tab').forEach(t => {
+    t.addEventListener('click', () => {
+        currentTplFilterTab = t.dataset.type;
+        document.querySelectorAll('.tpl-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        renderTplPickerList();
     });
 });
 
 window.applyTemplate = function(id) {
-    const p = allPartners.find(x => x.id === id);
+    const p = allPartners.find(x => String(x.id) === String(id));
     if (!p) return;
     
     if (currentTplRole === 'shipper') {
@@ -840,8 +1024,16 @@ window.applyTemplate = function(id) {
     }
     
     els.tplPickerModal.classList.remove('active');
-    showToast('템플릿 정보가 입력되었습니다.');
+    const sourceLabel = p.source === 'erp' ? '정산/거래처 연동' : '템플릿';
+    showToast(`${p.name} 정보가 입력되었습니다. (${sourceLabel})`);
 };
+
+if (document.getElementById('btnGoPartnersManage')) {
+    document.getElementById('btnGoPartnersManage').addEventListener('click', openPartnersManagement);
+}
+if (document.getElementById('btnGoPartnersManageDrawer')) {
+    document.getElementById('btnGoPartnersManageDrawer').addEventListener('click', openPartnersManagement);
+}
 
 // ── Preview & Print Logic ──
 function setPreviewType(type) {
@@ -1146,6 +1338,17 @@ els.partnerBtn.addEventListener('click', openPartnerDrawer);
 els.closeDrawerBtn.addEventListener('click', closePartnerDrawer);
 els.closeTplPickerBtn.addEventListener('click', () => els.tplPickerModal.classList.remove('active'));
 els.closePreviewBtn.addEventListener('click', closePreview);
+els.previewOverlay.addEventListener('click', (e) => {
+    if (e.target === els.previewOverlay) closePreview();
+});
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (els.previewOverlay.classList.contains('active')) closePreview();
+        else if (els.tplPickerModal.classList.contains('active')) els.tplPickerModal.classList.remove('active');
+        else if (els.partnerDrawer.classList.contains('open')) closePartnerDrawer();
+        else if (els.docModal.classList.contains('active')) closeDocModal();
+    }
+});
 if (els.switchDocBtn) els.switchDocBtn.addEventListener('click', switchPreviewType);
 els.printBtn.addEventListener('click', () => window.print());
 els.searchInput.addEventListener('input', renderTable);
