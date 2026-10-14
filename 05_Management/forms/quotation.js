@@ -2143,28 +2143,65 @@ const app = {
                 <!-- 2. 금액란 -->
                 ${amountBoxHtml}
 
-                <!-- 3. 견적 품목 테이블 -->
+                <!-- 3. 견적 품목 테이블 (100% 가로 전폭 분배) -->
                 <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                    ${showImg ? (priceMode === 'all' ? `
                     <colgroup>
-                        <col style="width: 32px;">
-                        ${showImg ? '<col style="width: 48px;">' : ''}
-                        <col style="width: auto;">
-                        <col style="width: 85px;">
-                        <col style="width: 45px;">
-                        <col style="width: 40px;">
-                        ${priceMode === 'all' ? '<col style="width: 75px;"><col style="width: 85px;"><col style="width: 70px;">' : (priceMode === 'unit' ? '<col style="width: 85px;">' : '')}
-                        <col style="width: 80px;">
+                        <col style="width: 4%;">   <!-- No -->
+                        <col style="width: 7%;">   <!-- 사진 -->
+                        <col style="width: 27%;">  <!-- 품목명 및 사양 -->
+                        <col style="width: 12%;">  <!-- 규격 -->
+                        <col style="width: 5%;">   <!-- 수량 -->
+                        <col style="width: 5%;">   <!-- 단위 -->
+                        <col style="width: 10.5%;"> <!-- 단가 -->
+                        <col style="width: 11.5%;"> <!-- 공급가액 -->
+                        <col style="width: 9%;">   <!-- 세액 -->
+                        <col style="width: 9%;">   <!-- 비고 -->
                     </colgroup>
+                    ` : `
+                    <colgroup>
+                        <col style="width: 4.5%;"> <!-- No -->
+                        <col style="width: 7.5%;"> <!-- 사진 -->
+                        <col style="width: 38%;">  <!-- 품목명 및 사양 -->
+                        <col style="width: 15%;">  <!-- 규격 -->
+                        <col style="width: 6%;">   <!-- 수량 -->
+                        <col style="width: 6%;">   <!-- 단위 -->
+                        ${priceMode === 'unit' ? '<col style="width: 12%;">' : ''}
+                        <col style="width: 11%;">  <!-- 비고 -->
+                    </colgroup>
+                    `) : (priceMode === 'all' ? `
+                    <colgroup>
+                        <col style="width: 4.5%;"> <!-- No -->
+                        <col style="width: 32%;">  <!-- 품목명 및 사양 -->
+                        <col style="width: 13.5%;"> <!-- 규격 -->
+                        <col style="width: 5.5%;"> <!-- 수량 -->
+                        <col style="width: 5.5%;"> <!-- 단위 -->
+                        <col style="width: 11%;">  <!-- 단가 -->
+                        <col style="width: 11.5%;"> <!-- 공급가액 -->
+                        <col style="width: 9%;">   <!-- 세액 -->
+                        <col style="width: 9%;">   <!-- 비고 -->
+                    </colgroup>
+                    ` : `
+                    <colgroup>
+                        <col style="width: 5%;">   <!-- No -->
+                        <col style="width: 44%;">  <!-- 품목명 및 사양 -->
+                        <col style="width: 17%;">  <!-- 규격 -->
+                        <col style="width: 7%;">   <!-- 수량 -->
+                        <col style="width: 7%;">   <!-- 단위 -->
+                        ${priceMode === 'unit' ? '<col style="width: 14%;">' : ''}
+                        <col style="width: 12%;">  <!-- 비고 -->
+                    </colgroup>
+                    `)}
                     <thead>
                         <tr>
-                            <th style="width: 32px;">No.</th>
-                            ${showImg ? '<th style="width: 48px;">사진</th>' : ''}
-                            <th>품목명 및 사양</th>
-                            <th style="width: 85px;">규격</th>
-                            <th style="width: 45px;">수량</th>
-                            <th style="width: 40px;">단위</th>
+                            <th>No.</th>
+                            ${showImg ? '<th>사진</th>' : ''}
+                            <th class="text-start ps-2">품목명 및 사양</th>
+                            <th>규격</th>
+                            <th>수량</th>
+                            <th>단위</th>
                             ${priceHeaders}
-                            <th style="width: 80px;">비고</th>
+                            <th>비고</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2314,8 +2351,40 @@ const app = {
         }).join('');
 
         const avgMarginRate = sumSupply > 0 ? (Math.round((sumMargin / sumSupply) * 1000) / 10) : 0;
-        const leadCols = showImg ? 7 : 6;
+        const leadCols = showImg ? 6 : 5;
         const docNo = q.quote_number || this.generateStandardQuoteNumber();
+
+        // 12개 열 가로 100% 전폭 완벽 분배 (우측 빈 여백 방지 & 글자 겹침 원천 차단)
+        const internalColgroupHtml = showImg ? `
+            <colgroup>
+                <col style="width: 4%;">   <!-- No -->
+                <col style="width: 6.5%;"> <!-- 사진 -->
+                <col style="width: 21.5%;"> <!-- 품목명 및 사양 -->
+                <col style="width: 9%;">   <!-- 규격 -->
+                <col style="width: 4.5%;"> <!-- 수량 -->
+                <col style="width: 4%;">   <!-- 단위 -->
+                <col style="width: 8.5%;"> <!-- 매입가 -->
+                <col style="width: 8.5%;"> <!-- 제안단가 -->
+                <col style="width: 9.5%;"> <!-- 공급가액 -->
+                <col style="width: 8.5%;"> <!-- 마진액(총) -->
+                <col style="width: 6.5%;"> <!-- 마진율 -->
+                <col style="width: 9%;">   <!-- 내부 비고 -->
+            </colgroup>
+        ` : `
+            <colgroup>
+                <col style="width: 4.5%;"> <!-- No -->
+                <col style="width: 25.5%;"> <!-- 품목명 및 사양 -->
+                <col style="width: 9.5%;"> <!-- 규격 -->
+                <col style="width: 5%;">   <!-- 수량 -->
+                <col style="width: 4.5%;"> <!-- 단위 -->
+                <col style="width: 8.5%;"> <!-- 매입가 -->
+                <col style="width: 8.5%;"> <!-- 제안단가 -->
+                <col style="width: 9.5%;"> <!-- 공급가액 -->
+                <col style="width: 8.5%;"> <!-- 마진액(총) -->
+                <col style="width: 6.5%;"> <!-- 마진율 -->
+                <col style="width: 9.5%;"> <!-- 내부 비고 -->
+            </colgroup>
+        `;
 
         return `
             <div class="a4-quote-page internal-review-page position-relative">
@@ -2354,22 +2423,9 @@ const app = {
                     </div>
                 </div>
 
-                <!-- 3. 원가/마진 상세 견적 품목 테이블 (내부 전용 12열 고정 레이아웃) -->
+                <!-- 3. 원가/마진 상세 견적 품목 테이블 (내부 전용 100% 가로 전폭 분배) -->
                 <table class="a4-items-table internal-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-                    <colgroup>
-                        <col style="width: 26px;">
-                        ${showImg ? '<col style="width: 38px;">' : ''}
-                        <col style="width: auto;">
-                        <col style="width: 58px;">
-                        <col style="width: 32px;">
-                        <col style="width: 26px;">
-                        <col style="width: 54px;">
-                        <col style="width: 54px;">
-                        <col style="width: 60px;">
-                        <col style="width: 54px;">
-                        <col style="width: 42px;">
-                        <col style="width: 65px;">
-                    </colgroup>
+                    ${internalColgroupHtml}
                     <thead>
                         <tr>
                             <th>No.</th>
@@ -2393,11 +2449,11 @@ const app = {
                         <tr>
                             <th colspan="${leadCols}" class="text-center" style="letter-spacing: 2px;">합 계</th>
                             <td class="cell-money text-muted fw-bold">${fmtWon(sumCost)}</td>
-                            <td class="text-center text-muted">-</td>
+                            <td class="text-center text-muted" style="font-size: 7.5pt;">-</td>
                             <td class="cell-money fw-bold">${fmtWon(sumSupply)}</td>
                             <td class="cell-money text-success fw-bold">${fmtWon(sumMargin)}</td>
                             <td class="text-center fw-bold ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}">${avgMarginRate.toFixed(1)}%</td>
-                            <td class="text-center text-muted">-</td>
+                            <td class="text-center text-muted" style="font-size: 7.5pt;">-</td>
                         </tr>
                     </tfoot>
                 </table>
