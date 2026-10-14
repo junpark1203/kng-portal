@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="./quotation.css?v=20261014_margin_v1">
+    <link rel="stylesheet" href="./quotation.css?v=20261014_quote_v2">
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -385,7 +385,7 @@
                             <col style="width: 95px;"> <!-- 합계금액 -->
                             <col style="width: 98px;"> <!-- 마진율/마진액(2단) -->
                             <col style="width: 100px;"> <!-- 비고 -->
-                            <col style="width: 36px;"> <!-- 삭제 -->
+                            <col style="width: 54px;"> <!-- 관리 (복사 / 삭제) -->
                         </colgroup>
                         <thead>
                             <tr>
@@ -402,7 +402,7 @@
                                 <th class="text-end pe-2 fw-bold text-primary">합계금액</th>
                                 <th class="text-center" title="매출총이익률: (단가-매입가)/단가, 마진율 수정 시 단가 역산">마진율(마진액)</th>
                                 <th class="text-start ps-2">비고</th>
-                                <th class="text-center no-print"><i class='bx bx-trash text-danger'></i></th>
+                                <th class="text-center no-print" style="font-size: 10.5px;">관리</th>
                             </tr>
                         </thead>
                         <tbody id="quoteItemsTbody">
@@ -833,6 +833,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20261014_margin_v1"></script>
+    <script src="./quotation.js?v=20261014_quote_v2"></script>
 </body>
 </html>

@@ -804,11 +804,16 @@ const app = {
                     <td>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent" value="${escHtml(it.remarks || '')}" placeholder="비고 입력" oninput="app.updateItemField(${idx}, 'remarks', this.value)">
                     </td>
-                    <!-- 삭제 -->
-                    <td class="text-center no-print">
-                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="app.removeRow(${idx})" title="삭제">
-                            <i class='bx bx-x fs-5'></i>
-                        </button>
+                    <!-- 관리 (복사 / 삭제) -->
+                    <td class="text-center no-print p-0">
+                        <div class="d-flex justify-content-center align-items-center gap-1">
+                            <button type="button" class="btn btn-sm btn-link text-primary p-0" onclick="app.duplicateRow(${idx})" title="이 품목 복사하여 추가 (사진·단가·규격 동일 복제)">
+                                <i class='bx bx-copy fs-6'></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="app.removeRow(${idx})" title="삭제">
+                                <i class='bx bx-x fs-5'></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -1154,11 +1159,59 @@ const app = {
         this.recalcTotals();
     },
 
+    // ── 특정 행의 현재 DOM 입력값을 아이템 데이터 모델에 즉시 동기화 ──
+    syncRowFromDOM: function(idx) {
+        if (!this.currentQuote?.items || !this.currentQuote.items[idx]) return;
+        const it = this.currentQuote.items[idx];
+        const tr = document.querySelector(`#quoteItemsTbody tr[data-index="${idx}"]`);
+        if (!tr) return;
+
+        const nameEl = tr.querySelector('input[placeholder*="품목명"]');
+        const specEl = tr.querySelector('input[placeholder*="규격"]');
+        const qtyEl = tr.querySelector('input[type="number"]');
+        const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
+        const costEl = tr.querySelector('.cost-price-input');
+        const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
+        const remarksEl = tr.querySelector('input[placeholder*="비고"]');
+
+        if (nameEl && nameEl.value.trim()) it.product_name = nameEl.value.trim();
+        if (specEl) it.spec = specEl.value.trim();
+        if (qtyEl) it.qty = Number(qtyEl.value) || 1;
+        if (unitEl && unitEl.value.trim()) it.unit = unitEl.value.trim();
+        if (costEl) it.cost_price = Number(String(costEl.value).replace(/[^0-9.-]/g, '')) || 0;
+        if (priceEl) it.unit_price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
+        if (remarksEl) it.remarks = remarksEl.value.trim();
+    },
+
+    // ── 품목 행 복제 (사진, 품목명, 규격, 단가 등 동일 내용으로 바로 다음 행 추가) ──
+    duplicateRow: function(idx) {
+        if (!this.currentQuote?.items || !this.currentQuote.items[idx]) return;
+        this.syncRowFromDOM(idx);
+        const src = this.currentQuote.items[idx];
+
+        // 깊은 복제 (사진, 매입가, 단가, 규격, 단위, 비고 등 일체 유지)
+        const cloned = Object.assign({}, src, {
+            id: 'qi_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            seq: idx + 2
+        });
+
+        // 원본 품목 바로 다음 위치에 삽입하여 편리하게 수정할 수 있도록 지원
+        this.currentQuote.items.splice(idx + 1, 0, cloned);
+        this.currentQuote.items.forEach((it, i) => { it.seq = i + 1; });
+
+        this.renderEditorItems();
+        this.recalcTotals();
+        this.isDirty = true;
+        showToast(`[${src.product_name || '품목'}] 복제되었습니다. 규격/단가를 수정하세요.`, 'success');
+    },
+
     // 행 삭제
     removeRow: function(idx) {
         this.currentQuote.items.splice(idx, 1);
+        this.currentQuote.items.forEach((it, i) => { it.seq = i + 1; });
         this.renderEditorItems();
         this.recalcTotals();
+        this.isDirty = true;
     },
 
     // 사진 컬럼 토글
@@ -1485,6 +1538,33 @@ const app = {
     },
 
     // ═══════════════════════════════════════════════════════════════
+    // 표준 견적번호 자동 채번 엔진 (QT-YYYYMMDD-001 형식으로 완전 단일화)
+    // ═══════════════════════════════════════════════════════════════
+    generateStandardQuoteNumber: function() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const prefix = `QT-${yyyy}${mm}${dd}-`;
+
+        let nextSeq = 1;
+        try {
+            const localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+            const todayQuotes = localQuotes.filter(q => q.quote_number && String(q.quote_number).startsWith(prefix));
+            if (todayQuotes.length > 0) {
+                todayQuotes.sort((a, b) => String(b.quote_number || '').localeCompare(String(a.quote_number || '')));
+                const parts = String(todayQuotes[0].quote_number).split('-');
+                if (parts.length === 3) {
+                    const lastSeq = parseInt(parts[2], 10);
+                    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+                }
+            }
+        } catch(e) {}
+
+        return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+    },
+
+    // ═══════════════════════════════════════════════════════════════
     // 견적서 저장 (API 호출)
     // ═══════════════════════════════════════════════════════════════
     saveQuotation: function() {
@@ -1565,9 +1645,9 @@ const app = {
             supplier_bank: this.supplierSettings.bank
         });
 
-        // 로컬 보관용 임시 ID 및 번호
+        // 로컬 보관용 임시 ID 및 정규 표준 견적번호 채번 (QT-YYYYMMDD-001)
         const localBackupId = existingId || ('qt_' + Date.now());
-        const localBackupQuoteNumber = payload.quote_number || ('Q-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-' + String(Math.floor(Math.random() * 900) + 100));
+        const localBackupQuoteNumber = payload.quote_number || this.generateStandardQuoteNumber();
 
         // 1. 로컬스토리지 즉시 백업 저장 (무중단 보존)
         try {
@@ -2040,8 +2120,13 @@ const app = {
             `;
         }
 
+        const docNo = q.quote_number || this.generateStandardQuoteNumber();
+
         return `
             <div class="a4-quote-page external-quote-page">
+                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 표기) -->
+                <div class="a4-quote-doc-no">${escHtml(docNo)}</div>
+
                 <!-- 1. 상단 헤더 컨테이너 -->
                 ${headerContainerHtml}
 
@@ -2170,9 +2255,13 @@ const app = {
 
         const avgMarginRate = sumSupply > 0 ? (Math.round((sumMargin / sumSupply) * 1000) / 10) : 0;
         const leadCols = showImg ? 7 : 6;
+        const docNo = q.quote_number || this.generateStandardQuoteNumber();
 
         return `
             <div class="a4-quote-page internal-review-page position-relative">
+                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 표기) -->
+                <div class="a4-quote-doc-no">${escHtml(docNo)}</div>
+
                 <!-- 0. 대외비 사내 검토용 워터마크 -->
                 ${watermarkHtml}
 

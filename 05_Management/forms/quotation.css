@@ -565,6 +565,20 @@ body {
         color: #111111;
         line-height: 1.35;
         box-sizing: border-box;
+        position: relative;
+    }
+
+    /* ── 인쇄 양식 최상단 우측 견적번호 (QT-YYYYMMDD-001) ── */
+    .a4-quote-doc-no {
+        position: absolute;
+        top: -6px;
+        right: 0;
+        font-size: 8.5pt;
+        font-family: 'Pretendard', 'Consolas', monospace;
+        font-weight: 700;
+        color: #334155;
+        letter-spacing: 0.5px;
+        line-height: 1;
     }
 
     /* ── 입출고내역 거래명세서 동일 상단 헤더 ── */
