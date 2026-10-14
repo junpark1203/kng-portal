@@ -1056,13 +1056,10 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-28deg);
-    font-size: 32pt;
+    font-size: 38pt;
     font-weight: 900;
-    color: rgba(225, 29, 72, 0.14) !important;
-    border: 5px dashed rgba(225, 29, 72, 0.22) !important;
-    padding: 14px 28px;
-    border-radius: 12px;
-    letter-spacing: 2px;
+    color: rgba(220, 38, 38, 0.12) !important;
+    letter-spacing: 6px;
     pointer-events: none;
     white-space: nowrap;
     z-index: 999;
@@ -1070,49 +1067,6 @@ body {
     user-select: none;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-}
-
-/* ── 결재란 스타일 (.approval-table) ── */
-.approval-container {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.approval-table {
-    border-collapse: collapse;
-    border: 1px solid #111111;
-    font-size: 8.5pt;
-    background: #ffffff;
-}
-
-.approval-table th,
-.approval-table td {
-    border: 1px solid #111111;
-    text-align: center;
-    vertical-align: middle;
-    padding: 2px 4px;
-}
-
-.approval-table th {
-    background-color: #f1f5f9 !important;
-    font-weight: 700;
-    height: 20px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-}
-
-.approval-table .vertical-th {
-    width: 20px;
-    writing-mode: vertical-lr;
-    letter-spacing: 4px;
-    padding: 4px 2px !important;
-    background-color: #f8fafc !important;
-}
-
-.approval-table .approval-cell {
-    width: 55px;
-    height: 50px;
-    position: relative;
 }
 
 /* ── 내부 검토용 마진 분석 요약 박스 ── */
@@ -1169,8 +1123,7 @@ body {
     }
 
     .watermark-internal-review {
-        color: rgba(225, 29, 72, 0.16) !important;
-        border-color: rgba(225, 29, 72, 0.25) !important;
+        color: rgba(220, 38, 38, 0.14) !important;
     }
 }
 

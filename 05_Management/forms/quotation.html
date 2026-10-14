@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
-    <link rel="stylesheet" href="./quotation.css?v=20261014_quote_v2">
+    <link rel="stylesheet" href="./quotation.css?v=20261014_quote_v3">
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -679,7 +679,7 @@
                                 <input class="form-check-input" type="radio" name="printTargetMode" id="printTargetInternal" value="internal" onchange="app.handlePrintTargetChange(this.value)">
                                 <div class="print-mode-card-content">
                                     <div class="print-mode-card-title">내부 검토용만</div>
-                                    <div class="print-mode-card-desc">원가/마진/워터마크/결재란</div>
+                                    <div class="print-mode-card-desc">원가/마진/사내워터마크</div>
                                 </div>
                             </label>
                         </div>
@@ -743,20 +743,11 @@
                             <i class='bx bx-slider-alt text-primary'></i> 4. 출력 세부 옵션
                         </label>
                         <div class="print-suboptions-box">
-                            <!-- 내부 검토용 결재란 옵션 -->
-                            <label class="print-suboption-row" id="wrapPrintOptIncludeApproval">
-                                <input type="checkbox" class="form-check-input m-0" id="printOptIncludeApproval" checked>
-                                <div class="print-suboption-text">
-                                    <span class="fw-semibold text-primary"><i class='bx bx-check-shield'></i> 내부 검토용 결재란 포함 (담당 / 검토 / 승인)</span>
-                                    <span class="sub-hint">(내부 검토용 서식 우측 상단 3단 결재도장칸)</span>
-                                </div>
-                            </label>
-
                             <!-- 내부 검토용 워터마크 옵션 -->
                             <label class="print-suboption-row" id="wrapPrintOptWatermark">
                                 <input type="checkbox" class="form-check-input m-0" id="printOptWatermark" checked>
                                 <div class="print-suboption-text">
-                                    <span class="fw-semibold text-danger"><i class='bx bx-shield-x'></i> 내부 검토용 [대외비 / 사내 검토용] 워터마크 삽입</span>
+                                    <span class="fw-semibold text-danger"><i class='bx bx-shield-x'></i> 내부 검토용 [사내 검토용 / 외부 발송금지] 워터마크 삽입</span>
                                     <span class="sub-hint">(사내 품의용 식별 및 외부 오발송 방지)</span>
                                 </div>
                             </label>
@@ -773,7 +764,7 @@
                                 <input type="checkbox" class="form-check-input m-0" id="printOptIncludeSupplier" checked onchange="app.togglePrintSupplierOption(this.checked)">
                                 <div class="print-suboption-text">
                                     <span class="fw-semibold">공급자 (케이엔지) 정보 표 포함</span>
-                                    <span class="sub-hint">(외부 발송용 서식 우측 상단)</span>
+                                    <span class="sub-hint">(우측 상단 4행 공급자 테이블)</span>
                                 </div>
                             </label>
 
@@ -833,6 +824,6 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="./quotation.js?v=20261014_quote_v2"></script>
+    <script src="./quotation.js?v=20261014_quote_v3"></script>
 </body>
 </html>

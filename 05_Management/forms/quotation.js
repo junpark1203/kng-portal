@@ -1781,9 +1781,6 @@ const app = {
         if (radio) radio.checked = true;
 
         // 4. 출력 세부 옵션
-        if (document.getElementById('printOptIncludeApproval')) {
-            document.getElementById('printOptIncludeApproval').checked = (lastOpt.includeApproval !== false);
-        }
         if (document.getElementById('printOptWatermark')) {
             document.getElementById('printOptWatermark').checked = (lastOpt.includeWatermark !== false);
         }
@@ -1811,27 +1808,23 @@ const app = {
     // ── 인쇄 대상(출력 구분) 변경 시 안내 및 하위 옵션 가시성 처리 ──
     handlePrintTargetChange: function(mode) {
         const noticeEl = document.getElementById('printTargetNotice');
-        const wrapApproval = document.getElementById('wrapPrintOptIncludeApproval');
         const wrapWatermark = document.getElementById('wrapPrintOptWatermark');
 
         if (mode === 'both') {
             if (noticeEl) {
-                noticeEl.innerHTML = `<i class='bx bx-check-double text-primary'></i> <b>내부+외부 모두 인쇄</b>: 1페이지는 결재·검토용(원가/마진/워터마크/결재란 포함), 2페이지는 외부 발송용(공식 견적서)으로 자동 분리 인쇄됩니다.`;
+                noticeEl.innerHTML = `<i class='bx bx-check-double text-primary'></i> <b>내부+외부 모두 인쇄</b>: 1페이지는 사내 검토용(원가/마진/워터마크 포함), 2페이지는 외부 발송용(공식 견적서)으로 자동 분리 인쇄됩니다.`;
             }
-            if (wrapApproval) wrapApproval.style.opacity = '1';
             if (wrapWatermark) wrapWatermark.style.opacity = '1';
         } else if (mode === 'internal') {
             if (noticeEl) {
-                noticeEl.innerHTML = `<i class='bx bx-shield-quarter text-warning'></i> <b>내부 검토용만 인쇄</b>: 매입단가, 마진액, 마진율 및 사내 결재란과 대외비 워터마크가 포함된 1장의 사내 품의서입니다.`;
+                noticeEl.innerHTML = `<i class='bx bx-shield-quarter text-warning'></i> <b>내부 검토용만 인쇄</b>: 매입단가, 마진액, 마진율 및 사내 검토용 워터마크가 포함된 1장의 사내 품의서입니다.`;
             }
-            if (wrapApproval) wrapApproval.style.opacity = '1';
             if (wrapWatermark) wrapWatermark.style.opacity = '1';
         } else {
             // external
             if (noticeEl) {
                 noticeEl.innerHTML = `<i class='bx bx-send text-primary'></i> <b>외부 발송용만 인쇄</b>: 매입원가와 마진이 철저히 비공개된 고객 전달용 공식 견적서 1장입니다.`;
             }
-            if (wrapApproval) wrapApproval.style.opacity = '0.4';
             if (wrapWatermark) wrapWatermark.style.opacity = '0.4';
         }
     },
@@ -1879,7 +1872,6 @@ const app = {
         const targetMode = document.querySelector('input[name="printTargetMode"]:checked')?.value || 'external';
         const title = document.getElementById('printCustomTitle')?.value.trim() || '견  적  서';
         const priceMode = document.querySelector('input[name="printPriceMode"]:checked')?.value || 'all';
-        const includeApproval = document.getElementById('printOptIncludeApproval')?.checked !== false;
         const includeWatermark = document.getElementById('printOptWatermark')?.checked !== false;
         const includeRecipient = document.getElementById('printOptIncludeRecipient')?.checked !== false;
         const includeSupplier = document.getElementById('printOptIncludeSupplier')?.checked !== false;
@@ -1891,7 +1883,6 @@ const app = {
             targetMode: targetMode,
             title: title,
             priceMode: priceMode,
-            includeApproval: includeApproval,
             includeWatermark: includeWatermark,
             includeRecipient: includeRecipient,
             includeSupplier: includeSupplier,
@@ -2159,54 +2150,94 @@ const app = {
         `;
     },
 
-    // ── 내부 검토용 견적서 페이지 생성기 (원가/마진/워터마크/결재란 포함) ──
+    // ── 내부 검토용 견적서 페이지 생성기 (원가/마진/워터마크/동일 공급자 정보 포함) ──
     generateInternalReviewPage: function(q, options, s) {
-        const title = '견  적  서 (내 부 검 토 용)';
+        const title = options.title || '견  적  서';
+        const includeRecipient = (typeof options.includeRecipient === 'boolean') ? options.includeRecipient : true;
+        const includeSupplier = (typeof options.includeSupplier === 'boolean') ? options.includeSupplier : true;
         const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
-        const includeApproval = (typeof options.includeApproval === 'boolean') ? options.includeApproval : true;
+        const includeSeal = includeSupplier && ((typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0));
         const includeWatermark = (typeof options.includeWatermark === 'boolean') ? options.includeWatermark : true;
         const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
         const items = q.items || [];
 
-        // 워터마크 HTML
+        const isQuote = title.replace(/\s+/g, '').includes('견적');
+        const dateLabel = isQuote ? '견적일자' : '작성일자';
+        const projectLabel = isQuote ? '견적건명' : '건명';
+
+        // 워터마크 HTML (테두리 없는 깔끔한 사내 검토용 문구)
         const watermarkHtml = includeWatermark
-            ? `<div class="watermark-internal-review">[ 대외비 / 사내 검토용 - 외부 발송 금지 ]</div>`
+            ? `<div class="watermark-internal-review">사내 검토용 / 외부 발송금지</div>`
             : '';
 
-        // 우측 결재란 또는 공급자 정보
-        let headerRightHtml = '';
-        if (includeApproval) {
-            headerRightHtml = `
-                <div class="approval-container">
-                    <table class="approval-table">
-                        <tr>
-                            <th rowspan="2" class="vertical-th">결<br>재</th>
-                            <th style="width: 56px;">담당</th>
-                            <th style="width: 56px;">검토</th>
-                            <th style="width: 56px;">승인</th>
-                        </tr>
-                        <tr>
-                            <td class="approval-cell"></td>
-                            <td class="approval-cell"></td>
-                            <td class="approval-cell"></td>
-                        </tr>
-                    </table>
+        // 공급자 직인 HTML
+        const sealHtml = (includeSeal && s.sealUrl)
+            ? `<img src="${s.sealUrl}" class="stamp" alt="직인" onerror="this.style.display='none'">`
+            : '';
+
+        const recipientHtml = includeRecipient ? `
+            <div class="recipient-box">
+                <span class="recipient-name">${escHtml(q.customer_name || '거래처')}</span> 貴中
+            </div>
+        ` : '';
+
+        const dateInfoHtml = `
+            <div class="date-info">
+                ${dateLabel} : ${escHtml(q.issue_date || '-')}
+                ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;${projectLabel} : <b>${escHtml(q.project_name)}</b>` : ''}
+            </div>
+        `;
+
+        // 상단 헤더 컨테이너 (외부 발송용과 완벽히 동일한 공급자 정보 테이블 규격)
+        let headerContainerHtml = '';
+        if (includeSupplier) {
+            headerContainerHtml = `
+                <div class="header-container">
+                    <div class="header-left">
+                        <div class="title-box">
+                            <h1 id="printTitle">${escHtml(title)}</h1>
+                        </div>
+                        ${recipientHtml}
+                        ${dateInfoHtml}
+                    </div>
+                    <div class="header-right">
+                        <table class="supplier-table">
+                            <tr>
+                                <th rowspan="4" class="vertical-th">공<br>급<br>자</th>
+                                <th style="width: 55px;">등록번호</th>
+                                <td colspan="3">${escHtml(s.bizNum || '845-88-00551')}</td>
+                            </tr>
+                            <tr>
+                                <th>상 호</th>
+                                <td style="width: 110px;">${escHtml(s.name || '주식회사 케이엔지')}</td>
+                                <th style="width: 45px;">대표자</th>
+                                <td class="stamp-cell" style="width: 70px;">
+                                    ${escHtml(s.ceo || '윤종')}
+                                    ${sealHtml}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>주 소</th>
+                                <td colspan="3" class="address-cell">${escHtml(s.address || '서울시 강동구 구천면로 159, 1층 2호, 3호')}</td>
+                            </tr>
+                            <tr>
+                                <th>업 태</th>
+                                <td>${escHtml(s.bizType || '도소매/임대업')}</td>
+                                <th>종 목</th>
+                                <td>${escHtml(s.bizItem || '건설자재, 용품외')}</td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
             `;
         } else {
-            headerRightHtml = `
-                <div class="header-right">
-                    <table class="supplier-table">
-                        <tr>
-                            <th rowspan="2" class="vertical-th">작<br>성</th>
-                            <th style="width: 60px;">상호</th>
-                            <td>${escHtml(s.name || '주식회사 케이엔지')}</td>
-                        </tr>
-                        <tr>
-                            <th>작성자</th>
-                            <td>${escHtml(q.author || '관리자')}</td>
-                        </tr>
-                    </table>
+            headerContainerHtml = `
+                <div class="header-container no-supplier">
+                    <div class="title-box">
+                        <h1 id="printTitle">${escHtml(title)}</h1>
+                    </div>
+                    ${recipientHtml}
+                    ${dateInfoHtml}
                 </div>
             `;
         }
@@ -2262,29 +2293,11 @@ const app = {
                 <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 표기) -->
                 <div class="a4-quote-doc-no">${escHtml(docNo)}</div>
 
-                <!-- 0. 대외비 사내 검토용 워터마크 -->
+                <!-- 0. 사내 검토용 워터마크 -->
                 ${watermarkHtml}
 
-                <!-- 1. 상단 헤더 컨테이너 (좌측: 건명/수신처 + 우측: 3단 결재란) -->
-                <div class="header-container mb-2">
-                    <div class="header-left">
-                        <div class="title-box mb-1">
-                            <h1 style="font-size: 16pt; font-weight: 800; letter-spacing: 2px; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 3px; display: inline-block;">
-                                ${title}
-                            </h1>
-                        </div>
-                        <div class="recipient-box" style="margin-top: 3px;">
-                            <span class="recipient-name fw-bold" style="font-size: 11pt;">${escHtml(q.customer_name || '거래처')}</span> 貴中
-                        </div>
-                        <div class="date-info" style="font-size: 8.5pt; color: #334155; margin-top: 2px;">
-                            견적일자: <b>${escHtml(q.issue_date || '-')}</b>
-                            ${q.project_name ? `&nbsp;&nbsp;|&nbsp;&nbsp;견적건명: <b>${escHtml(q.project_name)}</b>` : ''}
-                        </div>
-                    </div>
-                    <div class="header-right">
-                        ${headerRightHtml}
-                    </div>
-                </div>
+                <!-- 1. 상단 헤더 컨테이너 (외부 발송용과 동일한 대제목 및 공급자 정보 표) -->
+                ${headerContainerHtml}
 
                 <!-- 2. 핵심 마진 분석 요약 리본 박스 -->
                 <div class="internal-margin-summary">
