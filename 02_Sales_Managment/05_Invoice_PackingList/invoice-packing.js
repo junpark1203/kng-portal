@@ -46,6 +46,7 @@ const els = {
     addPlItemBtn: document.getElementById('addPlItemBtn'),
     copyFromInvBtn: document.getElementById('copyFromInvBtn'),
     saveDocBtn: document.getElementById('saveDocBtn'),
+    btnModalPreview: document.getElementById('btnModalPreview'),
     closeModalBtn: document.getElementById('closeModalBtn'),
     cancelModalBtn: document.getElementById('cancelModalBtn'),
     partnerBtn: document.getElementById('partnerBtn'),
@@ -971,12 +972,12 @@ function closeDocModal(force = false) {
 }
 
 window.editDoc = function(id) {
-    const doc = allDocs.find(d => d.id === id);
+    const doc = allDocs.find(d => String(d.id) === String(id));
     if (doc) openDocModal(doc);
 };
 
 window.copyDoc = function(id) {
-    const doc = allDocs.find(d => d.id === id);
+    const doc = allDocs.find(d => String(d.id) === String(id));
     if (!doc) return;
     
     // 깊은 복사 후 ID 초기화 및 제목 수정
@@ -1356,19 +1357,115 @@ function setPreviewType(type) {
     }
 });
 
-window.openPreview = function(id, defaultType = null) {
-    const doc = allDocs.find(d => d.id === id);
-    if (!doc) return;
+function getCurrentModalAsDoc() {
+    const extraData = {
+        piValidity: document.getElementById('inpPiValidity')?.value?.trim() || '',
+        piShipmentDeadline: document.getElementById('inpPiShipmentDeadline')?.value?.trim() || '',
+        piPartialShipment: document.getElementById('inpPiPartialShipment')?.value || 'Not Allowed',
+        piTransshipment: document.getElementById('inpPiTransshipment')?.value || 'Not Allowed',
+        piPaymentDetail: document.getElementById('inpPiPaymentDetail')?.value?.trim() || '',
+        includeBuyerSign: !!document.getElementById('chkPiBuyerSign')?.checked,
+        
+        ciDate: document.getElementById('inpCiDate')?.value || '',
+        blNo: document.getElementById('inpBlNo')?.value?.trim() || '',
+        arrivalDate: document.getElementById('inpArrivalDate')?.value || '',
+        coNo: document.getElementById('inpCoNo')?.value?.trim() || '',
+        
+        plDate: document.getElementById('inpPlDate')?.value || '',
+        containerNo: document.getElementById('inpPlContainerNo')?.value?.trim() || '',
+        sealNo: document.getElementById('inpPlSealNo')?.value?.trim() || '',
+        totalPackages: document.getElementById('inpPlTotalPackages')?.value?.trim() || '',
+        shippingMark: document.getElementById('inpPlShippingMark')?.value?.trim() || '',
+        totalCbm: parseFloat(document.getElementById('totCBM')?.textContent) || 0
+    };
+    
+    return {
+        id: document.getElementById('editId')?.value || 'DRAFT',
+        status: document.getElementById('inpStatus')?.value || '임시작성',
+        proformaNo: els.inpProformaNo ? els.inpProformaNo.value.trim() : '',
+        invoiceNo: document.getElementById('inpInvoiceNo')?.value?.trim() || '',
+        packingListNo: document.getElementById('inpPackingListNo')?.value?.trim() || '',
+        docDate: document.getElementById('inpDocDate')?.value || new Date().toISOString().split('T')[0],
+        currency: getEffectiveCurrency(),
+        
+        shipper: {
+            name: document.getElementById('inpShipperName')?.value?.trim() || '',
+            address: document.getElementById('inpShipperAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpShipperTel')?.value?.trim() || '',
+            fax: document.getElementById('inpShipperFax')?.value?.trim() || '',
+            email: document.getElementById('inpShipperEmail')?.value?.trim() || '',
+            bankInfo: {
+                bankName: document.getElementById('inpShipperBank')?.value?.trim() || '',
+                accountNo: document.getElementById('inpShipperAccountNo')?.value?.trim() || '',
+                swift: document.getElementById('inpShipperSwift')?.value?.trim() || '',
+                intermediaryBank: document.getElementById('inpShipperIntermediaryBank')?.value?.trim() || '',
+                bankAddress: document.getElementById('inpShipperBankAddress')?.value?.trim() || ''
+            }
+        },
+        consignee: {
+            name: document.getElementById('inpConsigneeName')?.value?.trim() || '',
+            address: document.getElementById('inpConsigneeAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpConsigneeTel')?.value?.trim() || '',
+            fax: document.getElementById('inpConsigneeFax')?.value?.trim() || '',
+            email: document.getElementById('inpConsigneeEmail')?.value?.trim() || ''
+        },
+        notifyParty: {
+            name: document.getElementById('inpNotifyName')?.value?.trim() || '',
+            address: document.getElementById('inpNotifyAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpNotifyTel')?.value?.trim() || ''
+        },
+        
+        countryOfOrigin: document.getElementById('inpCountryOfOrigin')?.value?.trim() || '',
+        departureDate: document.getElementById('inpDepartureDate')?.value || '',
+        vessel: document.getElementById('inpVessel')?.value?.trim() || '',
+        incoterms: document.getElementById('inpIncoterms')?.value?.trim() || '',
+        portOfLoading: document.getElementById('inpPortOfLoading')?.value?.trim() || '',
+        portOfDischarge: document.getElementById('inpPortOfDischarge')?.value?.trim() || '',
+        finalDestination: document.getElementById('inpFinalDestination')?.value?.trim() || '',
+        paymentTerms: document.getElementById('inpPaymentTerms')?.value?.trim() || '',
+        
+        items: gatherInvItems(),
+        packingItems: gatherPlItems(),
+        termsAndConditions: els.inpTermsAndConditions ? els.inpTermsAndConditions.value.trim() : '',
+        remarks: document.getElementById('inpRemarks')?.value?.trim() || '',
+        
+        totalAmount: parseFloat(document.getElementById('totAmount')?.textContent?.replace(/,/g,'')) || 0,
+        totalQty: parseFloat(document.getElementById('totQty')?.textContent?.replace(/,/g,'')) || 0,
+        totalNetWeight: parseFloat(document.getElementById('totNW')?.textContent) || 0,
+        totalGrossWeight: parseFloat(document.getElementById('totGW')?.textContent) || 0,
+        totalMeasurement: extraData.totalCbm,
+        extraData: extraData
+    };
+}
+
+window.openPreview = function(id = null, defaultType = null) {
+    let doc = null;
+    if (id) {
+        doc = allDocs.find(d => String(d.id) === String(id));
+    }
+    if (!doc && els.docModal.classList.contains('active')) {
+        doc = getCurrentModalAsDoc();
+    }
+    if (!doc) {
+        return showToast('미리볼 문서 데이터를 찾을 수 없습니다.', 'error');
+    }
     currentPreviewDoc = doc;
     
     if (defaultType) {
         currentPreviewType = defaultType;
-    } else if (doc.proformaNo || doc.termsAndConditions) {
-        currentPreviewType = 'proforma';
-    } else if (doc.invoiceNo) {
-        currentPreviewType = 'invoice';
     } else {
-        currentPreviewType = 'packinglist';
+        const activeSubTab = document.querySelector('#docSubTabGroup .erp-tab-btn.active')?.dataset?.subtab;
+        if (activeSubTab === 'ciTab') {
+            currentPreviewType = 'invoice';
+        } else if (activeSubTab === 'plTab') {
+            currentPreviewType = 'packinglist';
+        } else if (doc.proformaNo || doc.termsAndConditions) {
+            currentPreviewType = 'proforma';
+        } else if (doc.invoiceNo) {
+            currentPreviewType = 'invoice';
+        } else {
+            currentPreviewType = 'packinglist';
+        }
     }
     
     setPreviewType(currentPreviewType);
@@ -1411,7 +1508,8 @@ function renderPreview() {
         docNo = d.packingListNo || '-';
     }
     
-    const sym = { USD: '$', EUR: '€', KRW: '₩', CNY: '¥', JPY: '¥', GBP: '£' }[d.currency || 'USD'] || d.currency;
+    const cur = d.currency || 'USD';
+    const sym = CURRENCY_SYMBOLS[cur] || { USD: '$', EUR: '€', KRW: '₩', CNY: '¥', JPY: '¥', GBP: '£', HKD: 'HK$', SGD: 'S$', AUD: 'A$', CAD: 'C$' }[cur] || cur;
     
     // Items
     let itemsHtml = '';
@@ -1685,6 +1783,11 @@ function renderPreview() {
 els.addBtn.addEventListener('click', () => openDocModal());
 els.closeModalBtn.addEventListener('click', () => closeDocModal(false));
 els.cancelModalBtn.addEventListener('click', () => closeDocModal(false));
+if (els.btnModalPreview) {
+    els.btnModalPreview.addEventListener('click', () => {
+        openPreview();
+    });
+}
 els.addItemBtn.addEventListener('click', () => createInvItemLine());
 if(els.addPlItemBtn) els.addPlItemBtn.addEventListener('click', () => createPlItemLine());
 els.partnerBtn.addEventListener('click', openPartnersManagement);

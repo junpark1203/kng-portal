@@ -651,17 +651,81 @@
    Print Styles
    ══════════════════════════════════════ */
 @media print {
-    body * { visibility: hidden; }
-    .inv-preview-container, .inv-preview-container * { visibility: visible; }
-    .inv-preview-container {
-        position: absolute; left: 0; top: 0;
-        width: 210mm; min-height: 297mm;
-        padding: 15mm 18mm; margin: 0;
-        box-shadow: none; border: none;
+    /* 기존 화면 요소들 완전 배제 */
+    body > *:not(.inv-preview-overlay) {
+        display: none !important;
     }
+    .inv-modal-overlay,
     .inv-preview-toolbar,
-    .inv-preview-overlay { display: none !important; }
-    @page { size: A4; margin: 0; }
+    #toastContainer,
+    .inv-kpi-bar,
+    .inv-header-bar,
+    .inv-table-card {
+        display: none !important;
+    }
+
+    html, body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        overflow: visible !important;
+    }
+
+    /* 오버레이를 인쇄 시 일반 블록으로 전환 */
+    .inv-preview-overlay {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* 문서 본문 A4 출력 영역 */
+    .inv-preview-container {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 6mm 10mm !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .inv-preview-container * {
+        visibility: visible !important;
+    }
+
+    /* 페이지 나눔 방지 */
+    .doc-parties,
+    .doc-shipping,
+    .doc-terms-box,
+    .doc-dual-signatures,
+    .doc-footer {
+        page-break-inside: avoid !important;
+    }
+
+    .doc-items-table tr {
+        page-break-inside: avoid !important;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 8mm 8mm;
+    }
 }
 
 /* Currency Badge in Tables */
