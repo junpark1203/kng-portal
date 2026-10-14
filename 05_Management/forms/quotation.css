@@ -568,17 +568,25 @@ body {
         position: relative;
     }
 
-    /* ── 인쇄 양식 최상단 우측 견적번호 (QT-YYYYMMDD-001) ── */
+    /* ── 인쇄 양식 최상단 우측 견적번호 바 (QT-YYYYMMDD-001 단독 우측 정렬) ── */
+    .a4-quote-doc-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 4px;
+        min-height: 14px;
+        width: 100%;
+    }
+
     .a4-quote-doc-no {
-        position: absolute;
-        top: -6px;
-        right: 0;
         font-size: 8.5pt;
-        font-family: 'Pretendard', 'Consolas', monospace;
+        font-family: 'Consolas', 'Pretendard', monospace;
         font-weight: 700;
         color: #334155;
         letter-spacing: 0.5px;
         line-height: 1;
+        margin: 0;
+        padding: 0;
     }
 
     /* ── 입출고내역 거래명세서 동일 상단 헤더 ── */
@@ -735,38 +743,106 @@ body {
     /* 본문 품목 테이블 */
     .a4-items-table {
         width: 100%;
+        table-layout: fixed;
         border-collapse: collapse;
-        font-size: 9pt;
-        margin-top: 10px;
-        margin-bottom: 12px;
+        font-size: 8.5pt;
+        margin-top: 8px;
+        margin-bottom: 10px;
     }
 
     .a4-items-table th,
     .a4-items-table td {
         border: 1px solid #333333;
-        padding: 4px 5px;
+        padding: 3.5px 4px;
         vertical-align: middle;
+        box-sizing: border-box;
     }
 
     .a4-items-table thead th {
         background-color: #f1f5f9;
         font-weight: 700;
         text-align: center;
-        height: 26px;
+        height: 24px;
+        font-size: 8.5pt;
     }
 
     .a4-items-table tbody tr {
         page-break-inside: avoid;
     }
 
+    .a4-items-table .cell-product-name {
+        text-align: left !important;
+        padding-left: 5px !important;
+        white-space: normal !important;
+        word-break: keep-all !important;
+        overflow-wrap: break-word;
+        line-height: 1.25;
+    }
+
+    .a4-items-table .cell-remarks {
+        text-align: left !important;
+        padding-left: 4px !important;
+        font-size: 8pt;
+        white-space: normal !important;
+        word-break: break-all;
+        line-height: 1.2;
+    }
+
+    .a4-items-table .cell-money {
+        text-align: right !important;
+        padding-right: 4px !important;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /* ── 내부 검토용 전용 다열 테이블 (12열 가로공간 완벽 확보 & 컴팩트 레이아웃) ── */
+    .a4-items-table.internal-table {
+        font-size: 7.5pt;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+
+    .a4-items-table.internal-table th,
+    .a4-items-table.internal-table td {
+        padding: 2.5px 2px;
+        font-size: 7.5pt;
+    }
+
+    .a4-items-table.internal-table thead th {
+        font-size: 7.5pt;
+        height: 22px;
+        padding: 2px 1px;
+    }
+
+    .a4-items-table.internal-table .cell-product-name {
+        font-size: 8pt;
+        padding-left: 4px !important;
+        line-height: 1.2;
+    }
+
+    .a4-items-table.internal-table .cell-remarks {
+        font-size: 7pt;
+        padding-left: 3px !important;
+        line-height: 1.15;
+    }
+
+    .a4-items-table.internal-table .cell-money {
+        padding-right: 2px !important;
+    }
+
     /* 인쇄 사진 스타일 [사용자 요구사항 완벽 반영: 원비율 유지] */
     .a4-item-img {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         object-fit: contain;
         display: block;
         margin: 0 auto;
         background: #ffffff;
+    }
+
+    .a4-items-table.internal-table .a4-item-img {
+        width: 34px;
+        height: 34px;
     }
 
     .a4-items-table tfoot th,
@@ -1048,6 +1124,62 @@ body {
 .cost-price-input {
     font-size: 11px !important;
     color: #475569 !important;
+}
+
+/* ── 에디터 품목 2단 비고 입력 셀 (.remarks-compact-cell) ── */
+.remarks-compact-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+}
+
+.remarks-compact-cell .ext-remarks-input {
+    height: 22px;
+    padding: 1px 4px !important;
+    font-size: 11px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
+
+.remarks-compact-cell .ext-remarks-input:focus {
+    background: #ffffff !important;
+    border-color: #2563eb !important;
+}
+
+.remarks-compact-cell .internal-remarks-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+
+.remarks-compact-cell .internal-remarks-wrap:focus-within {
+    background: #ffffff;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1.5px rgba(245, 158, 11, 0.2);
+}
+
+.remarks-compact-cell .internal-remarks-wrap i {
+    font-size: 11px;
+    color: #d97706;
+    flex-shrink: 0;
+}
+
+.remarks-compact-cell .int-remarks-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 10.5px !important;
+    color: #334155 !important;
+    width: 100%;
+    outline: none !important;
+    height: 18px;
 }
 
 /* ── 내부 검토용 워터마크 (.watermark-internal-review) ── */

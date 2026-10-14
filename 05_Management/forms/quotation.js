@@ -800,9 +800,24 @@ const app = {
                             </div>
                         </div>
                     </td>
-                    <!-- 비고 -->
-                    <td>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent" value="${escHtml(it.remarks || '')}" placeholder="비고 입력" oninput="app.updateItemField(${idx}, 'remarks', this.value)">
+                    <!-- 비고 (외부 발송용 + 사내 검토용 2단 분리 입력) -->
+                    <td class="p-1">
+                        <div class="remarks-compact-cell">
+                            <input type="text"
+                                   class="form-control form-control-sm ext-remarks-input"
+                                   value="${escHtml(it.remarks || '')}"
+                                   placeholder="외부 비고"
+                                   title="고객 발송용 견적서에 인쇄되는 공식 비고"
+                                   oninput="app.updateItemField(${idx}, 'remarks', this.value)">
+                            <div class="internal-remarks-wrap" title="사내 검토용 전용 비고 (외부 발송 견적서에는 절대 비공개)">
+                                <i class='bx bx-lock-alt' title="사내 전용"></i>
+                                <input type="text"
+                                       class="int-remarks-input"
+                                       value="${escHtml(it.internal_remarks || '')}"
+                                       placeholder="사내 비고 (내부 전용)"
+                                       oninput="app.updateItemField(${idx}, 'internal_remarks', this.value)">
+                            </div>
+                        </div>
                     </td>
                     <!-- 관리 (복사 / 삭제) -->
                     <td class="text-center no-print p-0">
@@ -1153,7 +1168,8 @@ const app = {
             vat: 0,
             total_price: 0,
             image_url: '',
-            remarks: ''
+            remarks: '',
+            internal_remarks: ''
         });
         this.renderEditorItems();
         this.recalcTotals();
@@ -1172,7 +1188,8 @@ const app = {
         const unitEl = tr.querySelector('input[style*="width:45px"]') || tr.querySelectorAll('input[type="text"]')[2];
         const costEl = tr.querySelector('.cost-price-input');
         const priceEl = tr.querySelector('input.text-end.fw-bold.text-primary') || tr.querySelectorAll('input[type="number"]')[1];
-        const remarksEl = tr.querySelector('input[placeholder*="비고"]');
+        const extRemarksEl = tr.querySelector('.ext-remarks-input') || tr.querySelector('input[placeholder*="비고"]');
+        const intRemarksEl = tr.querySelector('.int-remarks-input');
 
         if (nameEl && nameEl.value.trim()) it.product_name = nameEl.value.trim();
         if (specEl) it.spec = specEl.value.trim();
@@ -1180,7 +1197,8 @@ const app = {
         if (unitEl && unitEl.value.trim()) it.unit = unitEl.value.trim();
         if (costEl) it.cost_price = Number(String(costEl.value).replace(/[^0-9.-]/g, '')) || 0;
         if (priceEl) it.unit_price = Number(String(priceEl.value).replace(/[^0-9.-]/g, '')) || 0;
-        if (remarksEl) it.remarks = remarksEl.value.trim();
+        if (extRemarksEl) it.remarks = extRemarksEl.value.trim();
+        if (intRemarksEl) it.internal_remarks = intRemarksEl.value.trim();
     },
 
     // ── 품목 행 복제 (사진, 품목명, 규격, 단가 등 동일 내용으로 바로 다음 행 추가) ──
@@ -1983,14 +2001,14 @@ const app = {
 
             return `
                 <tr>
-                    <td class="text-center" style="width: 32px;">${idx + 1}</td>
+                    <td class="text-center">${idx + 1}</td>
                     ${imgCell}
-                    <td class="text-start ps-2 fw-semibold">${escHtml(it.product_name)}</td>
+                    <td class="cell-product-name fw-semibold">${escHtml(it.product_name)}</td>
                     <td class="text-center" style="font-size: 8.5pt;">${escHtml(it.spec || '-')}</td>
                     <td class="text-center">${fmtNum(it.qty)}</td>
                     <td class="text-center">${escHtml(it.unit || 'EA')}</td>
                     ${priceCells}
-                    <td class="text-start ps-2" style="font-size: 8pt;">${escHtml(it.remarks || '')}</td>
+                    <td class="cell-remarks">${escHtml(it.remarks || '')}</td>
                 </tr>
             `;
         }).join('');
@@ -2026,7 +2044,6 @@ const app = {
                     <div class="a4-footer-notes" style="margin-top: 10px; border: 1px solid #000; padding: 8px 10px; font-size: 8.5pt;">
                         <div class="a4-footer-notes-title fw-bold mb-1">[ 특기사항 및 납품조건 ]</div>
                         <div class="a4-notes-meta" style="display: flex; gap: 16px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px dashed #cbd5e1; font-size: 8.5pt; flex-wrap: wrap;">
-                            <span>• <b>견적일자</b>: ${escHtml(q.issue_date || '-')}</span>
                             <span>• <b>유효기간</b>: ${escHtml(q.valid_until || '견적일로부터 15일간')}</span>
                             ${q.delivery_date ? `<span>• <b>납기일</b>: ${escHtml(q.delivery_date)}</span>` : ''}
                             ${q.delivery_place ? `<span>• <b>납품장소</b>: ${escHtml(q.delivery_place)}</span>` : ''}
@@ -2115,8 +2132,10 @@ const app = {
 
         return `
             <div class="a4-quote-page external-quote-page">
-                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 표기) -->
-                <div class="a4-quote-doc-no">${escHtml(docNo)}</div>
+                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 우측 정렬) -->
+                <div class="a4-quote-doc-bar">
+                    <span class="a4-quote-doc-no">${escHtml(docNo)}</span>
+                </div>
 
                 <!-- 1. 상단 헤더 컨테이너 -->
                 ${headerContainerHtml}
@@ -2126,12 +2145,22 @@ const app = {
 
                 <!-- 3. 견적 품목 테이블 -->
                 <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                    <colgroup>
+                        <col style="width: 32px;">
+                        ${showImg ? '<col style="width: 48px;">' : ''}
+                        <col style="width: auto;">
+                        <col style="width: 85px;">
+                        <col style="width: 45px;">
+                        <col style="width: 40px;">
+                        ${priceMode === 'all' ? '<col style="width: 75px;"><col style="width: 85px;"><col style="width: 70px;">' : (priceMode === 'unit' ? '<col style="width: 85px;">' : '')}
+                        <col style="width: 80px;">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th style="width: 32px;">No.</th>
-                            ${showImg ? '<th style="width: 50px;">사진</th>' : ''}
+                            ${showImg ? '<th style="width: 48px;">사진</th>' : ''}
                             <th>품목명 및 사양</th>
-                            <th style="width: 90px;">규격</th>
+                            <th style="width: 85px;">규격</th>
                             <th style="width: 45px;">수량</th>
                             <th style="width: 40px;">단위</th>
                             ${priceHeaders}
@@ -2261,25 +2290,25 @@ const app = {
             sumMargin += totalMargin;
 
             const imgCell = showImg
-                ? `<td class="text-center p-1" style="width: 45px;">
+                ? `<td class="text-center p-1" style="width: 38px;">
                      ${it.image_url ? `<img src="${escHtml(it.image_url)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
 
             return `
                 <tr>
-                    <td class="text-center" style="width: 30px;">${idx + 1}</td>
+                    <td class="text-center">${idx + 1}</td>
                     ${imgCell}
-                    <td class="text-start ps-2 fw-semibold">${escHtml(it.product_name)}</td>
-                    <td class="text-center" style="font-size: 8pt;">${escHtml(it.spec || '-')}</td>
+                    <td class="cell-product-name fw-semibold">${escHtml(it.product_name)}</td>
+                    <td class="text-center" style="font-size: 7.5pt;">${escHtml(it.spec || '-')}</td>
                     <td class="text-center">${fmtNum(qty)}</td>
                     <td class="text-center">${escHtml(it.unit || 'EA')}</td>
-                    <td class="text-end pe-2 text-muted" style="font-size: 8.5pt;">${fmtWon(cost)}</td>
-                    <td class="text-end pe-2">${fmtWon(unit)}</td>
-                    <td class="text-end pe-2 fw-semibold">${fmtWon(supply)}</td>
-                    <td class="text-end pe-2 text-success fw-bold" style="font-size: 8.5pt;">${fmtWon(totalMargin)}</td>
-                    <td class="text-center fw-bold ${margin.rate < 15 ? 'text-danger' : 'text-primary'}" style="font-size: 8.5pt;">${margin.rate.toFixed(1)}%</td>
-                    <td class="text-start ps-2" style="font-size: 8pt;">${escHtml(it.remarks || '')}</td>
+                    <td class="cell-money text-muted">${fmtWon(cost)}</td>
+                    <td class="cell-money">${fmtWon(unit)}</td>
+                    <td class="cell-money fw-semibold">${fmtWon(supply)}</td>
+                    <td class="cell-money text-success fw-bold">${fmtWon(totalMargin)}</td>
+                    <td class="text-center fw-bold ${margin.rate < 15 ? 'text-danger' : 'text-primary'}">${margin.rate.toFixed(1)}%</td>
+                    <td class="cell-remarks">${escHtml(it.internal_remarks || '')}</td>
                 </tr>
             `;
         }).join('');
@@ -2290,8 +2319,10 @@ const app = {
 
         return `
             <div class="a4-quote-page internal-review-page position-relative">
-                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 표기) -->
-                <div class="a4-quote-doc-no">${escHtml(docNo)}</div>
+                <!-- 0. 최상단 우측 견적번호 (QT-YYYYMMDD-001 단독 우측 정렬) -->
+                <div class="a4-quote-doc-bar">
+                    <span class="a4-quote-doc-no">${escHtml(docNo)}</span>
+                </div>
 
                 <!-- 0. 사내 검토용 워터마크 -->
                 ${watermarkHtml}
@@ -2323,22 +2354,36 @@ const app = {
                     </div>
                 </div>
 
-                <!-- 3. 원가/마진 상세 견적 품목 테이블 -->
-                <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; margin-top: 8px;">
+                <!-- 3. 원가/마진 상세 견적 품목 테이블 (내부 전용 12열 고정 레이아웃) -->
+                <table class="a4-items-table internal-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+                    <colgroup>
+                        <col style="width: 26px;">
+                        ${showImg ? '<col style="width: 38px;">' : ''}
+                        <col style="width: auto;">
+                        <col style="width: 58px;">
+                        <col style="width: 32px;">
+                        <col style="width: 26px;">
+                        <col style="width: 54px;">
+                        <col style="width: 54px;">
+                        <col style="width: 60px;">
+                        <col style="width: 54px;">
+                        <col style="width: 42px;">
+                        <col style="width: 65px;">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th style="width: 30px;">No.</th>
-                            ${showImg ? '<th style="width: 45px;">사진</th>' : ''}
-                            <th>품목명 및 사양</th>
-                            <th style="width: 75px;">규격</th>
-                            <th style="width: 40px;">수량</th>
-                            <th style="width: 35px;">단위</th>
-                            <th style="width: 70px;">매입가</th>
-                            <th style="width: 70px;">제안단가</th>
-                            <th style="width: 80px;">공급가액</th>
-                            <th style="width: 75px;">마진액(총)</th>
-                            <th style="width: 55px;">마진율</th>
-                            <th style="width: 70px;">비고</th>
+                            <th>No.</th>
+                            ${showImg ? '<th>사진</th>' : ''}
+                            <th class="text-start ps-2">품목명 및 사양</th>
+                            <th>규격</th>
+                            <th>수량</th>
+                            <th>단위</th>
+                            <th class="text-end pe-1">매입가</th>
+                            <th class="text-end pe-1">제안단가</th>
+                            <th class="text-end pe-1">공급가액</th>
+                            <th class="text-end pe-1">마진액(총)</th>
+                            <th>마진율</th>
+                            <th class="text-start ps-1">내부 비고</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2346,13 +2391,13 @@ const app = {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <th colspan="${leadCols}" class="text-center" style="font-size: 8.5pt; background: #f8fafc; letter-spacing: 2px;">합 계</th>
-                            <td class="text-end pe-2 text-muted fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumCost)}</td>
-                            <td class="text-center text-muted" style="background: #f8fafc; font-size: 8pt;">-</td>
-                            <td class="text-end pe-2 fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumSupply)}</td>
-                            <td class="text-end pe-2 text-success fw-bold" style="background: #f8fafc; font-size: 8.5pt;">${fmtWon(sumMargin)}</td>
-                            <td class="text-center fw-bold ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}" style="background: #f8fafc; font-size: 8.5pt;">${avgMarginRate.toFixed(1)}%</td>
-                            <td class="text-center text-muted" style="background: #f8fafc; font-size: 8pt;">-</td>
+                            <th colspan="${leadCols}" class="text-center" style="letter-spacing: 2px;">합 계</th>
+                            <td class="cell-money text-muted fw-bold">${fmtWon(sumCost)}</td>
+                            <td class="text-center text-muted">-</td>
+                            <td class="cell-money fw-bold">${fmtWon(sumSupply)}</td>
+                            <td class="cell-money text-success fw-bold">${fmtWon(sumMargin)}</td>
+                            <td class="text-center fw-bold ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}">${avgMarginRate.toFixed(1)}%</td>
+                            <td class="text-center text-muted">-</td>
                         </tr>
                     </tfoot>
                 </table>
