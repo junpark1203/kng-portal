@@ -194,8 +194,11 @@ async function loadPartners() {
             const fax = (p.fax || '').trim();
             const email = (p.email_en || p.manager1_email || '').trim();
 
-            let swift = (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '';
-            let bankAddress = (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '';
+            let swift = (p.swift_code || (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '').trim();
+            let bankAddress = (p.bank_address_en || (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '').trim();
+            let bankName = (p.bank_name_en || p.bank_name || '').trim();
+            let accountNo = (p.account_number_en || p.account_number || '').trim();
+            let intermediaryBank = (p.intermediary_bank_en || '').trim();
 
             return {
                 id: String(p.id),
@@ -209,10 +212,11 @@ async function loadPartners() {
                 fax: fax,
                 email: email,
                 bankInfo: {
-                    bankName: p.bank_name || '',
-                    accountNo: p.account_number || '',
+                    bankName: bankName,
+                    accountNo: accountNo,
                     swift: swift,
-                    bankAddress: bankAddress
+                    bankAddress: bankAddress,
+                    intermediaryBank: intermediaryBank
                 },
                 raw: p
             };
@@ -588,10 +592,45 @@ function openDocModal(doc = null) {
         createPlItemLine();
     }
     
+    initialDocSnapshot = getDocFormSnapshot();
     els.docModal.classList.add('active');
 }
 
-function closeDocModal() {
+let initialDocSnapshot = null;
+
+function getDocFormSnapshot() {
+    if (!els.docForm) return '';
+    const data = new FormData(els.docForm);
+    const obj = Object.fromEntries(data.entries());
+    const invItems = [...els.itemLines.querySelectorAll('.inv-item-row')].map(r => ({
+        desc: r.querySelector('.i-desc')?.value || '',
+        hs: r.querySelector('.i-hs')?.value || '',
+        qty: r.querySelector('.i-qty')?.value || '',
+        unit: r.querySelector('.i-unit')?.value || '',
+        price: r.querySelector('.i-price')?.value || ''
+    }));
+    const plItems = els.plItemLines ? [...els.plItemLines.querySelectorAll('.pl-item-row')].map(r => ({
+        desc: r.querySelector('.pl-desc')?.value || '',
+        ctn: r.querySelector('.pl-ctn')?.value || '',
+        gw: r.querySelector('.pl-gw')?.value || '',
+        nw: r.querySelector('.pl-nw')?.value || '',
+        cbm: r.querySelector('.pl-cbm')?.value || ''
+    })) : [];
+    return JSON.stringify({ obj, invItems, plItems, terms: els.inpTermsAndConditions?.value || '' });
+}
+
+function isDocDirty() {
+    if (!initialDocSnapshot) return false;
+    return getDocFormSnapshot() !== initialDocSnapshot;
+}
+
+function closeDocModal(force = false) {
+    if (!force && isDocDirty()) {
+        if (!confirm('작성 중이거나 변경된 내용이 저장되지 않았습니다.\n창을 닫으시겠습니까? (작성 중인 내용은 사라집니다)')) {
+            return;
+        }
+    }
+    initialDocSnapshot = null;
     els.docModal.classList.remove('active');
 }
 
@@ -692,7 +731,7 @@ els.saveDocBtn.addEventListener('click', async () => {
         await authFetch(url, { method, body: JSON.stringify(payload) });
         
         showToast(isEdit ? '수정되었습니다.' : '저장되었습니다.');
-        closeDocModal();
+        closeDocModal(true);
         loadDocs();
     } catch (e) {
         showToast('저장 실패: ' + e.message, 'error');
@@ -771,7 +810,7 @@ function renderTplPickerList() {
                     ${p.tel ? `<div><i class='bx bx-phone' style="color:var(--gray-400);"></i> ${p.tel}</div>` : ''}
                     ${p.email ? `<div><i class='bx bx-envelope' style="color:var(--gray-400);"></i> ${p.email}</div>` : ''}
                 </div>
-                ${p.bankInfo?.bankName ? `<div style="margin-top:2px; color:var(--primary); font-size:10.5px;"><i class='bx bxs-bank'></i> ${p.bankInfo.bankName} ${p.bankInfo.accountNo ? '(' + p.bankInfo.accountNo + ')' : ''}</div>` : ''}
+                ${p.bankInfo?.bankName ? `<div style="margin-top:2px; color:var(--primary); font-size:10.5px;"><i class='bx bxs-bank'></i> <b>${p.bankInfo.bankName}</b> ${p.bankInfo.accountNo ? '(' + p.bankInfo.accountNo + ')' : ''} ${p.bankInfo.swift ? '<span style="color:#6366f1;font-weight:600;">SWIFT: ' + p.bankInfo.swift + '</span>' : ''}</div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1144,8 +1183,8 @@ function renderPreview() {
 
 // ── Event Listeners ──
 els.addBtn.addEventListener('click', () => openDocModal());
-els.closeModalBtn.addEventListener('click', closeDocModal);
-els.cancelModalBtn.addEventListener('click', closeDocModal);
+els.closeModalBtn.addEventListener('click', () => closeDocModal(false));
+els.cancelModalBtn.addEventListener('click', () => closeDocModal(false));
 els.addItemBtn.addEventListener('click', () => createInvItemLine());
 if(els.addPlItemBtn) els.addPlItemBtn.addEventListener('click', () => createPlItemLine());
 els.partnerBtn.addEventListener('click', openPartnersManagement);
@@ -1158,7 +1197,13 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         if (els.previewOverlay.classList.contains('active')) closePreview();
         else if (els.tplPickerModal.classList.contains('active')) els.tplPickerModal.classList.remove('active');
-        else if (els.docModal.classList.contains('active')) closeDocModal();
+        else if (els.docModal.classList.contains('active')) closeDocModal(false);
+    }
+});
+window.addEventListener('beforeunload', (e) => {
+    if (els.docModal.classList.contains('active') && isDocDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
     }
 });
 if (els.switchDocBtn) els.switchDocBtn.addEventListener('click', switchPreviewType);

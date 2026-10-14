@@ -147,14 +147,14 @@
     <!-- ========================================================================= -->
     <!-- 거래처 등록 / 수정 모달 -->
     <!-- ========================================================================= -->
-    <div class="modal fade" id="partnerModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal fade" id="partnerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-primary text-white py-2">
                     <h6 class="modal-title fw-bold" id="modalTitle" style="font-size: 13.5px;">
                         <i class='bx bx-building'></i> 새 거래처 등록
                     </h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" onclick="app.closeModalWithConfirm()" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
                     <form id="partnerForm" onsubmit="event.preventDefault(); app.savePartner();">
@@ -205,7 +205,7 @@
                         <!-- 2. 결제 및 계좌 정보 -->
                         <div class="erp-modal-section-card">
                             <div class="erp-section-title">
-                                <i class='bx bx-credit-card text-success'></i> 결제 및 계좌 정보
+                                <i class='bx bx-credit-card text-success'></i> 결제 및 계좌 정보 (국내 원화 계좌)
                             </div>
                             <div class="row g-2">
                                 <div class="col-md-4">
@@ -266,12 +266,12 @@
                             </div>
                         </div>
 
-                        <!-- 4. 영문 정보 (해외 공급처 / 발주서(PO) 발행 시 사용) -->
+                        <!-- 4. 영문 무역 정보 및 외화 결제 계좌 -->
                         <div class="erp-modal-section-card border-primary border-opacity-25" style="background-color: #fcfdfe;">
                             <div class="erp-section-title text-primary">
-                                <i class='bx bx-globe'></i> 영문 정보 <span class="text-muted fw-normal" style="font-size: 11px;">(해외 공급처 / 발주서(PO) 발행 시 자동 연동)</span>
+                                <i class='bx bx-globe'></i> 영문 무역 정보 및 외화 계좌 <span class="text-muted fw-normal" style="font-size: 11px;">(해외 공급처 / 인보이스·팩킹리스트 / 발주서(PO) 자동 연동)</span>
                             </div>
-                            <div class="row g-2 mb-2">
+                            <div class="row g-2 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">영문 상호명 (Company Name)</label>
                                     <input type="text" id="companyNameEn" class="form-control form-control-sm" placeholder="예: XINYU RECORD TECHNOLOGY CO., LTD.">
@@ -293,6 +293,38 @@
                                     <input type="text" id="addressEn" class="form-control form-control-sm" placeholder="예: No.4 Factory Building, Block D, High-Tech Zone, Jiangxi, China">
                                 </div>
                             </div>
+
+                            <!-- 외화 결제 계좌 정보 -->
+                            <div class="border-top pt-2 mt-1">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="fw-bold small text-primary d-flex align-items-center gap-1">
+                                        <i class='bx bx-credit-card-front'></i> 외화/영문 결제 계좌 정보 (Foreign Currency Bank Account)
+                                    </span>
+                                    <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:10px;"><i class='bx bx-check-shield'></i> 인보이스/무역 자동 반영</span>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Beneficiary Bank (영문 은행명)</label>
+                                        <input type="text" id="bankNameEn" class="form-control form-control-sm" placeholder="예: ZHEJIANG TAILONG COMMERCIAL BANK CO.,LTD">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Account No. (외화 계좌번호)</label>
+                                        <input type="text" id="accountNumberEn" class="form-control form-control-sm font-monospace" placeholder="예: 3302011420100019730">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">SWIFT CODE / BIC</label>
+                                        <input type="text" id="swiftCode" class="form-control form-control-sm font-monospace text-uppercase" placeholder="예: ZJTLCNBH">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Intermediary Bank (중계 은행 - 선택)</label>
+                                        <input type="text" id="intermediaryBankEn" class="form-control form-control-sm" placeholder="예: CITIBANK N.A., NEW YORK (SWIFT: CITIUS33)">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Bank Address (영문 은행 주소)</label>
+                                        <input type="text" id="bankAddressEn" class="form-control form-control-sm" placeholder="예: No. 188, South Taizhou Road, Taizhou, Zhejiang, China">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- 5. 비고 및 추가 정보 -->
@@ -305,7 +337,7 @@
                     </form>
                 </div>
                 <div class="modal-footer py-2 bg-light">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeModalWithConfirm()">취소</button>
                     <button type="button" class="btn btn-primary btn-sm fw-bold px-3" onclick="app.savePartner()">
                         <i class='bx bx-check'></i> 저장
                     </button>

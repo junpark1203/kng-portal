@@ -12,12 +12,86 @@ const app = {
     currentLimit: 50,
     modal: null,
 
+    initialFormSnapshot: null,
+
     init() {
         const modalEl = document.getElementById('partnerModal');
         if (modalEl) {
-            this.modal = new bootstrap.Modal(modalEl);
+            this.modal = new bootstrap.Modal(modalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
         }
         this.loadData();
+    },
+
+    getFormDataSnapshot() {
+        return {
+            partnerName: (document.getElementById('partnerName')?.value || '').trim(),
+            companyName: (document.getElementById('companyName')?.value || '').trim(),
+            partnerType: document.getElementById('partnerType')?.value || 'ALL',
+            businessNumber: (document.getElementById('businessNumber')?.value || '').trim(),
+            ceoName: (document.getElementById('ceoName')?.value || '').trim(),
+            address: (document.getElementById('address')?.value || '').trim(),
+            bankName: (document.getElementById('bankName')?.value || '').trim(),
+            accountNumber: (document.getElementById('accountNumber')?.value || '').trim(),
+            accountHolder: (document.getElementById('accountHolder')?.value || '').trim(),
+            phone: (document.getElementById('phone')?.value || '').trim(),
+            fax: (document.getElementById('fax')?.value || '').trim(),
+            manager1Name: (document.getElementById('manager1Name')?.value || '').trim(),
+            manager1Phone: (document.getElementById('manager1Phone')?.value || '').trim(),
+            manager1Email: (document.getElementById('manager1Email')?.value || '').trim(),
+            manager2Name: (document.getElementById('manager2Name')?.value || '').trim(),
+            manager2Phone: (document.getElementById('manager2Phone')?.value || '').trim(),
+            manager2Email: (document.getElementById('manager2Email')?.value || '').trim(),
+            companyNameEn: (document.getElementById('companyNameEn')?.value || '').trim(),
+            managerEn: (document.getElementById('managerEn')?.value || '').trim(),
+            phoneEn: (document.getElementById('phoneEn')?.value || '').trim(),
+            emailEn: (document.getElementById('emailEn')?.value || '').trim(),
+            addressEn: (document.getElementById('addressEn')?.value || '').trim(),
+            bankNameEn: (document.getElementById('bankNameEn')?.value || '').trim(),
+            accountNumberEn: (document.getElementById('accountNumberEn')?.value || '').trim(),
+            swiftCode: (document.getElementById('swiftCode')?.value || '').trim(),
+            intermediaryBankEn: (document.getElementById('intermediaryBankEn')?.value || '').trim(),
+            bankAddressEn: (document.getElementById('bankAddressEn')?.value || '').trim(),
+            partnerNote: (document.getElementById('partnerNote')?.value || '').trim()
+        };
+    },
+
+    isDirty() {
+        if (!this.initialFormSnapshot) return false;
+        const current = this.getFormDataSnapshot();
+        return JSON.stringify(current) !== JSON.stringify(this.initialFormSnapshot);
+    },
+
+    closeModalWithConfirm() {
+        if (this.isDirty()) {
+            if (window.Swal) {
+                Swal.fire({
+                    title: '작성 내용 저장 안내',
+                    html: '입력되거나 수정된 내용이 아직 저장되지 않았습니다.<br><strong>창을 닫으시겠습니까?</strong> (작성 중인 내용은 사라집니다)',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '저장하지 않고 닫기',
+                    cancelButtonText: '계속 작성'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.initialFormSnapshot = null;
+                        if (this.modal) this.modal.hide();
+                    }
+                });
+            } else {
+                if (confirm('입력되거나 수정된 내용이 아직 저장되지 않았습니다.\n창을 닫으시겠습니까?')) {
+                    this.initialFormSnapshot = null;
+                    if (this.modal) this.modal.hide();
+                }
+            }
+        } else {
+            this.initialFormSnapshot = null;
+            if (this.modal) this.modal.hide();
+        }
     },
 
     async loadData() {
@@ -235,11 +309,24 @@ const app = {
             const mainFax = p.fax ? `<div class="text-muted small" style="font-size:10.5px;">FAX: ${p.fax}</div>` : '';
             const contactHtml = (mainPhone || mainFax) ? `${mainPhone}${mainFax}` : '<span class="text-muted small">-</span>';
 
-            // 결제 계좌정보
+            // 결제 계좌정보 (국내 계좌 + 외화 계좌)
             const bankName = p.bank_name ? `<div class="fw-semibold text-dark">${p.bank_name}</div>` : '';
             const accNum = p.account_number ? `<div class="font-monospace text-success small" style="font-size:10.5px;">${p.account_number}</div>` : '';
             const accHolder = p.account_holder ? `<div class="text-muted small" style="font-size:10px;">(${p.account_holder})</div>` : '';
-            const bankHtml = (bankName || accNum) ? `${bankName}${accNum}${accHolder}` : '<span class="text-muted small">-</span>';
+            const domesticBank = (bankName || accNum) ? `${bankName}${accNum}${accHolder}` : '';
+
+            let foreignBank = '';
+            if (p.bank_name_en || p.account_number_en || p.swift_code) {
+                foreignBank = `
+                    <div class="${domesticBank ? 'mt-1 pt-1 border-top' : ''}" style="font-size: 10.5px;">
+                        <span class="badge" style="background:#e0e7ff; color:#3730a3; padding:1px 4px; font-size:9px;"><i class='bx bx-globe'></i> 외화</span>
+                        <span class="fw-semibold text-dark text-truncate d-inline-block align-middle" style="max-width:105px;" title="${p.bank_name_en || ''}">${p.bank_name_en || ''}</span>
+                        ${p.account_number_en ? `<div class="font-monospace text-primary text-truncate" style="max-width:145px; font-size:10px;">${p.account_number_en}</div>` : ''}
+                        ${p.swift_code ? `<span class="badge bg-light text-secondary border font-monospace" style="font-size:9px;">SWIFT: ${p.swift_code}</span>` : ''}
+                    </div>
+                `;
+            }
+            const bankHtml = (domesticBank || foreignBank) ? `${domesticBank}${foreignBank}` : '<span class="text-muted small">-</span>';
 
             // 담당자 (국문 / 영문 ATTN)
             const mgr1 = p.manager1_name 
@@ -386,6 +473,12 @@ const app = {
         document.getElementById('managerEn').value = '';
         document.getElementById('phoneEn').value = '';
         document.getElementById('emailEn').value = '';
+
+        document.getElementById('bankNameEn').value = '';
+        document.getElementById('accountNumberEn').value = '';
+        document.getElementById('swiftCode').value = '';
+        document.getElementById('intermediaryBankEn').value = '';
+        document.getElementById('bankAddressEn').value = '';
         
         const alertEl = document.getElementById('duplicatePartnerAlert');
         if (alertEl) {
@@ -394,6 +487,7 @@ const app = {
         }
 
         document.getElementById('modalTitle').innerHTML = "<i class='bx bx-building text-primary'></i> 새 거래처 등록";
+        this.initialFormSnapshot = this.getFormDataSnapshot();
         if (this.modal) this.modal.show();
     },
 
@@ -430,6 +524,12 @@ const app = {
         document.getElementById('phoneEn').value = partner.phone_en || '';
         document.getElementById('emailEn').value = partner.email_en || '';
 
+        document.getElementById('bankNameEn').value = partner.bank_name_en || '';
+        document.getElementById('accountNumberEn').value = partner.account_number_en || '';
+        document.getElementById('swiftCode').value = partner.swift_code || '';
+        document.getElementById('intermediaryBankEn').value = partner.intermediary_bank_en || '';
+        document.getElementById('bankAddressEn').value = partner.bank_address_en || '';
+
         document.getElementById('partnerNote').value = partner.note || '';
         
         const alertEl = document.getElementById('duplicatePartnerAlert');
@@ -439,6 +539,7 @@ const app = {
         }
 
         document.getElementById('modalTitle').innerHTML = `<i class='bx bx-edit-alt text-primary'></i> 거래처 수정 (${partner.name})`;
+        this.initialFormSnapshot = this.getFormDataSnapshot();
         if (this.modal) this.modal.show();
     },
 
@@ -472,6 +573,12 @@ const app = {
         const phone_en = document.getElementById('phoneEn').value.trim();
         const email_en = document.getElementById('emailEn').value.trim();
 
+        const bank_name_en = document.getElementById('bankNameEn').value.trim();
+        const account_number_en = document.getElementById('accountNumberEn').value.trim();
+        const swift_code = document.getElementById('swiftCode').value.trim();
+        const intermediary_bank_en = document.getElementById('intermediaryBankEn').value.trim();
+        const bank_address_en = document.getElementById('bankAddressEn').value.trim();
+
         const note = document.getElementById('partnerNote').value.trim();
 
         if (!name || !company_name) {
@@ -486,6 +593,8 @@ const app = {
             manager2_name, manager2_phone, manager2_email,
             company_name_en, address_en, manager_en,
             phone_en, email_en,
+            bank_name_en, account_number_en, swift_code,
+            intermediary_bank_en, bank_address_en,
             note 
         };
 
@@ -524,6 +633,7 @@ const app = {
                 }
                 Swal.fire({ title: '등록 완료', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }
+            this.initialFormSnapshot = null;
             if (this.modal) this.modal.hide();
             await this.loadData();
         } catch (error) {
@@ -595,6 +705,11 @@ const app = {
             '영문전화번호(Tel)': p.phone_en || '',
             '영문이메일': p.email_en || '',
             '영문사업장주소': p.address_en || '',
+            '외화_은행명(Bank)': p.bank_name_en || '',
+            '외화_계좌번호(A/C)': p.account_number_en || '',
+            'SWIFT_CODE': p.swift_code || '',
+            '외화_중계은행': p.intermediary_bank_en || '',
+            '외화_은행주소': p.bank_address_en || '',
             '비고': p.note || ''
         }));
 
@@ -624,6 +739,23 @@ const app = {
         }
     }
 };
+
+// ── Global Guards for Unsaved Changes ──
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modalEl = document.getElementById('partnerModal');
+        if (modalEl && modalEl.classList.contains('show')) {
+            app.closeModalWithConfirm();
+        }
+    }
+});
+
+window.addEventListener('beforeunload', (e) => {
+    if (app.isDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
