@@ -122,11 +122,15 @@
                             </select>
                         </div>
                         <div class="inv-fg">
-                            <label for="inpInvoiceNo">Invoice No.</label>
+                            <label for="inpProformaNo">Proforma Invoice No. (P/I)</label>
+                            <input type="text" id="inpProformaNo" placeholder="예: PI-2026-001">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpInvoiceNo">Commercial Invoice No. (C/I)</label>
                             <input type="text" id="inpInvoiceNo" placeholder="예: KNG-2026-001">
                         </div>
                         <div class="inv-fg">
-                            <label for="inpPackingListNo">Packing List No.</label>
+                            <label for="inpPackingListNo">Packing List No. (P/L)</label>
                             <input type="text" id="inpPackingListNo" placeholder="예: PL-2026-001">
                         </div>
                         <div class="inv-fg">
@@ -338,8 +342,23 @@
                             </div>
                         </div>
 
+                        <!-- P/I Terms & Conditions -->
+                        <div class="inv-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><i class='bx bx-file-blank'></i> P/I 특약사항 (Terms & Conditions - 계약서 갈음 조항)</span>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" class="btn-outline" id="btnLoadPiTpl" style="font-size:11px; padding:4px 10px; color:#4f46e5; border-color:#4f46e5; background:#eef2ff;"><i class='bx bx-import'></i> 표준 계약 템플릿 불러오기</button>
+                                <button type="button" class="btn-outline" id="btnClearPiTpl" style="font-size:11px; padding:4px 8px; color:var(--text-muted);"><i class='bx bx-eraser'></i> 지우기</button>
+                            </div>
+                        </div>
+                        <div class="inv-fg fg-full">
+                            <textarea id="inpTermsAndConditions" placeholder="Proforma Invoice 출력 시 반영될 계약 특약사항(T&C)을 입력하세요..." style="height: 180px; font-family: monospace, sans-serif; font-size: 11px; line-height: 1.5;"></textarea>
+                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">
+                                <i class='bx bx-info-circle'></i> [표준 계약 템플릿 불러오기]를 누르면 현재 품목 총액에 맞춰 30%/65%/5% 분할 금액, 지정 계좌, 납기, 검품/FTA, CISG 준거법 조항이 자동으로 채워집니다. (자유 수정 가능)
+                            </div>
+                        </div>
+
                         <!-- Remarks -->
-                        <div class="inv-section-title">비고 (Remarks)</div>
+                        <div class="inv-section-title">비고 (Remarks - C/I 및 공통)</div>
                         <div class="inv-fg fg-full">
                             <label for="inpRemarks">Remarks</label>
                             <textarea id="inpRemarks" placeholder="추가 기재사항..." style="height:60px;"></textarea>
@@ -440,16 +459,22 @@
     <div class="inv-preview-overlay" id="previewOverlay">
         <div class="inv-preview-container" id="previewContainer"></div>
         <div class="inv-preview-toolbar" id="previewToolbar">
-            <button class="btn-switch-doc" id="switchDocBtn"><i class='bx bx-transfer'></i> <span id="switchLabel">Packing List 보기</span></button>
-            <button class="btn-print" id="printBtn"><i class='bx bx-printer'></i> 인쇄 / PDF</button>
-            <button class="btn-close-preview" id="closePreviewBtn"><i class='bx bx-x'></i> 닫기</button>
+            <div class="preview-doc-tabs" style="display:flex; gap:6px;">
+                <button type="button" class="btn-switch-doc active" data-type="proforma" id="btnViewPi"><i class='bx bx-file-blank'></i> Proforma Invoice (P/I)</button>
+                <button type="button" class="btn-switch-doc" data-type="invoice" id="btnViewCi"><i class='bx bx-file'></i> Commercial Invoice (C/I)</button>
+                <button type="button" class="btn-switch-doc" data-type="packinglist" id="btnViewPl"><i class='bx bx-package'></i> Packing List (P/L)</button>
+            </div>
+            <div style="display:flex; gap:6px; margin-left:auto;">
+                <button class="btn-print" id="printBtn"><i class='bx bx-printer'></i> 인쇄 / PDF</button>
+                <button class="btn-close-preview" id="closePreviewBtn"><i class='bx bx-x'></i> 닫기</button>
+            </div>
         </div>
     </div>
 
     <!-- Toast -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script src="invoice-packing.js?v=3"></script>
+    <script src="invoice-packing.js?v=20261014_pi"></script>
 </body>
 
 </html>

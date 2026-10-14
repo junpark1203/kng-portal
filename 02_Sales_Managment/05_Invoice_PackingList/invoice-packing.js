@@ -7,7 +7,7 @@ const API_BASE = (location.hostname === 'localhost' || location.hostname === '12
 let allDocs = [];
 let allPartners = [];
 let currentPreviewDoc = null;
-let currentPreviewType = 'invoice'; // 'invoice' | 'packinglist'
+let currentPreviewType = 'proforma'; // 'proforma' | 'invoice' | 'packinglist'
 let currentTplRole = null; // 'shipper' | 'consignee' | 'notify'
 
 // DOM Elements
@@ -25,6 +25,10 @@ const els = {
     docModal: document.getElementById('docModal'),
     modalTitle: document.getElementById('modalTitle'),
     docForm: document.getElementById('docForm'),
+    inpProformaNo: document.getElementById('inpProformaNo'),
+    inpTermsAndConditions: document.getElementById('inpTermsAndConditions'),
+    btnLoadPiTpl: document.getElementById('btnLoadPiTpl'),
+    btnClearPiTpl: document.getElementById('btnClearPiTpl'),
     // Item tabs
     tabBtns: document.querySelectorAll('.inv-tab-btn'),
     invItemsWrap: document.getElementById('invItemsWrap'),
@@ -55,11 +59,14 @@ const els = {
     tplPickerList: document.getElementById('tplPickerList'),
     closeTplPickerBtn: document.getElementById('closeTplPickerBtn'),
     
-    // Preview
+    // Preview & Print
     previewOverlay: document.getElementById('previewOverlay'),
     previewContainer: document.getElementById('previewContainer'),
     closePreviewBtn: document.getElementById('closePreviewBtn'),
     printBtn: document.getElementById('printBtn'),
+    btnViewPi: document.getElementById('btnViewPi'),
+    btnViewCi: document.getElementById('btnViewCi'),
+    btnViewPl: document.getElementById('btnViewPl'),
     switchDocBtn: document.getElementById('switchDocBtn'),
     switchLabel: document.getElementById('switchLabel'),
     
@@ -143,6 +150,10 @@ function checkTransferData() {
                 
                 // 새로운 인보이스 모달 열고 데이터 주입
                 openDocModal(null);
+                if (transfer.data.quotationNo) {
+                    const pNo = document.getElementById('inpProformaNo');
+                    if (pNo) pNo.value = 'PI-' + transfer.data.quotationNo;
+                }
                 document.getElementById('inpShipperName').value = transfer.data.shipperName || '';
                 document.getElementById('inpPortOfLoading').value = transfer.data.pol || '';
                 document.getElementById('inpPortOfDischarge').value = transfer.data.pod || '';
@@ -205,6 +216,7 @@ function renderTable() {
     let docs = allDocs;
     if (q) {
         docs = docs.filter(d => 
+            (d.proformaNo || '').toLowerCase().includes(q) ||
             (d.invoiceNo || '').toLowerCase().includes(q) ||
             (d.packingListNo || '').toLowerCase().includes(q) ||
             (d.consignee?.name || '').toLowerCase().includes(q) ||
@@ -225,6 +237,7 @@ function renderTable() {
         const amtStr = sym + Number(d.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const cName = d.consignee?.name || '-';
         const docHtml = [];
+        if (d.proformaNo) docHtml.push(`<div class="inv-doc-badge pi" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;display:inline-flex;align-items:center;gap:4px;"><i class='bx bx-file-blank'></i> PI: ${d.proformaNo}</div>`);
         if (d.invoiceNo) docHtml.push(`<div class="inv-doc-badge inv">INV: ${d.invoiceNo}</div>`);
         if (d.packingListNo) docHtml.push(`<div class="inv-doc-badge pl">PL: ${d.packingListNo}</div>`);
         
@@ -379,6 +392,88 @@ if(els.copyFromInvBtn) {
     });
 }
 
+// ── P/I Terms & Conditions Template Generator ──
+function generateDefaultPiTerms(totalAmount = 0, currency = 'USD') {
+    const curCode = currency || 'USD';
+    const sym = { USD: 'US$', EUR: 'EUR', KRW: 'KRW ₩', CNY: 'CNY ¥', JPY: 'JPY ¥', GBP: 'GBP £' }[curCode] || curCode;
+    
+    let depStr = '2,940.00';
+    let balStr = '6,370.00';
+    let retStr = '490.00';
+    
+    if (totalAmount > 0) {
+        depStr = Number(totalAmount * 0.30).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        balStr = Number(totalAmount * 0.65).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        retStr = Number(totalAmount * 0.05).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Shipper / Bank Info fallback
+    const sBank = document.getElementById('inpShipperBank')?.value?.trim();
+    const sAcc = document.getElementById('inpShipperAccountNo')?.value?.trim();
+    const sSwift = document.getElementById('inpShipperSwift')?.value?.trim();
+    const sBankAddr = document.getElementById('inpShipperBankAddress')?.value?.trim();
+    const sName = document.getElementById('inpShipperName')?.value?.trim();
+    const sAddr = document.getElementById('inpShipperAddress')?.value?.trim();
+
+    const beneficiary = sName || 'Zhejiang Glory Garment Co.,Ltd';
+    const address = sAddr || 'No.209, Hengtai Road, Huibu Town, Changshan County Quzhou City, Zhejiang Province';
+    const bankName = sBank || 'ZHEJIANG TAILONG COMMERCIAL BANK CO.,LTD';
+    const swift = sSwift || 'ZJTLCNBH';
+    const acctNo = sAcc || '3302011420100019730';
+    const bankAddr = sBankAddr || 'CITIBANK N.A., NEW YORK (Intermediary SWIFT: CITIUS33)';
+
+    return `1) Payment Terms & Seller's Bank Information:
+   All payments shall be made in ${curCode} by T/T as follows:
+   - 30% Deposit (${sym} ${depStr}): Upon signing this Proforma Invoice.
+   - 65% Balance (${sym} ${balStr}): Before shipment release, upon Buyer's confirmation of TOP (Top of Production) sample, shipping photos, and B/L copy.
+   - 5% Final Retention (${sym} ${retStr}): Payable within 5 business days after goods arrive at the port in Korea, following a basic quality and quantity check.
+
+   [Seller's Designated Bank Account]
+   - Beneficiary      : ${beneficiary}
+   - Address          : ${address}
+   - Beneficiary Bank : ${bankName}
+   - SWIFT CODE       : ${swift}
+   - A/C              : ${acctNo}
+   - Intermediary Bank: ${bankAddr}
+   * Note: Any request to change the bank account above via email shall be strictly invalid to prevent wire fraud.
+
+2) Delivery, Lead Time & Delay Penalty:
+   - PP (Pre-Production) sample approval shall be confirmed within 10 days after deposit receipt.
+   - Mass production lead time: within 75 days after PP sample approval.
+   - Trade Terms: FOB Shanghai.
+   - In case of delayed delivery attributable to Seller, a delay penalty of 0.5% per day (up to max 10% of total contract value) shall be deducted from the balance payment.
+
+3) Shipping Documents & Customs Clearance:
+   - Seller shall provide Surrendered B/L, Commercial Invoice, Packing List, and Korea-China FTA Certificate of Origin (C/O) for Buyer's duty concession.
+   - All goods must have sewn-in "Made in China" country of origin labels conforming to Korean Customs regulations.
+
+4) Quality Assurance, Claims & Legal Effect:
+   - Buyer reserves the right to inspect goods upon arrival at the port in Korea. Any defect or shortage claim shall be submitted in writing within 14 days after port arrival.
+   - This Proforma Invoice, upon being signed and exchanged by both parties (including scanned electronic copies), shall constitute a legally binding Sales Contract governed by the United Nations Convention on Contracts for the International Sale of Goods (CISG). Any dispute arising hereof shall be resolved amicably, failing which it shall be submitted to arbitration (KCAB or CIETAC).`;
+}
+
+// Template Button Listeners
+if (els.btnLoadPiTpl) {
+    els.btnLoadPiTpl.addEventListener('click', () => {
+        calcInvTotals();
+        const tot = parseFloat(document.getElementById('totAmount')?.textContent?.replace(/,/g, '')) || 0;
+        const cur = document.getElementById('inpCurrency')?.value || 'USD';
+        if (els.inpTermsAndConditions) {
+            els.inpTermsAndConditions.value = generateDefaultPiTerms(tot, cur);
+            showToast('계약 특약사항(T&C) 표준 템플릿이 적용되었습니다.');
+        }
+    });
+}
+if (els.btnClearPiTpl) {
+    els.btnClearPiTpl.addEventListener('click', () => {
+        if (!els.inpTermsAndConditions) return;
+        if (!els.inpTermsAndConditions.value || confirm('특약사항 내용을 지우시겠습니까?')) {
+            els.inpTermsAndConditions.value = '';
+            showToast('특약사항이 초기화되었습니다.');
+        }
+    });
+}
+
 // ── Modal Logic (Create/Edit) ──
 function openDocModal(doc = null) {
     els.docForm.reset();
@@ -389,6 +484,7 @@ function openDocModal(doc = null) {
         document.getElementById('editId').value = doc.id;
         document.getElementById('inpStatus').value = doc.status || '임시작성';
         
+        if (els.inpProformaNo) els.inpProformaNo.value = doc.proformaNo || '';
         document.getElementById('inpInvoiceNo').value = doc.invoiceNo || '';
         document.getElementById('inpPackingListNo').value = doc.packingListNo || '';
         document.getElementById('inpDocDate').value = doc.docDate || '';
@@ -430,7 +526,6 @@ function openDocModal(doc = null) {
         document.getElementById('inpPaymentTerms').value = doc.paymentTerms || '';
         
         // Items
-        
         if (doc.items && doc.items.length > 0) {
             doc.items.forEach(item => createInvItemLine(item));
         } else {
@@ -445,14 +540,21 @@ function openDocModal(doc = null) {
         
         calcInvTotals();
         calcPlTotals();
+        if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = doc.termsAndConditions || '';
         document.getElementById('inpRemarks').value = doc.remarks || '';
         
     } else {
         els.modalTitle.textContent = '신규 거래 생성';
         document.getElementById('editId').value = '';
         document.getElementById('inpStatus').value = '임시작성';
+        if (els.inpProformaNo) els.inpProformaNo.value = '';
+        document.getElementById('inpInvoiceNo').value = '';
+        document.getElementById('inpPackingListNo').value = '';
+        document.getElementById('inpDocDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('inpCountryOfOrigin').value = '';
         document.getElementById('inpDepartureDate').value = '';
+        if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = '';
+        document.getElementById('inpRemarks').value = '';
         createInvItemLine();
         createPlItemLine();
     }
@@ -476,6 +578,7 @@ window.copyDoc = function(id) {
     // 깊은 복사 후 ID 초기화 및 제목 수정
     const clonedDoc = JSON.parse(JSON.stringify(doc));
     clonedDoc.id = ''; 
+    if (clonedDoc.proformaNo) clonedDoc.proformaNo = clonedDoc.proformaNo + '-COPY';
     if (clonedDoc.invoiceNo) clonedDoc.invoiceNo = clonedDoc.invoiceNo + '-COPY';
     if (clonedDoc.packingListNo) clonedDoc.packingListNo = clonedDoc.packingListNo + '-COPY';
     
@@ -501,6 +604,7 @@ els.saveDocBtn.addEventListener('click', async () => {
     
     const payload = {
         status: document.getElementById('inpStatus').value,
+        proformaNo: els.inpProformaNo ? els.inpProformaNo.value.trim() : '',
         invoiceNo: document.getElementById('inpInvoiceNo').value.trim(),
         packingListNo: document.getElementById('inpPackingListNo').value.trim(),
         docDate: document.getElementById('inpDocDate').value,
@@ -543,6 +647,7 @@ els.saveDocBtn.addEventListener('click', async () => {
         
         items: gatherInvItems(),
         packingItems: gatherPlItems(),
+        termsAndConditions: els.inpTermsAndConditions ? els.inpTermsAndConditions.value.trim() : '',
         remarks: document.getElementById('inpRemarks').value.trim(),
         
         totalAmount: parseFloat(document.getElementById('totAmount').textContent.replace(/,/g,'')) || 0,
@@ -739,12 +844,44 @@ window.applyTemplate = function(id) {
 };
 
 // ── Preview & Print Logic ──
-window.openPreview = function(id) {
+function setPreviewType(type) {
+    currentPreviewType = type;
+    [els.btnViewPi, els.btnViewCi, els.btnViewPl].forEach(btn => {
+        if (!btn) return;
+        if (btn.dataset.type === type) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    renderPreview();
+}
+
+// 3-way toggle buttons in preview toolbar
+[els.btnViewPi, els.btnViewCi, els.btnViewPl].forEach(btn => {
+    if (btn) {
+        btn.addEventListener('click', () => {
+            setPreviewType(btn.dataset.type);
+        });
+    }
+});
+
+window.openPreview = function(id, defaultType = null) {
     const doc = allDocs.find(d => d.id === id);
     if (!doc) return;
     currentPreviewDoc = doc;
-    currentPreviewType = 'invoice';
-    renderPreview();
+    
+    if (defaultType) {
+        currentPreviewType = defaultType;
+    } else if (doc.proformaNo || doc.termsAndConditions) {
+        currentPreviewType = 'proforma';
+    } else if (doc.invoiceNo) {
+        currentPreviewType = 'invoice';
+    } else {
+        currentPreviewType = 'packinglist';
+    }
+    
+    setPreviewType(currentPreviewType);
     els.previewOverlay.classList.add('active');
 };
 
@@ -754,30 +891,43 @@ function closePreview() {
 }
 
 function switchPreviewType() {
-    if (currentPreviewType === 'invoice') {
-        currentPreviewType = 'packinglist';
-        els.switchLabel.textContent = 'Invoice 보기';
+    if (currentPreviewType === 'proforma') {
+        setPreviewType('invoice');
+    } else if (currentPreviewType === 'invoice') {
+        setPreviewType('packinglist');
     } else {
-        currentPreviewType = 'invoice';
-        els.switchLabel.textContent = 'Packing List 보기';
+        setPreviewType('proforma');
     }
-    renderPreview();
 }
 
 function renderPreview() {
     if (!currentPreviewDoc) return;
     const d = currentPreviewDoc;
+    const isPi = currentPreviewType === 'proforma';
     const isInv = currentPreviewType === 'invoice';
+    const isPl = currentPreviewType === 'packinglist';
     
-    const docTitle = isInv ? 'COMMERCIAL INVOICE' : 'PACKING LIST';
-    const docNo = isInv ? d.invoiceNo : d.packingListNo;
+    let docTitle = 'PROFORMA INVOICE';
+    let docNoLabel = 'P/I No. & Date';
+    let docNo = d.proformaNo || d.invoiceNo || '-';
+    
+    if (isInv) {
+        docTitle = 'COMMERCIAL INVOICE';
+        docNoLabel = 'Invoice No. & Date';
+        docNo = d.invoiceNo || '-';
+    } else if (isPl) {
+        docTitle = 'PACKING LIST';
+        docNoLabel = 'Packing List No. & Date';
+        docNo = d.packingListNo || '-';
+    }
+    
     const sym = { USD: '$', EUR: '€', KRW: '₩', CNY: '¥', JPY: '¥', GBP: '£' }[d.currency || 'USD'] || d.currency;
     
     // Items
     let itemsHtml = '';
     
-    if (isInv) {
-        d.items.forEach(i => {
+    if (isPi || isInv) {
+        (d.items || []).forEach(i => {
             itemsHtml += `<tr>
                 <td class="td-desc">${i.description}<br><span style="font-size:8px;color:#666;">HS Code: ${i.hsCode||'-'}</span></td>
                 <td class="td-num">${Number(i.qty).toLocaleString()} ${i.unit}</td>
@@ -842,9 +992,9 @@ function renderPreview() {
             <div style="display:flex;flex-direction:column;gap:14px;">
                 <div style="display:flex; gap:14px;">
                     <div class="doc-party-box" style="flex:1;">
-                        <div class="party-label">${isInv ? 'Invoice No. & Date' : 'Packing List No. & Date'}</div>
+                        <div class="party-label">${docNoLabel}</div>
                         <div style="display:flex;flex-direction:column;gap:4px;">
-                            <div><b>No:</b> ${docNo || '-'}</div>
+                            <div><b>No:</b> ${docNo}</div>
                             <div><b>Date:</b> ${d.docDate || '-'}</div>
                         </div>
                     </div>
@@ -856,7 +1006,7 @@ function renderPreview() {
                 </div>
                 <div class="doc-party-box" style="flex:1;">
                     <div class="party-label">Remarks</div>
-                    <div>${(d.remarks||'').replace(/\n/g, '<br>')}</div>
+                    <div>${(d.remarks||'-').replace(/\n/g, '<br>')}</div>
                 </div>
             </div>
         </div>
@@ -883,7 +1033,7 @@ function renderPreview() {
         
         <table class="doc-items-table">
             <thead>
-                ${isInv ? `
+                ${(isPi || isInv) ? `
                 <tr>
                     <th style="width:50%;">Description of Goods</th>
                     <th style="width:15%;">Quantity</th>
@@ -901,7 +1051,7 @@ function renderPreview() {
                 ${itemsHtml}
             </tbody>
             <tfoot>
-                ${isInv ? `
+                ${(isPi || isInv) ? `
                 <tr>
                     <td style="text-align:right;">TOTAL</td>
                     <td class="td-num">${Number(d.totalQty).toLocaleString()}</td>
@@ -918,19 +1068,61 @@ function renderPreview() {
         </table>
     `;
 
-    if (isInv && d.shipper?.bankInfo?.bankName) {
-        const bi = d.shipper.bankInfo;
-        html += `
-        <div class="doc-remarks" style="margin-top:10px;background:#f9f9f9;">
-            <b><i class='bx bxs-bank'></i> Bank Information</b><br>
-            Bank Name: ${bi.bankName}<br>
-            Account No: ${bi.accountNo}<br>
-            SWIFT Code: ${bi.swift || '-'}<br>
-            Bank Address: ${bi.bankAddress || '-'}
-        </div>`;
-    }
+    // Proforma Invoice: Terms & Conditions and Dual Signatures
+    if (isPi) {
+        if (d.termsAndConditions) {
+            html += `
+            <div class="doc-terms-box">
+                <div class="doc-terms-title">
+                    <span><i class='bx bx-check-shield'></i> Terms &amp; Conditions (Contractual Terms)</span>
+                    <span style="font-size:8.5px;font-weight:normal;color:#666;">Substitute for Sales Contract under CISG</span>
+                </div>
+                <div class="doc-terms-content">${d.termsAndConditions.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            </div>`;
+        }
 
-    html += `
+        html += `
+        <div class="doc-dual-signatures">
+            <div class="doc-sig-block">
+                <div>
+                    <div class="sig-party-title">SELLER / EXPORTER</div>
+                    <div class="sig-confirm-text">For and on behalf of Seller:</div>
+                    <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.shipper?.name || 'Seller'}</div>
+                </div>
+                <div class="sig-line-row">
+                    <span class="sig-line-text">Authorized Signature &amp; Seal</span>
+                    <span class="sig-date-text">Date: ________________</span>
+                </div>
+            </div>
+            <div class="doc-sig-block">
+                <div>
+                    <div class="sig-party-title">BUYER / IMPORTER</div>
+                    <div class="sig-confirm-text">Accepted &amp; Confirmed by Buyer:</div>
+                    <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.consignee?.name || 'Buyer'}</div>
+                </div>
+                <div class="sig-line-row">
+                    <span class="sig-line-text">Authorized Signature &amp; Seal</span>
+                    <span class="sig-date-text">Date: ________________</span>
+                </div>
+            </div>
+        </div>
+        `;
+    } else {
+        // Commercial Invoice Bank Info
+        if (isInv && d.shipper?.bankInfo?.bankName) {
+            const bi = d.shipper.bankInfo;
+            html += `
+            <div class="doc-remarks" style="margin-top:10px;background:#f9f9f9;">
+                <b><i class='bx bxs-bank'></i> Bank Information</b><br>
+                Bank Name: ${bi.bankName}<br>
+                Account No: ${bi.accountNo}<br>
+                SWIFT Code: ${bi.swift || '-'}<br>
+                Bank Address: ${bi.bankAddress || '-'}
+            </div>`;
+        }
+
+        // Standard Single Signature Footer
+        html += `
         <div class="doc-footer">
             <div class="doc-signature">
                 For and on behalf of<br>
@@ -938,7 +1130,8 @@ function renderPreview() {
                 <div class="sig-line">Authorized Signature</div>
             </div>
         </div>
-    `;
+        `;
+    }
     
     els.previewContainer.innerHTML = html;
 }
@@ -953,7 +1146,7 @@ els.partnerBtn.addEventListener('click', openPartnerDrawer);
 els.closeDrawerBtn.addEventListener('click', closePartnerDrawer);
 els.closeTplPickerBtn.addEventListener('click', () => els.tplPickerModal.classList.remove('active'));
 els.closePreviewBtn.addEventListener('click', closePreview);
-els.switchDocBtn.addEventListener('click', switchPreviewType);
+if (els.switchDocBtn) els.switchDocBtn.addEventListener('click', switchPreviewType);
 els.printBtn.addEventListener('click', () => window.print());
 els.searchInput.addEventListener('input', renderTable);
 els.selectAll.addEventListener('change', (e) => {

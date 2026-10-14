@@ -45,6 +45,7 @@ function initInvoicePackingTables(database) {
             database.run(`
                 CREATE TABLE IF NOT EXISTS invoice_packing_docs (
                     id TEXT PRIMARY KEY,
+                    proformaNo TEXT DEFAULT '',
                     invoiceNo TEXT DEFAULT '',
                     packingListNo TEXT DEFAULT '',
                     docDate TEXT DEFAULT '',
@@ -66,6 +67,7 @@ function initInvoicePackingTables(database) {
                     items TEXT DEFAULT '[]',
                     packingItems TEXT DEFAULT '[]',
                     remarks TEXT DEFAULT '',
+                    termsAndConditions TEXT DEFAULT '',
                     
                     totalAmount REAL DEFAULT 0,
                     totalNetWeight REAL DEFAULT 0,
@@ -98,6 +100,8 @@ function initInvoicePackingTables(database) {
                     reject(err);
                 } else {
                     // 마이그레이션: 기존 테이블에 신규 컬럼 추가 (에러 무시)
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN proformaNo TEXT DEFAULT ''`, () => {});
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN termsAndConditions TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN countryOfOrigin TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN departureDate TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN packingItems TEXT DEFAULT '[]'`, () => {});
@@ -156,16 +160,17 @@ router.post('/documents', async (req, res) => {
         const id = p.id || ('INVPL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
         const now = new Date().toISOString();
         const sql = `INSERT INTO invoice_packing_docs (
-            id, invoiceNo, packingListNo, docDate,
+            id, proformaNo, invoiceNo, packingListNo, docDate,
             shipper, consignee, notifyParty,
             vessel, portOfLoading, portOfDischarge, finalDestination,
             paymentTerms, incoterms, currency, countryOfOrigin, departureDate,
-            items, packingItems, remarks,
+            items, packingItems, remarks, termsAndConditions,
             totalAmount, totalNetWeight, totalGrossWeight, totalMeasurement, totalQty,
             status, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
+            p.proformaNo || '',
             p.invoiceNo || '',
             p.packingListNo || '',
             p.docDate || '',
@@ -184,6 +189,7 @@ router.post('/documents', async (req, res) => {
             JSON.stringify(p.items || []),
             JSON.stringify(p.packingItems || []),
             p.remarks || '',
+            p.termsAndConditions || '',
             p.totalAmount || 0,
             p.totalNetWeight || 0,
             p.totalGrossWeight || 0,
@@ -206,15 +212,16 @@ router.put('/documents/:id', async (req, res) => {
         const p = req.body;
         const now = new Date().toISOString();
         const sql = `UPDATE invoice_packing_docs SET
-            invoiceNo=?, packingListNo=?, docDate=?,
+            proformaNo=?, invoiceNo=?, packingListNo=?, docDate=?,
             shipper=?, consignee=?, notifyParty=?,
             vessel=?, portOfLoading=?, portOfDischarge=?, finalDestination=?,
             paymentTerms=?, incoterms=?, currency=?, countryOfOrigin=?, departureDate=?,
-            items=?, packingItems=?, remarks=?,
+            items=?, packingItems=?, remarks=?, termsAndConditions=?,
             totalAmount=?, totalNetWeight=?, totalGrossWeight=?, totalMeasurement=?, totalQty=?,
             status=?, updatedAt=?
         WHERE id=?`;
         const params = [
+            p.proformaNo || '',
             p.invoiceNo || '',
             p.packingListNo || '',
             p.docDate || '',
@@ -233,6 +240,7 @@ router.put('/documents/:id', async (req, res) => {
             JSON.stringify(p.items || []),
             JSON.stringify(p.packingItems || []),
             p.remarks || '',
+            p.termsAndConditions || '',
             p.totalAmount || 0,
             p.totalNetWeight || 0,
             p.totalGrossWeight || 0,
