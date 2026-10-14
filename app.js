@@ -1296,13 +1296,39 @@ function setupAuth() {
             // Check admin role
             try {
                 const adminDoc = await getDoc(doc(db, "admin_users", user.email));
-                if (adminDoc.exists()) {
+                if (adminDoc.exists() || user.email === 'jpark120325@gmail.com') {
                     window.isAdminUser = true;
                 } else {
                     window.isAdminUser = false;
                 }
             } catch (err) {
                 console.error("Error checking admin role:", err);
+                if (user.email === 'jpark120325@gmail.com') window.isAdminUser = true;
+            }
+
+            // 3. 백엔드 통합 사용자 프로필 & 권한 조회
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const BACKEND_BASE = isLocal ? 'http://localhost:3000' : 'https://kng.junparks.com';
+            try {
+                const token = await user.getIdToken();
+                const profileRes = await fetch(`${BACKEND_BASE}/api/admin/my-profile?email=${encodeURIComponent(user.email)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (profileRes.ok) {
+                    const profile = await profileRes.json();
+                    if (profile.name) {
+                        localStorage.setItem('kngCurrentUser', profile.name);
+                    }
+                    if (profile.role === 'admin' || user.email === 'jpark120325@gmail.com') {
+                        window.isAdminUser = true;
+                    }
+                    applyMenuPermissions(profile);
+                } else {
+                    applyMenuPermissions(null);
+                }
+            } catch (err) {
+                console.warn("[Auth] Failed to fetch backend profile:", err);
+                applyMenuPermissions(null);
             }
 
             initFirebase(); // Initialize bindings ONLY after login
@@ -1311,6 +1337,7 @@ function setupAuth() {
             if (loginOverlay) loginOverlay.classList.remove('hidden');
             if (mainApp) mainApp.classList.add('hidden');
             window.isAdminUser = false;
+            document.querySelectorAll('.admin-only').forEach(function(el) { el.style.display = 'none'; });
         }
     });
 
@@ -1346,6 +1373,40 @@ function setupAuth() {
             signOut(auth).then(function() {
                 location.reload();
             });
+        });
+    }
+}
+
+function applyMenuPermissions(profile) {
+    var isAdmin = window.isAdminUser || (profile && profile.role === 'admin') || (auth.currentUser && auth.currentUser.email === 'jpark120325@gmail.com');
+
+    // 1. 관리자 전용 UI 토글
+    document.querySelectorAll('.admin-only').forEach(function(el) {
+        el.style.display = isAdmin ? '' : 'none';
+    });
+
+    if (isAdmin) {
+        // 관리자는 모든 메뉴 노출
+        document.querySelectorAll('.sidebar .menu [data-menu-key]').forEach(function(el) {
+            el.style.display = '';
+        });
+        return;
+    }
+
+    // 2. 일반 사용자: 권한 배열에 따라 메뉴 표시/숨김
+    var perms = (profile && Array.isArray(profile.menuPermissions)) ? profile.menuPermissions : ['all'];
+    if (!perms.includes('all')) {
+        document.querySelectorAll('.sidebar .menu [data-menu-key]').forEach(function(el) {
+            var key = el.getAttribute('data-menu-key');
+            if (key && !perms.includes(key)) {
+                el.style.display = 'none';
+            } else {
+                el.style.display = '';
+            }
+        });
+    } else {
+        document.querySelectorAll('.sidebar .menu [data-menu-key]').forEach(function(el) {
+            el.style.display = '';
         });
     }
 }

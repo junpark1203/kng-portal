@@ -57,19 +57,19 @@
             </div>
             <nav class="menu">
                 <!-- 대시보드 -->
-                <div class="menu-label">대시보드</div>
-                <a href="./05_Management/dashboard/index.html" id="adminDashboardMenu" data-nav="iframe"><i class='bx bx-grid-alt'></i> <span>대시보드</span></a>
-                <a href="#quickmenu" class="active" data-nav="internal"><i class='bx bx-category'></i> <span>퀵 메뉴</span></a>
+                <div class="menu-label" data-menu-key="dashboard">대시보드</div>
+                <a href="./05_Management/dashboard/index.html" id="adminDashboardMenu" data-nav="iframe" data-menu-key="dashboard"><i class='bx bx-grid-alt'></i> <span>대시보드</span></a>
+                <a href="#quickmenu" class="active" data-nav="internal" data-menu-key="dashboard"><i class='bx bx-category'></i> <span>퀵 메뉴</span></a>
 
                 <!-- 셀러K -->
-                <div class="menu-label">셀러K</div>
-                <a href="./04_Seller K/mass_upload/index.html" data-nav="iframe"><i class='bx bx-store'></i> <span>스마트스토어 일괄등록</span></a>
-                <a href="seller-k-products.html?v=3" data-nav="iframe"><i class='bx bx-receipt'></i> <span>매입 상품 대장</span></a>
-                <a href="./04_Seller K/margin_calculator/index.html" data-nav="iframe"><i class='bx bx-calculator'></i> <span>마진 계산기</span></a>
+                <div class="menu-label" data-menu-key="seller_k">셀러K</div>
+                <a href="./04_Seller K/mass_upload/index.html" data-nav="iframe" data-menu-key="seller_k"><i class='bx bx-store'></i> <span>스마트스토어 일괄등록</span></a>
+                <a href="seller-k-products.html?v=3" data-nav="iframe" data-menu-key="seller_k"><i class='bx bx-receipt'></i> <span>매입 상품 대장</span></a>
+                <a href="./04_Seller K/margin_calculator/index.html" data-nav="iframe" data-menu-key="seller_k"><i class='bx bx-calculator'></i> <span>마진 계산기</span></a>
 
                 <!-- Shopee -->
-                <div class="menu-label">Shopee</div>
-                <div class="menu-group" id="shopeeMenuGroup">
+                <div class="menu-label" data-menu-key="shopee">Shopee</div>
+                <div class="menu-group" id="shopeeMenuGroup" data-menu-key="shopee">
                     <div class="menu-group-toggle" id="shopeeToggle">
                         <i class='bx bx-store-alt'></i>
                         <span>Shopee 관리</span>
@@ -81,10 +81,10 @@
                 </div>
 
                 <!-- 영업관리 (구 물류/재고) -->
-                <div class="menu-label">영업관리</div>
+                <div class="menu-label" data-menu-key="logistics">영업관리</div>
                 
                 <!-- 영업관리 -->
-                <div class="menu-group" id="logisticsMenuGroup">
+                <div class="menu-group" id="logisticsMenuGroup" data-menu-key="logistics">
                     <div class="menu-group-toggle" id="logisticsToggle">
                         <i class='bx bx-package'></i>
                         <span>영업관리</span>
@@ -100,7 +100,7 @@
                 </div>
 
                 <!-- 기존 본사 매입 현황 -->
-                <div class="menu-group" id="hqMenuGroup">
+                <div class="menu-group" id="hqMenuGroup" data-menu-key="hq">
                     <div class="menu-group-toggle" id="hqToggle">
                         <i class='bx bx-building-house'></i>
                         <span>본사 매입 현황</span>
@@ -114,8 +114,8 @@
                 </div>
 
                 <!-- 해외영업/무역 -->
-                <div class="menu-label">해외영업/무역</div>
-                <div class="menu-group" id="overseasMenuGroup">
+                <div class="menu-label" data-menu-key="trade">해외영업/무역</div>
+                <div class="menu-group" id="overseasMenuGroup" data-menu-key="trade">
                     <div class="menu-group-toggle" id="overseasToggle">
                         <i class='bx bx-globe'></i>
                         <span>해외영업/무역</span>
@@ -130,8 +130,8 @@
                 </div>
 
                 <!-- (구)영업관리 -->
-                <div class="menu-label">(구)영업관리</div>
-                <div class="menu-group" id="salesMenuGroup">
+                <div class="menu-label" data-menu-key="sales">(구)영업관리</div>
+                <div class="menu-group" id="salesMenuGroup" data-menu-key="sales">
                     <div class="menu-group-toggle" id="salesToggle">
                         <i class='bx bx-briefcase'></i>
                         <span>(구)영업관리</span>
@@ -151,7 +151,7 @@
                     </div>
                 </div>
 
-                <div class="menu-group" id="siteStatusMenuGroup">
+                <div class="menu-group" id="siteStatusMenuGroup" data-menu-key="sales">
                     <div class="menu-group-toggle" id="siteStatusToggle">
                         <i class='bx bx-buildings'></i>
                         <span>현장관리</span>
@@ -164,12 +164,12 @@
                 </div>
 
                 <!-- 관리업무 -->
-                <div class="menu-label">관리업무</div>
-                <a href="./05_Management/project_tracker/index.html" data-nav="iframe"><i class='bx bx-briefcase-alt-2'></i> <span>프로젝트 관리</span></a>
-                <a href="./05_Management/work_logs/index.html?v=5" data-nav="iframe"><i class='bx bx-edit'></i> <span>개인 업무일지</span></a>
-                <a href="./05_Management/guidelines/index.html" data-nav="iframe"><i class='bx bx-book-bookmark'></i> <span>업무 매뉴얼 / 지침</span></a>
+                <div class="menu-label" data-menu-key="management">관리업무</div>
+                <a href="./05_Management/project_tracker/index.html" data-nav="iframe" data-menu-key="management"><i class='bx bx-briefcase-alt-2'></i> <span>프로젝트 관리</span></a>
+                <a href="./05_Management/work_logs/index.html?v=5" data-nav="iframe" data-menu-key="management"><i class='bx bx-edit'></i> <span>개인 업무일지</span></a>
+                <a href="./05_Management/guidelines/index.html" data-nav="iframe" data-menu-key="management"><i class='bx bx-book-bookmark'></i> <span>업무 매뉴얼 / 지침</span></a>
                 
-                <div class="menu-group" id="managementMenuGroup">
+                <div class="menu-group" id="managementMenuGroup" data-menu-key="forms">
                     <div class="menu-group-toggle" id="managementToggle">
                         <i class='bx bx-folder-open'></i>
                         <span>양식관리</span>
@@ -188,13 +188,13 @@
                 </div>
 
                 <!-- 정산 -->
-                <div class="menu-label">정산 / 거래처</div>
-                <a href="./03_monthly_closing/partners/index.html" class="menu-item" data-nav="iframe"><i class='bx bx-buildings'></i> <span>거래처 관리</span></a>
-                <a href="./03_monthly_closing/purchase/index.html" class="menu-item" data-nav="iframe"><i class='bx bx-import'></i> <span>매입정산</span></a>
-                <a href="./03_monthly_closing/sales/index.html" class="menu-item" data-nav="iframe"><i class='bx bx-export'></i> <span>매출정산</span></a>
-                <a href="./03_monthly_closing/ledger/index.html" class="menu-item" data-nav="iframe"><i class='bx bx-book-content'></i> <span>정산장부</span></a>
-                <a href="./03_monthly_closing/monthly_status/index.html" class="menu-item" data-nav="iframe"><i class='bx bx-calendar-check'></i> <span>월간현황</span></a>
-                <div class="menu-group" id="closingMenuGroup">
+                <div class="menu-label" data-menu-key="closing">정산 / 거래처</div>
+                <a href="./03_monthly_closing/partners/index.html" class="menu-item" data-nav="iframe" data-menu-key="closing"><i class='bx bx-buildings'></i> <span>거래처 관리</span></a>
+                <a href="./03_monthly_closing/purchase/index.html" class="menu-item" data-nav="iframe" data-menu-key="closing"><i class='bx bx-import'></i> <span>매입정산</span></a>
+                <a href="./03_monthly_closing/sales/index.html" class="menu-item" data-nav="iframe" data-menu-key="closing"><i class='bx bx-export'></i> <span>매출정산</span></a>
+                <a href="./03_monthly_closing/ledger/index.html" class="menu-item" data-nav="iframe" data-menu-key="closing"><i class='bx bx-book-content'></i> <span>정산장부</span></a>
+                <a href="./03_monthly_closing/monthly_status/index.html" class="menu-item" data-nav="iframe" data-menu-key="closing"><i class='bx bx-calendar-check'></i> <span>월간현황</span></a>
+                <div class="menu-group" id="closingMenuGroup" data-menu-key="closing">
                     <div class="menu-group-toggle" id="closingToggle">
                         <i class='bx bx-calculator'></i>
                         <span>월마감 정산</span>
@@ -207,8 +207,8 @@
                 </div>
 
                 <!-- 임시폴더 -->
-                <div class="menu-label">임시폴더</div>
-                <div class="menu-group" id="tempFolderMenuGroup">
+                <div class="menu-label" data-menu-key="temp">임시폴더</div>
+                <div class="menu-group" id="tempFolderMenuGroup" data-menu-key="temp">
                     <div class="menu-group-toggle" id="tempFolderToggle">
                         <i class='bx bx-folder'></i>
                         <span>임시폴더</span>
@@ -218,6 +218,10 @@
                         <a href="./07_temp_folder/site_sales_statement/index.html" data-nav="iframe"><i class='bx bx-receipt'></i> <span>현장별 매출내역서</span></a>
                     </div>
                 </div>
+
+                <!-- 시스템 설정 (슈퍼 관리자 전용) -->
+                <div class="menu-label admin-only" id="adminMenuLabel" style="display: none;">시스템 설정</div>
+                <a href="./05_Management/admin_users/index.html?v=20261014_1" id="menuAdminUsers" class="admin-only" data-nav="iframe" style="display: none;"><i class='bx bx-user-pin text-primary'></i> <span>계정 및 권한 관리</span></a>
             </nav>
             <div class="sidebar-footer">
                 <a href="#" id="logoutBtn" class="logout-btn"><i class='bx bx-log-out'></i> 로그아웃</a>

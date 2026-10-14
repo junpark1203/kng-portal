@@ -111,6 +111,10 @@ const { initGongsaeroBiddingTables } = gongsaeroBiddingRoutes;
 const siteSalesStatementRoutes = require('./routes/site-sales-statement');
 const { initSiteSalesStatementTables } = siteSalesStatementRoutes;
 
+// 계정 및 권한 관리 모듈
+const adminUsersRoutes = require('./routes/admin-users');
+const { initAdminUsersTables } = adminUsersRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -427,6 +431,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             siteSalesStatementRoutes.setDb(db);
             console.log('site_sales_statements API 준비 완료');
         }).catch(err => console.error('site_sales_statements 초기화 실패:', err));
+        // 계정 및 권한 관리 테이블 초기화 + 라우트에 DB 주입
+        initAdminUsersTables(db).then(() => {
+            adminUsersRoutes.setDb(db);
+            console.log('admin_users API 준비 완료');
+        }).catch(err => console.error('admin_users 초기화 실패:', err));
         // 대시보드
         dashboardRoutes.setDb(db);
     }
@@ -1482,6 +1491,7 @@ app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
 app.use('/api/site-sales-statements', siteSalesStatementRoutes.router);
 app.use('/api/purchase-orders', purchaseOrderRoutes.router);
 app.use('/api/quotations', quotationsRoutes.router);
+app.use('/api/admin', adminUsersRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

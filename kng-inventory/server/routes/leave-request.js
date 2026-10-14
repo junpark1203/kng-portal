@@ -111,7 +111,22 @@ async function initLeaveRequestTables(db) {
 router.get('/allowances', async (req, res) => {
     if (!_db) return res.status(500).json({ error: 'DB not initialized' });
     try {
-        const rows = await dbAll(`SELECT * FROM leave_allowances ORDER BY userName ASC`);
+        // 중앙 portal_users 테이블 우선 조회
+        let rows = [];
+        try {
+            rows = await dbAll(`
+                SELECT email as userEmail, name as userName, department, rank, leaveDays as totalDays, 2026 as year, updatedAt 
+                FROM portal_users 
+                WHERE status = 'active' 
+                ORDER BY name ASC
+            `);
+        } catch (e) {
+            rows = [];
+        }
+
+        if (!rows || rows.length === 0) {
+            rows = await dbAll(`SELECT * FROM leave_allowances ORDER BY userName ASC`);
+        }
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -129,6 +144,13 @@ router.post('/allowances', async (req, res) => {
     const now = new Date().toISOString();
 
     try {
+        // portal_users 에도 연차 일수 동기화
+        try {
+            await dbRun(`
+                UPDATE portal_users SET leaveDays = ?, updatedAt = ? WHERE email = ?
+            `, [days, now, userEmail.trim().toLowerCase()]);
+        } catch (e) {}
+
         await dbRun(`
             INSERT INTO leave_allowances (userEmail, userName, department, totalDays, year, updatedAt)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -149,16 +171,25 @@ router.post('/allowances', async (req, res) => {
 // 1-3. 내 연차 요약 정보 조회 (로그인 계정 기준 실시간 계산)
 router.get('/my-summary', async (req, res) => {
     if (!_db) return res.status(500).json({ error: 'DB not initialized' });
-    const userEmail = (req.query.email || (req.user ? req.user.email : null) || '').trim();
+    const userEmail = (req.query.email || (req.user ? req.user.email : null) || '').trim().toLowerCase();
     const currentYear = Number(req.query.year) || new Date().getFullYear();
 
     try {
-        // 기준 연차 정보 조회
+        // 기준 연차 정보 조회 (portal_users 우선 조회)
         let allowance = null;
         if (userEmail) {
-            allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ? AND year = ?`, [userEmail, currentYear]);
+            try {
+                const u = await dbGet(`SELECT email as userEmail, name as userName, department, rank, leaveDays as totalDays FROM portal_users WHERE email = ?`, [userEmail]);
+                if (u) {
+                    allowance = u;
+                }
+            } catch (e) {}
+
             if (!allowance) {
-                allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ?`, [userEmail]);
+                allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ? AND year = ?`, [userEmail, currentYear]);
+                if (!allowance) {
+                    allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ?`, [userEmail]);
+                }
             }
         }
 

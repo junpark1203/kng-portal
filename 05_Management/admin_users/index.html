@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계정 및 권한 관리 - KNG ERP</title>
+    <!-- Web Fonts & Icons -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Standalone Admin Users Stylesheet -->
+    <link rel="stylesheet" href="admin_users.css?v=20261014_1">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- ═══ 1. Top ERP Header ═══ -->
+        <header class="app-header">
+            <div class="header-title">
+                <h1><i class='bx bx-user-pin'></i> 계정 및 권한 관리 <span>(User &amp; Permission Center)</span></h1>
+                <span class="header-subtitle">전사 사용자 계정 프로필, 시스템 역할, 기준 연차 및 메뉴별 접근 권한 중앙 제어</span>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="btnRefresh" class="btn btn-outline" title="새로고침">
+                    <i class='bx bx-refresh'></i> 새로고침
+                </button>
+                <button type="button" id="btnNewUser" class="btn btn-primary">
+                    <i class='bx bx-user-plus'></i> 새 사용자 등록
+                </button>
+            </div>
+        </header>
+
+        <!-- ═══ 2. Top KPI Summary Cards ═══ -->
+        <section class="summary-container">
+            <div class="summary-cards">
+                <!-- 카드 1: 총 등록 계정 -->
+                <div class="summary-card">
+                    <div class="summary-icon blue"><i class='bx bx-group'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>총 등록 계정</span><span>전사</span></div>
+                        <div class="summary-val" id="kpiTotalUsers">0 <small>명</small></div>
+                    </div>
+                </div>
+
+                <!-- 카드 2: 슈퍼 관리자 -->
+                <div class="summary-card">
+                    <div class="summary-icon purple"><i class='bx bx-shield-quarter'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>슈퍼 관리자</span><span>Admin</span></div>
+                        <div class="summary-val" id="kpiAdminCount">0 <small>명</small></div>
+                    </div>
+                </div>
+
+                <!-- 카드 3: 일반 사원/매니저 -->
+                <div class="summary-card">
+                    <div class="summary-icon green"><i class='bx bx-user-check'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>일반 사원 / 매니저</span><span>정상</span></div>
+                        <div class="summary-val" id="kpiUserCount">0 <small>명</small></div>
+                    </div>
+                </div>
+
+                <!-- 카드 4: 2026 연차 부여 총일수 -->
+                <div class="summary-card">
+                    <div class="summary-icon amber"><i class='bx bx-calendar-star'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>총 부여 연차 일수</span><span>2026</span></div>
+                        <div class="summary-val" id="kpiTotalLeaveDays">0.0 <small>일</small></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 안내 배너 ═══ -->
+        <div class="admin-banner">
+            <i class='bx bx-info-circle' style="font-size: 16px; color: var(--primary);"></i>
+            <span>이곳에서 관리되는 <b>사원명 / 소속 / 직급</b>은 포털 전역(결재 대장, 업무일지, 보고서)에 즉시 반영되며, <b>기준 연차</b>는 휴가원 모듈과 실시간 자동 연동됩니다.</span>
+        </div>
+
+        <!-- ═══ 3. Toolbar & Filters (ECOUNT Style) ═══ -->
+        <section class="toolbar-container">
+            <div class="toolbar-card">
+                <div class="filter-group">
+                    <span class="filter-label"><i class='bx bx-filter-alt'></i> 필터:</span>
+                    <select id="filterRole" class="erp-select">
+                        <option value="">모든 시스템 역할</option>
+                        <option value="admin">슈퍼관리자 (Admin)</option>
+                        <option value="manager">부서장 / 매니저 (Manager)</option>
+                        <option value="user">일반 사원 (User)</option>
+                    </select>
+
+                    <select id="filterStatus" class="erp-select">
+                        <option value="">모든 계정 상태</option>
+                        <option value="active">정상 (Active)</option>
+                        <option value="inactive">사용중지 (Inactive)</option>
+                    </select>
+
+                    <input type="text" id="searchKeyword" class="erp-input" placeholder="이메일 / 사원명 / 부서 / 직급 검색..." style="width: 220px;">
+                    <button type="button" id="btnResetFilter" class="btn-icon" title="필터 초기화">
+                        <i class='bx bx-reset'></i>
+                    </button>
+                </div>
+
+                <div class="filter-group">
+                    <button type="button" id="btnExportExcel" class="btn btn-outline">
+                        <i class='bx bx-download'></i> 엑셀 다운로드
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 4. Compact ERP Data Grid ═══ -->
+        <main class="table-container">
+            <div class="erp-table-card">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px; text-align: center;">상태</th>
+                            <th style="width: 200px;">계정 이메일 (ID)</th>
+                            <th style="width: 90px; font-weight: 700;">사원명</th>
+                            <th style="width: 130px;">소속 부서</th>
+                            <th style="width: 80px;">직급</th>
+                            <th style="width: 100px; text-align: center;">시스템 권한</th>
+                            <th style="width: 90px; text-align: center;">기준 연차</th>
+                            <th>허용 메뉴 권한</th>
+                            <th style="width: 95px; text-align: center;">입사일자</th>
+                            <th style="width: 90px; text-align: center;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr><td colspan="10" style="text-align: center; padding: 25px; color: var(--text-muted);"><i class='bx bx-loader-alt bx-spin'></i> 계정 목록 로딩 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- ═══ 5. 사용자 등록 및 권한 설정 모달 ═══ -->
+    <div id="userEditModal" class="modal">
+        <div class="modal-content" style="width: 680px;">
+            <div class="modal-header">
+                <h2 id="modalTitle"><i class='bx bx-user-pin'></i> 사용자 계정 및 권한 설정</h2>
+                <button type="button" id="btnCloseModal" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="userForm" onsubmit="return false;">
+                    <input type="hidden" id="formMode" value="create">
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="fEmail">계정 이메일 (Firebase Auth 로그인 ID) *</label>
+                            <input type="email" id="fEmail" class="erp-input" required placeholder="예: user@kng.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="fName">사원명 (실명) *</label>
+                            <input type="text" id="fName" class="erp-input" required placeholder="예: 홍길동">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fDepartment">소속 부서</label>
+                            <input type="text" id="fDepartment" class="erp-input" value="주식회사 케앤지" placeholder="예: 해외영업부">
+                        </div>
+                        <div class="form-group">
+                            <label for="fRank">직급</label>
+                            <input type="text" id="fRank" class="erp-input" value="사원" placeholder="예: 차장, 과장, 대리">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fRole">시스템 역할 (Role) *</label>
+                            <select id="fRole" class="erp-select">
+                                <option value="user">일반 사원 (User) - 허용된 메뉴만 열람</option>
+                                <option value="manager">부서장 / 매니저 (Manager)</option>
+                                <option value="admin">슈퍼 관리자 (Admin) - 전체 접근 &amp; 권한 관리</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fStatus">계정 상태</label>
+                            <select id="fStatus" class="erp-select">
+                                <option value="active">정상 (Active)</option>
+                                <option value="inactive">사용중지 (Inactive) - 로그인 차단</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fLeaveDays">2026년 기준 연차 부여일수 (일) *</label>
+                            <input type="number" id="fLeaveDays" class="erp-input" step="0.5" min="0" value="15.0" style="font-weight: 700;">
+                        </div>
+                        <div class="form-group">
+                            <label for="fHireDate">입사일자</label>
+                            <input type="date" id="fHireDate" class="erp-input">
+                        </div>
+
+                        <div class="form-group full">
+                            <label for="fMemo">관리자 메모</label>
+                            <input type="text" id="fMemo" class="erp-input" placeholder="특이사항 및 담당 업무 메모">
+                        </div>
+
+                        <!-- ══ 메뉴 접근 권한 매트릭스 ══ -->
+                        <div class="form-group full">
+                            <div class="perm-matrix-card">
+                                <div class="perm-matrix-header">
+                                    <span class="perm-matrix-title">
+                                        <i class='bx bx-check-shield'></i> 사이드바 메뉴 접근 권한 설정
+                                    </span>
+                                    <label class="perm-item" style="font-weight: 600; color: var(--primary);">
+                                        <input type="checkbox" id="chkAllPerms"> 전체 메뉴 권한 부여
+                                    </label>
+                                </div>
+                                <div class="perm-grid" id="permGrid">
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="dashboard"> 대시보드 &amp; 퀵메뉴</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="seller_k"> 셀러K (스마트스토어)</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="shopee"> Shopee 관리</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="logistics"> 영업관리 (입출고/재고)</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="hq"> 본사 매입 현황</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="trade"> 해외영업/무역</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="sales"> (구)영업관리 &amp; 현장</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="management"> 관리업무 (프로젝트/일지)</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="forms"> 양식관리 (휴가원/지출/PO)</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="closing"> 정산 / 거래처 장부</label>
+                                    <label class="perm-item"><input type="checkbox" class="menu-perm-chk" value="temp"> 임시폴더 (매출내역)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="btnCancelModal" class="btn btn-outline">취소</button>
+                <button type="button" id="btnSaveUser" class="btn btn-primary">
+                    <i class='bx bx-check'></i> 저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Scripts ═══ -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="app.js?v=20261014_1"></script>
+</body>
+</html>
