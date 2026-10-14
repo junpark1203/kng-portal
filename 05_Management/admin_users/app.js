@@ -2,6 +2,19 @@
 // K&G PORTAL - 계정 및 권한 관리 (Admin Users Controller)
 // ─────────────────────────────────────────────────────────────
 
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDqdzlXTddvoBYWaVbTM7_ERO_rUGWjIgE",
+    authDomain: "kng-inventory.firebaseapp.com",
+    projectId: "kng-inventory",
+    storageBucket: "kng-inventory.firebasestorage.app",
+    messagingSenderId: "647181899026",
+    appId: "1:647181899026:web:7cd3b62a7a10771b204fcb",
+    measurementId: "G-5VYMDB59XD"
+};
+
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API_URL = isLocal ? 'http://localhost:3000/api/admin' : 'https://kng.junparks.com/api/admin';
 
@@ -92,6 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Form Fields
         fEmail: document.getElementById('fEmail'),
         fName: document.getElementById('fName'),
+        fPasswordGroup: document.getElementById('fPasswordGroup'),
+        fPassword: document.getElementById('fPassword'),
+        btnTogglePassword: document.getElementById('btnTogglePassword'),
+        fResetPasswordGroup: document.getElementById('fResetPasswordGroup'),
+        btnSendPasswordReset: document.getElementById('btnSendPasswordReset'),
+
         fDepartment: document.getElementById('fDepartment'),
         fRank: document.getElementById('fRank'),
         fRole: document.getElementById('fRole'),
@@ -104,7 +123,60 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ─────────────────────────────────────────────────────────
-    // 1. 데이터 로드 및 렌더링
+    // 1. Firebase Auth 계정 생성 헬퍼 (관리자 세션 보존)
+    // ─────────────────────────────────────────────────────────
+    async function createFirebaseUser(email, password) {
+        if (!password) return { created: false };
+        if (password.length < 6) {
+            throw new Error('비밀번호는 최소 6자리 이상이어야 합니다.');
+        }
+
+        const secName = 'SecAuthApp_' + Date.now();
+        const secApp = initializeApp(firebaseConfig, secName);
+        const secAuth = getAuth(secApp);
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(secAuth, email, password);
+            await signOut(secAuth);
+            await deleteApp(secApp);
+            return { created: true, uid: userCredential.user.uid };
+        } catch (err) {
+            try { await deleteApp(secApp); } catch(e) {}
+            if (err.code === 'auth/email-already-in-use') {
+                return { created: false, alreadyExists: true };
+            }
+            if (err.code === 'auth/weak-password') {
+                throw new Error('비밀번호가 너무 취약합니다. 6자리 이상의 영문/숫자를 사용하세요.');
+            }
+            if (err.code === 'auth/invalid-email') {
+                throw new Error('올바른 이메일 주소 형식이 아닙니다.');
+            }
+            throw new Error('Firebase 계정 생성 오류: ' + (err.message || err.code));
+        }
+    }
+
+    // 비밀번호 재설정 링크 발송
+    async function sendResetLink(email) {
+        if (!email) return;
+        const secName = 'SecResetApp_' + Date.now();
+        const secApp = initializeApp(firebaseConfig, secName);
+        const secAuth = getAuth(secApp);
+        try {
+            await sendPasswordResetEmail(secAuth, email);
+            await deleteApp(secApp);
+            Swal.fire({
+                title: '재설정 메일 발송 완료',
+                html: `<b>[${email}]</b> 주소로 비밀번호 재설정 이메일을 발송했습니다.<br>수신함을 확인하여 링크를 클릭해 비밀번호를 변경하세요.`,
+                icon: 'success'
+            });
+        } catch (err) {
+            try { await deleteApp(secApp); } catch(e) {}
+            Swal.fire('발송 실패', err.message, 'error');
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // 2. 데이터 로드 및 렌더링
     // ─────────────────────────────────────────────────────────
     async function loadUsers() {
         try {
@@ -195,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ─────────────────────────────────────────────────────────
-    // 2. 모달 열기 및 저장/삭제
+    // 3. 모달 열기 및 저장/삭제
     // ─────────────────────────────────────────────────────────
     function openModal(mode = 'create', email = null) {
         els.formMode.value = mode;
@@ -213,6 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
             els.fEmail.value = user.email;
             els.fEmail.readOnly = true;
             els.fEmail.style.backgroundColor = '#f1f5f9';
+
+            // 수정 모드 시: 신규 발급 비밀번호는 숨기고, 재설정 버튼 노출
+            els.fPasswordGroup.style.display = 'none';
+            els.fResetPasswordGroup.style.display = 'block';
+            els.fPassword.value = '';
 
             els.fName.value = user.name || '';
             els.fDepartment.value = user.department || '주식회사 케앤지';
@@ -240,6 +317,13 @@ document.addEventListener('DOMContentLoaded', () => {
             els.fEmail.readOnly = false;
             els.fEmail.style.backgroundColor = '#ffffff';
 
+            // 신규 모드 시: 비밀번호 입력란 노출, 재설정 버튼 숨김
+            els.fPasswordGroup.style.display = 'block';
+            els.fResetPasswordGroup.style.display = 'none';
+            els.fPassword.value = '';
+            els.fPassword.type = 'password';
+            els.btnTogglePassword.innerHTML = "<i class='bx bx-show'></i>";
+
             els.fName.value = '';
             els.fDepartment.value = '주식회사 케앤지';
             els.fRank.value = '사원';
@@ -261,6 +345,23 @@ document.addEventListener('DOMContentLoaded', () => {
         els.modal.classList.remove('active');
     }
 
+    // 비밀번호 보기/숨기기 토글
+    els.btnTogglePassword.addEventListener('click', () => {
+        if (els.fPassword.type === 'password') {
+            els.fPassword.type = 'text';
+            els.btnTogglePassword.innerHTML = "<i class='bx bx-hide'></i>";
+        } else {
+            els.fPassword.type = 'password';
+            els.btnTogglePassword.innerHTML = "<i class='bx bx-show'></i>";
+        }
+    });
+
+    // 비밀번호 재설정 메일 발송 클릭
+    els.btnSendPasswordReset.addEventListener('click', () => {
+        const email = els.fEmail.value.trim().toLowerCase();
+        sendResetLink(email);
+    });
+
     // 전체 권한 토글
     els.chkAllPerms.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
@@ -279,37 +380,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = els.formMode.value;
         const email = els.fEmail.value.trim().toLowerCase();
         const name = els.fName.value.trim();
+        const rawPassword = els.fPassword.value.trim();
 
         if (!email || !name) {
             Swal.fire('입력 오류', '이메일(계정 ID)과 사원명은 필수 항목입니다.', 'warning');
             return;
         }
 
-        let perms = [];
-        if (els.chkAllPerms.checked) {
-            perms = ['all'];
-        } else {
-            const checkBoxes = Array.from(els.permGrid.querySelectorAll('.menu-perm-chk:checked'));
-            perms = checkBoxes.map(cb => cb.value);
-            if (perms.length === 0) perms = ['dashboard']; // 최소 대시보드는 허용
-        }
-
-        const payload = {
-            email,
-            name,
-            department: els.fDepartment.value.trim(),
-            rank: els.fRank.value.trim(),
-            role: els.fRole.value,
-            status: els.fStatus.value,
-            leaveDays: parseFloat(els.fLeaveDays.value) || 15.0,
-            hireDate: els.fHireDate.value,
-            memo: els.fMemo.value.trim(),
-            menuPermissions: perms
-        };
-
         try {
             els.btnSaveUser.disabled = true;
-            els.btnSaveUser.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> 저장 중...`;
+            els.btnSaveUser.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> 처리 중...`;
+
+            // 1. 신규 계정일 때 비밀번호가 입력되어 있으면 Firebase Auth 계정 생성 (원스톱)
+            let fbResult = { created: false };
+            if (mode === 'create' && rawPassword) {
+                fbResult = await createFirebaseUser(email, rawPassword);
+            }
+
+            // 2. 권한 목록 수집
+            let perms = [];
+            if (els.chkAllPerms.checked) {
+                perms = ['all'];
+            } else {
+                const checkBoxes = Array.from(els.permGrid.querySelectorAll('.menu-perm-chk:checked'));
+                perms = checkBoxes.map(cb => cb.value);
+                if (perms.length === 0) perms = ['dashboard'];
+            }
+
+            const payload = {
+                email,
+                name,
+                department: els.fDepartment.value.trim(),
+                rank: els.fRank.value.trim(),
+                role: els.fRole.value,
+                status: els.fStatus.value,
+                leaveDays: parseFloat(els.fLeaveDays.value) || 15.0,
+                hireDate: els.fHireDate.value,
+                memo: els.fMemo.value.trim(),
+                menuPermissions: perms
+            };
 
             const url = mode === 'create' ? `${API_URL}/users` : `${API_URL}/users/${encodeURIComponent(email)}`;
             const method = mode === 'create' ? 'POST' : 'PUT';
@@ -322,11 +431,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || '저장에 실패했습니다.');
 
-            showToast(data.message || '저장되었습니다.', 'success');
+            let successMsg = data.message || '저장되었습니다.';
+            if (fbResult.created) {
+                successMsg = `[${name}] 계정 생성 및 Firebase Auth 등록이 완료되었습니다!`;
+            } else if (fbResult.alreadyExists) {
+                successMsg = `[${name}] 기존 Firebase 계정과 성공적으로 연동되었습니다!`;
+            }
+
+            showToast(successMsg, 'success');
             closeModal();
             loadUsers();
         } catch (err) {
-            Swal.fire('저장 실패', err.message, 'error');
+            Swal.fire('처리 실패', err.message, 'error');
         } finally {
             els.btnSaveUser.disabled = false;
             els.btnSaveUser.innerHTML = `<i class='bx bx-check'></i> 저장하기`;
@@ -363,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ─────────────────────────────────────────────────────────
-    // 3. 이벤트 리스너 바인딩
+    // 4. 이벤트 바인딩
     // ─────────────────────────────────────────────────────────
     els.btnRefresh.addEventListener('click', loadUsers);
     els.btnNewUser.addEventListener('click', () => openModal('create'));
@@ -405,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let csv = '\uFEFF상태,이메일,사원명,소속부서,직급,시스템권한,기준연차(일),입사일자,메모\n';
         allUsers.forEach(u => {
-            const p = (u.menuPermissions || ['all']).join('|');
             csv += `"${u.status === 'active' ? '정상' : '중지'}","${u.email}","${u.name || ''}","${u.department || ''}","${u.rank || ''}","${u.role}","${u.leaveDays || 15}","${u.hireDate || ''}","${(u.memo || '').replace(/"/g, '""')}"\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

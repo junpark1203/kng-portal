@@ -156,6 +156,32 @@
                             <input type="text" id="fName" class="erp-input" required placeholder="예: 홍길동">
                         </div>
 
+                        <!-- ══ 초기 비밀번호 (신규 발급 원스톱 지원) ══ -->
+                        <div class="form-group full" id="fPasswordGroup">
+                            <label for="fPassword">초기 비밀번호 (Firebase 로그인 계정 신규 발급 시)</label>
+                            <div style="position: relative;">
+                                <input type="password" id="fPassword" class="erp-input" placeholder="6자리 이상 비밀번호 입력 (기존 계정 연동 시 빈칸으로 둠)" style="width: 100%; padding-right: 32px;">
+                                <button type="button" id="btnTogglePassword" class="btn-icon" style="position: absolute; right: 4px; top: 2px; height: 24px; border: none; background: transparent;" title="비밀번호 보기/숨기기">
+                                    <i class='bx bx-show'></i>
+                                </button>
+                            </div>
+                            <span style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                                <i class='bx bx-check-circle' style="color:var(--success);"></i> 입력 시 <b>Firebase에 로그인 계정이 원스톱으로 즉시 생성</b>됩니다. (기존 생성 계정은 빈칸 유지)
+                            </span>
+                        </div>
+
+                        <!-- ══ 비밀번호 재설정 메일 발송 (수정 모드 시 노출) ══ -->
+                        <div class="form-group full" id="fResetPasswordGroup" style="display: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px dashed var(--border); padding: 8px 12px; border-radius: 6px;">
+                                <span style="font-size: 11.5px; color: var(--text-main);">
+                                    <i class='bx bx-key' style="color: var(--primary);"></i> <b>비밀번호 재설정:</b> 사원이 비밀번호를 분실한 경우
+                                </span>
+                                <button type="button" id="btnSendPasswordReset" class="btn btn-outline" style="height: 26px; font-size: 11px;">
+                                    <i class='bx bx-envelope'></i> 재설정 메일 발송
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="fDepartment">소속 부서</label>
                             <input type="text" id="fDepartment" class="erp-input" value="주식회사 케앤지" placeholder="예: 해외영업부">
