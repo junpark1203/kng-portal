@@ -82,6 +82,30 @@ async function initAdminUsersTables(db) {
         console.log('[AdminUsers] 슈퍼관리자 기본 계정 시드 완료 (jpark120325@gmail.com)');
     }
 
+    // 2-2. 기본 계정 시드 (케앤지 대표 계정: zpdoswl@naver.com)
+    const existingCeo = await dbGet(`SELECT email FROM portal_users WHERE email = 'zpdoswl@naver.com'`);
+    if (!existingCeo) {
+        const now = new Date().toISOString();
+        await dbRun(`
+            INSERT INTO portal_users (email, name, department, rank, role, leaveDays, hireDate, status, menuPermissions, memo, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            'zpdoswl@naver.com',
+            '윤종',
+            '주식회사 케앤지',
+            '대표이사',
+            'admin',
+            15.0,
+            '2020-01-01',
+            'active',
+            JSON.stringify(['all']),
+            '주식회사 케앤지 대표 계정',
+            now,
+            now
+        ]);
+        console.log('[AdminUsers] 대표 계정 기본 시드 완료 (zpdoswl@naver.com)');
+    }
+
     // 3. 기존 leave_allowances 테이블이 있으면 데이터 마이그레이션 동기화
     try {
         const allowances = await dbAll(`SELECT * FROM leave_allowances`);
@@ -129,8 +153,8 @@ router.get('/my-profile', async (req, res) => {
     try {
         let user = await dbGet(`SELECT * FROM portal_users WHERE email = ?`, [userEmail]);
         if (!user) {
-            // 미등록 계정이면 기본 프로필 반환 (관리자 여부는 jpark 이메일 기반 기본 허용)
-            const isAdmin = userEmail === 'jpark120325@gmail.com';
+            // 미등록 계정이면 기본 프로필 반환 (관리자 여부는 jpark, zpdoswl 이메일 기반 기본 허용)
+            const isAdmin = userEmail === 'jpark120325@gmail.com' || userEmail === 'zpdoswl@naver.com';
             user = {
                 email: userEmail,
                 name: userEmail.split('@')[0],
