@@ -294,36 +294,84 @@
                                 </div>
                             </div>
 
-                            <!-- 외화 결제 계좌 정보 -->
+                            <!-- 외화/해외 결제 계좌 관리 (통화별 다중 등록 & 사용 가이드) -->
                             <div class="border-top pt-2 mt-1">
                                 <div class="d-flex align-items-center justify-content-between mb-2">
                                     <span class="fw-bold small text-primary d-flex align-items-center gap-1">
-                                        <i class='bx bx-credit-card-front'></i> 외화/영문 결제 계좌 정보 (Foreign Currency Bank Account)
+                                        <i class='bx bx-credit-card-front'></i> 외화/해외 결제 계좌 관리 <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:10px;">통화별 다중 등록 &amp; 사용 가이드</span>
                                     </span>
-                                    <span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:10px;"><i class='bx bx-check-shield'></i> 인보이스/무역 자동 반영</span>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size:11px;" onclick="app.showAddBankAccForm()">
+                                        <i class='bx bx-plus'></i> 외화 계좌 추가
+                                    </button>
                                 </div>
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Beneficiary Bank (영문 은행명)</label>
-                                        <input type="text" id="bankNameEn" class="form-control form-control-sm" placeholder="예: ZHEJIANG TAILONG COMMERCIAL BANK CO.,LTD">
+
+                                <!-- Hidden fields for backward compatibility and payload -->
+                                <input type="hidden" id="bankAccountsJson">
+                                <input type="hidden" id="bankNameEn">
+                                <input type="hidden" id="accountNumberEn">
+                                <input type="hidden" id="swiftCode">
+                                <input type="hidden" id="intermediaryBankEn">
+                                <input type="hidden" id="bankAddressEn">
+
+                                <!-- Inline Add/Edit Subform -->
+                                <div id="bankAccEditor" class="p-2 mb-2 rounded border" style="display:none; background:#f8fafc; border-color:#cbd5e1 !important;">
+                                    <input type="hidden" id="editBankAccId">
+                                    <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                                        <span class="fw-bold small text-dark" id="bankAccEditorTitle"><i class='bx bx-plus-circle text-primary'></i> 새 외화 계좌 입력</span>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input" type="checkbox" id="bankAccIsDefault">
+                                            <label class="form-check-label small fw-semibold" for="bankAccIsDefault" style="font-size:11px; color:#2563eb;">⭐ 기본 계좌로 지정</label>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Account No. (외화 계좌번호)</label>
-                                        <input type="text" id="accountNumberEn" class="form-control form-control-sm font-monospace" placeholder="예: 3302011420100019730">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold" style="font-size: 11px;">통화 단위 <span class="text-danger">*</span></label>
+                                            <select id="bankAccCurrency" class="form-select form-select-sm">
+                                                <option value="USD">USD (미국 달러)</option>
+                                                <option value="EUR">EUR (유로)</option>
+                                                <option value="CNY">CNY (중국 위안)</option>
+                                                <option value="JPY">JPY (일본 엔)</option>
+                                                <option value="HKD">HKD (홍콩 달러)</option>
+                                                <option value="GBP">GBP (영국 파운드)</option>
+                                                <option value="KRW">KRW (원화)</option>
+                                                <option value="기타">기타</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold" style="font-size: 11px;">Beneficiary Bank (영문 은행명) <span class="text-danger">*</span></label>
+                                            <input type="text" id="bankAccBankName" class="form-control form-control-sm" placeholder="예: ZHEJIANG TAILONG COMMERCIAL BANK CO.,LTD">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold" style="font-size: 11px;">Account No. (외화 계좌번호) <span class="text-danger">*</span></label>
+                                            <input type="text" id="bankAccAccountNo" class="form-control form-control-sm font-monospace" placeholder="예: 3302011420100019730">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold" style="font-size: 11px;">SWIFT CODE / BIC</label>
+                                            <input type="text" id="bankAccSwift" class="form-control form-control-sm font-monospace text-uppercase" placeholder="예: ZJTLCNBH">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-semibold" style="font-size: 11px;">Intermediary Bank (중계 은행 - 지방은행 등 필요 시)</label>
+                                            <input type="text" id="bankAccIntermediary" class="form-control form-control-sm" placeholder="예: CITIBANK N.A., NEW YORK (SWIFT: CITIUS33)">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold" style="font-size: 11px;">Bank Address (영문 은행 주소)</label>
+                                            <input type="text" id="bankAccBankAddress" class="form-control form-control-sm" placeholder="예: No. 188, South Taizhou Road, Taizhou, Zhejiang, China">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-primary" style="font-size: 11px;">
+                                                <i class='bx bx-notepad'></i> 계좌 사용 가이드 및 비고 (어떤 경우에 이 계좌를 사용하는지)
+                                            </label>
+                                            <input type="text" id="bankAccNote" class="form-control form-control-sm" placeholder="예: 미화(USD) 발주서 및 30% 선수금/잔금 T/T 결제 시 필수 사용 / 뉴욕 씨티은행 중계">
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">SWIFT CODE / BIC</label>
-                                        <input type="text" id="swiftCode" class="form-control form-control-sm font-monospace text-uppercase" placeholder="예: ZJTLCNBH">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Intermediary Bank (중계 은행 - 선택)</label>
-                                        <input type="text" id="intermediaryBankEn" class="form-control form-control-sm" placeholder="예: CITIBANK N.A., NEW YORK (SWIFT: CITIUS33)">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label fw-semibold" style="font-size: 11.5px;">Bank Address (영문 은행 주소)</label>
-                                        <input type="text" id="bankAddressEn" class="form-control form-control-sm" placeholder="예: No. 188, South Taizhou Road, Taizhou, Zhejiang, China">
+                                    <div class="d-flex justify-content-end gap-1 mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;" onclick="app.hideBankAccForm()">취소</button>
+                                        <button type="button" class="btn btn-primary btn-sm py-0 px-3 fw-bold" style="font-size:11px;" onclick="app.saveBankAccSubform()"><i class='bx bx-check'></i> 계좌 반영</button>
                                     </div>
                                 </div>
+
+                                <!-- Registered Bank Accounts Cards -->
+                                <div id="bankAccountsList" class="d-flex flex-column gap-2"></div>
                             </div>
                         </div>
 

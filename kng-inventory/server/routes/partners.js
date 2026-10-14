@@ -26,7 +26,8 @@ module.exports = (database) => {
             'company_name_en TEXT', 'address_en TEXT', 'manager_en TEXT',
             'phone_en TEXT', 'email_en TEXT',
             'bank_name_en TEXT', 'account_number_en TEXT', 'swift_code TEXT',
-            'bank_address_en TEXT', 'intermediary_bank_en TEXT'
+            'bank_address_en TEXT', 'intermediary_bank_en TEXT',
+            'bank_accounts_json TEXT'
         ];
         columns.forEach(col => {
             const colName = col.split(' ')[0];
@@ -56,6 +57,7 @@ module.exports = (database) => {
             phone_en, email_en,
             bank_name_en, account_number_en, swift_code,
             bank_address_en, intermediary_bank_en,
+            bank_accounts_json,
             type, contact, note 
         } = req.body;
         
@@ -72,8 +74,9 @@ module.exports = (database) => {
                 phone_en, email_en,
                 bank_name_en, account_number_en, swift_code,
                 bank_address_en, intermediary_bank_en,
+                bank_accounts_json,
                 type, contact, note
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
         stmt.run([
@@ -86,6 +89,7 @@ module.exports = (database) => {
             phone_en || '', email_en || '',
             bank_name_en || '', account_number_en || '', swift_code || '',
             bank_address_en || '', intermediary_bank_en || '',
+            bank_accounts_json || '',
             type || 'ALL', contact || '', note || ''
         ], function(err) {
             if (err) {
@@ -111,6 +115,7 @@ module.exports = (database) => {
             phone_en, email_en,
             bank_name_en, account_number_en, swift_code,
             bank_address_en, intermediary_bank_en,
+            bank_accounts_json,
             type, contact, note 
         } = req.body;
         const id = req.params.id;
@@ -128,6 +133,7 @@ module.exports = (database) => {
                 phone_en = ?, email_en = ?,
                 bank_name_en = ?, account_number_en = ?, swift_code = ?,
                 bank_address_en = ?, intermediary_bank_en = ?,
+                bank_accounts_json = ?,
                 type = ?, contact = ?, note = ?
             WHERE id = ?
         `);
@@ -142,6 +148,7 @@ module.exports = (database) => {
             phone_en || '', email_en || '',
             bank_name_en || '', account_number_en || '', swift_code || '',
             bank_address_en || '', intermediary_bank_en || '',
+            bank_accounts_json || '',
             type || 'ALL', contact || '', note || '',
             id
         ], function(err) {

@@ -194,11 +194,60 @@ async function loadPartners() {
             const fax = (p.fax || '').trim();
             const email = (p.email_en || p.manager1_email || '').trim();
 
-            let swift = (p.swift_code || (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '').trim();
-            let bankAddress = (p.bank_address_en || (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '').trim();
-            let bankName = (p.bank_name_en || p.bank_name || '').trim();
-            let accountNo = (p.account_number_en || p.account_number || '').trim();
-            let intermediaryBank = (p.intermediary_bank_en || '').trim();
+            // 다중 통화 외화 계좌 목록 파싱 (bank_accounts_json)
+            let bankAccounts = [];
+            try {
+                if (p.bank_accounts_json) {
+                    const parsed = JSON.parse(p.bank_accounts_json);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        bankAccounts = parsed.map(a => ({
+                            id: a.id || ('acc_' + Math.random().toString(36).substring(2, 7)),
+                            currency: a.currency || 'USD',
+                            isDefault: !!a.isDefault,
+                            bankName: (a.bankName || '').trim(),
+                            accountNumber: (a.accountNumber || '').trim(),
+                            swiftCode: (a.swiftCode || '').trim(),
+                            intermediaryBank: (a.intermediaryBank || '').trim(),
+                            bankAddress: (a.bankAddress || '').trim(),
+                            note: (a.note || '').trim()
+                        }));
+                    }
+                }
+            } catch (e) {
+                console.warn('Bank accounts JSON parse error for partner:', p.id, e);
+            }
+
+            // bank_accounts_json이 없거나 비어있는 경우 기존 단일 컬럼들로 1개 계좌 자동 구성
+            if (bankAccounts.length === 0) {
+                const legacyBankName = (p.bank_name_en || p.bank_name || '').trim();
+                const legacyAccNo = (p.account_number_en || p.account_number || '').trim();
+                const legacySwift = (p.swift_code || (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '').trim();
+                const legacyBankAddr = (p.bank_address_en || (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '').trim();
+                const legacyIntermediary = (p.intermediary_bank_en || '').trim();
+
+                if (legacyBankName || legacyAccNo || legacySwift || legacyIntermediary) {
+                    bankAccounts.push({
+                        id: 'acc_legacy_' + p.id,
+                        currency: 'USD',
+                        isDefault: true,
+                        bankName: legacyBankName,
+                        accountNumber: legacyAccNo,
+                        swiftCode: legacySwift,
+                        intermediaryBank: legacyIntermediary,
+                        bankAddress: legacyBankAddr,
+                        note: ''
+                    });
+                }
+            }
+
+            // 대표 기본 계좌 선택 (isDefault 우선, 없으면 첫 번째)
+            const defaultAcc = bankAccounts.find(a => a.isDefault) || bankAccounts[0] || null;
+
+            const swift = defaultAcc ? (defaultAcc.swiftCode || '') : ((p.swift_code || (p.note && p.note.match(/SWIFT[:\s]*([A-Z0-9]+)/i)?.[1]) || '').trim());
+            const bankAddress = defaultAcc ? (defaultAcc.bankAddress || '') : ((p.bank_address_en || (p.note && p.note.match(/Bank Address[:\s]*([^\n]+)/i)?.[1]) || '').trim());
+            const bankName = defaultAcc ? (defaultAcc.bankName || '') : ((p.bank_name_en || p.bank_name || '').trim());
+            const accountNo = defaultAcc ? (defaultAcc.accountNumber || '') : ((p.account_number_en || p.account_number || '').trim());
+            const intermediaryBank = defaultAcc ? (defaultAcc.intermediaryBank || '') : ((p.intermediary_bank_en || '').trim());
 
             return {
                 id: String(p.id),
@@ -211,12 +260,15 @@ async function loadPartners() {
                 tel: tel,
                 fax: fax,
                 email: email,
+                bankAccounts: bankAccounts,
                 bankInfo: {
                     bankName: bankName,
                     accountNo: accountNo,
                     swift: swift,
                     bankAddress: bankAddress,
-                    intermediaryBank: intermediaryBank
+                    intermediaryBank: intermediaryBank,
+                    currency: defaultAcc ? (defaultAcc.currency || 'USD') : 'USD',
+                    note: defaultAcc ? (defaultAcc.note || '') : ''
                 },
                 raw: p
             };
@@ -444,6 +496,7 @@ function generateDefaultPiTerms(totalAmount = 0, currency = 'USD') {
     const sBank = document.getElementById('inpShipperBank')?.value?.trim();
     const sAcc = document.getElementById('inpShipperAccountNo')?.value?.trim();
     const sSwift = document.getElementById('inpShipperSwift')?.value?.trim();
+    const sIntermediary = document.getElementById('inpShipperIntermediaryBank')?.value?.trim();
     const sBankAddr = document.getElementById('inpShipperBankAddress')?.value?.trim();
     const sName = document.getElementById('inpShipperName')?.value?.trim();
     const sAddr = document.getElementById('inpShipperAddress')?.value?.trim();
@@ -453,7 +506,24 @@ function generateDefaultPiTerms(totalAmount = 0, currency = 'USD') {
     const bankName = sBank || 'ZHEJIANG TAILONG COMMERCIAL BANK CO.,LTD';
     const swift = sSwift || 'ZJTLCNBH';
     const acctNo = sAcc || '3302011420100019730';
-    const bankAddr = sBankAddr || 'CITIBANK N.A., NEW YORK (Intermediary SWIFT: CITIUS33)';
+    const intermediary = sIntermediary || '';
+    const bankAddr = sBankAddr || '';
+
+    let designatedBankLines = [
+        `   [Seller's Designated Bank Account]`,
+        `   - Beneficiary      : ${beneficiary}`,
+        `   - Address          : ${address}`,
+        `   - Beneficiary Bank : ${bankName}`
+    ];
+    if (bankAddr) {
+        designatedBankLines.push(`   - Bank Address     : ${bankAddr}`);
+    }
+    designatedBankLines.push(`   - SWIFT CODE       : ${swift}`);
+    designatedBankLines.push(`   - A/C              : ${acctNo}`);
+    if (intermediary) {
+        designatedBankLines.push(`   - Intermediary Bank: ${intermediary}`);
+    }
+    designatedBankLines.push(`   * Note: Any request to change the bank account above via email shall be strictly invalid to prevent wire fraud.`);
 
     return `1) Payment Terms & Seller's Bank Information:
    All payments shall be made in ${curCode} by T/T as follows:
@@ -461,14 +531,7 @@ function generateDefaultPiTerms(totalAmount = 0, currency = 'USD') {
    - 65% Balance (${sym} ${balStr}): Before shipment release, upon Buyer's confirmation of TOP (Top of Production) sample, shipping photos, and B/L copy.
    - 5% Final Retention (${sym} ${retStr}): Payable within 5 business days after goods arrive at the port in Korea, following a basic quality and quantity check.
 
-   [Seller's Designated Bank Account]
-   - Beneficiary      : ${beneficiary}
-   - Address          : ${address}
-   - Beneficiary Bank : ${bankName}
-   - SWIFT CODE       : ${swift}
-   - A/C              : ${acctNo}
-   - Intermediary Bank: ${bankAddr}
-   * Note: Any request to change the bank account above via email shall be strictly invalid to prevent wire fraud.
+${designatedBankLines.join('\n')}
 
 2) Delivery, Lead Time & Delay Penalty:
    - PP (Pre-Production) sample approval shall be confirmed within 10 days after deposit receipt.
@@ -532,6 +595,7 @@ function openDocModal(doc = null) {
         document.getElementById('inpShipperBank').value = doc.shipper?.bankInfo?.bankName || '';
         document.getElementById('inpShipperAccountNo').value = doc.shipper?.bankInfo?.accountNo || '';
         document.getElementById('inpShipperSwift').value = doc.shipper?.bankInfo?.swift || '';
+        document.getElementById('inpShipperIntermediaryBank').value = doc.shipper?.bankInfo?.intermediaryBank || '';
         document.getElementById('inpShipperBankAddress').value = doc.shipper?.bankInfo?.bankAddress || '';
         
         // Consignee
@@ -584,8 +648,40 @@ function openDocModal(doc = null) {
         document.getElementById('inpInvoiceNo').value = '';
         document.getElementById('inpPackingListNo').value = '';
         document.getElementById('inpDocDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('inpCurrency').value = 'USD';
+        
+        // Shipper 초기화
+        document.getElementById('inpShipperName').value = '';
+        document.getElementById('inpShipperAddress').value = '';
+        document.getElementById('inpShipperTel').value = '';
+        document.getElementById('inpShipperFax').value = '';
+        document.getElementById('inpShipperEmail').value = '';
+        document.getElementById('inpShipperBank').value = '';
+        document.getElementById('inpShipperAccountNo').value = '';
+        document.getElementById('inpShipperSwift').value = '';
+        document.getElementById('inpShipperIntermediaryBank').value = '';
+        document.getElementById('inpShipperBankAddress').value = '';
+
+        // Consignee 초기화
+        document.getElementById('inpConsigneeName').value = '';
+        document.getElementById('inpConsigneeAddress').value = '';
+        document.getElementById('inpConsigneeTel').value = '';
+        document.getElementById('inpConsigneeFax').value = '';
+        document.getElementById('inpConsigneeEmail').value = '';
+
+        // Notify Party 초기화
+        document.getElementById('inpNotifyName').value = '';
+        document.getElementById('inpNotifyAddress').value = '';
+        document.getElementById('inpNotifyTel').value = '';
+
         document.getElementById('inpCountryOfOrigin').value = '';
         document.getElementById('inpDepartureDate').value = '';
+        document.getElementById('inpVessel').value = '';
+        document.getElementById('inpIncoterms').value = '';
+        document.getElementById('inpPortOfLoading').value = '';
+        document.getElementById('inpPortOfDischarge').value = '';
+        document.getElementById('inpFinalDestination').value = '';
+        document.getElementById('inpPaymentTerms').value = '';
         if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = '';
         document.getElementById('inpRemarks').value = '';
         createInvItemLine();
@@ -688,6 +784,7 @@ els.saveDocBtn.addEventListener('click', async () => {
                 bankName: document.getElementById('inpShipperBank').value.trim(),
                 accountNo: document.getElementById('inpShipperAccountNo').value.trim(),
                 swift: document.getElementById('inpShipperSwift').value.trim(),
+                intermediaryBank: document.getElementById('inpShipperIntermediaryBank')?.value?.trim() || '',
                 bankAddress: document.getElementById('inpShipperBankAddress').value.trim()
             }
         },
@@ -759,7 +856,7 @@ function renderTplPickerList() {
 
     // 1. 구분 필터
     if (currentTplFilterTab === 'OVERSEAS') {
-        filtered = filtered.filter(p => p.engName || p.type === '해외/무역' || /[a-zA-Z]/.test(p.name));
+        filtered = filtered.filter(p => p.engName || p.type === '해외/무역' || /[a-zA-Z]/.test(p.name) || (p.bankAccounts && p.bankAccounts.length > 0));
     } else if (currentTplFilterTab === '매입처') {
         filtered = filtered.filter(p => p.type === '매입처' || p.role === 'shipper');
     } else if (currentTplFilterTab === '매출처') {
@@ -775,7 +872,14 @@ function renderTplPickerList() {
             (p.address && p.address.toLowerCase().includes(search)) ||
             (p.tel && p.tel.includes(search)) ||
             (p.email && p.email.toLowerCase().includes(search)) ||
-            (p.bankInfo?.bankName && p.bankInfo.bankName.toLowerCase().includes(search))
+            (p.bankInfo?.bankName && p.bankInfo.bankName.toLowerCase().includes(search)) ||
+            (p.bankAccounts && p.bankAccounts.some(a => 
+                (a.bankName && a.bankName.toLowerCase().includes(search)) ||
+                (a.accountNumber && a.accountNumber.toLowerCase().includes(search)) ||
+                (a.swiftCode && a.swiftCode.toLowerCase().includes(search)) ||
+                (a.intermediaryBank && a.intermediaryBank.toLowerCase().includes(search)) ||
+                (a.note && a.note.toLowerCase().includes(search))
+            ))
         );
     }
 
@@ -790,6 +894,58 @@ function renderTplPickerList() {
     els.tplPickerList.innerHTML = filtered.map(p => {
         const typeBadge = `<span class="badge" style="background:#eff6ff;color:#2563eb;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #bfdbfe;">${p.type || '거래처'}</span>`;
         const engBadge = p.engName ? `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:10px;padding:2px 6px;border-radius:4px;"><i class='bx bx-globe'></i> 영문</span>` : '';
+
+        // 계좌 목록 UI 구성
+        let bankHtml = '';
+        const accounts = (p.bankAccounts && p.bankAccounts.length > 0) ? p.bankAccounts : (p.bankInfo?.bankName ? [{
+            id: 'legacy',
+            currency: 'USD',
+            isDefault: true,
+            bankName: p.bankInfo.bankName,
+            accountNumber: p.bankInfo.accountNo,
+            swiftCode: p.bankInfo.swift,
+            intermediaryBank: p.bankInfo.intermediaryBank,
+            bankAddress: p.bankInfo.bankAddress,
+            note: ''
+        }] : []);
+
+        if (accounts.length > 0) {
+            const currColors = { USD: '#2563eb', EUR: '#059669', CNY: '#dc2626', JPY: '#7c3aed', HKD: '#d97706', GBP: '#475569', KRW: '#0891b2' };
+            bankHtml = `
+                <div style="margin-top:8px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                    <div style="font-size:10.5px; font-weight:700; color:#475569; margin-bottom:5px; display:flex; align-items:center; justify-content:space-between;">
+                        <span><i class='bx bxs-bank' style="color:#2563eb;"></i> 외화 결제 계좌 (${accounts.length}개)</span>
+                        <span style="font-size:9.5px; font-weight:normal; color:#64748b;">원하는 계좌 버튼 클릭 시 해당 계좌로 즉시 적용</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        ${accounts.map((acc, aIdx) => {
+                            const badgeColor = currColors[acc.currency] || '#334155';
+                            return `
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 9px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:11px;">
+                                    <div style="min-width:0; flex:1;">
+                                        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                                            <span style="background:${badgeColor}; color:#fff; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px;">
+                                                ${acc.currency || 'USD'}${acc.isDefault ? ' ⭐' : ''}
+                                            </span>
+                                            <b style="color:#1e293b;">${acc.bankName}</b>
+                                            <span style="color:#2563eb; font-family:monospace; font-size:10.5px;">${acc.accountNumber}</span>
+                                            ${acc.swiftCode ? `<span style="color:#6366f1; font-size:10px; font-weight:600;">SWIFT: ${acc.swiftCode}</span>` : ''}
+                                        </div>
+                                        ${acc.intermediaryBank ? `<div style="font-size:10px; color:#b45309; margin-top:2px;"><i class='bx bx-git-branch'></i> <b>중계은행(Intermediary):</b> ${acc.intermediaryBank}</div>` : ''}
+                                        ${acc.note ? `<div style="font-size:9.5px; color:#475569; margin-top:2px; background:#f1f5f9; padding:2px 6px; border-radius:3px;"><span style="color:#0284c7; font-weight:600;">💡 사용가이드:</span> ${acc.note}</div>` : ''}
+                                    </div>
+                                    <button type="button" 
+                                        onclick="event.stopPropagation(); applyTemplate('${p.id}', ${aIdx})" 
+                                        style="flex-shrink:0; padding:4px 9px; font-size:10.5px; font-weight:600; color:#fff; background:#2563eb; border:none; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;">
+                                        <i class='bx bx-check'></i> ${acc.currency || 'USD'} 적용
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
 
         return `<div class="tpl-picker-card" onclick="applyTemplate('${p.id}')">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
@@ -810,16 +966,19 @@ function renderTplPickerList() {
                     ${p.tel ? `<div><i class='bx bx-phone' style="color:var(--gray-400);"></i> ${p.tel}</div>` : ''}
                     ${p.email ? `<div><i class='bx bx-envelope' style="color:var(--gray-400);"></i> ${p.email}</div>` : ''}
                 </div>
-                ${p.bankInfo?.bankName ? `<div style="margin-top:2px; color:var(--primary); font-size:10.5px;"><i class='bx bxs-bank'></i> <b>${p.bankInfo.bankName}</b> ${p.bankInfo.accountNo ? '(' + p.bankInfo.accountNo + ')' : ''} ${p.bankInfo.swift ? '<span style="color:#6366f1;font-weight:600;">SWIFT: ' + p.bankInfo.swift + '</span>' : ''}</div>` : ''}
             </div>
+            ${bankHtml}
         </div>`;
     }).join('');
 }
 
 document.querySelectorAll('.load-tpl-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
         currentTplRole = btn.dataset.role; // 'shipper', 'consignee', 'notify'
         
+        // 정산/거래처 관리에서 최근 수정한 은행 및 거래처 정보를 실시간 재조회
+        await loadPartners();
+
         if (currentTplRole === 'shipper') {
             document.getElementById('tplPickerTitle').textContent = '판매자 (Shipper) 거래처 선택 [정산/거래처 연동]';
             currentTplFilterTab = 'OVERSEAS';
@@ -854,34 +1013,58 @@ document.querySelectorAll('.tpl-tab').forEach(t => {
     });
 });
 
-window.applyTemplate = function(id) {
+window.applyTemplate = function(id, accountIdx = null) {
     const p = allPartners.find(x => String(x.id) === String(id));
     if (!p) return;
     
     if (currentTplRole === 'shipper') {
+        // 계좌 결정: 지정된 인덱스 -> 현재 인보이스 통화와 일치하는 계좌 -> 기본 계좌
+        let chosenAcc = null;
+        if (accountIdx !== null && p.bankAccounts && p.bankAccounts[accountIdx]) {
+            chosenAcc = p.bankAccounts[accountIdx];
+        } else if (p.bankAccounts && p.bankAccounts.length > 0) {
+            const currentCur = document.getElementById('inpCurrency')?.value || 'USD';
+            chosenAcc = p.bankAccounts.find(a => a.currency === currentCur) || p.bankAccounts.find(a => a.isDefault) || p.bankAccounts[0];
+        }
+
+        const bName = chosenAcc ? chosenAcc.bankName : (p.bankInfo?.bankName || '');
+        const bAcc = chosenAcc ? chosenAcc.accountNumber : (p.bankInfo?.accountNo || '');
+        const bSwift = chosenAcc ? chosenAcc.swiftCode : (p.bankInfo?.swift || '');
+        const bIntermediary = chosenAcc ? chosenAcc.intermediaryBank : (p.bankInfo?.intermediaryBank || '');
+        const bAddr = chosenAcc ? chosenAcc.bankAddress : (p.bankInfo?.bankAddress || '');
+
         document.getElementById('inpShipperName').value = p.name || '';
         document.getElementById('inpShipperAddress').value = p.address || '';
         document.getElementById('inpShipperTel').value = p.tel || '';
         document.getElementById('inpShipperFax').value = p.fax || '';
         document.getElementById('inpShipperEmail').value = p.email || '';
-        document.getElementById('inpShipperBank').value = p.bankInfo?.bankName || '';
-        document.getElementById('inpShipperAccountNo').value = p.bankInfo?.accountNo || '';
-        document.getElementById('inpShipperSwift').value = p.bankInfo?.swift || '';
-        document.getElementById('inpShipperBankAddress').value = p.bankInfo?.bankAddress || '';
+        
+        // 외화 은행 정보 및 중계은행 1:1 매핑
+        document.getElementById('inpShipperBank').value = bName;
+        document.getElementById('inpShipperAccountNo').value = bAcc;
+        document.getElementById('inpShipperSwift').value = bSwift;
+        document.getElementById('inpShipperIntermediaryBank').value = bIntermediary;
+        document.getElementById('inpShipperBankAddress').value = bAddr;
+
+        const curInfo = chosenAcc ? ` [${chosenAcc.currency || 'USD'} 계좌]` : '';
+        showToast(`${p.name}${curInfo} 정보 및 은행 계좌가 입력되었습니다.`);
+
     } else if (currentTplRole === 'consignee') {
         document.getElementById('inpConsigneeName').value = p.name || '';
         document.getElementById('inpConsigneeAddress').value = p.address || '';
         document.getElementById('inpConsigneeTel').value = p.tel || '';
         document.getElementById('inpConsigneeFax').value = p.fax || '';
         document.getElementById('inpConsigneeEmail').value = p.email || '';
+        showToast(`${p.name} 정보가 바이어(Consignee)로 입력되었습니다.`);
+
     } else if (currentTplRole === 'notify') {
         document.getElementById('inpNotifyName').value = p.name || '';
         document.getElementById('inpNotifyAddress').value = p.address || '';
         document.getElementById('inpNotifyTel').value = p.tel || '';
+        showToast(`${p.name} 정보가 통지처(Notify Party)로 입력되었습니다.`);
     }
     
     els.tplPickerModal.classList.remove('active');
-    showToast(`${p.name} 정보가 입력되었습니다. (정산/거래처)`);
 };
 
 if (document.getElementById('btnGoPartnersManage')) {
@@ -1157,12 +1340,14 @@ function renderPreview() {
         if (isInv && d.shipper?.bankInfo?.bankName) {
             const bi = d.shipper.bankInfo;
             html += `
-            <div class="doc-remarks" style="margin-top:10px;background:#f9f9f9;">
-                <b><i class='bx bxs-bank'></i> Bank Information</b><br>
-                Bank Name: ${bi.bankName}<br>
-                Account No: ${bi.accountNo}<br>
-                SWIFT Code: ${bi.swift || '-'}<br>
-                Bank Address: ${bi.bankAddress || '-'}
+            <div class="doc-remarks" style="margin-top:10px;background:#f9f9f9;padding:10px 14px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;line-height:1.6;">
+                <b><i class='bx bxs-bank'></i> Bank Information for Remittance</b><br>
+                <b>Beneficiary:</b> ${d.shipper?.name || '-'}<br>
+                <b>Bank Name:</b> ${bi.bankName}<br>
+                <b>Account No:</b> ${bi.accountNo}<br>
+                <b>SWIFT Code:</b> ${bi.swift || '-'}<br>
+                ${bi.intermediaryBank ? `<b>Intermediary Bank:</b> ${bi.intermediaryBank}<br>` : ''}
+                <b>Bank Address:</b> ${bi.bankAddress || '-'}
             </div>`;
         }
 

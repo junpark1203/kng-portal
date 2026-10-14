@@ -13,6 +13,7 @@ const app = {
     modal: null,
 
     initialFormSnapshot: null,
+    currentBankAccounts: [],
 
     init() {
         const modalEl = document.getElementById('partnerModal');
@@ -54,8 +55,190 @@ const app = {
             swiftCode: (document.getElementById('swiftCode')?.value || '').trim(),
             intermediaryBankEn: (document.getElementById('intermediaryBankEn')?.value || '').trim(),
             bankAddressEn: (document.getElementById('bankAddressEn')?.value || '').trim(),
+            bankAccountsJson: (document.getElementById('bankAccountsJson')?.value || '').trim(),
             partnerNote: (document.getElementById('partnerNote')?.value || '').trim()
         };
+    },
+
+    // ── Multi-currency Bank Account Methods ──
+    showAddBankAccForm() {
+        document.getElementById('editBankAccId').value = '';
+        document.getElementById('bankAccEditorTitle').innerHTML = "<i class='bx bx-plus-circle text-primary'></i> 새 외화 계좌 입력";
+        document.getElementById('bankAccCurrency').value = 'USD';
+        document.getElementById('bankAccIsDefault').checked = this.currentBankAccounts.length === 0;
+        document.getElementById('bankAccBankName').value = '';
+        document.getElementById('bankAccAccountNo').value = '';
+        document.getElementById('bankAccSwift').value = '';
+        document.getElementById('bankAccIntermediary').value = '';
+        document.getElementById('bankAccBankAddress').value = '';
+        document.getElementById('bankAccNote').value = '';
+        document.getElementById('bankAccEditor').style.display = 'block';
+    },
+
+    hideBankAccForm() {
+        const el = document.getElementById('bankAccEditor');
+        if (el) el.style.display = 'none';
+        document.getElementById('editBankAccId').value = '';
+    },
+
+    saveBankAccSubform() {
+        const editId = document.getElementById('editBankAccId').value;
+        const currency = document.getElementById('bankAccCurrency').value;
+        const isDefault = document.getElementById('bankAccIsDefault').checked;
+        const bankName = document.getElementById('bankAccBankName').value.trim();
+        const accountNumber = document.getElementById('bankAccAccountNo').value.trim();
+        const swiftCode = document.getElementById('bankAccSwift').value.trim();
+        const intermediaryBank = document.getElementById('bankAccIntermediary').value.trim();
+        const bankAddress = document.getElementById('bankAccBankAddress').value.trim();
+        const note = document.getElementById('bankAccNote').value.trim();
+
+        if (!bankName || !accountNumber) {
+            return Swal.fire('알림', '은행명과 계좌번호는 필수 항목입니다.', 'warning');
+        }
+
+        if (isDefault) {
+            this.currentBankAccounts.forEach(a => a.isDefault = false);
+        }
+
+        if (editId) {
+            const idx = this.currentBankAccounts.findIndex(a => a.id === editId);
+            if (idx !== -1) {
+                this.currentBankAccounts[idx] = {
+                    id: editId,
+                    currency,
+                    isDefault,
+                    bankName,
+                    accountNumber,
+                    swiftCode,
+                    intermediaryBank,
+                    bankAddress,
+                    note
+                };
+            }
+        } else {
+            const newAcc = {
+                id: 'acc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                currency,
+                isDefault: isDefault || this.currentBankAccounts.length === 0,
+                bankName,
+                accountNumber,
+                swiftCode,
+                intermediaryBank,
+                bankAddress,
+                note
+            };
+            this.currentBankAccounts.push(newAcc);
+        }
+
+        // 기본 계좌 보장
+        if (!this.currentBankAccounts.some(a => a.isDefault) && this.currentBankAccounts.length > 0) {
+            this.currentBankAccounts[0].isDefault = true;
+        }
+
+        this.syncBankAccToHiddenFields();
+        this.renderBankAccountsList();
+        this.hideBankAccForm();
+    },
+
+    editBankAcc(id) {
+        const acc = this.currentBankAccounts.find(a => a.id === id);
+        if (!acc) return;
+        document.getElementById('editBankAccId').value = acc.id;
+        document.getElementById('bankAccEditorTitle').innerHTML = `<i class='bx bx-edit-alt text-primary'></i> 외화 계좌 수정 [${acc.currency}]`;
+        document.getElementById('bankAccCurrency').value = acc.currency || 'USD';
+        document.getElementById('bankAccIsDefault').checked = !!acc.isDefault;
+        document.getElementById('bankAccBankName').value = acc.bankName || '';
+        document.getElementById('bankAccAccountNo').value = acc.accountNumber || '';
+        document.getElementById('bankAccSwift').value = acc.swiftCode || '';
+        document.getElementById('bankAccIntermediary').value = acc.intermediaryBank || '';
+        document.getElementById('bankAccBankAddress').value = acc.bankAddress || '';
+        document.getElementById('bankAccNote').value = acc.note || '';
+        document.getElementById('bankAccEditor').style.display = 'block';
+    },
+
+    deleteBankAcc(id) {
+        this.currentBankAccounts = this.currentBankAccounts.filter(a => a.id !== id);
+        if (!this.currentBankAccounts.some(a => a.isDefault) && this.currentBankAccounts.length > 0) {
+            this.currentBankAccounts[0].isDefault = true;
+        }
+        this.syncBankAccToHiddenFields();
+        this.renderBankAccountsList();
+    },
+
+    setDefaultBankAcc(id) {
+        this.currentBankAccounts.forEach(a => a.isDefault = (a.id === id));
+        this.syncBankAccToHiddenFields();
+        this.renderBankAccountsList();
+    },
+
+    syncBankAccToHiddenFields() {
+        const jsonStr = JSON.stringify(this.currentBankAccounts);
+        const jsonEl = document.getElementById('bankAccountsJson');
+        if (jsonEl) jsonEl.value = jsonStr;
+
+        const defaultAcc = this.currentBankAccounts.find(a => a.isDefault) || this.currentBankAccounts[0] || null;
+        document.getElementById('bankNameEn').value = defaultAcc ? defaultAcc.bankName : '';
+        document.getElementById('accountNumberEn').value = defaultAcc ? defaultAcc.accountNumber : '';
+        document.getElementById('swiftCode').value = defaultAcc ? defaultAcc.swiftCode : '';
+        document.getElementById('intermediaryBankEn').value = defaultAcc ? defaultAcc.intermediaryBank : '';
+        document.getElementById('bankAddressEn').value = defaultAcc ? defaultAcc.bankAddress : '';
+    },
+
+    renderBankAccountsList() {
+        const container = document.getElementById('bankAccountsList');
+        if (!container) return;
+
+        if (this.currentBankAccounts.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-3 text-muted border rounded bg-light" style="font-size: 11px;">
+                    <i class='bx bx-credit-card-front' style="font-size: 20px; display:block; margin-bottom:2px; color:#94a3b8;"></i>
+                    등록된 외화/해외 은행 계좌가 없습니다. 상단의 <b>[+ 외화 계좌 추가]</b> 버튼으로 계좌를 등록하세요.
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = this.currentBankAccounts.map((acc) => {
+            const currColors = {
+                USD: '#2563eb',
+                EUR: '#059669',
+                CNY: '#dc2626',
+                JPY: '#7c3aed',
+                HKD: '#d97706',
+                GBP: '#475569',
+                KRW: '#0891b2'
+            };
+            const bgBadge = currColors[acc.currency] || '#334155';
+
+            return `
+                <div class="p-2 border rounded ${acc.isDefault ? 'border-primary bg-primary bg-opacity-10' : 'bg-white'}" style="font-size: 11.5px; transition: all 0.15s;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge" style="background:${bgBadge}; color:#fff; font-size:10.5px; font-weight:700;">${acc.currency || 'USD'}</span>
+                            ${acc.isDefault 
+                                ? `<span class="badge bg-warning text-dark font-monospace" style="font-size:10px;"><i class='bx bxs-star'></i> 기본 계좌</span>` 
+                                : `<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:10px;" onclick="app.setDefaultBankAcc('${acc.id}')">기본 설정</button>`}
+                            <span class="fw-bold text-dark ms-1">${acc.bankName}</span>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:10.5px;" onclick="app.editBankAcc('${acc.id}')">수정</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:10.5px;" onclick="app.deleteBankAcc('${acc.id}')">삭제</button>
+                        </div>
+                    </div>
+                    <div class="text-secondary small font-monospace">
+                        <span class="fw-semibold text-dark">A/C:</span> ${acc.accountNumber} 
+                        ${acc.swiftCode ? `<span class="ms-2"><span class="fw-semibold text-dark">SWIFT:</span> ${acc.swiftCode}</span>` : ''}
+                    </div>
+                    ${acc.intermediaryBank ? `<div class="text-secondary small mt-0"><span class="text-warning-emphasis fw-semibold"><i class='bx bx-git-branch'></i> 중계은행:</span> ${acc.intermediaryBank}</div>` : ''}
+                    ${acc.bankAddress ? `<div class="text-muted small text-truncate" style="max-width:98%; font-size:10.5px;"><i class='bx bx-map-pin'></i> ${acc.bankAddress}</div>` : ''}
+                    ${acc.note ? `
+                        <div class="mt-1 p-1 px-2 rounded bg-light border border-info-subtle text-primary small d-flex align-items-center gap-1" style="font-size:11px;">
+                            <i class='bx bx-notepad text-info'></i> <strong>사용 가이드:</strong> ${acc.note}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
     },
 
     isDirty() {
@@ -316,7 +499,27 @@ const app = {
             const domesticBank = (bankName || accNum) ? `${bankName}${accNum}${accHolder}` : '';
 
             let foreignBank = '';
-            if (p.bank_name_en || p.account_number_en || p.swift_code) {
+            let accList = [];
+            try {
+                if (p.bank_accounts_json) accList = JSON.parse(p.bank_accounts_json);
+            } catch(e) {}
+
+            if (Array.isArray(accList) && accList.length > 0) {
+                foreignBank = `
+                    <div class="${domesticBank ? 'mt-1 pt-1 border-top' : ''}" style="font-size: 10px;">
+                        <div class="d-flex flex-wrap gap-1 mb-1">
+                            ${accList.map(a => `
+                                <span class="badge" style="background:#e0e7ff; color:#3730a3; padding:1px 5px; font-size:9.5px;" title="${a.bankName || ''} / ${a.accountNumber || ''} ${a.note ? `[${a.note}]` : ''}">
+                                    ${a.currency || 'USD'}${a.isDefault ? '⭐' : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div class="fw-semibold text-dark text-truncate" style="max-width:145px;" title="${accList[0].bankName}">${accList[0].bankName}</div>
+                        <div class="font-monospace text-primary text-truncate" style="max-width:145px;">${accList[0].accountNumber}</div>
+                        ${accList[0].note ? `<div class="text-muted small text-truncate" style="max-width:145px; font-size:9.5px;" title="${accList[0].note}">💡 ${accList[0].note}</div>` : ''}
+                    </div>
+                `;
+            } else if (p.bank_name_en || p.account_number_en || p.swift_code) {
                 foreignBank = `
                     <div class="${domesticBank ? 'mt-1 pt-1 border-top' : ''}" style="font-size: 10.5px;">
                         <span class="badge" style="background:#e0e7ff; color:#3730a3; padding:1px 4px; font-size:9px;"><i class='bx bx-globe'></i> 외화</span>
@@ -474,11 +677,10 @@ const app = {
         document.getElementById('phoneEn').value = '';
         document.getElementById('emailEn').value = '';
 
-        document.getElementById('bankNameEn').value = '';
-        document.getElementById('accountNumberEn').value = '';
-        document.getElementById('swiftCode').value = '';
-        document.getElementById('intermediaryBankEn').value = '';
-        document.getElementById('bankAddressEn').value = '';
+        this.currentBankAccounts = [];
+        this.hideBankAccForm();
+        this.renderBankAccountsList();
+        this.syncBankAccToHiddenFields();
         
         const alertEl = document.getElementById('duplicatePartnerAlert');
         if (alertEl) {
@@ -524,11 +726,30 @@ const app = {
         document.getElementById('phoneEn').value = partner.phone_en || '';
         document.getElementById('emailEn').value = partner.email_en || '';
 
-        document.getElementById('bankNameEn').value = partner.bank_name_en || '';
-        document.getElementById('accountNumberEn').value = partner.account_number_en || '';
-        document.getElementById('swiftCode').value = partner.swift_code || '';
-        document.getElementById('intermediaryBankEn').value = partner.intermediary_bank_en || '';
-        document.getElementById('bankAddressEn').value = partner.bank_address_en || '';
+        // Load multi-currency bank accounts
+        let accounts = [];
+        try {
+            if (partner.bank_accounts_json) accounts = JSON.parse(partner.bank_accounts_json);
+        } catch(e) {}
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            if (partner.bank_name_en || partner.account_number_en || partner.swift_code) {
+                accounts = [{
+                    id: 'acc_' + Date.now(),
+                    currency: 'USD',
+                    isDefault: true,
+                    bankName: partner.bank_name_en || '',
+                    accountNumber: partner.account_number_en || '',
+                    swiftCode: partner.swift_code || '',
+                    intermediaryBank: partner.intermediary_bank_en || '',
+                    bankAddress: partner.bank_address_en || '',
+                    note: ''
+                }];
+            }
+        }
+        this.currentBankAccounts = accounts;
+        this.hideBankAccForm();
+        this.renderBankAccountsList();
+        this.syncBankAccToHiddenFields();
 
         document.getElementById('partnerNote').value = partner.note || '';
         
@@ -578,6 +799,7 @@ const app = {
         const swift_code = document.getElementById('swiftCode').value.trim();
         const intermediary_bank_en = document.getElementById('intermediaryBankEn').value.trim();
         const bank_address_en = document.getElementById('bankAddressEn').value.trim();
+        const bank_accounts_json = document.getElementById('bankAccountsJson')?.value || '';
 
         const note = document.getElementById('partnerNote').value.trim();
 
@@ -595,6 +817,7 @@ const app = {
             phone_en, email_en,
             bank_name_en, account_number_en, swift_code,
             intermediary_bank_en, bank_address_en,
+            bank_accounts_json,
             note 
         };
 
