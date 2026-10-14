@@ -27,6 +27,8 @@ const els = {
     modalDocBadge: document.getElementById('modalDocBadge'),
     docForm: document.getElementById('docForm'),
     inpProformaNo: document.getElementById('inpProformaNo'),
+    inpCurrency: document.getElementById('inpCurrency'),
+    inpCurrencyCustom: document.getElementById('inpCurrencyCustom'),
     inpTermsAndConditions: document.getElementById('inpTermsAndConditions'),
     btnLoadPiTpl: document.getElementById('btnLoadPiTpl'),
     btnClearPiTpl: document.getElementById('btnClearPiTpl'),
@@ -411,6 +413,51 @@ if (els.btnSyncFromPiToCi) {
     });
 }
 
+// ── Currency Management ──
+const CURRENCY_SYMBOLS = {
+    USD: '$', EUR: '€', KRW: '₩', CNY: '¥', JPY: '¥', GBP: '£', HKD: 'HK$', SGD: 'S$', AUD: 'A$', CAD: 'C$'
+};
+
+function getEffectiveCurrency() {
+    const sel = els.inpCurrency?.value || 'USD';
+    if (sel === 'CUSTOM') {
+        const custom = els.inpCurrencyCustom?.value?.trim().toUpperCase();
+        return custom || 'USD';
+    }
+    return sel;
+}
+
+function updateCurrencyDisplay() {
+    const cur = getEffectiveCurrency();
+    const sym = CURRENCY_SYMBOLS[cur] || cur;
+    const badgeText = `${cur} ${sym}`;
+    document.querySelectorAll('.cur-badge-inline').forEach(el => el.textContent = badgeText);
+    const totBadge = document.getElementById('totCurrencyBadge');
+    if (totBadge) totBadge.textContent = badgeText;
+}
+
+if (els.inpCurrency) {
+    els.inpCurrency.addEventListener('change', () => {
+        if (els.inpCurrency.value === 'CUSTOM') {
+            if (els.inpCurrencyCustom) {
+                els.inpCurrencyCustom.style.display = 'inline-block';
+                els.inpCurrencyCustom.focus();
+            }
+        } else {
+            if (els.inpCurrencyCustom) {
+                els.inpCurrencyCustom.style.display = 'none';
+                els.inpCurrencyCustom.value = '';
+            }
+        }
+        updateCurrencyDisplay();
+    });
+}
+if (els.inpCurrencyCustom) {
+    els.inpCurrencyCustom.addEventListener('input', () => {
+        updateCurrencyDisplay();
+    });
+}
+
 // ── Item Lines Logic (ECOUNT ERP Sheet Table) ──
 function refreshItemRowNumbers() {
     if (!els.itemLines) return;
@@ -663,7 +710,7 @@ if (els.btnLoadPiTpl) {
     els.btnLoadPiTpl.addEventListener('click', () => {
         calcInvTotals();
         const tot = parseFloat(document.getElementById('totAmount')?.textContent?.replace(/,/g, '')) || 0;
-        const cur = document.getElementById('inpCurrency')?.value || 'USD';
+        const cur = getEffectiveCurrency();
         if (els.inpTermsAndConditions) {
             els.inpTermsAndConditions.value = generateDefaultPiTerms(tot, cur);
             showToast('계약 특약사항(T&C) 표준 템플릿이 적용되었습니다.');
@@ -705,7 +752,22 @@ function openDocModal(doc = null) {
         document.getElementById('inpStatus').value = doc.status || '임시작성';
         
         // Common
-        document.getElementById('inpCurrency').value = doc.currency || 'USD';
+        const knownCurrencies = ['USD', 'EUR', 'KRW', 'CNY', 'JPY', 'GBP', 'HKD', 'SGD', 'AUD', 'CAD'];
+        const docCur = (doc.currency || 'USD').toUpperCase();
+        if (knownCurrencies.includes(docCur)) {
+            if (els.inpCurrency) els.inpCurrency.value = docCur;
+            if (els.inpCurrencyCustom) {
+                els.inpCurrencyCustom.value = '';
+                els.inpCurrencyCustom.style.display = 'none';
+            }
+        } else {
+            if (els.inpCurrency) els.inpCurrency.value = 'CUSTOM';
+            if (els.inpCurrencyCustom) {
+                els.inpCurrencyCustom.value = docCur;
+                els.inpCurrencyCustom.style.display = 'inline-block';
+            }
+        }
+        updateCurrencyDisplay();
         document.getElementById('inpIncoterms').value = doc.incoterms || '';
         document.getElementById('inpPortOfLoading').value = doc.portOfLoading || '';
         document.getElementById('inpPortOfDischarge').value = doc.portOfDischarge || '';
@@ -793,7 +855,12 @@ function openDocModal(doc = null) {
         if (els.modalDocBadge) els.modalDocBadge.textContent = '신규 전표';
         document.getElementById('editId').value = '';
         document.getElementById('inpStatus').value = '임시작성';
-        document.getElementById('inpCurrency').value = 'USD';
+        if (els.inpCurrency) els.inpCurrency.value = 'USD';
+        if (els.inpCurrencyCustom) {
+            els.inpCurrencyCustom.value = '';
+            els.inpCurrencyCustom.style.display = 'none';
+        }
+        updateCurrencyDisplay();
         document.getElementById('inpIncoterms').value = '';
         document.getElementById('inpPortOfLoading').value = '';
         document.getElementById('inpPortOfDischarge').value = '';
@@ -966,7 +1033,7 @@ els.saveDocBtn.addEventListener('click', async () => {
         invoiceNo: document.getElementById('inpInvoiceNo')?.value?.trim() || '',
         packingListNo: document.getElementById('inpPackingListNo')?.value?.trim() || '',
         docDate: document.getElementById('inpDocDate')?.value || '',
-        currency: document.getElementById('inpCurrency')?.value || 'USD',
+        currency: getEffectiveCurrency(),
         
         shipper: {
             name: document.getElementById('inpShipperName')?.value?.trim() || '',

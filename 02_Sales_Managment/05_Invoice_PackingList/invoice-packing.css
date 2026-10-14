@@ -664,6 +664,20 @@
     @page { size: A4; margin: 0; }
 }
 
+/* Currency Badge in Tables */
+.cur-badge-inline {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #bfdbfe;
+    letter-spacing: 0;
+    vertical-align: middle;
+}
+
 /* ══════════════════════════════════════
    Responsive
    ══════════════════════════════════════ */
