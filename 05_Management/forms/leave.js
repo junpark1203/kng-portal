@@ -117,6 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!startStr) return 1.0;
         if (!endStr) endStr = startStr;
 
+        // 경조휴가, 공가 등 별도 유급휴가는 연차에서 차감되지 않으므로 기본 0일
+        if (leaveType === '경조휴가' || leaveType === '공가') {
+            return 0.0;
+        }
+
         if (leaveType && leaveType.includes('반차')) {
             return 0.5;
         }
@@ -136,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cur.setDate(cur.getDate() + 1);
         }
 
-        return businessDays > 0 ? businessDays : 1.0;
+        return businessDays;
     }
 
     function updateCalculatedDays() {
@@ -146,7 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const days = computeBusinessDays(start, end, type);
         els.fDaysCount.value = days;
-        els.calcDaysDisplay.textContent = `${days} 일`;
+        if (days === 0 && (type === '경조휴가' || type === '공가')) {
+            els.calcDaysDisplay.textContent = `0.0 일 (연차 미차감)`;
+        } else {
+            els.calcDaysDisplay.textContent = `${days} 일`;
+        }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -192,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const todayVacationers = [];
 
         allLeaveRequests.forEach(item => {
-            const days = Number(item.daysCount) || 1.0;
+            const days = (item.daysCount !== undefined && item.daysCount !== null && item.daysCount !== '') ? Number(item.daysCount) : 1.0;
             if (item.status === '결재요청' || item.status === '결재진행중') {
                 pendingCount++;
             }
@@ -270,7 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         els.leaveListBody.innerHTML = filtered.map(item => {
             const period = item.leaveStart === item.leaveEnd ? (item.leaveStart || '-') : `${item.leaveStart} ~ ${item.leaveEnd}`;
-            const days = Number(item.daysCount) || 1.0;
+            const days = (item.daysCount !== undefined && item.daysCount !== null && item.daysCount !== '') ? Number(item.daysCount) : 1.0;
+            const daysText = days === 0 
+                ? `<span style="color:#059669; font-weight:700;">0일</span> <small style="color:var(--text-muted); font-size:10px;">(연차미차감)</small>` 
+                : `<span style="font-weight: 700; color: var(--primary);">${days}일</span>`;
             return `
                 <tr data-id="${item.id}">
                     <td style="text-align: center;"><input type="checkbox" class="row-check" value="${item.id}"></td>
@@ -287,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="font-weight: 600;">${item.name || '-'}</td>
                     <td style="color: var(--text-muted);">${item.department || '-'} / ${item.rank || '-'}</td>
                     <td>${period}</td>
-                    <td style="text-align: center; font-weight: 700; color: var(--primary);">${days}일</td>
+                    <td style="text-align: center;">${daysText}</td>
                     <td style="color: var(--text-muted);">${item.submitDate || (item.createdAt || '').split('T')[0] || '-'}</td>
                     <td title="${item.reason || ''}">${item.reason || '-'}</td>
                     <td style="text-align: center;">
@@ -313,14 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = allLeaveRequests.find(i => i.id === id);
             if (!item) return;
 
+            const daysVal = (item.daysCount !== undefined && item.daysCount !== null && item.daysCount !== '') ? Number(item.daysCount) : 1.0;
             els.fDepartment.value = item.department || '';
             els.fRank.value = item.rank || '';
             els.fName.value = item.name || '';
             els.fLeaveType.value = item.leaveType || '연차';
             els.fLeaveStart.value = item.leaveStart || '';
             els.fLeaveEnd.value = item.leaveEnd || '';
-            els.fDaysCount.value = item.daysCount || 1.0;
-            els.calcDaysDisplay.textContent = `${item.daysCount || 1.0} 일`;
+            els.fDaysCount.value = daysVal;
+            if (daysVal === 0) {
+                els.calcDaysDisplay.textContent = `0.0 일 (연차 미차감)`;
+            } else {
+                els.calcDaysDisplay.textContent = `${daysVal} 일`;
+            }
             els.fSubmitDate.value = item.submitDate || '';
             els.fStatus.value = item.status || '결재요청';
             els.fReason.value = item.reason || '';
@@ -351,6 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveLeave() {
         const user = getCurrentUser();
+        const rawDays = els.fDaysCount.value.trim();
+        const daysVal = (rawDays !== '' && !isNaN(Number(rawDays))) ? Number(rawDays) : 1.0;
+
         const payload = {
             userEmail: user.email,
             department: els.fDepartment.value.trim(),
@@ -359,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             leaveType: els.fLeaveType.value,
             leaveStart: els.fLeaveStart.value,
             leaveEnd: els.fLeaveEnd.value,
-            daysCount: Number(els.fDaysCount.value) || 1.0,
+            daysCount: daysVal,
             submitDate: els.fSubmitDate.value,
             status: els.fStatus.value,
             reason: els.fReason.value.trim()
@@ -447,6 +467,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return openSavedLeavePdf(currentEditId);
         } else {
             // 저장 전 미리보기
+            const rawDays = els.fDaysCount.value.trim();
+            const daysVal = (rawDays !== '' && !isNaN(Number(rawDays))) ? Number(rawDays) : 1.0;
             const payload = {
                 department: els.fDepartment.value.trim(),
                 rank: els.fRank.value.trim(),
@@ -454,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 leaveStart: els.fLeaveStart.value,
                 leaveEnd: els.fLeaveEnd.value,
                 leaveType: els.fLeaveType.value,
-                daysCount: Number(els.fDaysCount.value) || 1.0,
+                daysCount: daysVal,
                 submitDate: els.fSubmitDate.value,
                 reason: els.fReason.value.trim()
             };
@@ -633,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let csv = '\uFEFF결재상태,구분,신청자,소속,직급,시작일,종료일,사용일수,신청일자,사유\n';
         allLeaveRequests.forEach(i => {
+            const days = (i.daysCount !== undefined && i.daysCount !== null && i.daysCount !== '') ? Number(i.daysCount) : 1.0;
             const row = [
                 i.status || '',
                 i.leaveType || '',
@@ -641,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 i.rank || '',
                 i.leaveStart || '',
                 i.leaveEnd || '',
-                i.daysCount || 1,
+                days,
                 i.submitDate || '',
                 `"${(i.reason || '').replace(/"/g, '""')}"`
             ];
@@ -670,6 +693,17 @@ document.addEventListener('DOMContentLoaded', () => {
     els.fLeaveStart.addEventListener('change', updateCalculatedDays);
     els.fLeaveEnd.addEventListener('change', updateCalculatedDays);
     els.fLeaveType.addEventListener('change', updateCalculatedDays);
+
+    // 사용자가 직접 일수를 0 또는 원하는 숫자로 입력할 때 실시간 반영
+    els.fDaysCount.addEventListener('input', () => {
+        const val = els.fDaysCount.value.trim();
+        const num = (val !== '' && !isNaN(Number(val))) ? Number(val) : 0;
+        if (num === 0) {
+            els.calcDaysDisplay.textContent = `0.0 일 (연차 미차감)`;
+        } else {
+            els.calcDaysDisplay.textContent = `${num} 일`;
+        }
+    });
 
     // 필터 이벤트
     els.filterStatus.addEventListener('change', renderTable);

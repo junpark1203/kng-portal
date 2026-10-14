@@ -46,8 +46,11 @@ async function registerLeaveToGoogleCalendar(leaveDoc) {
         const start = leaveDoc.leaveStart;
         const end = getNextDay(leaveDoc.leaveEnd || leaveDoc.leaveStart);
 
+        const daysText = (leaveDoc.daysCount !== undefined && leaveDoc.daysCount !== null)
+            ? (Number(leaveDoc.daysCount) === 0 ? '0일 (연차 미차감)' : `${leaveDoc.daysCount}일`)
+            : '1일';
         const summary = `[휴가] ${leaveDoc.name || '직원'} (${leaveDoc.leaveType || '연차'})`;
-        const description = `소속: ${leaveDoc.department || '주식회사 케앤지'}\n직급: ${leaveDoc.rank || ''}\n성명: ${leaveDoc.name || ''}\n사유: ${leaveDoc.reason || '-'}\n사용일수: ${leaveDoc.daysCount || 1}일\n(KNG 포털 휴가원 결재완료 자동 연동)`;
+        const description = `소속: ${leaveDoc.department || '주식회사 케앤지'}\n직급: ${leaveDoc.rank || ''}\n성명: ${leaveDoc.name || ''}\n사유: ${leaveDoc.reason || '-'}\n소진연차: ${daysText}\n(KNG 포털 휴가원 결재완료 자동 연동)`;
 
         const event = {
             summary,

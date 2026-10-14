@@ -100,6 +100,11 @@ async function initLeaveRequestTables(db) {
         VALUES ('jpark120325@gmail.com', '박준영', '주식회사 케앤지', 13.0, 2026, datetime('now', 'localtime'))
     `);
 
+    // 기존에 경조휴가/공가인데 1일로 잘못 저장된 건이 있다면 0일로 자동 보정
+    try {
+        await dbRun(`UPDATE leave_requests SET daysCount = 0.0 WHERE leaveType IN ('경조휴가', '공가') AND daysCount = 1.0`);
+    } catch (e) {}
+
     console.log('[LeaveRequest] 테이블 및 스키마 마이그레이션 완료');
 }
 
@@ -212,7 +217,7 @@ router.get('/my-summary', async (req, res) => {
         let pendingDays = 0;
 
         leaves.forEach(l => {
-            const count = Number(l.daysCount) || 1.0;
+            const count = (l.daysCount !== undefined && l.daysCount !== null && l.daysCount !== '') ? Number(l.daysCount) : 1.0;
             if (l.status === '결재완료') {
                 approvedDays += count;
                 usedDays += count;
@@ -275,7 +280,7 @@ router.post('/', async (req, res) => {
     const id = 'LR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
     const now = new Date().toISOString();
     const status = p.status || '결재요청';
-    const daysCount = Number(p.daysCount) || 1.0;
+    const daysCount = (p.daysCount !== undefined && p.daysCount !== null && p.daysCount !== '' && !isNaN(Number(p.daysCount))) ? Number(p.daysCount) : 1.0;
     const userEmail = (p.userEmail || (req.user ? req.user.email : '') || '').trim();
 
     try {
@@ -325,7 +330,7 @@ router.put('/:id', async (req, res) => {
     
     const p = req.body;
     const now = new Date().toISOString();
-    const daysCount = Number(p.daysCount) || 1.0;
+    const daysCount = (p.daysCount !== undefined && p.daysCount !== null && p.daysCount !== '' && !isNaN(Number(p.daysCount))) ? Number(p.daysCount) : 1.0;
 
     try {
         const prev = await dbGet('SELECT * FROM leave_requests WHERE id = ?', [req.params.id]);
