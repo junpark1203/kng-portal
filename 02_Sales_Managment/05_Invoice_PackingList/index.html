@@ -100,279 +100,512 @@
         </main>
     </div>
 
-    <!-- ═══ Create/Edit Modal ═══ -->
+    <!-- ═══ Create/Edit Modal (ECOUNT ERP Style) ═══ -->
     <div class="inv-modal-overlay" id="docModal">
         <div class="inv-modal">
+            <!-- Header -->
             <div class="inv-modal-header">
-                <h2><i class='bx bx-edit-alt'></i> <span id="modalTitle">신규 거래 생성</span></h2>
-                <button class="inv-modal-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
+                <h2>
+                    <i class='bx bx-receipt'></i> 
+                    <span id="modalTitle">무역 전표 작성기 (P/I · C/I · P/L)</span>
+                    <span class="badge" id="modalDocBadge" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;font-size:10.5px;padding:2px 7px;border-radius:3px;">ECOUNT ERP Mode</span>
+                </h2>
+                <button type="button" class="inv-modal-close" id="closeModalBtn" title="닫기 (ESC)"><i class='bx bx-x'></i></button>
             </div>
+
+            <!-- Body -->
             <div class="inv-modal-body">
                 <form id="docForm" autocomplete="off">
                     <input type="hidden" id="editId">
-                    <div class="inv-form-grid">
-                        <!-- Document Info -->
-                        <div class="inv-section-title">문서 정보</div>
-                        <div class="inv-fg">
-                            <label for="inpStatus">진행 상태</label>
-                            <select id="inpStatus">
-                                <option value="임시작성">임시작성</option>
-                                <option value="진행중">진행중</option>
-                                <option value="완료">완료</option>
-                            </select>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpProformaNo">Proforma Invoice No. (P/I)</label>
-                            <input type="text" id="inpProformaNo" placeholder="예: PI-2026-001">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpInvoiceNo">Commercial Invoice No. (C/I)</label>
-                            <input type="text" id="inpInvoiceNo" placeholder="예: KNG-2026-001">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpPackingListNo">Packing List No. (P/L)</label>
-                            <input type="text" id="inpPackingListNo" placeholder="예: PL-2026-001">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpDocDate">Date</label>
-                            <input type="date" id="inpDocDate">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpCurrency">Currency</label>
-                            <select id="inpCurrency">
-                                <option value="USD">USD ($)</option>
-                                <option value="EUR">EUR (€)</option>
-                                <option value="KRW">KRW (₩)</option>
-                                <option value="CNY">CNY (¥)</option>
-                                <option value="JPY">JPY (¥)</option>
-                                <option value="GBP">GBP (£)</option>
-                            </select>
-                        </div>
 
-                        <!-- Shipper -->
-                        <div class="inv-section-title">
-                            Shipper (판매자)
-                            <button type="button" class="load-tpl-btn" data-role="shipper"><i class='bx bx-import'></i> 템플릿 불러오기</button>
+                    <!-- ── 1. 공통 무역 기본 조건 ── -->
+                    <div class="erp-card-box">
+                        <div class="erp-card-header">
+                            <span><i class='bx bx-globe'></i> 공통 무역 기본 조건</span>
+                            <span style="font-size:10.5px; color:#64748b; font-weight:normal;">(P/I, C/I, P/L 전체에 공통으로 반영되는 기본 조건)</span>
                         </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperName">Company Name</label>
-                            <input type="text" id="inpShipperName" placeholder="판매자 회사명">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperTel">Tel</label>
-                            <input type="text" id="inpShipperTel" placeholder="+82-XX-XXXX-XXXX">
-                        </div>
-                        <div class="inv-fg fg-full">
-                            <label for="inpShipperAddress">Address</label>
-                            <textarea id="inpShipperAddress" placeholder="판매자 주소"></textarea>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperFax">Fax</label>
-                            <input type="text" id="inpShipperFax" placeholder="+82-XX-XXXX-XXXX">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperEmail">Email</label>
-                            <input type="text" id="inpShipperEmail" placeholder="email@example.com">
-                        </div>
-                        <!-- Bank Info -->
-                        <div class="inv-fg">
-                            <label for="inpShipperBank">Bank Name (영문 은행명)</label>
-                            <input type="text" id="inpShipperBank" placeholder="예: ZHEJIANG TAILONG COMMERCIAL BANK">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperAccountNo">Account No. (외화 계좌번호)</label>
-                            <input type="text" id="inpShipperAccountNo" placeholder="계좌번호">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperSwift">SWIFT Code</label>
-                            <input type="text" id="inpShipperSwift" placeholder="SWIFT Code">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpShipperIntermediaryBank">Intermediary Bank (중계 은행)</label>
-                            <input type="text" id="inpShipperIntermediaryBank" placeholder="예: CITIBANK N.A., NEW YORK (SWIFT: CITIUS33)">
-                        </div>
-                        <div class="inv-fg fg-full">
-                            <label for="inpShipperBankAddress">Bank Address (영문 은행 주소)</label>
-                            <input type="text" id="inpShipperBankAddress" placeholder="은행 주소">
-                        </div>
+                        <table class="erp-form-table">
+                            <colgroup>
+                                <col style="width: 12%;">
+                                <col style="width: 21%;">
+                                <col style="width: 12%;">
+                                <col style="width: 21%;">
+                                <col style="width: 12%;">
+                                <col style="width: 22%;">
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <th>진행 상태</th>
+                                    <td>
+                                        <select id="inpStatus" class="form-select">
+                                            <option value="임시작성">임시작성</option>
+                                            <option value="진행중">진행중</option>
+                                            <option value="완료">완료</option>
+                                        </select>
+                                    </td>
+                                    <th>결제 통화</th>
+                                    <td>
+                                        <select id="inpCurrency" class="form-select">
+                                            <option value="USD">USD ($ - 미국 달러)</option>
+                                            <option value="EUR">EUR (€ - 유로)</option>
+                                            <option value="KRW">KRW (₩ - 대한민국 원)</option>
+                                            <option value="CNY">CNY (¥ - 중국 위안)</option>
+                                            <option value="JPY">JPY (¥ - 일본 엔)</option>
+                                            <option value="GBP">GBP (£ - 영국 파운드)</option>
+                                        </select>
+                                    </td>
+                                    <th>인코텀즈</th>
+                                    <td>
+                                        <select id="inpIncoterms" class="form-select">
+                                            <option value="">— 선택 —</option>
+                                            <option value="FOB">FOB (Free on Board)</option>
+                                            <option value="CIF">CIF (Cost, Insurance &amp; Freight)</option>
+                                            <option value="CFR">CFR (Cost &amp; Freight)</option>
+                                            <option value="EXW">EXW (Ex Works)</option>
+                                            <option value="FCA">FCA (Free Carrier)</option>
+                                            <option value="CPT">CPT (Carriage Paid To)</option>
+                                            <option value="CIP">CIP (Carriage &amp; Insurance Paid)</option>
+                                            <option value="DAP">DAP (Delivered at Place)</option>
+                                            <option value="DPU">DPU (Delivered at Place Unloaded)</option>
+                                            <option value="DDP">DDP (Delivered Duty Paid)</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>선적항 (POL)</th>
+                                    <td><input type="text" id="inpPortOfLoading" placeholder="예: SHANGHAI PORT, CHINA"></td>
+                                    <th>양하항 (POD)</th>
+                                    <td><input type="text" id="inpPortOfDischarge" placeholder="예: BUSAN PORT, KOREA"></td>
+                                    <th>최종 목적지</th>
+                                    <td><input type="text" id="inpFinalDestination" placeholder="예: INCHEON, KOREA"></td>
+                                </tr>
+                                <tr>
+                                    <th>원산지 (Origin)</th>
+                                    <td><input type="text" id="inpCountryOfOrigin" placeholder="예: Republic of Korea / China"></td>
+                                    <th>결제 조건 약칭</th>
+                                    <td colspan="3"><input type="text" id="inpPaymentTerms" placeholder="예: T/T 30% advance, 65% balance, 5% retention"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                        <!-- Consignee -->
-                        <div class="inv-section-title">
-                            Consignee (구매자)
-                            <button type="button" class="load-tpl-btn" data-role="consignee"><i class='bx bx-import'></i> 템플릿 불러오기</button>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpConsigneeName">Company Name</label>
-                            <input type="text" id="inpConsigneeName" placeholder="구매자 회사명">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpConsigneeTel">Tel</label>
-                            <input type="text" id="inpConsigneeTel" placeholder="연락처">
-                        </div>
-                        <div class="inv-fg fg-full">
-                            <label for="inpConsigneeAddress">Address</label>
-                            <textarea id="inpConsigneeAddress" placeholder="구매자 주소"></textarea>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpConsigneeFax">Fax</label>
-                            <input type="text" id="inpConsigneeFax" placeholder="팩스">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpConsigneeEmail">Email</label>
-                            <input type="text" id="inpConsigneeEmail" placeholder="email@example.com">
-                        </div>
-
-                        <!-- Notify Party -->
-                        <div class="inv-section-title">
-                            Notify Party
-                            <button type="button" class="load-tpl-btn" data-role="notify"><i class='bx bx-import'></i> 템플릿 불러오기</button>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpNotifyName">Company Name</label>
-                            <input type="text" id="inpNotifyName" placeholder="통지처 회사명 (선택사항)">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpNotifyTel">Tel</label>
-                            <input type="text" id="inpNotifyTel" placeholder="연락처">
-                        </div>
-                        <div class="inv-fg fg-full">
-                            <label for="inpNotifyAddress">Address</label>
-                            <textarea id="inpNotifyAddress" placeholder="통지처 주소"></textarea>
-                        </div>
-
-                        <!-- Shipping Details -->
-                        <div class="inv-section-title">Shipping Details</div>
-                        <div class="inv-fg">
-                            <label for="inpCountryOfOrigin">Country of Origin</label>
-                            <input type="text" id="inpCountryOfOrigin" placeholder="예: Republic of Korea">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpVessel">Vessel / Flight</label>
-                            <input type="text" id="inpVessel" placeholder="선박/항공편명">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpDepartureDate">Departure Date (ETD)</label>
-                            <input type="date" id="inpDepartureDate">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpIncoterms">Incoterms</label>
-                            <select id="inpIncoterms">
-                                <option value="">— 선택 —</option>
-                                <option value="FOB">FOB</option>
-                                <option value="CIF">CIF</option>
-                                <option value="CFR">CFR</option>
-                                <option value="EXW">EXW</option>
-                                <option value="FCA">FCA</option>
-                                <option value="CPT">CPT</option>
-                                <option value="CIP">CIP</option>
-                                <option value="DAP">DAP</option>
-                                <option value="DPU">DPU</option>
-                                <option value="DDP">DDP</option>
-                            </select>
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpPortOfLoading">Port of Loading</label>
-                            <input type="text" id="inpPortOfLoading" placeholder="선적항">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpPortOfDischarge">Port of Discharge</label>
-                            <input type="text" id="inpPortOfDischarge" placeholder="양하항">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpFinalDestination">Final Destination</label>
-                            <input type="text" id="inpFinalDestination" placeholder="최종 목적지">
-                        </div>
-                        <div class="inv-fg">
-                            <label for="inpPaymentTerms">Payment Terms</label>
-                            <input type="text" id="inpPaymentTerms" placeholder="예: T/T in advance">
-                        </div>
-
-                        <!-- Items -->
-                        <div class="inv-section-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
-                            <span>품목 (Items)</span>
-                            <div class="inv-tabs-header">
-                                <button type="button" class="inv-tab-btn active" data-target="invItemsWrap">인보이스 품목</button>
-                                <button type="button" class="inv-tab-btn" data-target="plItemsWrap">팩킹리스트 품목</button>
-                            </div>
-                        </div>
-
-                        <!-- Invoice Items -->
-                        <div id="invItemsWrap" class="inv-tab-content active fg-full">
-                            <div class="inv-items-section" style="margin-top: 10px;">
-                                <div class="inv-items-header" style="grid-template-columns: 2.5fr 1fr 1fr 0.8fr 1.2fr 1.2fr 40px;">
-                                    <span>Description</span>
-                                    <span>HS Code</span>
-                                    <span>Qty</span>
-                                    <span>Unit</span>
-                                    <span>Unit Price</span>
-                                    <span>Amount</span>
-                                    <span></span>
-                                </div>
-                                <div id="itemLines"></div>
-                                <button type="button" class="inv-add-item" id="addItemBtn">
-                                    <i class='bx bx-plus'></i> 인보이스 품목 추가
+                    <!-- ── 2. 거래 당사자 (Shipper & Consignee / Notify) ── -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <!-- 좌측: Shipper (수출자/판매자) -->
+                        <div class="erp-card-box" style="margin-bottom:0;">
+                            <div class="erp-card-header">
+                                <span><i class='bx bx-store-alt'></i> Shipper (수출자 / 판매자)</span>
+                                <button type="button" class="btn-erp btn-erp-sm load-tpl-btn" data-role="shipper">
+                                    <i class='bx bx-import'></i> 거래처 템플릿 불러오기
                                 </button>
-                                <div class="inv-totals-bar" id="totalsBar">
-                                    <div class="tot-item"><span class="tot-label">Total Qty:</span><span class="tot-value" id="totQty">0</span></div>
-                                    <div class="tot-item"><span class="tot-label">Total Amount:</span><span class="tot-value" id="totAmount">0.00</span></div>
-                                </div>
                             </div>
+                            <table class="erp-form-table">
+                                <colgroup>
+                                    <col style="width: 25%;">
+                                    <col style="width: 75%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>상호명 (Company)</th>
+                                        <td><input type="text" id="inpShipperName" placeholder="판매자/수출자 회사명"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>연락처 / 팩스</th>
+                                        <td>
+                                            <div style="display:flex; gap:4px;">
+                                                <input type="text" id="inpShipperTel" placeholder="Tel: 전화번호" style="flex:1;">
+                                                <input type="text" id="inpShipperFax" placeholder="Fax: 팩스번호" style="flex:1;">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>이메일</th>
+                                        <td><input type="text" id="inpShipperEmail" placeholder="email@company.com"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>영문 주소</th>
+                                        <td><textarea id="inpShipperAddress" rows="2" placeholder="판매자 영문 주소"></textarea></td>
+                                    </tr>
+                                    <tr class="erp-section-row">
+                                        <th colspan="2">🏦 외화 결제 은행 정보 (Remittance Bank)</th>
+                                    </tr>
+                                    <tr>
+                                        <th>영문 은행명</th>
+                                        <td><input type="text" id="inpShipperBank" placeholder="예: ZHEJIANG TAILONG COMMERCIAL BANK"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>외화 계좌번호</th>
+                                        <td><input type="text" id="inpShipperAccountNo" placeholder="계좌번호"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>SWIFT Code</th>
+                                        <td><input type="text" id="inpShipperSwift" placeholder="예: ZJTLCNBH"></td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color:#b45309; font-weight:700;"><i class='bx bx-git-branch'></i> 중계은행 (Intermediary)</th>
+                                        <td><input type="text" id="inpShipperIntermediaryBank" placeholder="예: CITIBANK N.A., NEW YORK (SWIFT: CITIUS33)"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>은행 주소 (Bank Addr)</th>
+                                        <td><input type="text" id="inpShipperBankAddress" placeholder="영문 은행 주소"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <!-- Packing List Items -->
-                        <div id="plItemsWrap" class="inv-tab-content fg-full">
-                            <div style="display:flex; justify-content:flex-end; margin-top: 10px; margin-bottom: 10px;">
-                                <button type="button" class="btn-outline" id="copyFromInvBtn" style="font-size: 12px; padding: 6px 12px;"><i class='bx bx-copy'></i> 인보이스 품목 가져오기</button>
-                            </div>
-                            <div class="inv-items-section">
-                                <div class="pl-items-header" style="display:grid; grid-template-columns: 1.5fr 2fr 0.8fr 0.8fr 1fr 1fr 1.5fr 40px; gap:8px; padding:10px 14px; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:12px; font-weight:600; color:var(--gray-600);">
-                                    <span>Container/Seal No.</span>
-                                    <span>Description</span>
-                                    <span>Qty</span>
-                                    <span>Unit</span>
-                                    <span>N.W (kg)</span>
-                                    <span>G.W (kg)</span>
-                                    <span>Remarks</span>
-                                    <span></span>
-                                </div>
-                                <div id="plItemLines"></div>
-                                <button type="button" class="inv-add-item" id="addPlItemBtn">
-                                    <i class='bx bx-plus'></i> 팩킹리스트 품목 추가
+                        <!-- 우측: Consignee & Notify (구매자/착하통지처) -->
+                        <div class="erp-card-box" style="margin-bottom:0;">
+                            <div class="erp-card-header">
+                                <span><i class='bx bx-buildings'></i> Consignee (수입자 / 구매자)</span>
+                                <button type="button" class="btn-erp btn-erp-sm load-tpl-btn" data-role="consignee">
+                                    <i class='bx bx-import'></i> 거래처 템플릿 불러오기
                                 </button>
-                                <div class="inv-totals-bar" id="plTotalsBar">
-                                    <div class="tot-item"><span class="tot-label">Total N.W:</span><span class="tot-value" id="totNW">0.00</span></div>
-                                    <div class="tot-item"><span class="tot-label">Total G.W:</span><span class="tot-value" id="totGW">0.00</span></div>
+                            </div>
+                            <table class="erp-form-table">
+                                <colgroup>
+                                    <col style="width: 25%;">
+                                    <col style="width: 75%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>상호명 (Company)</th>
+                                        <td><input type="text" id="inpConsigneeName" placeholder="구매자/수입자 회사명"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>연락처 / 팩스</th>
+                                        <td>
+                                            <div style="display:flex; gap:4px;">
+                                                <input type="text" id="inpConsigneeTel" placeholder="Tel: 연락처" style="flex:1;">
+                                                <input type="text" id="inpConsigneeFax" placeholder="Fax: 팩스" style="flex:1;">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>이메일</th>
+                                        <td><input type="text" id="inpConsigneeEmail" placeholder="buyer@example.com"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>영문 주소</th>
+                                        <td><textarea id="inpConsigneeAddress" rows="2" placeholder="구매자 영문 주소"></textarea></td>
+                                    </tr>
+                                    <tr class="erp-section-row">
+                                        <th colspan="2">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span>🔔 Notify Party (착하통지처)</span>
+                                                <div style="display:flex; align-items:center; gap:6px;">
+                                                    <label style="font-size:10.5px; font-weight:normal; margin:0; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
+                                                        <input type="checkbox" id="chkNotifySameAsConsignee" style="width:auto; height:auto;"> Same as Consignee
+                                                    </label>
+                                                    <button type="button" class="btn-erp btn-erp-sm load-tpl-btn" data-role="notify" style="padding:1px 6px;">불러오기</button>
+                                                </div>
+                                            </div>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th>통지처 상호</th>
+                                        <td><input type="text" id="inpNotifyName" placeholder="통지처 상호 (미입력 시 Same as Consignee)"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>통지처 연락처</th>
+                                        <td><input type="text" id="inpNotifyTel" placeholder="통지처 전화번호"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>통지처 주소</th>
+                                        <td><textarea id="inpNotifyAddress" rows="2" placeholder="통지처 영문 주소"></textarea></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ── 3. 공통 품목 마스터 그리드 ── -->
+                    <div class="erp-card-box">
+                        <div class="erp-card-header">
+                            <span><i class='bx bx-list-ol'></i> 공통 품목 명세 (Items Master)</span>
+                            <button type="button" class="btn-erp btn-erp-primary btn-erp-sm" id="addItemBtn">
+                                <i class='bx bx-plus'></i> 품목 행 추가
+                            </button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="erp-sheet-table" id="itemTable">
+                                <colgroup>
+                                    <col style="width: 32px;">
+                                    <col style="width: 36%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 10%;">
+                                    <col style="width: 8%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 58px;">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>품명 및 규격 (Description of Goods)</th>
+                                        <th>HS Code</th>
+                                        <th>수량 (Qty)</th>
+                                        <th>단위 (Unit)</th>
+                                        <th>단가 (Unit Price)</th>
+                                        <th>공급가액 (Amount)</th>
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemLines">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="erp-summary-ribbon">
+                            <div class="sum-item">
+                                <span class="sum-label">총 수량 (Total Qty):</span>
+                                <span class="sum-val" id="totQty">0</span>
+                            </div>
+                            <div class="sum-item">
+                                <span class="sum-label">총 공급가액 (Total Amount):</span>
+                                <span class="sum-val" id="totAmount">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── 4. 문서별 세그먼트 서브탭 (P/I · C/I · P/L) ── -->
+                    <div class="erp-card-box">
+                        <div class="erp-card-header" style="padding: 4px 8px;">
+                            <div class="erp-tab-group" id="docSubTabGroup">
+                                <button type="button" class="erp-tab-btn active" data-subtab="piTab">
+                                    <i class='bx bx-file-blank text-primary'></i> 1. Proforma Invoice (P/I 계약 조건)
+                                </button>
+                                <button type="button" class="erp-tab-btn" data-subtab="ciTab">
+                                    <i class='bx bx-file text-success'></i> 2. Commercial Invoice (C/I 선적 조건)
+                                </button>
+                                <button type="button" class="erp-tab-btn" data-subtab="plTab">
+                                    <i class='bx bx-package text-warning'></i> 3. Packing List (P/L 포장 명세)
+                                </button>
+                            </div>
+                            <div style="font-size:10.5px; color:#64748b; font-weight:normal;">
+                                💡 문서별 고유 정보를 탭별로 분리 작성합니다.
+                            </div>
+                        </div>
+
+                        <!-- ── SUB-TAB 1: P/I (Proforma Invoice) ── -->
+                        <div id="piTab" class="erp-sub-tab-content active" style="padding: 10px;">
+                            <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:6px 10px; border-radius:3px; font-size:11px; color:#1e40af; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                                <span><i class='bx bx-info-circle'></i> <b>P/I (Proforma Invoice):</b> 견적서 및 수출입 매매계약서(Sales Contract)를 갈음하는 필수 무역 계약 조건입니다. (미입력 항목이 있어도 저장 가능)</span>
+                                <label style="margin:0; font-size:11px; font-weight:700; color:#1d4ed8; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="checkbox" id="chkPiBuyerSign" checked style="width:auto; height:auto;"> P/I 출력 시 Buyer 수락 서명/날인란 표기
+                                </label>
+                            </div>
+
+                            <table class="erp-form-table mb-2">
+                                <colgroup>
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>P/I 번호 (PI No.)</th>
+                                        <td><input type="text" id="inpProformaNo" placeholder="예: PI-2026-001"></td>
+                                        <th>P/I 일자 (Date)</th>
+                                        <td><input type="date" id="inpDocDate"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>유효기간 (Validity)</th>
+                                        <td><input type="text" id="inpPiValidity" placeholder="예: 30 days from date hereof (또는 2026-11-15)"></td>
+                                        <th>선적 기한 (Latest Shipment)</th>
+                                        <td><input type="text" id="inpPiShipmentDeadline" placeholder="예: Within 60 days after deposit receipt"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>분할 선적 (Partial Shipment)</th>
+                                        <td>
+                                            <select id="inpPiPartialShipment" class="form-select">
+                                                <option value="Not Allowed">Not Allowed (분할선적 불가)</option>
+                                                <option value="Allowed">Allowed (분할선적 허용)</option>
+                                            </select>
+                                        </td>
+                                        <th>환적 (Transshipment)</th>
+                                        <td>
+                                            <select id="inpPiTransshipment" class="form-select">
+                                                <option value="Not Allowed">Not Allowed (환적 불가)</option>
+                                                <option value="Allowed">Allowed (환적 허용)</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>결제 세부조건 (Payment Terms)</th>
+                                        <td colspan="3"><input type="text" id="inpPiPaymentDetail" placeholder="예: 30% Deposit upon signing, 65% Before shipment against TOP sample, 5% Retention after port arrival"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:3px; padding:6px 10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                                    <span style="font-weight:700; color:#1e293b; font-size:11.5px;">
+                                        <i class='bx bx-check-shield text-primary'></i> P/I 계약 특약사항 (Terms &amp; Conditions - CISG 준거법 / 검품 / 지체상금 / 지정계좌)
+                                    </span>
+                                    <div style="display:flex; gap:4px;">
+                                        <button type="button" class="btn-erp btn-erp-sm btn-erp-primary" id="btnLoadPiTpl">
+                                            <i class='bx bx-import'></i> 표준 계약 템플릿(30/65/5%·계좌·CISG) 불러오기
+                                        </button>
+                                        <button type="button" class="btn-erp btn-erp-sm" id="btnClearPiTpl">
+                                            <i class='bx bx-eraser'></i> 지우기
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea id="inpTermsAndConditions" rows="8" placeholder="Proforma Invoice 출력 시 반영될 계약 특약사항(T&C)을 입력하세요..." style="font-family: monospace, sans-serif; font-size: 11px; line-height: 1.5;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- ── SUB-TAB 2: C/I (Commercial Invoice) ── -->
+                        <div id="ciTab" class="erp-sub-tab-content" style="padding: 10px;">
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:6px 10px; border-radius:3px; font-size:11px; color:#15803d; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                                <span><i class='bx bx-info-circle'></i> <b>C/I (Commercial Invoice):</b> 실제 선적 시 발행되는 정식 상업송장입니다.</span>
+                                <button type="button" class="btn-erp btn-erp-sm" id="btnSyncFromPiToCi" style="background:#ffffff; color:#15803d; border-color:#86efac;">
+                                    <i class='bx bx-sync'></i> P/I 정보에서 선적 정보 동기화
+                                </button>
+                            </div>
+
+                            <table class="erp-form-table mb-2">
+                                <colgroup>
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>인보이스 번호 (Invoice No.)</th>
+                                        <td><input type="text" id="inpInvoiceNo" placeholder="예: KNG-2026-001"></td>
+                                        <th>인보이스 일자 (Invoice Date)</th>
+                                        <td><input type="date" id="inpCiDate"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>선박/항공편명 (Vessel/Flight)</th>
+                                        <td><input type="text" id="inpVessel" placeholder="예: M/V KOREA V.2601"></td>
+                                        <th>B/L 번호 (B/L No.)</th>
+                                        <td><input type="text" id="inpBlNo" placeholder="예: HDMU12345678"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>출항일 (ETD)</th>
+                                        <td><input type="date" id="inpDepartureDate"></td>
+                                        <th>입항 예정일 (ETA)</th>
+                                        <td><input type="date" id="inpArrivalDate"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>원산지증명서 번호 (C/O No.)</th>
+                                        <td colspan="3"><input type="text" id="inpCoNo" placeholder="예: K-C FTA C/O NO. 2605..."></td>
+                                    </tr>
+                                    <tr>
+                                        <th>C/I 특기사항 (Remarks)</th>
+                                        <td colspan="3"><textarea id="inpRemarks" rows="3" placeholder="추가 기재사항..."></textarea></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- ── SUB-TAB 3: P/L (Packing List) ── -->
+                        <div id="plTab" class="erp-sub-tab-content" style="padding: 10px;">
+                            <div style="background:#fefce8; border:1px solid #fef08a; padding:6px 10px; border-radius:3px; font-size:11px; color:#854d0e; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                                <span><i class='bx bx-info-circle'></i> <b>P/L (Packing List):</b> 선적 화물의 실측 포장 명세서입니다.</span>
+                                <div style="display:flex; gap:4px;">
+                                    <button type="button" class="btn-erp btn-erp-sm" id="copyFromInvBtn" style="background:#ffffff; color:#854d0e; border-color:#fde047;">
+                                        <i class='bx bx-copy'></i> 인보이스 품목 가져오기
+                                    </button>
+                                    <button type="button" class="btn-erp btn-erp-sm btn-erp-primary" id="addPlItemBtn">
+                                        <i class='bx bx-plus'></i> 팩킹 행 추가
+                                    </button>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- P/I Terms & Conditions -->
-                        <div class="inv-section-title" style="display:flex; justify-content:space-between; align-items:center;">
-                            <span><i class='bx bx-file-blank'></i> P/I 특약사항 (Terms & Conditions - 계약서 갈음 조항)</span>
-                            <div style="display:flex; gap:6px;">
-                                <button type="button" class="btn-outline" id="btnLoadPiTpl" style="font-size:11px; padding:4px 10px; color:#4f46e5; border-color:#4f46e5; background:#eef2ff;"><i class='bx bx-import'></i> 표준 계약 템플릿 불러오기</button>
-                                <button type="button" class="btn-outline" id="btnClearPiTpl" style="font-size:11px; padding:4px 8px; color:var(--text-muted);"><i class='bx bx-eraser'></i> 지우기</button>
-                            </div>
-                        </div>
-                        <div class="inv-fg fg-full">
-                            <textarea id="inpTermsAndConditions" placeholder="Proforma Invoice 출력 시 반영될 계약 특약사항(T&C)을 입력하세요..." style="height: 180px; font-family: monospace, sans-serif; font-size: 11px; line-height: 1.5;"></textarea>
-                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">
-                                <i class='bx bx-info-circle'></i> [표준 계약 템플릿 불러오기]를 누르면 현재 품목 총액에 맞춰 30%/65%/5% 분할 금액, 지정 계좌, 납기, 검품/FTA, CISG 준거법 조항이 자동으로 채워집니다. (자유 수정 가능)
-                            </div>
-                        </div>
+                            <table class="erp-form-table mb-2">
+                                <colgroup>
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 36%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>팩킹리스트 번호 (P/L No.)</th>
+                                        <td><input type="text" id="inpPackingListNo" placeholder="예: PL-2026-001"></td>
+                                        <th>P/L 일자 (P/L Date)</th>
+                                        <td><input type="date" id="inpPlDate"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>컨테이너 번호 (Container No.)</th>
+                                        <td><input type="text" id="inpPlContainerNo" placeholder="예: TGHU1234567 / 40HC"></td>
+                                        <th>씰 번호 (Seal No.)</th>
+                                        <td><input type="text" id="inpPlSealNo" placeholder="예: SEAL NO. 987654"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>총 포장 수량 및 형태 (Packages)</th>
+                                        <td><input type="text" id="inpPlTotalPackages" placeholder="예: 25 Cartons / 2 Wooden Crates"></td>
+                                        <th>쉬핑마크 (Shipping Mark)</th>
+                                        <td><input type="text" id="inpPlShippingMark" placeholder="예: KNG / C/NO. 1-25 / MADE IN KOREA"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
 
-                        <!-- Remarks -->
-                        <div class="inv-section-title">비고 (Remarks - C/I 및 공통)</div>
-                        <div class="inv-fg fg-full">
-                            <label for="inpRemarks">Remarks</label>
-                            <textarea id="inpRemarks" placeholder="추가 기재사항..." style="height:60px;"></textarea>
+                            <div style="overflow-x:auto;">
+                                <table class="erp-sheet-table" id="plItemTable">
+                                    <colgroup>
+                                        <col style="width: 15%;">
+                                        <col style="width: 26%;">
+                                        <col style="width: 9%;">
+                                        <col style="width: 7%;">
+                                        <col style="width: 10%;">
+                                        <col style="width: 10%;">
+                                        <col style="width: 9%;">
+                                        <col style="width: 10%;">
+                                        <col style="width: 36px;">
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th>Container / Seal No</th>
+                                            <th>품명 및 규격 (Description)</th>
+                                            <th>수량 (Qty)</th>
+                                            <th>단위 (Unit)</th>
+                                            <th>순중량 N.W (kg)</th>
+                                            <th>총중량 G.W (kg)</th>
+                                            <th>용적 (CBM)</th>
+                                            <th>비고 (Remarks)</th>
+                                            <th>삭제</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="plItemLines">
+                                        <!-- Dynamic Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="erp-summary-ribbon">
+                                <div class="sum-item">
+                                    <span class="sum-label">Total N.W:</span>
+                                    <span class="sum-val" id="totNW">0.00</span> kg
+                                </div>
+                                <div class="sum-item">
+                                    <span class="sum-label">Total G.W:</span>
+                                    <span class="sum-val" id="totGW">0.00</span> kg
+                                </div>
+                                <div class="sum-item">
+                                    <span class="sum-label">Total CBM:</span>
+                                    <span class="sum-val" id="totCBM">0.000</span> m³
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
+
+            <!-- Footer -->
             <div class="inv-modal-footer">
-                <button type="button" class="btn-outline" id="cancelModalBtn">취소</button>
-                <button type="button" class="btn-primary" id="saveDocBtn"><i class='bx bx-save'></i> 저장</button>
+                <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:#64748b;">
+                    <i class='bx bx-info-circle text-primary'></i>
+                    <span>필수 입력값 없이도 언제든지 임시 저장이 가능합니다. (단축키: <b>F8</b> 저장, <b>ESC</b> 닫기)</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <button type="button" class="btn-erp btn-erp-outline" id="cancelModalBtn"><i class='bx bx-x'></i> 취소 (ESC)</button>
+                    <button type="button" class="btn-erp btn-erp-primary" id="saveDocBtn"><i class='bx bx-save'></i> 저장 (F8)</button>
+                </div>
             </div>
         </div>
     </div>

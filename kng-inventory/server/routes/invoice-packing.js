@@ -106,6 +106,7 @@ function initInvoicePackingTables(database) {
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN departureDate TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN packingItems TEXT DEFAULT '[]'`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN status TEXT DEFAULT '진행중'`, () => {});
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN extraData TEXT DEFAULT '{}'`, () => {});
 
                     console.log('invoice_packing_docs / invoice_packing_partners 테이블 확인 및 마이그레이션 완료');
                     resolve();
@@ -129,6 +130,7 @@ router.get('/documents', async (req, res) => {
             try { r.notifyParty = JSON.parse(r.notifyParty || '{}'); } catch(e) { r.notifyParty = {}; }
             try { r.items = JSON.parse(r.items || '[]'); } catch(e) { r.items = []; }
             try { r.packingItems = JSON.parse(r.packingItems || '[]'); } catch(e) { r.packingItems = []; }
+            try { r.extraData = JSON.parse(r.extraData || '{}'); } catch(e) { r.extraData = {}; }
             return r;
         });
         res.json(result);
@@ -147,6 +149,7 @@ router.get('/documents/:id', async (req, res) => {
         try { row.notifyParty = JSON.parse(row.notifyParty || '{}'); } catch(e) { row.notifyParty = {}; }
         try { row.items = JSON.parse(row.items || '[]'); } catch(e) { row.items = []; }
         try { row.packingItems = JSON.parse(row.packingItems || '[]'); } catch(e) { row.packingItems = []; }
+        try { row.extraData = JSON.parse(row.extraData || '{}'); } catch(e) { row.extraData = {}; }
         res.json(row);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -166,8 +169,8 @@ router.post('/documents', async (req, res) => {
             paymentTerms, incoterms, currency, countryOfOrigin, departureDate,
             items, packingItems, remarks, termsAndConditions,
             totalAmount, totalNetWeight, totalGrossWeight, totalMeasurement, totalQty,
-            status, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            status, extraData, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.proformaNo || '',
@@ -196,6 +199,7 @@ router.post('/documents', async (req, res) => {
             p.totalMeasurement || 0,
             p.totalQty || 0,
             p.status || '진행중',
+            JSON.stringify(p.extraData || {}),
             now, now
         ];
         await dbRun(sql, params);
@@ -218,7 +222,7 @@ router.put('/documents/:id', async (req, res) => {
             paymentTerms=?, incoterms=?, currency=?, countryOfOrigin=?, departureDate=?,
             items=?, packingItems=?, remarks=?, termsAndConditions=?,
             totalAmount=?, totalNetWeight=?, totalGrossWeight=?, totalMeasurement=?, totalQty=?,
-            status=?, updatedAt=?
+            status=?, extraData=?, updatedAt=?
         WHERE id=?`;
         const params = [
             p.proformaNo || '',
@@ -247,6 +251,7 @@ router.put('/documents/:id', async (req, res) => {
             p.totalMeasurement || 0,
             p.totalQty || 0,
             p.status || '진행중',
+            JSON.stringify(p.extraData || {}),
             now, id
         ];
         const result = await dbRun(sql, params);

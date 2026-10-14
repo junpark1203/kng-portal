@@ -24,15 +24,18 @@ const els = {
     // Doc Modal
     docModal: document.getElementById('docModal'),
     modalTitle: document.getElementById('modalTitle'),
+    modalDocBadge: document.getElementById('modalDocBadge'),
     docForm: document.getElementById('docForm'),
     inpProformaNo: document.getElementById('inpProformaNo'),
     inpTermsAndConditions: document.getElementById('inpTermsAndConditions'),
     btnLoadPiTpl: document.getElementById('btnLoadPiTpl'),
     btnClearPiTpl: document.getElementById('btnClearPiTpl'),
-    // Item tabs
-    tabBtns: document.querySelectorAll('.inv-tab-btn'),
-    invItemsWrap: document.getElementById('invItemsWrap'),
-    plItemsWrap: document.getElementById('plItemsWrap'),
+    
+    // Sub tabs
+    subTabGroup: document.getElementById('docSubTabGroup'),
+    btnSyncFromPiToCi: document.getElementById('btnSyncFromPiToCi'),
+    chkNotifySameAsConsignee: document.getElementById('chkNotifySameAsConsignee'),
+    chkPiBuyerSign: document.getElementById('chkPiBuyerSign'),
     
     // Items
     itemLines: document.getElementById('itemLines'),
@@ -352,128 +355,235 @@ function renderTable() {
     }).join('');
 }
 
-// ── Item Lines Logic ──
-// Tabs
-els.tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        els.tabBtns.forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.inv-tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.target).classList.add('active');
+// ── HTML Escape Helper ──
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ── Sub-Tab Switching (P/I · C/I · P/L) ──
+function initSubTabs() {
+    document.querySelectorAll('#docSubTabGroup .erp-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#docSubTabGroup .erp-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.erp-sub-tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const targetId = btn.dataset.subtab;
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) targetEl.classList.add('active');
+        });
     });
-});
+}
+initSubTabs();
+
+// Notify Party: Same as Consignee
+if (els.chkNotifySameAsConsignee) {
+    els.chkNotifySameAsConsignee.addEventListener('change', () => {
+        if (els.chkNotifySameAsConsignee.checked) {
+            document.getElementById('inpNotifyName').value = document.getElementById('inpConsigneeName').value;
+            document.getElementById('inpNotifyTel').value = document.getElementById('inpConsigneeTel').value;
+            document.getElementById('inpNotifyAddress').value = document.getElementById('inpConsigneeAddress').value;
+            showToast('Notify Party 정보가 Consignee와 동일하게 적용되었습니다.');
+        }
+    });
+}
+
+// Sync P/I info to C/I
+if (els.btnSyncFromPiToCi) {
+    els.btnSyncFromPiToCi.addEventListener('click', () => {
+        const piNo = document.getElementById('inpProformaNo')?.value?.trim();
+        const piDate = document.getElementById('inpDocDate')?.value;
+        const ciNoEl = document.getElementById('inpInvoiceNo');
+        const ciDateEl = document.getElementById('inpCiDate');
+        
+        if (piNo && ciNoEl && !ciNoEl.value) {
+            ciNoEl.value = piNo.startsWith('PI-') ? piNo.replace('PI-', 'INV-') : ('INV-' + piNo);
+        }
+        if (piDate && ciDateEl && !ciDateEl.value) {
+            ciDateEl.value = piDate;
+        }
+        showToast('P/I 번호 및 일자가 C/I에 동기화되었습니다.');
+    });
+}
+
+// ── Item Lines Logic (ECOUNT ERP Sheet Table) ──
+function refreshItemRowNumbers() {
+    if (!els.itemLines) return;
+    Array.from(els.itemLines.children).forEach((row, idx) => {
+        const numEl = row.querySelector('.row-num');
+        if (numEl) numEl.textContent = idx + 1;
+    });
+}
 
 // Invoice Items
 function createInvItemLine(item = {}) {
-    const div = document.createElement('div');
-    div.className = 'inv-item-row';
-    div.style.gridTemplateColumns = '2.5fr 1fr 1fr 0.8fr 1.2fr 1.2fr 40px';
-    div.innerHTML = `
-        <input type="text" placeholder="품명/설명" class="i-desc" value="${item.description || ''}">
-        <input type="text" placeholder="HS Code" class="i-hs" value="${item.hsCode || ''}">
-        <input type="number" placeholder="0" class="i-qty" min="0" value="${item.qty || ''}">
-        <input type="text" placeholder="EA" class="i-unit" value="${item.unit || 'EA'}">
-        <input type="number" placeholder="0.00" class="i-price" min="0" step="0.01" value="${item.unitPrice || ''}">
-        <input type="text" class="item-amount" readonly tabindex="-1" value="${item.amount || '0.00'}">
-        <button type="button" class="inv-item-del"><i class='bx bx-trash'></i></button>
+    const tr = document.createElement('tr');
+    tr.className = 'item-row';
+    const unitVal = (item.unit || 'EA').toUpperCase();
+    const qtyVal = item.qty !== undefined && item.qty !== null && item.qty !== '' ? item.qty : '';
+    const priceVal = item.unitPrice !== undefined && item.unitPrice !== null && item.unitPrice !== '' ? item.unitPrice : '';
+    const amtVal = item.amount !== undefined && item.amount !== null && item.amount !== '' ? Number(item.amount).toFixed(2) : '0.00';
+
+    tr.innerHTML = `
+        <td style="text-align:center; color:#64748b; font-weight:700;" class="row-num"></td>
+        <td><input type="text" placeholder="품명 및 규격" class="i-desc" value="${escapeHtml(item.description || '')}"></td>
+        <td><input type="text" placeholder="HS Code" class="i-hs text-center" value="${escapeHtml(item.hsCode || '')}"></td>
+        <td><input type="number" placeholder="0" class="i-qty text-end" min="0" step="any" value="${qtyVal}"></td>
+        <td>
+            <select class="i-unit text-center">
+                <option value="EA"${unitVal === 'EA' ? ' selected' : ''}>EA</option>
+                <option value="PCS"${unitVal === 'PCS' ? ' selected' : ''}>PCS</option>
+                <option value="SET"${unitVal === 'SET' ? ' selected' : ''}>SET</option>
+                <option value="BOX"${unitVal === 'BOX' ? ' selected' : ''}>BOX</option>
+                <option value="KG"${unitVal === 'KG' ? ' selected' : ''}>KG</option>
+                <option value="ROLL"${unitVal === 'ROLL' ? ' selected' : ''}>ROLL</option>
+                <option value="MTR"${unitVal === 'MTR' ? ' selected' : ''}>MTR</option>
+                <option value="CTN"${unitVal === 'CTN' ? ' selected' : ''}>CTN</option>
+                <option value="PR"${unitVal === 'PR' ? ' selected' : ''}>PR</option>
+            </select>
+        </td>
+        <td><input type="number" placeholder="0.00" class="i-price text-end" min="0" step="0.01" value="${priceVal}"></td>
+        <td><input type="text" class="item-amount text-end fw-bold" readonly tabindex="-1" value="${amtVal}"></td>
+        <td style="text-align:center;">
+            <div style="display:flex; justify-content:center; gap:2px;">
+                <button type="button" class="btn-row-action btn-row-copy" title="동일 품목 복사 행 추가"><i class='bx bx-copy'></i></button>
+                <button type="button" class="btn-row-action btn-row-del" title="삭제"><i class='bx bx-trash'></i></button>
+            </div>
+        </td>
     `;
     
-    const inputs = div.querySelectorAll('.i-qty, .i-price');
+    const inputs = tr.querySelectorAll('.i-qty, .i-price');
     inputs.forEach(inp => inp.addEventListener('input', calcInvTotals));
     
-    div.querySelector('.inv-item-del').addEventListener('click', () => {
-        div.remove();
+    tr.querySelector('.btn-row-copy').addEventListener('click', () => {
+        const curData = {
+            description: tr.querySelector('.i-desc').value,
+            hsCode: tr.querySelector('.i-hs').value,
+            qty: tr.querySelector('.i-qty').value,
+            unit: tr.querySelector('.i-unit').value,
+            unitPrice: tr.querySelector('.i-price').value,
+            amount: tr.querySelector('.item-amount').value
+        };
+        createInvItemLine(curData);
         calcInvTotals();
+        showToast('동일 품목이 복사 추가되었습니다.');
     });
-    
-    els.itemLines.appendChild(div);
+
+    tr.querySelector('.btn-row-del').addEventListener('click', () => {
+        tr.remove();
+        calcInvTotals();
+        refreshItemRowNumbers();
+    });
+
+    els.itemLines.appendChild(tr);
+    refreshItemRowNumbers();
 }
 
 function calcInvTotals() {
     let totQty = 0, totAmt = 0;
     Array.from(els.itemLines.children).forEach(row => {
-        const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
-        const price = parseFloat(row.querySelector('.i-price').value) || 0;
+        const qty = parseFloat(row.querySelector('.i-qty')?.value) || 0;
+        const price = parseFloat(row.querySelector('.i-price')?.value) || 0;
         const amt = qty * price;
-        row.querySelector('.item-amount').value = amt.toFixed(2);
+        const amtEl = row.querySelector('.item-amount');
+        if (amtEl) amtEl.value = amt.toFixed(2);
         totQty += qty;
         totAmt += amt;
     });
-    document.getElementById('totQty').textContent = totQty.toLocaleString();
-    document.getElementById('totAmount').textContent = totAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (document.getElementById('totQty')) document.getElementById('totQty').textContent = totQty.toLocaleString();
+    if (document.getElementById('totAmount')) document.getElementById('totAmount').textContent = totAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function gatherInvItems() {
     return Array.from(els.itemLines.children).map(row => ({
-        description: row.querySelector('.i-desc').value.trim(),
-        hsCode: row.querySelector('.i-hs').value.trim(),
-        qty: parseFloat(row.querySelector('.i-qty').value) || 0,
-        unit: row.querySelector('.i-unit').value.trim() || 'EA',
-        unitPrice: parseFloat(row.querySelector('.i-price').value) || 0,
-        amount: parseFloat(row.querySelector('.item-amount').value) || 0
+        description: row.querySelector('.i-desc')?.value.trim() || '',
+        hsCode: row.querySelector('.i-hs')?.value.trim() || '',
+        qty: parseFloat(row.querySelector('.i-qty')?.value) || 0,
+        unit: row.querySelector('.i-unit')?.value.trim() || 'EA',
+        unitPrice: parseFloat(row.querySelector('.i-price')?.value) || 0,
+        amount: parseFloat(row.querySelector('.item-amount')?.value) || 0
     })).filter(i => i.description || i.qty > 0);
 }
 
 // Packing List Items
 function createPlItemLine(item = {}) {
-    const div = document.createElement('div');
-    div.className = 'pl-item-row';
-    div.innerHTML = `
-        <input type="text" placeholder="컨테이너/씰 번호" class="i-cont" value="${item.containerNo || ''}">
-        <input type="text" placeholder="품명/설명" class="i-desc" value="${item.description || ''}">
-        <input type="number" placeholder="0" class="i-qty" min="0" value="${item.qty || ''}">
-        <input type="text" placeholder="EA" class="i-unit" value="${item.unit || 'EA'}">
-        <input type="number" placeholder="0.00" class="i-nw" min="0" step="0.01" value="${item.netWeight || ''}">
-        <input type="number" placeholder="0.00" class="i-gw" min="0" step="0.01" value="${item.grossWeight || ''}">
-        <input type="text" placeholder="비고" class="i-rmk" value="${item.remarks || ''}">
-        <button type="button" class="inv-item-del"><i class='bx bx-trash'></i></button>
+    const tr = document.createElement('tr');
+    tr.className = 'pl-row';
+    const unitVal = (item.unit || 'EA').toUpperCase();
+    tr.innerHTML = `
+        <td><input type="text" placeholder="컨테이너/씰 번호" class="pl-cont" value="${escapeHtml(item.containerNo || '')}"></td>
+        <td><input type="text" placeholder="품명 및 규격" class="pl-desc" value="${escapeHtml(item.description || '')}"></td>
+        <td><input type="number" placeholder="0" class="pl-qty text-end" min="0" value="${item.qty !== undefined && item.qty !== null && item.qty !== '' ? item.qty : ''}"></td>
+        <td><input type="text" placeholder="EA" class="pl-unit text-center" value="${escapeHtml(unitVal)}"></td>
+        <td><input type="number" placeholder="0.00" class="pl-nw text-end" min="0" step="0.01" value="${item.netWeight !== undefined && item.netWeight !== null && item.netWeight !== '' ? item.netWeight : ''}"></td>
+        <td><input type="number" placeholder="0.00" class="pl-gw text-end" min="0" step="0.01" value="${item.grossWeight !== undefined && item.grossWeight !== null && item.grossWeight !== '' ? item.grossWeight : ''}"></td>
+        <td><input type="number" placeholder="0.000" class="pl-cbm text-end" min="0" step="0.001" value="${item.cbm !== undefined && item.cbm !== null && item.cbm !== '' ? item.cbm : ''}"></td>
+        <td><input type="text" placeholder="비고" class="pl-rmk" value="${escapeHtml(item.remarks || '')}"></td>
+        <td style="text-align:center;">
+            <button type="button" class="btn-row-action btn-row-del" title="삭제"><i class='bx bx-trash'></i></button>
+        </td>
     `;
     
-    const inputs = div.querySelectorAll('.i-nw, .i-gw');
+    const inputs = tr.querySelectorAll('.pl-nw, .pl-gw, .pl-cbm');
     inputs.forEach(inp => inp.addEventListener('input', calcPlTotals));
     
-    div.querySelector('.inv-item-del').addEventListener('click', () => {
-        div.remove();
+    tr.querySelector('.btn-row-del').addEventListener('click', () => {
+        tr.remove();
         calcPlTotals();
     });
     
-    els.plItemLines.appendChild(div);
+    els.plItemLines.appendChild(tr);
 }
 
 function calcPlTotals() {
-    let totNW = 0, totGW = 0;
+    let totNW = 0, totGW = 0, totCBM = 0;
     Array.from(els.plItemLines.children).forEach(row => {
-        totNW += parseFloat(row.querySelector('.i-nw').value) || 0;
-        totGW += parseFloat(row.querySelector('.i-gw').value) || 0;
+        totNW += parseFloat(row.querySelector('.pl-nw')?.value) || 0;
+        totGW += parseFloat(row.querySelector('.pl-gw')?.value) || 0;
+        totCBM += parseFloat(row.querySelector('.pl-cbm')?.value) || 0;
     });
-    document.getElementById('totNW').textContent = totNW.toFixed(2);
-    document.getElementById('totGW').textContent = totGW.toFixed(2);
+    if (document.getElementById('totNW')) document.getElementById('totNW').textContent = totNW.toFixed(2);
+    if (document.getElementById('totGW')) document.getElementById('totGW').textContent = totGW.toFixed(2);
+    if (document.getElementById('totCBM')) document.getElementById('totCBM').textContent = totCBM.toFixed(3);
 }
 
 function gatherPlItems() {
     return Array.from(els.plItemLines.children).map(row => ({
-        containerNo: row.querySelector('.i-cont').value.trim(),
-        description: row.querySelector('.i-desc').value.trim(),
-        qty: parseFloat(row.querySelector('.i-qty').value) || 0,
-        unit: row.querySelector('.i-unit').value.trim() || 'EA',
-        netWeight: parseFloat(row.querySelector('.i-nw').value) || 0,
-        grossWeight: parseFloat(row.querySelector('.i-gw').value) || 0,
-        remarks: row.querySelector('.i-rmk').value.trim()
-    })).filter(i => i.description || i.qty > 0 || i.containerNo);
+        containerNo: row.querySelector('.pl-cont')?.value.trim() || '',
+        description: row.querySelector('.pl-desc')?.value.trim() || '',
+        qty: parseFloat(row.querySelector('.pl-qty')?.value) || 0,
+        unit: row.querySelector('.pl-unit')?.value.trim() || 'EA',
+        netWeight: parseFloat(row.querySelector('.pl-nw')?.value) || 0,
+        grossWeight: parseFloat(row.querySelector('.pl-gw')?.value) || 0,
+        cbm: parseFloat(row.querySelector('.pl-cbm')?.value) || 0,
+        remarks: row.querySelector('.pl-rmk')?.value.trim() || ''
+    })).filter(i => i.description || i.qty > 0 || i.containerNo || i.netWeight > 0);
 }
 
-if(els.copyFromInvBtn) {
+if (els.copyFromInvBtn) {
     els.copyFromInvBtn.addEventListener('click', () => {
         const invItems = gatherInvItems();
-        if(invItems.length === 0) return showToast('가져올 인보이스 품목이 없습니다.', 'error');
+        if (invItems.length === 0) return showToast('가져올 인보이스 품목이 없습니다.', 'error');
+        const cNo = document.getElementById('inpPlContainerNo')?.value?.trim() || '';
         invItems.forEach(i => {
             createPlItemLine({
+                containerNo: cNo,
                 description: i.description,
                 qty: i.qty,
-                unit: i.unit
+                unit: i.unit,
+                netWeight: 0,
+                grossWeight: 0,
+                cbm: 0,
+                remarks: ''
             });
         });
-        showToast('인보이스 품목을 가져왔습니다.');
+        calcPlTotals();
+        showToast(`${invItems.length}개의 인보이스 품목을 팩킹리스트로 가져왔습니다.`);
     });
 }
 
@@ -570,21 +680,38 @@ if (els.btnClearPiTpl) {
     });
 }
 
-// ── Modal Logic (Create/Edit) ──
+// ── Modal Logic (Create/Edit - ECOUNT ERP Style) ──
+function resetSubTabToPi() {
+    document.querySelectorAll('#docSubTabGroup .erp-tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.subtab === 'piTab');
+    });
+    document.querySelectorAll('.erp-sub-tab-content').forEach(c => {
+        c.classList.toggle('active', c.id === 'piTab');
+    });
+}
+
 function openDocModal(doc = null) {
     els.docForm.reset();
     els.itemLines.innerHTML = '';
+    els.plItemLines.innerHTML = '';
+    resetSubTabToPi();
     
     if (doc) {
-        els.modalTitle.textContent = '거래 내역 수정';
+        els.modalTitle.textContent = '무역 전표 수정';
+        if (els.modalDocBadge) {
+            els.modalDocBadge.textContent = doc.proformaNo || doc.invoiceNo || doc.id || '전표 수정';
+        }
         document.getElementById('editId').value = doc.id;
         document.getElementById('inpStatus').value = doc.status || '임시작성';
         
-        if (els.inpProformaNo) els.inpProformaNo.value = doc.proformaNo || '';
-        document.getElementById('inpInvoiceNo').value = doc.invoiceNo || '';
-        document.getElementById('inpPackingListNo').value = doc.packingListNo || '';
-        document.getElementById('inpDocDate').value = doc.docDate || '';
+        // Common
         document.getElementById('inpCurrency').value = doc.currency || 'USD';
+        document.getElementById('inpIncoterms').value = doc.incoterms || '';
+        document.getElementById('inpPortOfLoading').value = doc.portOfLoading || '';
+        document.getElementById('inpPortOfDischarge').value = doc.portOfDischarge || '';
+        document.getElementById('inpFinalDestination').value = doc.finalDestination || '';
+        document.getElementById('inpCountryOfOrigin').value = doc.countryOfOrigin || '';
+        document.getElementById('inpPaymentTerms').value = doc.paymentTerms || '';
         
         // Shipper
         document.getElementById('inpShipperName').value = doc.shipper?.name || '';
@@ -609,18 +736,41 @@ function openDocModal(doc = null) {
         document.getElementById('inpNotifyName').value = doc.notifyParty?.name || '';
         document.getElementById('inpNotifyAddress').value = doc.notifyParty?.address || '';
         document.getElementById('inpNotifyTel').value = doc.notifyParty?.tel || '';
+        if (els.chkNotifySameAsConsignee) {
+            els.chkNotifySameAsConsignee.checked = !!(doc.notifyParty?.name && doc.notifyParty?.name === doc.consignee?.name);
+        }
         
-        els.itemLines.innerHTML = '';
-        els.plItemLines.innerHTML = '';
+        // Sub-Tab 1: P/I
+        if (els.inpProformaNo) els.inpProformaNo.value = doc.proformaNo || '';
+        document.getElementById('inpDocDate').value = doc.docDate || '';
+        const ed = doc.extraData || {};
+        if (document.getElementById('inpPiValidity')) document.getElementById('inpPiValidity').value = ed.piValidity || doc.piValidity || '';
+        if (document.getElementById('inpPiShipmentDeadline')) document.getElementById('inpPiShipmentDeadline').value = ed.piShipmentDeadline || doc.piShipmentDeadline || '';
+        if (document.getElementById('inpPiPartialShipment')) document.getElementById('inpPiPartialShipment').value = ed.piPartialShipment || doc.piPartialShipment || 'Not Allowed';
+        if (document.getElementById('inpPiTransshipment')) document.getElementById('inpPiTransshipment').value = ed.piTransshipment || doc.piTransshipment || 'Not Allowed';
+        if (document.getElementById('inpPiPaymentDetail')) document.getElementById('inpPiPaymentDetail').value = ed.piPaymentDetail || doc.piPaymentDetail || '';
+        if (els.chkPiBuyerSign) {
+            els.chkPiBuyerSign.checked = ed.includeBuyerSign !== undefined ? !!ed.includeBuyerSign : (doc.includeBuyerSign !== undefined ? !!doc.includeBuyerSign : true);
+        }
+        if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = doc.termsAndConditions || '';
         
-        document.getElementById('inpCountryOfOrigin').value = doc.countryOfOrigin || '';
-        document.getElementById('inpDepartureDate').value = doc.departureDate || '';
+        // Sub-Tab 2: C/I
+        document.getElementById('inpInvoiceNo').value = doc.invoiceNo || '';
+        if (document.getElementById('inpCiDate')) document.getElementById('inpCiDate').value = ed.ciDate || doc.ciDate || doc.docDate || '';
         document.getElementById('inpVessel').value = doc.vessel || '';
-        document.getElementById('inpIncoterms').value = doc.incoterms || '';
-        document.getElementById('inpPortOfLoading').value = doc.portOfLoading || '';
-        document.getElementById('inpPortOfDischarge').value = doc.portOfDischarge || '';
-        document.getElementById('inpFinalDestination').value = doc.finalDestination || '';
-        document.getElementById('inpPaymentTerms').value = doc.paymentTerms || '';
+        document.getElementById('inpDepartureDate').value = doc.departureDate || '';
+        if (document.getElementById('inpArrivalDate')) document.getElementById('inpArrivalDate').value = ed.arrivalDate || doc.arrivalDate || '';
+        if (document.getElementById('inpBlNo')) document.getElementById('inpBlNo').value = ed.blNo || doc.blNo || '';
+        if (document.getElementById('inpCoNo')) document.getElementById('inpCoNo').value = ed.coNo || doc.coNo || '';
+        document.getElementById('inpRemarks').value = doc.remarks || '';
+        
+        // Sub-Tab 3: P/L
+        document.getElementById('inpPackingListNo').value = doc.packingListNo || '';
+        if (document.getElementById('inpPlDate')) document.getElementById('inpPlDate').value = ed.plDate || doc.plDate || doc.docDate || '';
+        if (document.getElementById('inpPlContainerNo')) document.getElementById('inpPlContainerNo').value = ed.containerNo || doc.containerNo || '';
+        if (document.getElementById('inpPlSealNo')) document.getElementById('inpPlSealNo').value = ed.sealNo || doc.sealNo || '';
+        if (document.getElementById('inpPlTotalPackages')) document.getElementById('inpPlTotalPackages').value = ed.totalPackages || doc.totalPackages || '';
+        if (document.getElementById('inpPlShippingMark')) document.getElementById('inpPlShippingMark').value = ed.shippingMark || doc.shippingMark || '';
         
         // Items
         if (doc.items && doc.items.length > 0) {
@@ -637,18 +787,19 @@ function openDocModal(doc = null) {
         
         calcInvTotals();
         calcPlTotals();
-        if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = doc.termsAndConditions || '';
-        document.getElementById('inpRemarks').value = doc.remarks || '';
         
     } else {
-        els.modalTitle.textContent = '신규 거래 생성';
+        els.modalTitle.textContent = '신규 거래 전표 생성';
+        if (els.modalDocBadge) els.modalDocBadge.textContent = '신규 전표';
         document.getElementById('editId').value = '';
         document.getElementById('inpStatus').value = '임시작성';
-        if (els.inpProformaNo) els.inpProformaNo.value = '';
-        document.getElementById('inpInvoiceNo').value = '';
-        document.getElementById('inpPackingListNo').value = '';
-        document.getElementById('inpDocDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('inpCurrency').value = 'USD';
+        document.getElementById('inpIncoterms').value = '';
+        document.getElementById('inpPortOfLoading').value = '';
+        document.getElementById('inpPortOfDischarge').value = '';
+        document.getElementById('inpFinalDestination').value = '';
+        document.getElementById('inpCountryOfOrigin').value = 'Republic of Korea';
+        document.getElementById('inpPaymentTerms').value = '';
         
         // Shipper 초기화
         document.getElementById('inpShipperName').value = '';
@@ -673,19 +824,39 @@ function openDocModal(doc = null) {
         document.getElementById('inpNotifyName').value = '';
         document.getElementById('inpNotifyAddress').value = '';
         document.getElementById('inpNotifyTel').value = '';
+        if (els.chkNotifySameAsConsignee) els.chkNotifySameAsConsignee.checked = false;
 
-        document.getElementById('inpCountryOfOrigin').value = '';
-        document.getElementById('inpDepartureDate').value = '';
-        document.getElementById('inpVessel').value = '';
-        document.getElementById('inpIncoterms').value = '';
-        document.getElementById('inpPortOfLoading').value = '';
-        document.getElementById('inpPortOfDischarge').value = '';
-        document.getElementById('inpFinalDestination').value = '';
-        document.getElementById('inpPaymentTerms').value = '';
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (els.inpProformaNo) els.inpProformaNo.value = '';
+        document.getElementById('inpDocDate').value = todayStr;
+        if (document.getElementById('inpPiValidity')) document.getElementById('inpPiValidity').value = '30 days from date hereof';
+        if (document.getElementById('inpPiShipmentDeadline')) document.getElementById('inpPiShipmentDeadline').value = '';
+        if (document.getElementById('inpPiPartialShipment')) document.getElementById('inpPiPartialShipment').value = 'Not Allowed';
+        if (document.getElementById('inpPiTransshipment')) document.getElementById('inpPiTransshipment').value = 'Not Allowed';
+        if (document.getElementById('inpPiPaymentDetail')) document.getElementById('inpPiPaymentDetail').value = '';
+        if (els.chkPiBuyerSign) els.chkPiBuyerSign.checked = true;
         if (els.inpTermsAndConditions) els.inpTermsAndConditions.value = '';
+
+        document.getElementById('inpInvoiceNo').value = '';
+        if (document.getElementById('inpCiDate')) document.getElementById('inpCiDate').value = todayStr;
+        document.getElementById('inpVessel').value = '';
+        document.getElementById('inpDepartureDate').value = '';
+        if (document.getElementById('inpArrivalDate')) document.getElementById('inpArrivalDate').value = '';
+        if (document.getElementById('inpBlNo')) document.getElementById('inpBlNo').value = '';
+        if (document.getElementById('inpCoNo')) document.getElementById('inpCoNo').value = '';
         document.getElementById('inpRemarks').value = '';
+
+        document.getElementById('inpPackingListNo').value = '';
+        if (document.getElementById('inpPlDate')) document.getElementById('inpPlDate').value = todayStr;
+        if (document.getElementById('inpPlContainerNo')) document.getElementById('inpPlContainerNo').value = '';
+        if (document.getElementById('inpPlSealNo')) document.getElementById('inpPlSealNo').value = '';
+        if (document.getElementById('inpPlTotalPackages')) document.getElementById('inpPlTotalPackages').value = '';
+        if (document.getElementById('inpPlShippingMark')) document.getElementById('inpPlShippingMark').value = '';
+
         createInvItemLine();
         createPlItemLine();
+        calcInvTotals();
+        calcPlTotals();
     }
     
     initialDocSnapshot = getDocFormSnapshot();
@@ -698,18 +869,20 @@ function getDocFormSnapshot() {
     if (!els.docForm) return '';
     const data = new FormData(els.docForm);
     const obj = Object.fromEntries(data.entries());
-    const invItems = [...els.itemLines.querySelectorAll('.inv-item-row')].map(r => ({
+    const invItems = [...els.itemLines.querySelectorAll('.item-row')].map(r => ({
         desc: r.querySelector('.i-desc')?.value || '',
         hs: r.querySelector('.i-hs')?.value || '',
         qty: r.querySelector('.i-qty')?.value || '',
         unit: r.querySelector('.i-unit')?.value || '',
         price: r.querySelector('.i-price')?.value || ''
     }));
-    const plItems = els.plItemLines ? [...els.plItemLines.querySelectorAll('.pl-item-row')].map(r => ({
+    const plItems = els.plItemLines ? [...els.plItemLines.querySelectorAll('.pl-row')].map(r => ({
+        cont: r.querySelector('.pl-cont')?.value || '',
         desc: r.querySelector('.pl-desc')?.value || '',
-        ctn: r.querySelector('.pl-ctn')?.value || '',
-        gw: r.querySelector('.pl-gw')?.value || '',
+        qty: r.querySelector('.pl-qty')?.value || '',
+        unit: r.querySelector('.pl-unit')?.value || '',
         nw: r.querySelector('.pl-nw')?.value || '',
+        gw: r.querySelector('.pl-gw')?.value || '',
         cbm: r.querySelector('.pl-cbm')?.value || ''
     })) : [];
     return JSON.stringify({ obj, invItems, plItems, terms: els.inpTermsAndConditions?.value || '' });
@@ -748,7 +921,7 @@ window.copyDoc = function(id) {
     
     openDocModal(clonedDoc);
     els.modalTitle.textContent = '문서 복사 생성';
-    showToast('문서 내용이 복사되었습니다. 저장 시 새로운 문서로 생성됩니다.');
+    showToast('문서 내용이 복사되었습니다. 저장 시 새로운 전표로 생성됩니다.');
 };
 
 window.deleteDoc = async function(id) {
@@ -766,60 +939,82 @@ els.saveDocBtn.addEventListener('click', async () => {
     const id = document.getElementById('editId').value;
     const isEdit = !!id;
     
+    const extraData = {
+        piValidity: document.getElementById('inpPiValidity')?.value?.trim() || '',
+        piShipmentDeadline: document.getElementById('inpPiShipmentDeadline')?.value?.trim() || '',
+        piPartialShipment: document.getElementById('inpPiPartialShipment')?.value || 'Not Allowed',
+        piTransshipment: document.getElementById('inpPiTransshipment')?.value || 'Not Allowed',
+        piPaymentDetail: document.getElementById('inpPiPaymentDetail')?.value?.trim() || '',
+        includeBuyerSign: !!document.getElementById('chkPiBuyerSign')?.checked,
+        
+        ciDate: document.getElementById('inpCiDate')?.value || '',
+        blNo: document.getElementById('inpBlNo')?.value?.trim() || '',
+        arrivalDate: document.getElementById('inpArrivalDate')?.value || '',
+        coNo: document.getElementById('inpCoNo')?.value?.trim() || '',
+        
+        plDate: document.getElementById('inpPlDate')?.value || '',
+        containerNo: document.getElementById('inpPlContainerNo')?.value?.trim() || '',
+        sealNo: document.getElementById('inpPlSealNo')?.value?.trim() || '',
+        totalPackages: document.getElementById('inpPlTotalPackages')?.value?.trim() || '',
+        shippingMark: document.getElementById('inpPlShippingMark')?.value?.trim() || '',
+        totalCbm: parseFloat(document.getElementById('totCBM')?.textContent) || 0
+    };
+    
     const payload = {
-        status: document.getElementById('inpStatus').value,
+        status: document.getElementById('inpStatus')?.value || '임시작성',
         proformaNo: els.inpProformaNo ? els.inpProformaNo.value.trim() : '',
-        invoiceNo: document.getElementById('inpInvoiceNo').value.trim(),
-        packingListNo: document.getElementById('inpPackingListNo').value.trim(),
-        docDate: document.getElementById('inpDocDate').value,
-        currency: document.getElementById('inpCurrency').value,
+        invoiceNo: document.getElementById('inpInvoiceNo')?.value?.trim() || '',
+        packingListNo: document.getElementById('inpPackingListNo')?.value?.trim() || '',
+        docDate: document.getElementById('inpDocDate')?.value || '',
+        currency: document.getElementById('inpCurrency')?.value || 'USD',
         
         shipper: {
-            name: document.getElementById('inpShipperName').value.trim(),
-            address: document.getElementById('inpShipperAddress').value.trim(),
-            tel: document.getElementById('inpShipperTel').value.trim(),
-            fax: document.getElementById('inpShipperFax').value.trim(),
-            email: document.getElementById('inpShipperEmail').value.trim(),
+            name: document.getElementById('inpShipperName')?.value?.trim() || '',
+            address: document.getElementById('inpShipperAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpShipperTel')?.value?.trim() || '',
+            fax: document.getElementById('inpShipperFax')?.value?.trim() || '',
+            email: document.getElementById('inpShipperEmail')?.value?.trim() || '',
             bankInfo: {
-                bankName: document.getElementById('inpShipperBank').value.trim(),
-                accountNo: document.getElementById('inpShipperAccountNo').value.trim(),
-                swift: document.getElementById('inpShipperSwift').value.trim(),
+                bankName: document.getElementById('inpShipperBank')?.value?.trim() || '',
+                accountNo: document.getElementById('inpShipperAccountNo')?.value?.trim() || '',
+                swift: document.getElementById('inpShipperSwift')?.value?.trim() || '',
                 intermediaryBank: document.getElementById('inpShipperIntermediaryBank')?.value?.trim() || '',
-                bankAddress: document.getElementById('inpShipperBankAddress').value.trim()
+                bankAddress: document.getElementById('inpShipperBankAddress')?.value?.trim() || ''
             }
         },
         consignee: {
-            name: document.getElementById('inpConsigneeName').value.trim(),
-            address: document.getElementById('inpConsigneeAddress').value.trim(),
-            tel: document.getElementById('inpConsigneeTel').value.trim(),
-            fax: document.getElementById('inpConsigneeFax').value.trim(),
-            email: document.getElementById('inpConsigneeEmail').value.trim()
+            name: document.getElementById('inpConsigneeName')?.value?.trim() || '',
+            address: document.getElementById('inpConsigneeAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpConsigneeTel')?.value?.trim() || '',
+            fax: document.getElementById('inpConsigneeFax')?.value?.trim() || '',
+            email: document.getElementById('inpConsigneeEmail')?.value?.trim() || ''
         },
         notifyParty: {
-            name: document.getElementById('inpNotifyName').value.trim(),
-            address: document.getElementById('inpNotifyAddress').value.trim(),
-            tel: document.getElementById('inpNotifyTel').value.trim()
+            name: document.getElementById('inpNotifyName')?.value?.trim() || '',
+            address: document.getElementById('inpNotifyAddress')?.value?.trim() || '',
+            tel: document.getElementById('inpNotifyTel')?.value?.trim() || ''
         },
         
-        countryOfOrigin: document.getElementById('inpCountryOfOrigin').value.trim(),
-        departureDate: document.getElementById('inpDepartureDate').value,
-        vessel: document.getElementById('inpVessel').value.trim(),
-        incoterms: document.getElementById('inpIncoterms').value.trim(),
-        portOfLoading: document.getElementById('inpPortOfLoading').value.trim(),
-        portOfDischarge: document.getElementById('inpPortOfDischarge').value.trim(),
-        finalDestination: document.getElementById('inpFinalDestination').value.trim(),
-        paymentTerms: document.getElementById('inpPaymentTerms').value.trim(),
+        countryOfOrigin: document.getElementById('inpCountryOfOrigin')?.value?.trim() || '',
+        departureDate: document.getElementById('inpDepartureDate')?.value || '',
+        vessel: document.getElementById('inpVessel')?.value?.trim() || '',
+        incoterms: document.getElementById('inpIncoterms')?.value?.trim() || '',
+        portOfLoading: document.getElementById('inpPortOfLoading')?.value?.trim() || '',
+        portOfDischarge: document.getElementById('inpPortOfDischarge')?.value?.trim() || '',
+        finalDestination: document.getElementById('inpFinalDestination')?.value?.trim() || '',
+        paymentTerms: document.getElementById('inpPaymentTerms')?.value?.trim() || '',
         
         items: gatherInvItems(),
         packingItems: gatherPlItems(),
         termsAndConditions: els.inpTermsAndConditions ? els.inpTermsAndConditions.value.trim() : '',
-        remarks: document.getElementById('inpRemarks').value.trim(),
+        remarks: document.getElementById('inpRemarks')?.value?.trim() || '',
         
-        totalAmount: parseFloat(document.getElementById('totAmount').textContent.replace(/,/g,'')) || 0,
-        totalQty: parseFloat(document.getElementById('totQty').textContent.replace(/,/g,'')) || 0,
-        totalNetWeight: parseFloat(document.getElementById('totNW').textContent) || 0,
-        totalGrossWeight: parseFloat(document.getElementById('totGW').textContent) || 0,
-        totalMeasurement: 0,
+        totalAmount: parseFloat(document.getElementById('totAmount')?.textContent?.replace(/,/g,'')) || 0,
+        totalQty: parseFloat(document.getElementById('totQty')?.textContent?.replace(/,/g,'')) || 0,
+        totalNetWeight: parseFloat(document.getElementById('totNW')?.textContent) || 0,
+        totalGrossWeight: parseFloat(document.getElementById('totGW')?.textContent) || 0,
+        totalMeasurement: extraData.totalCbm,
+        extraData: extraData
     };
     
     try {
@@ -827,7 +1022,7 @@ els.saveDocBtn.addEventListener('click', async () => {
         const method = isEdit ? 'PUT' : 'POST';
         await authFetch(url, { method, body: JSON.stringify(payload) });
         
-        showToast(isEdit ? '수정되었습니다.' : '저장되었습니다.');
+        showToast(isEdit ? '무역 전표가 수정되었습니다.' : '신규 무역 전표가 저장되었습니다.');
         closeDocModal(true);
         loadDocs();
     } catch (e) {
@@ -1249,16 +1444,56 @@ function renderPreview() {
                 ${d.notifyParty?.name ? fmtAddr(d.notifyParty) : 'Same as Consignee'}
             </div>
         </div>
+        `;
         
-        <div class="doc-shipping">
-            <div class="doc-shipping-cell"><div class="sh-label">Port of Loading</div><div class="sh-value">${d.portOfLoading || '-'}</div></div>
-            <div class="doc-shipping-cell"><div class="sh-label">Port of Discharge</div><div class="sh-value">${d.portOfDischarge || '-'}</div></div>
-            <div class="doc-shipping-cell"><div class="sh-label">Final Destination</div><div class="sh-value">${d.finalDestination || '-'}</div></div>
-            <div class="doc-shipping-cell"><div class="sh-label">Vessel / Flight</div><div class="sh-value">${d.vessel || '-'} ${d.departureDate ? '<span style="color:#666;font-size:9px;">(ETD: '+d.departureDate+')</span>' : ''}</div></div>
-            <div class="doc-shipping-cell" style="grid-column: span 2;"><div class="sh-label">Payment Terms</div><div class="sh-value">${d.paymentTerms || '-'}</div></div>
-            <div class="doc-shipping-cell" style="grid-column: span 2;"><div class="sh-label">Incoterms</div><div class="sh-value">${d.incoterms || '-'}</div></div>
-        </div>
+        const ed = d.extraData || {};
         
+        let shippingBoxHtml = '';
+        if (isPi) {
+            shippingBoxHtml = `
+            <div class="doc-shipping" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Loading</div><div class="sh-value">${d.portOfLoading || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Discharge</div><div class="sh-value">${d.portOfDischarge || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Final Destination</div><div class="sh-value">${d.finalDestination || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Incoterms</div><div class="sh-value">${d.incoterms || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Price / Validity</div><div class="sh-value">${ed.piValidity || '30 days from date hereof'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Latest Shipment Date</div><div class="sh-value">${ed.piShipmentDeadline || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Partial Shipment</div><div class="sh-value">${ed.piPartialShipment || 'Not Allowed'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Transshipment</div><div class="sh-value">${ed.piTransshipment || 'Not Allowed'}</div></div>
+                <div class="doc-shipping-cell" style="grid-column: span 4;"><div class="sh-label">Payment Terms</div><div class="sh-value">${ed.piPaymentDetail || d.paymentTerms || '-'}</div></div>
+            </div>`;
+        } else if (isInv) {
+            shippingBoxHtml = `
+            <div class="doc-shipping" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Loading</div><div class="sh-value">${d.portOfLoading || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Discharge</div><div class="sh-value">${d.portOfDischarge || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Final Destination</div><div class="sh-value">${d.finalDestination || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Incoterms</div><div class="sh-value">${d.incoterms || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Vessel / Flight</div><div class="sh-value">${d.vessel || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Departure Date (ETD)</div><div class="sh-value">${d.departureDate || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Arrival Date (ETA)</div><div class="sh-value">${ed.arrivalDate || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">B/L No.</div><div class="sh-value">${ed.blNo || '-'}</div></div>
+                <div class="doc-shipping-cell" style="grid-column: span 3;"><div class="sh-label">Payment Terms</div><div class="sh-value">${d.paymentTerms || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">C/O No.</div><div class="sh-value">${ed.coNo || '-'}</div></div>
+            </div>`;
+        } else {
+            // Packing List
+            const totCbm = Number(d.totalMeasurement || ed.totalCbm || 0).toFixed(3);
+            shippingBoxHtml = `
+            <div class="doc-shipping" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Loading</div><div class="sh-value">${d.portOfLoading || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Port of Discharge</div><div class="sh-value">${d.portOfDischarge || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Final Destination</div><div class="sh-value">${d.finalDestination || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Vessel / Flight</div><div class="sh-value">${d.vessel || '-'} ${d.departureDate ? '(ETD: '+d.departureDate+')' : ''}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Total Packages</div><div class="sh-value">${ed.totalPackages || '-'}</div></div>
+                <div class="doc-shipping-cell"><div class="sh-label">Total Measurement</div><div class="sh-value">${totCbm} CBM</div></div>
+                <div class="doc-shipping-cell" style="grid-column: span 2;"><div class="sh-label">Shipping Mark</div><div class="sh-value">${ed.shippingMark || 'N/M'}</div></div>
+            </div>`;
+        }
+        
+        html += shippingBoxHtml;
+        
+        html += `
         <table class="doc-items-table">
             <thead>
                 ${(isPi || isInv) ? `
@@ -1309,32 +1544,45 @@ function renderPreview() {
             </div>`;
         }
 
-        html += `
-        <div class="doc-dual-signatures">
-            <div class="doc-sig-block">
-                <div>
-                    <div class="sig-party-title">SELLER / EXPORTER</div>
-                    <div class="sig-confirm-text">For and on behalf of Seller:</div>
-                    <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.shipper?.name || 'Seller'}</div>
+        const includeBuyerSign = ed.includeBuyerSign !== undefined ? !!ed.includeBuyerSign : true;
+        if (includeBuyerSign) {
+            html += `
+            <div class="doc-dual-signatures">
+                <div class="doc-sig-block">
+                    <div>
+                        <div class="sig-party-title">SELLER / EXPORTER</div>
+                        <div class="sig-confirm-text">For and on behalf of Seller:</div>
+                        <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.shipper?.name || 'Seller'}</div>
+                    </div>
+                    <div class="sig-line-row">
+                        <span class="sig-line-text">Authorized Signature &amp; Seal</span>
+                        <span class="sig-date-text">Date: ________________</span>
+                    </div>
                 </div>
-                <div class="sig-line-row">
-                    <span class="sig-line-text">Authorized Signature &amp; Seal</span>
-                    <span class="sig-date-text">Date: ________________</span>
+                <div class="doc-sig-block">
+                    <div>
+                        <div class="sig-party-title">BUYER / IMPORTER</div>
+                        <div class="sig-confirm-text">Accepted &amp; Confirmed by Buyer:</div>
+                        <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.consignee?.name || 'Buyer'}</div>
+                    </div>
+                    <div class="sig-line-row">
+                        <span class="sig-line-text">Authorized Signature &amp; Seal</span>
+                        <span class="sig-date-text">Date: ________________</span>
+                    </div>
                 </div>
             </div>
-            <div class="doc-sig-block">
-                <div>
-                    <div class="sig-party-title">BUYER / IMPORTER</div>
-                    <div class="sig-confirm-text">Accepted &amp; Confirmed by Buyer:</div>
-                    <div style="font-weight:700; color:#1e293b; font-size:12px; margin-top:4px;">${d.consignee?.name || 'Buyer'}</div>
-                </div>
-                <div class="sig-line-row">
-                    <span class="sig-line-text">Authorized Signature &amp; Seal</span>
-                    <span class="sig-date-text">Date: ________________</span>
+            `;
+        } else {
+            html += `
+            <div class="doc-footer">
+                <div class="doc-signature">
+                    For and on behalf of<br>
+                    <b>${d.shipper?.name || 'Seller'}</b>
+                    <div class="sig-line">Authorized Signature &amp; Seal</div>
                 </div>
             </div>
-        </div>
-        `;
+            `;
+        }
     } else {
         // Commercial Invoice Bank Info
         if (isInv && d.shipper?.bankInfo?.bankName) {
@@ -1379,7 +1627,12 @@ els.previewOverlay.addEventListener('click', (e) => {
     if (e.target === els.previewOverlay) closePreview();
 });
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'F8') {
+        if (els.docModal.classList.contains('active')) {
+            e.preventDefault();
+            els.saveDocBtn.click();
+        }
+    } else if (e.key === 'Escape') {
         if (els.previewOverlay.classList.contains('active')) closePreview();
         else if (els.tplPickerModal.classList.contains('active')) els.tplPickerModal.classList.remove('active');
         else if (els.docModal.classList.contains('active')) closeDocModal(false);

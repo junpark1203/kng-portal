@@ -88,174 +88,335 @@
 .inv-row-actions button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-muted); }
 .inv-row-actions button.btn-delete:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
-/* ── Modal ── */
+/* ── Modal (ECOUNT ERP Style) ── */
 .inv-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
     z-index: 999; display: none; align-items: flex-start; justify-content: center;
-    padding-top: 30px; overflow-y: auto;
+    padding: 20px 10px 40px; overflow-y: auto;
     backdrop-filter: blur(2px);
 }
 .inv-modal-overlay.active { display: flex; }
 .inv-modal {
-    background: var(--surface); border-radius: 12px; width: 780px; max-width: 96vw;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15); margin-bottom: 40px;
-    animation: invModalIn 0.25s ease;
+    background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px;
+    width: 1080px; max-width: 98vw;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.18); margin-bottom: 30px;
+    animation: invModalIn 0.2s ease;
+    display: flex; flex-direction: column;
 }
-@keyframes invModalIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes invModalIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
 .inv-modal-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 24px; border-bottom: 1px solid var(--gray-200);
+    padding: 6px 14px; border-bottom: 1px solid #cbd5e1; background: #ffffff;
+    min-height: 40px; border-radius: 4px 4px 0 0;
 }
 .inv-modal-header h2 {
-    font-size: 16px; font-weight: 700; color: var(--gray-800);
+    font-size: 13.5px; font-weight: 700; color: #0f172a;
     display: flex; align-items: center; gap: 8px; margin: 0;
+    letter-spacing: -0.3px;
 }
-.inv-modal-header h2 i { color: var(--primary); }
+.inv-modal-header h2 i { color: #2563eb; font-size: 17px; }
 .inv-modal-close {
-    width: 32px; height: 32px; border: none; background: none;
-    cursor: pointer; border-radius: 6px; color: var(--gray-500);
-    font-size: 20px; display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
+    width: 26px; height: 26px; border: 1px solid transparent; background: transparent;
+    cursor: pointer; border-radius: 2px; color: #64748b;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
 }
-.inv-modal-close:hover { background: var(--gray-100); color: var(--gray-800); }
-.inv-modal-body { padding: 20px 24px; max-height: 72vh; overflow-y: auto; }
+.inv-modal-close:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+
+.inv-modal-body {
+    padding: 10px 14px; max-height: calc(88vh - 84px); overflow-y: auto;
+    background: #f8fafc; font-size: 11.5px;
+}
 .inv-modal-footer {
-    display: flex; justify-content: flex-end; gap: 8px;
-    padding: 14px 24px; border-top: 1px solid var(--gray-200);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 14px; border-top: 1px solid #cbd5e1; background: #ffffff;
+    border-radius: 0 0 4px 4px;
 }
 
-/* ── Form Grid ── */
-.inv-form-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+/* ── ECOUNT ERP 카드 및 섹션 박스 ── */
+.erp-card-box {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
-.inv-form-grid .fg-full { grid-column: 1 / -1; }
-.inv-form-grid .fg-triple { grid-column: span 3; }
-.inv-section-title {
-    grid-column: 1 / -1;
-    font-size: 11px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.8px; padding: 10px 0 4px 10px; margin: 4px 0 0;
-    border-bottom: 1px solid var(--gray-100);
-    border-left: 3px solid var(--primary);
-    color: var(--gray-600);
-    display: flex; align-items: center; justify-content: space-between;
-}
-.inv-section-title .load-tpl-btn {
-    font-size: 10px; padding: 3px 10px; border: 1px solid var(--primary);
-    border-radius: 12px; background: var(--primary-muted); color: var(--primary);
-    cursor: pointer; font-weight: 600; transition: all 0.15s;
-}
-.inv-section-title .load-tpl-btn:hover { background: var(--primary); color: #fff; }
-.inv-fg {
-    display: flex; flex-direction: column; gap: 3px; min-width: 0;
-}
-.inv-fg > label {
-    font-size: 10.5px; font-weight: 600; color: var(--gray-500);
-    text-transform: uppercase; letter-spacing: 0.4px;
-}
-.inv-fg input, .inv-fg select, .inv-fg textarea {
-    height: 34px; padding: 0 10px;
-    border: 1px solid var(--border); border-radius: 5px;
-    font-size: 12.5px; font-weight: 500; outline: none;
-    transition: all 0.15s; background: var(--surface);
-    color: var(--gray-800); width: 100%;
-    font-family: 'Inter', sans-serif;
-}
-.inv-fg textarea { height: 60px; padding: 8px 10px; resize: vertical; }
-.inv-fg input:focus, .inv-fg select:focus, .inv-fg textarea:focus {
-    border-color: var(--primary); box-shadow: 0 0 0 2.5px var(--primary-muted);
-}
-.inv-fg input.calc-preview {
-    background: var(--gray-50); font-weight: 600; color: var(--primary); cursor: default;
-}
-
-/* ── Item Lines ── */
-.inv-items-section { grid-column: 1 / -1; }
-.inv-items-header {
-    display: grid;
-    grid-template-columns: 2fr 1fr 0.6fr 0.6fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 40px;
-    gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--gray-200);
-}
-.inv-items-header span {
-    font-size: 9.5px; font-weight: 700; color: var(--gray-400);
-    text-transform: uppercase; letter-spacing: 0.3px;
-}
-.inv-item-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 0.6fr 0.6fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 40px;
-    gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--gray-50);
+.erp-card-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
-.inv-item-row input {
-    height: 30px; padding: 0 6px; border: 1px solid var(--border);
-    border-radius: 4px; font-size: 11.5px; outline: none; width: 100%;
-    font-family: 'Inter', sans-serif;
+.erp-card-header i {
+    color: #2563eb;
+    margin-right: 2px;
 }
-.inv-item-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted); }
-.inv-item-row input.item-amount {
-    background: var(--gray-50); font-weight: 600; color: var(--primary); cursor: default;
-}
-.inv-item-del {
-    width: 28px; height: 28px; border: 1px solid var(--gray-200);
-    border-radius: 5px; background: var(--surface); color: var(--gray-400);
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 13px; padding: 0; transition: all 0.15s;
-}
-.inv-item-del:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
-.inv-add-item {
-    display: flex; align-items: center; gap: 6px; justify-content: center;
-    width: 100%; padding: 8px; margin-top: 6px;
-    border: 1px dashed var(--gray-300); border-radius: 6px;
-    background: transparent; color: var(--gray-500);
-    font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all 0.15s;
-}
-.inv-add-item:hover { border-color: var(--primary); color: var(--primary); background: rgba(44,62,143,0.04); }
-.inv-totals-bar {
-    display: flex; flex-wrap: wrap; gap: 16px; justify-content: flex-end;
-    padding: 12px 0; margin-top: 8px;
-    border-top: 2px solid var(--gray-200);
-    font-size: 12px; color: var(--gray-600);
-}
-.inv-totals-bar .tot-item { display: flex; gap: 6px; align-items: center; }
-.inv-totals-bar .tot-label { font-weight: 600; color: var(--gray-500); }
-.inv-totals-bar .tot-value { font-weight: 700; color: var(--primary); font-size: 14px; }
 
-/* ── Tabs ── */
-.inv-tabs-header {
-    display: flex; gap: 4px;
+/* ── ECOUNT ERP 전표/마스터 폼 테이블 (.erp-form-table) ── */
+.erp-form-table {
+    width: 100%;
+    margin: 0;
+    font-size: 11.5px;
+    border-collapse: collapse;
+    background: #ffffff;
 }
-.inv-tab-btn {
-    background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200);
-    padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
-    border-radius: 6px 6px 0 0; border-bottom: none; transition: all 0.2s;
+.erp-form-table th,
+.erp-form-table td {
+    padding: 3px 6px;
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
 }
-.inv-tab-btn:hover {
-    background: var(--gray-200); color: var(--gray-700);
+.erp-form-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #334155;
+    font-size: 11px;
+    white-space: nowrap;
+    line-height: 1.3;
 }
-.inv-tab-btn.active {
-    background: var(--surface); color: var(--primary); border-color: var(--border);
-    box-shadow: 0 -2px 0 var(--primary) inset;
+.erp-form-table th.required::after {
+    content: ' *';
+    color: #ef4444;
 }
-.inv-tab-content {
+.erp-form-table .form-control,
+.erp-form-table .form-select,
+.erp-form-table input,
+.erp-form-table select,
+.erp-form-table textarea {
+    font-size: 11.5px;
+    padding: 2px 6px;
+    height: 25px;
+    border-radius: 2px;
+    border: 1px solid #cbd5e1;
+    width: 100%;
+    background: #ffffff;
+    color: #1e293b;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.erp-form-table textarea {
+    height: auto;
+    resize: vertical;
+    padding: 4px 6px;
+    line-height: 1.4;
+}
+.erp-form-table input:focus,
+.erp-form-table select:focus,
+.erp-form-table textarea:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+}
+.erp-form-table input[readonly] {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+.erp-section-row th {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    font-weight: 700;
+    font-size: 11.5px;
+    padding: 4px 8px;
+    border-top: 1px solid #bfdbfe;
+    border-bottom: 1px solid #bfdbfe;
+}
+
+/* ── ECOUNT ERP 버튼 시스템 (.btn-erp) ── */
+.btn-erp {
+    height: 26px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 0 9px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+}
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.btn-erp-primary {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+.btn-erp-primary:hover {
+    background: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+}
+.btn-erp-warning {
+    background: #f59e0b !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+.btn-erp-warning:hover {
+    background: #d97706 !important;
+}
+.btn-erp-outline {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+.btn-erp-sm {
+    height: 22px;
+    font-size: 10.5px;
+    padding: 0 6px;
+}
+
+/* ── ECOUNT ERP 탭 버튼 그룹 (.erp-tab-group) ── */
+.erp-tab-group {
+    display: inline-flex;
+    gap: 3px;
+    background: #e2e8f0;
+    padding: 2px;
+    border-radius: 3px;
+}
+.erp-tab-btn {
+    padding: 4px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 18px;
+    user-select: none;
+}
+.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+.erp-tab-btn.active {
+    background: #ffffff !important;
+    color: #2563eb !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.erp-sub-tab-content {
     display: none;
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
 }
-.inv-tab-content.active {
+.erp-sub-tab-content.active {
     display: block;
 }
 
-.pl-item-row {
-    display: grid;
-    grid-template-columns: 1.5fr 2fr 0.8fr 0.8fr 1fr 1fr 1.5fr 40px;
-    gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--gray-50);
+/* ── 고밀도 전표 시트 그리드 (.erp-sheet-table) ── */
+.erp-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.erp-sheet-table th {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 4px 6px;
+    font-weight: 700;
+    color: #334155;
+    text-align: center;
+    white-space: nowrap;
+}
+.erp-sheet-table td {
+    border: 1px solid #cbd5e1;
+    padding: 2px 4px;
+    vertical-align: middle;
+    background: #ffffff;
+}
+.erp-sheet-table tr:hover td {
+    background: #f8fafc;
+}
+.erp-sheet-table .form-control,
+.erp-sheet-table input,
+.erp-sheet-table select {
+    width: 100%;
+    height: 24px;
+    font-size: 11px;
+    padding: 0 5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 2px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.erp-sheet-table input:focus,
+.erp-sheet-table select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+}
+.btn-row-action {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #64748b;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.12s;
 }
-.pl-item-row input {
-    height: 30px; padding: 0 6px; border: 1px solid var(--border);
-    border-radius: 4px; font-size: 11.5px; outline: none; width: 100%;
-    font-family: 'Inter', sans-serif;
+.btn-row-action:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
 }
-.pl-item-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted); }
+.btn-row-del:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+/* 합계 요약 리본 */
+.erp-summary-ribbon {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-top: none;
+    padding: 5px 12px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+.erp-summary-ribbon .sum-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.erp-summary-ribbon .sum-label {
+    color: #64748b;
+}
+.erp-summary-ribbon .sum-val {
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 700;
+}
 
 
 
