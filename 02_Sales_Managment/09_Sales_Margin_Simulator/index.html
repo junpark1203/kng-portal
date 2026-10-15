@@ -9,7 +9,7 @@
     <!-- Boxicons CDN -->
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="./simulator.css?v=20261015_1800">
+    <link rel="stylesheet" href="./simulator.css?v=20261015_1850">
 </head>
 <body>
 
@@ -83,10 +83,10 @@
             <div class="step-panel-header">
                 <div class="step-panel-title">
                     <span class="step-badge">1</span>
-                    물품 대금 매입 내역 (기본 구매 비용)
-                    <span class="step-panel-subtitle">수량과 매입단가를 입력하여 기본 상품 매입원가를 산출합니다.</span>
+                    물품 대금 매입 내역 (기본 구매 비용 &amp; 품목별 권장판가 연동)
+                    <span class="step-panel-subtitle">수량과 매입단가를 입력하면 기본 매입원가 및 선택 시나리오 기준 품목별 권장 판매단가를 산출합니다.</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="no-print" style="display: flex; align-items: center; gap: 12px;">
                     <!-- 부가세 토글 체크박스 (직관적 단일 체크박스) -->
                     <label style="font-size: 11.5px; font-weight: 700; color: var(--erp-primary); cursor: pointer; display: flex; align-items: center; gap: 5px; background: var(--erp-primary-light); padding: 3px 8px; border-radius: 3px; border: 1px solid var(--erp-primary-border);" title="체크 시 부가세 10%를 원가 산정에 포함합니다. 체크 해제 시 공급가액만으로 계산합니다.">
                         <input type="checkbox" id="chkIncludeVat">
@@ -101,13 +101,16 @@
                 <table class="erp-table" id="tableGoods">
                     <thead>
                         <tr>
-                            <th style="width: 26%;">품목명</th>
-                            <th style="width: 20%;">규격 / 사양</th>
-                            <th style="width: 14%;">수량</th>
-                            <th style="width: 16%;">매입단가 (원)</th>
-                            <th style="width: 18%;">공급가액 (원)</th>
-                            <th class="col-vat" style="width: 14%; display: none;">부가세 (10%)</th>
-                            <th style="width: 6%;"></th>
+                            <th style="width: 22%;">품목명</th>
+                            <th style="width: 16%;">규격 / 사양</th>
+                            <th style="width: 11%;">수량</th>
+                            <th style="width: 13%;">매입단가 (원)</th>
+                            <th style="width: 14%;">공급가액 (원)</th>
+                            <th class="col-vat" style="width: 10%; display: none;">부가세 (10%)</th>
+                            <th style="width: 19%; background: #eff6ff; color: #1e40af;" title="하단 3×3 매트릭스에서 선택된 조합(매입×판매)의 원가배부율 및 마진율을 적용한 품목별 배부원가 및 권장 납품단가입니다.">
+                                선택조합 배부원가 → 권장판가
+                            </th>
+                            <th class="no-print" style="width: 5%;"></th>
                         </tr>
                     </thead>
                     <tbody id="tbodyGoods">
@@ -115,12 +118,13 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="2" class="text-center" style="color: #475569;">매입 합계</td>
+                            <td colspan="2" class="text-center" style="color: #475569;">매입 합계 / 가중평균</td>
                             <td class="text-right" id="sumGoodsQty">0</td>
-                            <td class="text-right" id="avgGoodsPrice">0</td>
+                            <td class="text-right" id="avgGoodsPrice" title="총 매입기준액 ÷ 총 수량 (가중평균 매입단가)">0</td>
                             <td class="text-right" id="sumGoodsSupply">0</td>
                             <td class="col-vat text-right" id="sumGoodsVat" style="display: none;">0</td>
-                            <td></td>
+                            <td class="text-right" id="avgRecommendedPrice" style="background: #eff6ff; color: #1d4ed8;">-</td>
+                            <td class="no-print"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -132,25 +136,52 @@
             <div class="step-panel-header">
                 <div class="step-panel-title">
                     <span class="step-badge">2</span>
-                    매입 원가 시나리오 1, 2, 3 설정 (비용 항목 및 금융비용 What-If)
-                    <span class="step-panel-subtitle">운송비, 임대료, 금융이자 등의 반영 여부에 따라 3가지 매입원가를 비교 설정합니다.</span>
+                    매입 원가 시나리오 1, 2, 3 설정 (부대비용 마스터 &amp; 금융비용 What-If)
+                    <span class="step-panel-subtitle">부대비용 항목의 금액·성격(고정/변동비)을 편집하고 시나리오별 반영 여부를 체크합니다.</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <!-- 금융이자 설정 바 -->
                     <div style="display: inline-flex; align-items: center; gap: 4px; background: var(--erp-purple-bg); border: 1px solid #ddd6fe; padding: 2px 8px; border-radius: 3px; font-size: 11px;">
                         <span style="font-weight: 700; color: #6b21a8;"><i class="bx bx-dollar-circle"></i> 금융이자:</span>
                         <span>자금회수</span>
-                        <input type="number" id="inputPeriodDays" class="erp-input text-right" style="width: 48px; height: 21px;" value="60">
+                        <input type="number" id="inputPeriodDays" class="erp-input text-right" style="width: 48px; height: 21px;" value="60" min="0">
                         <span>일 · 연</span>
-                        <input type="number" id="inputAnnualRate" class="erp-input text-right" style="width: 44px; height: 21px;" step="0.1" value="5.0">
+                        <input type="number" id="inputAnnualRate" class="erp-input text-right" style="width: 48px; height: 21px;" step="0.1" value="5.0" min="0">
                         <span>%</span>
                     </div>
-                    <button type="button" class="btn-erp btn-sm btn-secondary" id="btnAddCostItem">
+                    <button type="button" class="btn-erp btn-sm no-print" id="btnToggleCostPool" title="부대비용 마스터 편집표 접기/펼치기">
+                        <i class="bx bx-list-ul"></i> 부대비용 편집표
+                    </button>
+                    <button type="button" class="btn-erp btn-sm btn-primary no-print" id="btnAddCostItem">
                         <i class="bx bx-plus"></i> 부대비용 항목 추가
                     </button>
                 </div>
             </div>
             <div class="step-panel-body">
+                <!-- 부대비용 마스터 인라인 편집 테이블 -->
+                <div class="cost-pool-editor-wrap" id="costPoolEditorWrap">
+                    <div class="cost-pool-header-bar">
+                        <span><i class="bx bx-slider-alt"></i> <strong>부대비용 항목 마스터 관리</strong> (금액·분류·고정/변동비 실시간 편집)</span>
+                        <span id="dispCostPoolSummary" style="font-size: 11px; color: #475569; font-weight: 600;">총 0건</span>
+                    </div>
+                    <table class="erp-table" id="tableCostsPool">
+                        <thead>
+                            <tr>
+                                <th style="width: 28%;">부대비용 항목명</th>
+                                <th style="width: 15%;">비용 분류</th>
+                                <th style="width: 16%;" title="고정비로 설정 시 손익분기점(BEP) 산출을 위한 고정원가로 분류됩니다.">비용 성격 (BEP 연동)</th>
+                                <th style="width: 17%;">총 소요 금액 (원)</th>
+                                <th style="width: 12%;">개당 부담액</th>
+                                <th class="no-print" style="width: 7%;">시나리오</th>
+                                <th class="no-print" style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyCostsPool">
+                            <!-- JS 인라인 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- 3단 시나리오 카드 그리드 -->
                 <div class="sc-card-grid" id="costScenariosContainer">
                     <!-- JS 동적 생성 (시나리오 1, 2, 3) -->
@@ -163,8 +194,17 @@
             <div class="step-panel-header">
                 <div class="step-panel-title">
                     <span class="step-badge">3</span>
-                    판매가 시나리오 1, 2, 3 설정 (목표 판매단가 or 마진율 역산)
-                    <span class="step-panel-subtitle">대리점 도매가, 일반 납품가, 온라인 소매가 등 3가지 판매단가를 설정합니다.</span>
+                    판매가 시나리오 1, 2, 3 설정 (목표 판매단가 &amp; 마진율 역산)
+                    <span class="step-panel-subtitle">대리점 도매가, 일반 납품가, 온라인 소매가 등 3가지 판매단가를 직접 입력하거나 마진율로 역산합니다.</span>
+                </div>
+                <div class="no-print" style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                    <span style="font-weight: 700; color: #475569;"><i class="bx bx-target-lock"></i> 역산·비교 기준원가:</span>
+                    <select id="selectBenchmarkCost" class="erp-input" style="width: auto; height: 24px; padding: 1px 8px; font-weight: 700; color: var(--erp-primary);">
+                        <option value="selected">현재 선택된 매입 시나리오 연동</option>
+                        <option value="0">시나리오 1 (최소원가) 기준</option>
+                        <option value="1" selected>시나리오 2 (표준원가) 기준</option>
+                        <option value="2">시나리오 3 (보수원가) 기준</option>
+                    </select>
                 </div>
             </div>
             <div class="step-panel-body">
@@ -180,7 +220,7 @@
                 <div class="step-panel-title" style="color: #ffffff;">
                     <span class="step-badge" style="background: #38bdf8; color: #0f172a;">4</span>
                     매입 × 판매 시나리오 경우의 수 교차 분석표 (총 9가지 조합)
-                    <span class="step-panel-subtitle" style="color: #94a3b8;">각 조합 셀을 클릭하면 하단에서 마진 워터폴 차트와 손익분기점(BEP)을 즉시 확인합니다.</span>
+                    <span class="step-panel-subtitle" style="color: #94a3b8;">각 조합 셀을 클릭하면 하단에서 마진 워터폴 차트, 손익분기점(BEP), 상단 품목별 권장판가를 즉시 확인합니다.</span>
                 </div>
             </div>
             <div class="step-panel-body" style="padding: 10px;">
@@ -212,10 +252,11 @@
                 <div class="detail-grid">
                     <!-- 좌측: 워터폴 브릿지 차트 -->
                     <div style="background: #ffffff; border: 1px solid var(--erp-border); border-radius: 4px; padding: 10px;">
-                        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px;">
-                            <i class="bx bx-bar-chart"></i> 마진 워터폴 브릿지 (Price Waterfall Bridge)
+                        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="bx bx-bar-chart"></i> 개당 마진 워터폴 브릿지 (Price Waterfall Bridge)</span>
+                            <span style="font-size: 10px; color: #94a3b8; font-weight: 500;">단위: 원/개</span>
                         </div>
-                        <div id="waterfallSvgContainer" style="width: 100%; height: 180px;"></div>
+                        <div id="waterfallSvgContainer" style="width: 100%; height: 195px;"></div>
                     </div>
 
                     <!-- 우측: 손익분기점 (BEP) 분석 지표 -->
@@ -224,20 +265,28 @@
                             <i class="bx bx-pie-chart-alt-2"></i> 손익분기점 (Financing-Adjusted BEP)
                         </div>
                         <div class="bep-row">
-                            <span style="color: var(--erp-text-muted);">개당 공헌이익:</span>
+                            <span style="color: var(--erp-text-muted);">개당 변동비 (물품+변동부대+이자):</span>
+                            <strong style="color: #475569; font-size: 12px;" id="dispUnitVariableCost">0원</strong>
+                        </div>
+                        <div class="bep-row">
+                            <span style="color: var(--erp-text-muted);">개당 공헌이익 (판가 - 개당변동비):</span>
                             <strong style="color: var(--erp-primary); font-size: 13px;" id="dispUnitContribution">0원</strong>
                         </div>
                         <div class="bep-row">
-                            <span style="color: var(--erp-text-muted);">손익분기 판매수량:</span>
-                            <strong style="color: #0f172a; font-size: 15px;" id="dispBepUnits">0개 이상</strong>
+                            <span style="color: var(--erp-text-muted);">시나리오 반영 총 고정비:</span>
+                            <strong style="color: #d97706; font-size: 12px;" id="dispFixedCosts">0원</strong>
                         </div>
                         <div class="bep-row">
-                            <span style="color: var(--erp-text-muted);">손익분기 최소매출:</span>
-                            <strong style="color: #0f172a; font-size: 13px;" id="dispBepRevenue">0원</strong>
+                            <span style="color: var(--erp-text-muted);">손익분기 판매수량 (BEP):</span>
+                            <strong style="color: #0f172a; font-size: 14.5px;" id="dispBepUnits">0개 이상</strong>
+                        </div>
+                        <div class="bep-row">
+                            <span style="color: var(--erp-text-muted);">손익분기 최소매출액:</span>
+                            <strong style="color: #0f172a; font-size: 12.5px;" id="dispBepRevenue">0원</strong>
                         </div>
                         <div class="bep-row">
                             <span style="color: var(--erp-text-muted);">공헌이익률:</span>
-                            <strong style="color: #047857; font-size: 13px;" id="dispContributionRate">0%</strong>
+                            <strong style="color: #047857; font-size: 12.5px;" id="dispContributionRate">0%</strong>
                         </div>
                     </div>
                 </div>
@@ -245,18 +294,18 @@
         </section>
 
         <!-- ── 6. 종합 검토 의견 및 기안문 ── -->
-        <section class="step-panel no-print">
+        <section class="step-panel">
             <div class="step-panel-header">
                 <div class="step-panel-title">
                     <span class="step-badge">6</span>
                     종합 검토 의견 및 기안문 (보고용 텍스트)
                 </div>
-                <button type="button" class="btn-erp btn-sm" id="btnAutoRemarks">
+                <button type="button" class="btn-erp btn-sm no-print" id="btnAutoRemarks">
                     <i class="bx bx-sync"></i> 9가지 시나리오 분석 결과 자동작성
                 </button>
             </div>
             <div class="step-panel-body">
-                <textarea id="textRemarks" class="erp-textarea" rows="4" style="height: auto;" placeholder="원가 및 마진 시뮬레이션 검토의견이 자동 작성됩니다. 우측 상단 '기안문 복사'를 누르면 클립보드로 복사됩니다."></textarea>
+                <textarea id="textRemarks" class="erp-textarea" rows="6" placeholder="원가 및 마진 시뮬레이션 검토의견을 입력하거나 우측 상단 '9가지 시나리오 분석 결과 자동작성' 버튼을 클릭하세요."></textarea>
             </div>
         </section>
 
@@ -292,6 +341,6 @@
     </div>
 
     <!-- Application Script (ES Module) -->
-    <script type="module" src="./app.js?v=20261015_1810"></script>
+    <script type="module" src="./app.js?v=20261015_1850"></script>
 </body>
 </html>

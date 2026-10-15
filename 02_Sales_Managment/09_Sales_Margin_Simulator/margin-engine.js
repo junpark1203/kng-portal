@@ -124,6 +124,8 @@ export const SalesMarginEngine = {
         // 총 소요원가
         const totalCost = goods.effectiveBase + totalOverhead + financingInterest;
         const unitCost = Math.round(totalCost / totalQty);
+        const unitVariableCost = Math.round((goods.effectiveBase + variableCosts + financingInterest) / totalQty);
+        const unitFixedCost = Math.round(fixedCosts / totalQty);
 
         return {
             id: scenarioConfig.id,
@@ -142,6 +144,8 @@ export const SalesMarginEngine = {
             unitFinancing,
             fixedCosts,
             variableCosts,
+            unitVariableCost,
+            unitFixedCost,
             totalCost,
             unitCost
         };
@@ -149,10 +153,12 @@ export const SalesMarginEngine = {
 
     /**
      * 3. 목표 마진율 기준 필요 판매단가 역산 (Reverse Pricing)
+     * 판매단가 = 원가 / (1 - 목표마진율)
      */
     calculateReversePrice(unitCost = 0, targetMarginRate = 20) {
-        if (targetMarginRate >= 100) return 0;
-        const rateDecimal = Math.max(0, targetMarginRate) / 100;
+        const rate = Number(targetMarginRate);
+        if (isNaN(rate) || rate >= 100) return 0;
+        const rateDecimal = Math.max(-99, rate) / 100;
         return Math.round(unitCost / (1 - rateDecimal));
     },
 
@@ -179,17 +185,32 @@ export const SalesMarginEngine = {
         // 3. 교차 매트릭스 생성 (3×3 = 9 Cells)
         const matrix = evaluatedCosts.map(cSc => {
             const rowCells = evaluatedSales.map(sSc => {
-                const marginAmount = sSc.targetPrice - cSc.unitCost;
-                const marginRate = sSc.targetPrice > 0 ? Number(((marginAmount / sSc.targetPrice) * 100).toFixed(1)) : 0;
-                const markupRate = cSc.unitCost > 0 ? Number(((marginAmount / cSc.unitCost) * 100).toFixed(1)) : 0;
                 const totalRevenue = Math.round(sSc.targetPrice * totalQty);
-                const totalProfit = Math.round(marginAmount * totalQty);
+                // 총 영업이익은 반올림 누적 오차를 방지하기 위해 (총매출액 - 총소요원가)로 정확히 산출
+                const totalProfit = totalRevenue - cSc.totalCost;
+                const marginAmount = sSc.targetPrice - cSc.unitCost;
+                const marginRate = totalRevenue > 0 ? Number(((totalProfit / totalRevenue) * 100).toFixed(1)) : 0;
+                const markupRate = cSc.totalCost > 0 ? Number(((totalProfit / cSc.totalCost) * 100).toFixed(1)) : 0;
 
-                // 손익분기점 (BEP)
-                const unitContribution = sSc.targetPrice - (cSc.unitGoodsCost + (cSc.categoryBreakdown.logistics / totalQty) + cSc.unitFinancing);
+                // 손익분기점 (BEP) 정밀 계산:
+                // 개당 변동비 = (물품대 + 부대비용 중 변동비 합계 + 금융이자) / 총수량
+                const exactUnitVariable = (cSc.goodsTotal + cSc.variableCosts + cSc.financingInterest) / totalQty;
+                const unitContribution = Math.round(sSc.targetPrice - exactUnitVariable);
+                const exactContribution = sSc.targetPrice - exactUnitVariable;
+
                 let bepUnits = 0;
-                if (cSc.fixedCosts > 0 && unitContribution > 0) {
-                    bepUnits = Math.ceil(cSc.fixedCosts / unitContribution);
+                let bepStatus = 'immediate'; // 'normal' | 'immediate' | 'impossible'
+
+                if (exactContribution <= 0) {
+                    // 판가가 변동비 이하인 경우: 팔수록 손해이므로 손익분기 달성 불가(역마진)
+                    bepUnits = -1;
+                    bepStatus = 'impossible';
+                } else if (cSc.fixedCosts > 0) {
+                    bepUnits = Math.ceil(cSc.fixedCosts / exactContribution);
+                    bepStatus = 'normal';
+                } else {
+                    bepUnits = 0;
+                    bepStatus = 'immediate';
                 }
 
                 return {
@@ -197,6 +218,8 @@ export const SalesMarginEngine = {
                     costScenarioName: cSc.name,
                     unitCost: cSc.unitCost,
                     totalCost: cSc.totalCost,
+                    fixedCosts: cSc.fixedCosts,
+                    variableCosts: cSc.variableCosts,
                     salesScenarioId: sSc.id,
                     salesScenarioName: sSc.name,
                     targetPrice: sSc.targetPrice,
@@ -205,7 +228,9 @@ export const SalesMarginEngine = {
                     markupRate,
                     totalRevenue,
                     totalProfit,
+                    unitContribution,
                     bepUnits,
+                    bepStatus,
                     isHealthy: marginRate >= 18.0,
                     isWarning: marginRate >= 10.0 && marginRate < 18.0,
                     isDanger: marginRate < 10.0
@@ -226,11 +251,37 @@ export const SalesMarginEngine = {
     },
 
     /**
-     * 5. 선택된 조합(매입 시나리오 i + 판매 시나리오 j)에 대한 워터폴 브릿지 생성
+     * 5. 다품목 개별 품목의 배부원가 및 선택 시나리오 기준 권장 판매단가 산출
+     * @param {Object} goods - calculateGoodsCost 결과
+     * @param {Object} cSc - 선택된 매입 시나리오 평가 결과
+     * @param {Object} sSc - 선택된 판매 시나리오 평가 결과
+     */
+    calculateItemizedAllocation(goods, cSc, sSc) {
+        if (!goods || !goods.items) return [];
+        const totalQty = goods.totalQty > 0 ? goods.totalQty : 1;
+        const baseSupplyTotal = goods.totalSupplyPrice || 0;
+        const costMultiplier = baseSupplyTotal > 0 && cSc ? (cSc.totalCost / baseSupplyTotal) : 1;
+        const priceMultiplier = cSc && cSc.totalCost > 0 && sSc ? ((sSc.targetPrice * totalQty) / cSc.totalCost) : 1;
+
+        return goods.items.map(item => {
+            const allocatedUnitCost = Math.round(item.unitPrice * costMultiplier);
+            const recommendedUnitPrice = Math.round(allocatedUnitCost * priceMultiplier);
+            const itemMargin = recommendedUnitPrice - allocatedUnitCost;
+            return {
+                ...item,
+                allocatedUnitCost,
+                recommendedUnitPrice,
+                itemMargin
+            };
+        });
+    },
+
+    /**
+     * 6. 선택된 조합(매입 시나리오 i + 판매 시나리오 j)에 대한 워터폴 브릿지 생성
      */
     generateWaterfallData(cSc, targetPrice) {
         const steps = [];
-        let running = targetPrice;
+        const totalQty = cSc.totalQty || 1;
 
         // 1. 판매가 시작
         steps.push({
@@ -243,7 +294,6 @@ export const SalesMarginEngine = {
         });
 
         // 2. 물품대 차감
-        running -= cSc.unitGoodsCost;
         steps.push({
             id: 'goods',
             label: '물품 매입비',
@@ -253,14 +303,13 @@ export const SalesMarginEngine = {
             color: '#ef4444'
         });
 
-        // 3. 부대비용 항목별 차감
-        const totalQty = cSc.totalQty || 1;
+        // 3. 부대비용 항목별 차감 (반올림 오차를 마지막 부대항목에서 보정하여 cSc.unitOverhead와 일치시킴)
         const unitLogistics = Math.round(cSc.categoryBreakdown.logistics / totalQty);
         const unitRent = Math.round(cSc.categoryBreakdown.rent / totalQty);
-        const unitOthers = cSc.unitOverhead - unitLogistics - unitRent;
+        const unitPackaging = Math.round(cSc.categoryBreakdown.packaging / totalQty);
+        const unitOthers = Math.max(0, cSc.unitOverhead - unitLogistics - unitRent - unitPackaging);
 
         if (unitLogistics > 0) {
-            running -= unitLogistics;
             steps.push({
                 id: 'logistics',
                 label: '물류·운송비',
@@ -272,7 +321,6 @@ export const SalesMarginEngine = {
         }
 
         if (unitRent > 0) {
-            running -= unitRent;
             steps.push({
                 id: 'rent',
                 label: '임대·창고료',
@@ -283,8 +331,29 @@ export const SalesMarginEngine = {
             });
         }
 
+        if (unitPackaging > 0) {
+            steps.push({
+                id: 'packaging',
+                label: '포장·라벨비',
+                amount: unitPackaging,
+                delta: -unitPackaging,
+                type: 'drop',
+                color: '#06b6d4'
+            });
+        }
+
+        if (unitOthers > 0) {
+            steps.push({
+                id: 'others',
+                label: '기타부대비',
+                amount: unitOthers,
+                delta: -unitOthers,
+                type: 'drop',
+                color: '#64748b'
+            });
+        }
+
         if (cSc.unitFinancing > 0) {
-            running -= cSc.unitFinancing;
             steps.push({
                 id: 'financing',
                 label: '금융이자',
@@ -295,27 +364,19 @@ export const SalesMarginEngine = {
             });
         }
 
-        if (unitOthers > 0) {
-            running -= unitOthers;
-            steps.push({
-                id: 'others',
-                label: '기타운영비',
-                amount: unitOthers,
-                delta: -unitOthers,
-                type: 'drop',
-                color: '#64748b'
-            });
-        }
+        // 최종 마진 (단가 - 개당 총원가와 정확히 일치하도록 산출)
+        const finalMargin = targetPrice - cSc.unitCost;
+        const totalRevenue = Math.round(targetPrice * totalQty);
+        const totalProfit = totalRevenue - cSc.totalCost;
+        const marginRate = totalRevenue > 0 ? Number(((totalProfit / totalRevenue) * 100).toFixed(1)) : 0;
 
-        // 최종 마진
-        const marginRate = targetPrice > 0 ? Number(((running / targetPrice) * 100).toFixed(1)) : 0;
         steps.push({
             id: 'profit',
             label: `최종 마진 (${marginRate}%)`,
-            amount: running,
-            delta: running,
+            amount: finalMargin,
+            delta: finalMargin,
             type: 'end',
-            color: running >= 0 ? '#10b981' : '#dc2626'
+            color: finalMargin >= 0 ? '#10b981' : '#dc2626'
         });
 
         return steps;
