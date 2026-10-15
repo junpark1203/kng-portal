@@ -545,21 +545,14 @@ html, body {
 
 /* A4 Company Letterhead Header (Executive Global Corporate Identity) */
 .letterhead-header {
-    border-bottom: 2.5px solid #1e3a8a;
-    padding-bottom: 12px;
-    margin-bottom: 20px;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
     position: relative;
 }
 
-/* Sophisticated Dual Accent Hairline */
 .letterhead-header::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: #cbd5e1;
+    display: none;
 }
 
 .letterhead-top {
@@ -575,29 +568,28 @@ html, body {
 }
 
 .letterhead-logo {
-    max-height: 42px;
-    max-width: 140px;
+    max-height: 40px;
+    max-width: 130px;
     height: auto;
     object-fit: contain;
     display: block;
 }
 
 .letterhead-logo-fallback {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 900;
     color: #1e3a8a;
     letter-spacing: -0.5px;
-    border: 2px solid #1e3a8a;
-    padding: 3px 10px;
+    border: 1.5px solid #1e3a8a;
+    padding: 2px 8px;
     border-radius: 4px;
 }
 
 .letterhead-brand-divider {
-    width: 1.5px;
-    height: 34px;
-    background: linear-gradient(to bottom, #cbd5e1, #94a3b8, #cbd5e1);
-    margin: 0 16px;
-    border-radius: 1px;
+    width: 1px;
+    height: 30px;
+    background-color: #cbd5e1;
+    margin: 0 14px;
     flex-shrink: 0;
 }
 
@@ -608,20 +600,20 @@ html, body {
 }
 
 .letterhead-corp-kr {
-    font-size: 16px;
+    font-size: 15.5px;
     font-weight: 800;
-    color: #0f2444;
-    letter-spacing: -0.4px;
+    color: #0f172a;
+    letter-spacing: -0.3px;
     line-height: 1.25;
 }
 
 .letterhead-corp-en {
-    font-size: 9px;
+    font-size: 8.5px;
     font-weight: 700;
     color: #64748b;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.6px;
     text-transform: uppercase;
-    margin-top: 3px;
+    margin-top: 2px;
 }
 
 /* Right Side: Clean Structured Corporate Contact Block */
@@ -629,7 +621,7 @@ html, body {
     text-align: right;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -637,7 +629,7 @@ html, body {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    font-size: 11px;
+    font-size: 10.5px;
     color: #334155;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -649,14 +641,14 @@ html, body {
 }
 
 .chip-lbl {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 800;
     color: #1e3a8a;
-    background: #e0e7ff;
-    padding: 1.5px 5px;
+    background: #f1f5f9;
+    padding: 1px 4.5px;
     border-radius: 3px;
     letter-spacing: 0.5px;
-    margin-right: 5px;
+    margin-right: 4px;
     text-transform: uppercase;
 }
 
@@ -667,80 +659,81 @@ html, body {
 }
 
 .letterhead-contact-addr {
-    font-size: 10px;
+    font-size: 9.5px;
     color: #64748b;
     font-weight: 400;
     letter-spacing: -0.2px;
 }
 
-/* Document Title */
+/* Document Title (Optional Central Title) */
 .doc-title-wrapper {
     text-align: center;
-    margin: 16px 0 20px;
+    margin: 10px 0 16px;
 }
 
 .doc-main-title {
-    font-size: 21px;
+    font-size: 19px;
     font-weight: 800;
     color: #0f172a;
-    letter-spacing: 3px;
+    letter-spacing: 2.5px;
     display: inline-block;
-    padding: 0 16px 8px;
-    border-bottom: 2px solid #0f172a;
+    padding: 0 14px 6px;
+    border-bottom: 1.5px solid #0f172a;
     margin: 0;
 }
 
-/* Document Meta Container (Executive Blue-Accent Card) */
+/* Document Meta Container (Executive Open Clean Grid) */
 .doc-meta-container {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-left: 3.5px solid #1e3a8a;
-    border-radius: 4px;
-    padding: 11px 16px;
-    margin-bottom: 20px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    border-top: 1px solid #cbd5e1;
+    border-bottom: 1.5px solid #0f172a;
+    background: transparent;
+    padding: 10px 2px 12px;
+    margin-bottom: 18px;
 }
 
 .doc-meta-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12.5px;
+    font-size: 12px;
 }
 
 .doc-meta-table td {
-    padding: 3.5px 6px;
+    padding: 3px 4px;
     vertical-align: top;
 }
 
 .doc-meta-table .meta-label {
-    width: 68px;
+    width: 62px;
     font-weight: 700;
-    color: #1e293b;
+    color: #475569;
     white-space: nowrap;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
+    font-size: 12px;
 }
 
 .doc-meta-table .meta-colon {
-    width: 12px;
+    width: 14px;
     text-align: center;
-    font-weight: 700;
+    font-weight: 400;
     color: #94a3b8;
 }
 
 .doc-meta-table .meta-val {
     color: #0f172a;
     font-weight: 500;
+    font-size: 12px;
+    line-height: 1.55;
 }
 
 .doc-meta-table .doc-subject-val {
-    font-weight: 700;
+    font-weight: 800;
     color: #0f172a;
+    font-size: 12.5px;
+    letter-spacing: -0.2px;
 }
 
 .meta-divider {
-    border-bottom: 1.5px solid #cbd5e1;
-    margin: 8px 0 14px;
+    display: none;
 }
 
 /* Document Body Content */
@@ -1015,12 +1008,11 @@ html, body {
     }
 
     .letterhead-header {
-        border-bottom: 2.5px solid #0f172a !important;
+        border-bottom: 1px solid #cbd5e1 !important;
     }
 
     .letterhead-header::after {
-        background: #cbd5e1 !important;
-        display: block !important;
+        display: none !important;
     }
 
     .letterhead-brand-divider {
@@ -1028,27 +1020,25 @@ html, body {
     }
 
     .chip-lbl {
-        background: #e2e8f0 !important;
-        color: #0f172a !important;
+        background: #f1f5f9 !important;
+        color: #1e3a8a !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
     .doc-meta-container {
-        border: 1px solid #cbd5e1 !important;
-        border-left: 3.5px solid #1e3a8a !important;
-        background: #f8fafc !important;
+        border-top: 1px solid #cbd5e1 !important;
+        border-bottom: 1.5px solid #0f172a !important;
+        border-left: none !important;
+        border-right: none !important;
+        background: transparent !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
     .doc-main-title {
-        border-bottom: 2px solid #0f172a !important;
+        border-bottom: 1.5px solid #0f172a !important;
         color: #0f172a !important;
-    }
-
-    .meta-divider {
-        border-bottom: 1.5px solid #000000 !important;
     }
 
     .doc-seal-img {

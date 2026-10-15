@@ -31,7 +31,7 @@
     const PRESETS = {
         sample_request: {
             name: '[기본] 샘플 송부 및 조끼 제작 견적 의뢰서',
-            docTitle: '샘플 송부 안내 및 조끼 제작 견적 의뢰서',
+            docTitle: '',
             to: '(주)일터루코리아 고영종 실장님',
             cc: '(주)일터루코리아 고병삼 대표님',
             subject: '안전조끼 샘플 송부 및 OEM 제작 견적 의뢰의 건 ((주)행복한안전 이한우 대표님 소개 건)',
@@ -352,7 +352,7 @@
 
         const senders = buildDefaultSenderStrings();
 
-        els.inputDocTitle.value = p.docTitle;
+        els.inputDocTitle.value = p.docTitle || '';
         els.inputTo.value = p.to;
         els.inputCc.value = p.cc;
         els.inputFromText.value = senders.fromText;
@@ -409,9 +409,17 @@
     function buildMetaTableHtml(to, cc, from, date, subject) {
         const ccRow = cc ? `
             <tr>
-                <td class="meta-label">■ 참 &nbsp; 조</td>
+                <td class="meta-label">참 &nbsp; 조</td>
                 <td class="meta-colon">:</td>
                 <td class="meta-val">${escapeHtml(cc)}</td>
+            </tr>
+        ` : '';
+
+        const subjectRow = subject ? `
+            <tr>
+                <td class="meta-label">제 &nbsp; 목</td>
+                <td class="meta-colon">:</td>
+                <td class="meta-val doc-subject-val">${escapeHtml(subject)}</td>
             </tr>
         ` : '';
 
@@ -420,26 +428,22 @@
                 <table class="doc-meta-table">
                     <tbody>
                         <tr>
-                            <td class="meta-label">■ 수 &nbsp; 신</td>
+                            <td class="meta-label">수 &nbsp; 신</td>
                             <td class="meta-colon">:</td>
                             <td class="meta-val">${escapeHtml(to || '(수신처 미입력)')}</td>
                         </tr>
                         ${ccRow}
                         <tr>
-                            <td class="meta-label">■ 발 &nbsp; 신</td>
+                            <td class="meta-label">발 &nbsp; 신</td>
                             <td class="meta-colon">:</td>
                             <td class="meta-val">${escapeHtml(from || '(발신자 미입력)')}</td>
                         </tr>
                         <tr>
-                            <td class="meta-label">■ 일 &nbsp; 자</td>
+                            <td class="meta-label">시행일자</td>
                             <td class="meta-colon">:</td>
                             <td class="meta-val">${escapeHtml(date || getTodayFormatted())}</td>
                         </tr>
-                        <tr>
-                            <td class="meta-label">■ 제 &nbsp; 목</td>
-                            <td class="meta-colon">:</td>
-                            <td class="meta-val doc-subject-val">${escapeHtml(subject || '(공문 제목 미입력)')}</td>
-                        </tr>
+                        ${subjectRow}
                     </tbody>
                 </table>
             </div>
@@ -475,7 +479,7 @@
         if (!els.a4PagesContainer) return;
 
         // Form Inputs
-        const docTitle = els.inputDocTitle.value.trim() || '공 문 서';
+        const docTitle = els.inputDocTitle.value.trim();
         const to = els.inputTo.value.trim();
         const cc = els.inputCc.value.trim();
         const from = els.inputFromText.value.trim();
@@ -489,6 +493,13 @@
         // Container 초기화
         els.a4PagesContainer.innerHTML = '';
 
+        // 중앙 대제목 (입력되었을 때만 렌더링)
+        const titleHtml = docTitle ? `
+            <div class="doc-title-wrapper">
+                <h1 class="doc-main-title">${escapeHtml(docTitle)}</h1>
+            </div>
+        ` : '';
+
         // 1단계: 1페이지 가상 시트 생성하여 전체 분량 측정
         const sheet1 = document.createElement('div');
         sheet1.className = 'a4-sheet';
@@ -497,9 +508,7 @@
         sheet1.innerHTML = `
             <div class="a4-content-top">
                 ${buildLetterheadHtml()}
-                <div class="doc-title-wrapper">
-                    <h1 class="doc-main-title">${escapeHtml(docTitle)}</h1>
-                </div>
+                ${titleHtml}
                 ${buildMetaTableHtml(to, cc, from, date, subject)}
                 <div class="doc-body-content" id="_tempP1Body"></div>
                 ${buildAttachmentsHtml(attach)}
@@ -540,9 +549,7 @@
         sheet1.innerHTML = `
             <div class="a4-content-top">
                 ${buildLetterheadHtml()}
-                <div class="doc-title-wrapper">
-                    <h1 class="doc-main-title">${escapeHtml(docTitle)}</h1>
-                </div>
+                ${titleHtml}
                 ${buildMetaTableHtml(to, cc, from, date, subject)}
                 <div class="doc-body-content" id="_p1Body"></div>
             </div>
