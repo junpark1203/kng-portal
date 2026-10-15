@@ -1,6 +1,7 @@
 /* ==========================================================================
-   K&G Sales Cost & Margin Simulator - ECOUNT ERP High-Density Stylesheet
-   규격: ECOUNT ERP 단가표/영업관리 테마, 워터폴 차트, BEP 손익분기, A4 인쇄 최적화
+   K&G Sales Cost & Margin Simulator - High-Density Single-Column Stylesheet
+   규격: 위에서 아래로 순차 진행되는 직관적 워크플로우 (1열 탑다운 레이아웃)
+         매입 시나리오 1..3 × 판매 시나리오 1..3 경우의 수 교차 분석 매트릭스
    ========================================================================== */
 
 :root {
@@ -25,7 +26,6 @@
     --erp-purple-bg: #f5f3ff;
     
     --erp-dark: #1e293b;
-    --erp-header-bg: #1e293b;
     --erp-th-bg: #f8fafc;
     --erp-border: #cbd5e1;
     --erp-border-light: #e2e8f0;
@@ -35,10 +35,7 @@
     --erp-panel-bg: #ffffff;
     
     --erp-row-hover: #f8fafc;
-    --erp-row-active: #eff6ff;
-    --erp-row-height: 28px;
     --erp-font-size: 12px;
-    --erp-font-title: 13.5px;
 }
 
 * {
@@ -46,31 +43,31 @@
 }
 
 body {
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--erp-bg);
     color: var(--erp-text);
     margin: 0;
-    padding: 6px 10px;
+    padding: 8px 12px 24px;
     font-size: var(--erp-font-size);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar)
+   1. 상단 액션 툴바 (.erp-top-toolbar)
    ───────────────────────────────────────────────────────────── */
 .erp-top-toolbar {
     background: #ffffff;
     border: 1px solid var(--erp-border);
-    border-radius: 2px;
-    padding: 4px 10px;
-    min-height: 36px;
+    border-radius: 4px;
+    padding: 6px 12px;
+    min-height: 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -82,17 +79,9 @@ body {
     flex-wrap: wrap;
 }
 
-.erp-toolbar-divider {
-    width: 1px;
-    height: 16px;
-    background: var(--erp-border-light);
-    margin: 0 3px;
-    display: inline-block;
-}
-
 .erp-title-tag {
-    font-size: var(--erp-font-title);
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 800;
     color: #0f172a;
     display: inline-flex;
     align-items: center;
@@ -103,37 +92,32 @@ body {
 }
 
 .erp-title-tag i {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--erp-primary);
 }
 
-.erp-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--erp-primary-light);
-    border: 1px solid var(--erp-primary-border);
-    padding: 2px 8px;
-    border-radius: 2px;
-    font-size: 11px;
-    color: var(--erp-primary);
-    font-weight: 600;
+.erp-toolbar-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--erp-border-light);
+    margin: 0 3px;
+    display: inline-block;
 }
 
-/* 버튼 스타일 */
+/* 버튼 컴포넌트 */
 .btn-erp {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 4px;
-    height: 25px;
-    padding: 0 9px;
-    font-size: 11px;
+    height: 27px;
+    padding: 0 10px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--erp-text);
     background: #ffffff;
     border: 1px solid var(--erp-border);
-    border-radius: 2px;
+    border-radius: 3px;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.12s ease;
@@ -151,21 +135,9 @@ body {
     border-color: var(--erp-primary);
     color: #ffffff;
 }
-
 .btn-erp.btn-primary:hover {
     background: var(--erp-primary-hover);
     border-color: var(--erp-primary-hover);
-}
-
-.btn-erp.btn-success {
-    background: var(--erp-success);
-    border-color: var(--erp-success);
-    color: #ffffff;
-}
-
-.btn-erp.btn-success:hover {
-    background: #059669;
-    border-color: #059669;
 }
 
 .btn-erp.btn-secondary {
@@ -173,113 +145,80 @@ body {
     border-color: var(--erp-border);
     color: #334155;
 }
-
 .btn-erp.btn-secondary:hover {
     background: #e2e8f0;
 }
 
 .btn-erp.btn-sm {
-    height: 21px;
+    height: 22px;
     padding: 0 6px;
-    font-size: 10.5px;
-}
-
-/* 토글 스위치 */
-.vat-toggle-group {
-    display: inline-flex;
-    align-items: center;
-    background: #f1f5f9;
-    border: 1px solid var(--erp-border);
-    border-radius: 3px;
-    padding: 2px;
-    gap: 2px;
-}
-
-.vat-toggle-btn {
-    border: none;
-    background: transparent;
-    padding: 2px 7px;
-    font-size: 10.5px;
-    font-weight: 600;
-    color: var(--erp-text-muted);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.1s ease;
-}
-
-.vat-toggle-btn.active {
-    background: #ffffff;
-    color: var(--erp-primary);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    font-size: 11px;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   2. 메인 워크스페이스 그리드 (좌 44% 입력 / 우 56% 분석·도식)
+   2. 위에서 아래로 내려가는 1열 메인 워크플로우 (.sim-flow-container)
    ───────────────────────────────────────────────────────────── */
-.sim-container {
-    display: grid;
-    grid-template-columns: minmax(460px, 45%) 1fr;
-    gap: 8px;
-    align-items: start;
-}
-
-@media (max-width: 1200px) {
-    .sim-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-.sim-col {
+.sim-flow-container {
+    max-width: 1360px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
-/* ECOUNT ERP 패널 컨테이너 */
-.erp-panel {
-    background: var(--erp-panel-bg);
+/* 스텝 패널 */
+.step-panel {
+    background: #ffffff;
     border: 1px solid var(--erp-border);
-    border-radius: 2px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     overflow: hidden;
 }
 
-.erp-panel-header {
+.step-panel-header {
     background: var(--erp-th-bg);
     border-bottom: 1px solid var(--erp-border);
-    padding: 6px 10px;
+    padding: 8px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    min-height: 28px;
 }
 
-.erp-panel-title {
-    font-size: 12px;
-    font-weight: 700;
+.step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--erp-primary);
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    margin-right: 6px;
+}
+
+.step-panel-title {
+    font-size: 13px;
+    font-weight: 800;
     color: #0f172a;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
 }
 
-.erp-panel-title i {
-    font-size: 14px;
-    color: var(--erp-primary);
+.step-panel-subtitle {
+    font-size: 11px;
+    color: var(--erp-text-muted);
+    font-weight: 400;
+    margin-left: 8px;
 }
 
-.erp-panel-header-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.erp-panel-body {
-    padding: 8px 10px;
+.step-panel-body {
+    padding: 12px 14px;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   3. 테이블 컴포넌트 스타일 (High-Density ECOUNT ERP 규격)
+   3. 테이블 및 인풋 규격
    ───────────────────────────────────────────────────────────── */
 .erp-table {
     width: 100%;
@@ -290,8 +229,8 @@ body {
 .erp-table th,
 .erp-table td {
     border: 1px solid var(--erp-border-light);
-    padding: 4px 6px;
-    height: var(--erp-row-height);
+    padding: 5px 8px;
+    height: 29px;
     vertical-align: middle;
 }
 
@@ -301,490 +240,364 @@ body {
     font-weight: 700;
     text-align: center;
     white-space: nowrap;
-    user-select: none;
-}
-
-.erp-table tbody tr:hover {
-    background-color: var(--erp-row-hover);
 }
 
 .erp-table tfoot td {
     background: #f8fafc;
-    font-weight: 700;
+    font-weight: 800;
     border-top: 1.5px solid var(--erp-border);
 }
 
-/* 입력 필드 */
-.erp-input,
-.erp-select,
-.erp-textarea {
+.erp-input {
     width: 100%;
-    height: 24px;
-    padding: 2px 6px;
+    height: 25px;
+    padding: 2px 7px;
     font-size: 11.5px;
     font-family: inherit;
     color: var(--erp-text);
     background: #ffffff;
     border: 1px solid var(--erp-border);
-    border-radius: 2px;
+    border-radius: 3px;
     outline: none;
     transition: border-color 0.15s ease;
 }
 
-.erp-input:focus,
-.erp-select:focus,
-.erp-textarea:focus {
+.erp-input:focus {
     border-color: var(--erp-primary);
     box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
 }
 
-.erp-input.text-right {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.erp-input.text-center {
-    text-align: center;
-}
-
-.input-with-unit {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.input-with-unit .erp-input {
-    padding-right: 24px;
-}
-
-.input-with-unit .unit {
-    position: absolute;
-    right: 6px;
-    font-size: 10.5px;
-    color: var(--erp-text-muted);
-    pointer-events: none;
-}
-
-/* 카테고리 태그 배지 */
-.cat-badge {
-    display: inline-block;
-    padding: 1px 5px;
-    border-radius: 2px;
-    font-size: 10px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.cat-rent { background: #fef3c7; color: #b45309; }
-.cat-logistics { background: #ffedd5; color: #c2410c; }
-.cat-labor { background: #e0e7ff; color: #4338ca; }
-.cat-packaging { background: #f1f5f9; color: #475569; }
-.cat-fee { background: #fee2e2; color: #b91c1c; }
-.cat-etc { background: #f1f5f9; color: #64748b; }
+.erp-input.text-right { text-align: right; font-variant-numeric: tabular-nums; }
+.erp-input.text-center { text-align: center; }
 
 /* ─────────────────────────────────────────────────────────────
-   4. 우측 분석 대시보드 및 도식 (Highlights, Waterfall, BEP)
+   4. 매입 시나리오 1, 2, 3 설정 카드 그리드
    ───────────────────────────────────────────────────────────── */
-
-/* 최종 입고원가 대형 하이라이트 스트립 */
-.cost-summary-strip {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    color: #ffffff;
-    border-radius: 2px;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-.strip-label {
-    font-size: 11px;
-    color: #94a3b8;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.strip-title {
-    font-size: 15px;
-    font-weight: 800;
-    margin-top: 2px;
-    letter-spacing: -0.3px;
-}
-
-.strip-sub {
-    font-size: 11px;
-    color: #cbd5e1;
-    margin-top: 3px;
-}
-
-.strip-right {
-    text-align: right;
-}
-
-.strip-value-num {
-    font-size: 26px;
-    font-weight: 900;
-    color: #38bdf8;
-    letter-spacing: -0.5px;
-    font-variant-numeric: tabular-nums;
-}
-
-.strip-unit {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-left: 2px;
-}
-
-/* 원가 구성 가로 누적 바 */
-.cost-bar-container {
-    background: #ffffff;
-    border: 1px solid var(--erp-border);
-    border-radius: 2px;
-    padding: 8px 12px;
-}
-
-.cost-bar-title {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    font-weight: 700;
-    color: #475569;
-    margin-bottom: 6px;
-}
-
-.cost-stacked-bar {
-    height: 18px;
-    display: flex;
-    border-radius: 3px;
-    overflow: hidden;
-    background: #e2e8f0;
-}
-
-.cost-segment {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 800;
-    color: #ffffff;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    transition: width 0.3s ease;
-}
-
-.seg-goods { background: #3b82f6; }
-.seg-logistics { background: #f97316; }
-.seg-rent { background: #eab308; }
-.seg-financing { background: #8b5cf6; }
-.seg-labor { background: #ec4899; }
-.seg-fee { background: #ef4444; }
-.seg-etc { background: #64748b; }
-
-.cost-legend {
-    display: flex;
-    flex-wrap: wrap;
+.sc-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-top: 6px;
-    font-size: 10.5px;
-    color: var(--erp-text-muted);
 }
 
-.legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+@media (max-width: 900px) {
+    .sc-card-grid { grid-template-columns: 1fr; }
 }
 
-.legend-color {
-    width: 8px;
-    height: 8px;
-    border-radius: 1px;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   5. 글로벌 마진 워터폴 차트 (Waterfall Bridge Canvas/SVG)
-   ───────────────────────────────────────────────────────────── */
-.waterfall-panel-body {
-    padding: 10px;
-}
-
-.waterfall-canvas-wrapper {
-    width: 100%;
-    min-height: 160px;
-    position: relative;
-    background: #ffffff;
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    padding: 20px 10px 30px;
-    border-bottom: 1px solid var(--erp-border);
-}
-
-.waterfall-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    height: 100%;
-    justify-content: flex-end;
-}
-
-.waterfall-bar {
-    width: 100%;
-    max-width: 48px;
-    border-radius: 2px;
-    position: relative;
-    transition: height 0.3s ease, transform 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.waterfall-val-label {
-    position: absolute;
-    top: -18px;
-    font-size: 10.5px;
-    font-weight: 800;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-.waterfall-name-label {
-    position: absolute;
-    bottom: -22px;
-    font-size: 10px;
-    font-weight: 700;
-    color: #475569;
-    white-space: nowrap;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   6. 손익분기점 (BEP) 분석 그리드
-   ───────────────────────────────────────────────────────────── */
-.bep-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.bep-metric-card {
-    background: #f8fafc;
-    border: 1px solid var(--erp-border-light);
-    border-radius: 2px;
-    padding: 8px 10px;
-    text-align: center;
-}
-
-.bep-metric-title {
-    font-size: 10.5px;
-    font-weight: 700;
-    color: var(--erp-text-muted);
-}
-
-.bep-metric-num {
-    font-size: 17px;
-    font-weight: 900;
-    color: #0f172a;
-    margin-top: 3px;
-    font-variant-numeric: tabular-nums;
-}
-
-.bep-metric-unit {
-    font-size: 10px;
-    color: var(--erp-text-muted);
-    font-weight: 400;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   7. 비용 What-If 시나리오 3대 비교 카드
-   ───────────────────────────────────────────────────────────── */
-.scenario-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-}
-
-.scenario-card {
-    background: #ffffff;
-    border: 1px solid var(--erp-border);
-    border-radius: 3px;
-    padding: 8px 10px;
-    position: relative;
-    transition: all 0.15s ease;
-}
-
-.scenario-card.is-active {
-    border-color: var(--erp-primary);
-    box-shadow: 0 0 0 1px var(--erp-primary);
-    background: #f8fbff;
-}
-
-.scenario-tag {
-    font-size: 9.5px;
-    font-weight: 800;
-    padding: 1px 5px;
-    border-radius: 2px;
-    display: inline-block;
-    color: #ffffff;
-}
-
-.scenario-name {
-    font-size: 11.5px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-top: 4px;
-}
-
-.scenario-desc {
-    font-size: 10px;
-    color: var(--erp-text-muted);
-    margin-top: 2px;
-    line-height: 1.3;
-}
-
-.scenario-values {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--erp-border-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-}
-
-.scenario-cost-val {
-    font-size: 13px;
-    font-weight: 800;
-    color: #0f172a;
-}
-
-.scenario-margin-val {
-    font-size: 13px;
-    font-weight: 900;
-}
-
-/* 마진 상태 배지 */
-.margin-badge {
-    padding: 2px 6px;
-    border-radius: 2px;
-    font-size: 11px;
-    font-weight: 800;
-    display: inline-block;
-}
-
-.margin-healthy { background: var(--erp-success-bg); color: #047857; }
-.margin-warning { background: var(--erp-warning-bg); color: #b45309; }
-.margin-danger { background: var(--erp-danger-bg); color: #b91c1c; }
-
-/* ─────────────────────────────────────────────────────────────
-   8. 2차원 민감도 매트릭스 히트맵 테이블
-   ───────────────────────────────────────────────────────────── */
-.heatmap-cell {
-    text-align: center;
-    font-weight: 800;
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    padding: 5px 4px;
-}
-
-.cell-healthy { background: #dcfce7; color: #166534; }
-.cell-warning { background: #fef9c3; color: #854d0e; }
-.cell-danger { background: #fee2e2; color: #991b1b; }
-
-/* ─────────────────────────────────────────────────────────────
-   9. 모달 및 팝업 (저장 목록 등)
-   ───────────────────────────────────────────────────────────── */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(15, 23, 42, 0.45);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-overlay.active {
-    display: flex;
-}
-
-.modal-content {
+.sc-card {
     background: #ffffff;
     border: 1px solid var(--erp-border);
     border-radius: 4px;
-    width: 90%;
-    max-width: 780px;
-    max-height: 85vh;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-}
-
-.modal-header {
-    background: var(--erp-header-bg);
-    color: #ffffff;
-    padding: 8px 14px;
-    display: flex;
     justify-content: space-between;
-    align-items: center;
+    transition: all 0.15s ease;
 }
 
-.modal-title {
-    font-size: 13px;
-    font-weight: 700;
+.sc-card:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.sc-card-header {
+    border-bottom: 1px solid var(--erp-border-light);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.modal-close {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    font-size: 18px;
+.sc-tag {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.tag-sc1 { background: #10b981; }
+.tag-sc2 { background: #2563eb; }
+.tag-sc3 { background: #8b5cf6; }
+
+.sc-cost-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 11px;
+    min-height: 110px;
+}
+
+.sc-check-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: #f8fafc;
+    cursor: pointer;
+    user-select: none;
+}
+
+.sc-check-item:hover {
+    background: #f1f5f9;
+}
+
+.sc-check-item input[type="checkbox"] {
+    margin-right: 6px;
     cursor: pointer;
 }
 
-.modal-close:hover {
-    color: #ffffff;
+.sc-check-amt {
+    font-size: 10.5px;
+    color: var(--erp-text-muted);
+    font-variant-numeric: tabular-nums;
 }
 
-.modal-body {
-    padding: 12px;
-    overflow-y: auto;
-    flex: 1;
+.sc-card-footer {
+    border-top: 1.5px solid var(--erp-border);
+    padding-top: 8px;
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.sc-unit-cost-label {
+    font-size: 10.5px;
+    color: var(--erp-text-muted);
+    font-weight: 600;
+}
+
+.sc-unit-cost-val {
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   10. 인쇄 전용 스타일 (@media print) - 완벽한 A4 비즈니스 보고서
+   5. 판매가 시나리오 1, 2, 3 설정 카드 그리드
+   ───────────────────────────────────────────────────────────── */
+.sales-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 900px) {
+    .sales-card-grid { grid-template-columns: 1fr; }
+}
+
+.sales-card {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+}
+
+.sales-tag {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.tag-sales1 { background: #0284c7; }
+.tag-sales2 { background: #0f766e; }
+.tag-sales3 { background: #c026d3; }
+
+.sales-quick-btns {
+    display: flex;
+    gap: 3px;
+    margin-top: 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   6. [핵심] 매입 × 판매 시나리오 경우의 수 교차 매트릭스 (3×3)
+   ───────────────────────────────────────────────────────────── */
+.matrix-container {
+    overflow-x: auto;
+}
+
+.matrix-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px;
+    font-size: 12px;
+}
+
+.matrix-table th {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 8px 10px;
+    border-radius: 3px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.matrix-cost-th {
+    background: #1e293b !important;
+    text-align: left !important;
+    padding: 8px 12px !important;
+    width: 22%;
+}
+
+.matrix-cell {
+    background: #ffffff;
+    border: 1.5px solid var(--erp-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    vertical-align: top;
+    position: relative;
+}
+
+.matrix-cell:hover {
+    border-color: var(--erp-primary);
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.15);
+    transform: translateY(-1px);
+}
+
+.matrix-cell.selected {
+    border-color: var(--erp-primary);
+    background: #f0f7ff;
+    box-shadow: 0 0 0 2px var(--erp-primary);
+}
+
+.matrix-cell-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.matrix-badge, .matrix-cell-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.badge-healthy { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-warning { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+.badge-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.matrix-cell-margin, .matrix-margin-amount {
+    font-size: 17px;
+    font-weight: 900;
+    margin: 4px 0 2px 0;
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.matrix-cell-profit {
+    font-size: 11.5px;
+    color: #334155;
+    margin-top: 2px;
+}
+
+.sc-cost-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    font-size: 11px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s ease;
+}
+
+.sc-cost-checkbox:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.sc-cost-checkbox input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.sc-card.active, .sales-card.active {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 1.5px var(--erp-primary);
+}
+
+.matrix-sub-info {
+    font-size: 10.5px;
+    color: var(--erp-text-muted);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--erp-border-light);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   7. 선택 조합 심층 분석 (워터폴 + BEP)
+   ───────────────────────────────────────────────────────────── */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 960px) {
+    .detail-grid { grid-template-columns: 1fr; }
+}
+
+.bep-metric-box {
+    background: #f8fafc;
+    border: 1px solid var(--erp-border-light);
+    border-radius: 4px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bep-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11.5px;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--erp-border-light);
+}
+
+.bep-row:last-child {
+    border-bottom: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   8. 인쇄 전용 스타일 (@media print)
    ───────────────────────────────────────────────────────────── */
 @media print {
     @page {
         size: A4 portrait;
-        margin: 12mm 15mm !important;
+        margin: 10mm 12mm !important;
     }
 
     body {
         background: #ffffff !important;
         padding: 0 !important;
-        font-size: 10pt !important;
+        font-size: 9.5pt !important;
     }
 
     .erp-top-toolbar,
     .btn-erp,
-    .vat-toggle-group,
+    .sales-quick-btns,
     .no-print,
     .modal-overlay {
         display: none !important;
@@ -793,43 +606,33 @@ body {
     .print-only-header {
         display: block !important;
         border-bottom: 2px solid #0f172a;
-        padding-bottom: 8px;
-        margin-bottom: 14px;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
     }
 
     .print-report-title {
-        font-size: 18pt;
+        font-size: 16pt;
         font-weight: 800;
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
         color: #0f172a;
     }
 
     .print-meta-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        font-size: 9pt;
+        font-size: 8.5pt;
         color: #475569;
     }
 
-    .sim-container {
-        display: block !important;
-    }
-
-    .sim-col {
-        display: block !important;
-        page-break-inside: auto;
-    }
-
-    .erp-panel {
+    .step-panel {
         border: 1px solid #cbd5e1 !important;
-        margin-bottom: 10px !important;
+        margin-bottom: 8px !important;
         page-break-inside: avoid !important;
+        box-shadow: none !important;
     }
 
-    .cost-summary-strip {
-        background: #0f172a !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        margin-bottom: 10px;
+    .matrix-cell {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
     }
 }
