@@ -375,6 +375,7 @@
                     <div class="letterhead-brand">
                         <img src="${escapeHtml(state.company.logoUrl)}" class="letterhead-logo" alt="K&G LOGO" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-block';">
                         <span class="letterhead-logo-fallback" style="display: none;">K&G</span>
+                        <div class="letterhead-brand-divider"></div>
                         <div class="letterhead-name-group">
                             <span class="letterhead-corp-kr">${escapeHtml(state.company.nameKr)}</span>
                             <span class="letterhead-corp-en">${escapeHtml(state.company.nameEn)}</span>
@@ -382,14 +383,14 @@
                     </div>
                     <div class="letterhead-contact">
                         <div class="letterhead-contact-line">
-                            <span>TEL: ${escapeHtml(state.company.tel)}</span>
-                            <span class="contact-sep">|</span>
-                            <span>FAX: ${escapeHtml(state.company.fax)}</span>
+                            <span class="contact-chip"><span class="chip-lbl">TEL</span>${escapeHtml(state.company.tel)}</span>
+                            <span class="contact-sep">/</span>
+                            <span class="contact-chip"><span class="chip-lbl">FAX</span>${escapeHtml(state.company.fax)}</span>
+                        </div>
+                        <div class="letterhead-contact-addr">
+                            ${escapeHtml(state.company.address)}
                         </div>
                     </div>
-                </div>
-                <div class="letterhead-subline">
-                    <span>${escapeHtml(state.company.address)}</span>
                 </div>
             </header>
         `;
@@ -408,39 +409,40 @@
     function buildMetaTableHtml(to, cc, from, date, subject) {
         const ccRow = cc ? `
             <tr>
-                <td class="meta-label">■ 참  조</td>
+                <td class="meta-label">■ 참 &nbsp; 조</td>
                 <td class="meta-colon">:</td>
                 <td class="meta-val">${escapeHtml(cc)}</td>
             </tr>
         ` : '';
 
         return `
-            <table class="doc-meta-table">
-                <tbody>
-                    <tr>
-                        <td class="meta-label">■ 수  신</td>
-                        <td class="meta-colon">:</td>
-                        <td class="meta-val">${escapeHtml(to || '(수신처 미입력)')}</td>
-                    </tr>
-                    ${ccRow}
-                    <tr>
-                        <td class="meta-label">■ 발  신</td>
-                        <td class="meta-colon">:</td>
-                        <td class="meta-val">${escapeHtml(from || '(발신자 미입력)')}</td>
-                    </tr>
-                    <tr>
-                        <td class="meta-label">■ 일  자</td>
-                        <td class="meta-colon">:</td>
-                        <td class="meta-val">${escapeHtml(date || getTodayFormatted())}</td>
-                    </tr>
-                    <tr>
-                        <td class="meta-label">■ 제  목</td>
-                        <td class="meta-colon">:</td>
-                        <td class="meta-val" style="font-weight: 700; color: #0f172a;">${escapeHtml(subject || '(공문 제목 미입력)')}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="meta-divider"></div>
+            <div class="doc-meta-container">
+                <table class="doc-meta-table">
+                    <tbody>
+                        <tr>
+                            <td class="meta-label">■ 수 &nbsp; 신</td>
+                            <td class="meta-colon">:</td>
+                            <td class="meta-val">${escapeHtml(to || '(수신처 미입력)')}</td>
+                        </tr>
+                        ${ccRow}
+                        <tr>
+                            <td class="meta-label">■ 발 &nbsp; 신</td>
+                            <td class="meta-colon">:</td>
+                            <td class="meta-val">${escapeHtml(from || '(발신자 미입력)')}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">■ 일 &nbsp; 자</td>
+                            <td class="meta-colon">:</td>
+                            <td class="meta-val">${escapeHtml(date || getTodayFormatted())}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">■ 제 &nbsp; 목</td>
+                            <td class="meta-colon">:</td>
+                            <td class="meta-val doc-subject-val">${escapeHtml(subject || '(공문 제목 미입력)')}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         `;
     }
 
