@@ -5,6 +5,7 @@
  * ══════════════════════════════════════════════════════════════
  * - 1열 탑다운(Top-to-Bottom) 워크플로우 제어
  * - Step 1: 물품대금 매입 내역 및 부가세(VAT) 원가 산입 토글
+ *           (In-Place DOM 업데이트로 포커스 소실 없이 다자리수 연속 입력 보장)
  * - Step 2: 매입 시나리오 1, 2, 3 설정 (부대비용 풀 및 금융이자 체크)
  * - Step 3: 판매가 시나리오 1, 2, 3 설정 (판매단가 및 마진율 역산)
  * - Step 4: 매입 × 판매 시나리오 3×3 교차 분석표 (총 9가지 경우의 수)
@@ -18,7 +19,6 @@ import { SalesMarginEngine } from './margin-engine.js';
     'use strict';
 
     // ── 1. 상수 및 스토리지 키 ──
-    const STORAGE_KEY_CURRENT = 'kng_sales_sim_current_v2';
     const STORAGE_KEY_ARCHIVE = 'kng_sales_sim_archive_v2';
 
     // ── 2. 기본 시드 데이터 (실무 권장 샘플) ──
@@ -30,19 +30,16 @@ import { SalesMarginEngine } from './margin-engine.js';
             { id: 'item_2', name: 'ABS 통기형 산업용 안전모', spec: '백색 4점식 턱끈', qty: 500, unitPrice: 6500 },
             { id: 'item_3', name: 'PU 코팅 정밀 안전장갑', spec: '그레이 13게이지', qty: 3000, unitPrice: 850 }
         ],
-        // 부대비용 풀 (사용자가 항목을 추가하거나 시나리오별로 선택 가능)
         costsPool: [
             { id: 'cost_1', name: '물류센터 왕복 화물 운송료', category: 'logistics', amount: 350000, isFixed: false },
             { id: 'cost_2', name: '임시 보관 창고 임대료 (2개월)', category: 'rent', amount: 500000, isFixed: true },
             { id: 'cost_3', name: '회사 로고 라벨 부착 및 소포장', category: 'packaging', amount: 280000, isFixed: false },
             { id: 'cost_4', name: '전자계약 및 지급보증보험 수수료', category: 'fee', amount: 150000, isFixed: false }
         ],
-        // 금융이자 기본 설정
         financing: {
             periodDays: 60,
             annualRatePct: 5.0
         },
-        // Step 2: 매입 시나리오 1, 2, 3
         costScenarios: [
             {
                 id: 'c1',
@@ -66,13 +63,11 @@ import { SalesMarginEngine } from './margin-engine.js';
                 includeFinancing: true
             }
         ],
-        // Step 3: 판매가 시나리오 1, 2, 3
         salesScenarios: [
             { id: 's1', name: '시나리오 A: 도매 최저가', targetPrice: 5500, memo: '대리점/도매 납품가' },
             { id: 's2', name: '시나리오 B: 본사 표준목표가', targetPrice: 6500, memo: '건설사 직접 납품가' },
             { id: 's3', name: '시나리오 C: 권장 소비자가', targetPrice: 7800, memo: '온라인 소매/특판가' }
         ],
-        // 현재 선택된 셀 인덱스 (기본: 매입 2 × 판매 B -> [1, 1])
         selectedCrossIndex: {
             costIdx: 1,
             salesIdx: 1
@@ -85,7 +80,7 @@ import { SalesMarginEngine } from './margin-engine.js';
         data: JSON.parse(JSON.stringify(DEFAULT_SEED_DATA)),
         docId: null,
         archive: [],
-        calculated: null // 최신 계산 결과 캐시
+        calculated: null
     };
 
     // ── 4. DOM 요소 캐싱 ──
@@ -179,7 +174,12 @@ import { SalesMarginEngine } from './margin-engine.js';
     }
 
     // ── 6. 데이터 계산 및 렌더링 파이프라인 ──
-    function recalculateAll() {
+    /**
+     * @param {Object} options
+     * @param {boolean} options.rebuildGoods - 물품 테이블 DOM 완전 재빌드 여부 (행 추가/삭제, VAT 토글, 문서로드 시에만 true)
+     * @param {boolean} options.rebuildScenarios - 시나리오 카드 DOM 완전 재빌드 여부 (항목 추가, 초기 로드 시에만 true)
+     */
+    function recalculateAll({ rebuildGoods = false, rebuildScenarios = false } = {}) {
         // 1. 물품대 산출
         const goodsResult = SalesMarginEngine.calculateGoodsCost(state.data.items, state.data.includeVat);
 
@@ -207,17 +207,34 @@ import { SalesMarginEngine } from './margin-engine.js';
             matrix: matrixResult
         };
 
-        // 3. UI 렌더링
-        renderGoodsTable(goodsResult);
-        renderCostScenarios(goodsResult, matrixResult.evaluatedCosts);
-        renderSalesScenarios(matrixResult.evaluatedCosts, state.data.salesScenarios);
+        // 3. Step 1: 물품대 렌더링 (재빌드 or In-place 텍스트 업데이트)
+        if (rebuildGoods) {
+            buildGoodsTableDOM(goodsResult);
+        } else {
+            updateGoodsTableValues(goodsResult);
+        }
+
+        // 4. Step 2 & 3: 시나리오 카드 렌더링 (재빌드 or In-place 텍스트 업데이트)
+        if (rebuildScenarios) {
+            buildCostScenariosDOM(goodsResult, matrixResult.evaluatedCosts);
+            buildSalesScenariosDOM(matrixResult.evaluatedCosts, state.data.salesScenarios);
+        } else {
+            updateCostScenariosValues(goodsResult, matrixResult.evaluatedCosts);
+            updateSalesScenariosValues(matrixResult.evaluatedCosts, state.data.salesScenarios);
+        }
+
+        // 5. Step 4: 3×3 매트릭스 렌더링
         renderCrossMatrix(matrixResult);
+
+        // 6. Step 5: 선택 조합 상세 (워터폴 & BEP)
         renderSelectedComboDetail();
+
+        // 7. 인쇄 메타데이터 동기화
         updatePrintMeta();
     }
 
-    // ── Step 1 렌더링: 물품 대금 ──
-    function renderGoodsTable(goods) {
+    // ── Step 1 DOM 완전 빌드: 물품 대금 ──
+    function buildGoodsTableDOM(goods) {
         if (!els.tbodyGoods) return;
         els.tbodyGoods.innerHTML = '';
 
@@ -234,6 +251,7 @@ import { SalesMarginEngine } from './margin-engine.js';
 
         goods.items.forEach((item, index) => {
             const tr = document.createElement('tr');
+            tr.dataset.idx = index;
             tr.innerHTML = `
                 <td>
                     <input type="text" class="erp-input item-name" data-idx="${index}" value="${item.name || ''}" placeholder="품목명">
@@ -242,15 +260,15 @@ import { SalesMarginEngine } from './margin-engine.js';
                     <input type="text" class="erp-input item-spec" data-idx="${index}" value="${item.spec || ''}" placeholder="규격/사양">
                 </td>
                 <td>
-                    <input type="number" class="erp-input text-right item-qty" data-idx="${index}" value="${item.qty || 0}" min="0">
+                    <input type="number" class="erp-input text-right item-qty" data-idx="${index}" value="${item.qty !== undefined ? item.qty : 0}" min="0">
                 </td>
                 <td>
-                    <input type="number" class="erp-input text-right item-price" data-idx="${index}" value="${item.unitPrice || 0}" min="0" step="50">
+                    <input type="number" class="erp-input text-right item-price" data-idx="${index}" value="${item.unitPrice !== undefined ? item.unitPrice : 0}" min="0" step="50">
                 </td>
-                <td class="text-right" style="font-weight: 700; color: #1e293b;">
+                <td class="text-right col-supply" style="font-weight: 700; color: #1e293b;">
                     ${fmt.num(item.supplyPrice)}
                 </td>
-                <td class="col-vat text-right" style="${showVat ? '' : 'display: none;'}; color: #64748b;">
+                <td class="col-vat text-right col-vat-val" style="${showVat ? '' : 'display: none;'}; color: #64748b;">
                     ${fmt.num(item.vat)}
                 </td>
                 <td class="text-center">
@@ -263,14 +281,37 @@ import { SalesMarginEngine } from './margin-engine.js';
         });
 
         // 푸터 합계
+        updateGoodsFooter(goods);
+    }
+
+    // ── Step 1 In-place 값만 업데이트 (포커스 유지 핵심!) ──
+    function updateGoodsTableValues(goods) {
+        if (!els.tbodyGoods) return;
+
+        const rows = els.tbodyGoods.querySelectorAll('tr');
+        goods.items.forEach((item, index) => {
+            const tr = rows[index];
+            if (!tr) return;
+
+            const supplyTd = tr.querySelector('.col-supply');
+            if (supplyTd) supplyTd.innerText = fmt.num(item.supplyPrice);
+
+            const vatTd = tr.querySelector('.col-vat-val');
+            if (vatTd) vatTd.innerText = fmt.num(item.vat);
+        });
+
+        updateGoodsFooter(goods);
+    }
+
+    function updateGoodsFooter(goods) {
         if (els.sumGoodsQty) els.sumGoodsQty.innerText = `${fmt.num(goods.totalQty)}개`;
         if (els.avgGoodsPrice) els.avgGoodsPrice.innerText = fmt.won(goods.avgUnitGoodsPrice);
         if (els.sumGoodsSupply) els.sumGoodsSupply.innerText = fmt.won(goods.totalSupplyPrice);
         if (els.sumGoodsVat) els.sumGoodsVat.innerText = fmt.won(goods.totalVat);
     }
 
-    // ── Step 2 렌더링: 매입 원가 시나리오 1, 2, 3 ──
-    function renderCostScenarios(goods, evaluatedCosts) {
+    // ── Step 2 DOM 완전 빌드: 매입 원가 시나리오 1, 2, 3 ──
+    function buildCostScenariosDOM(goods, evaluatedCosts) {
         if (!els.costScenariosContainer) return;
         els.costScenariosContainer.innerHTML = '';
 
@@ -282,27 +323,24 @@ import { SalesMarginEngine } from './margin-engine.js';
             const rawSc = state.data.costScenarios[scIdx];
             const includedSet = new Set(rawSc.includedCostIds || []);
 
-            // 카드 엘리먼트 생성
             const card = document.createElement('div');
             card.className = `sc-card ${scIdx === state.data.selectedCrossIndex.costIdx ? 'active' : ''}`;
             card.dataset.scIdx = scIdx;
 
-            // 부대비용 체크박스 리스트 생성
             const costCheckboxesHtml = state.data.costsPool.map(cost => {
                 const isChecked = includedSet.has(cost.id);
                 const unitAmt = Math.round(cost.amount / totalQty);
                 return `
-                    <label class="sc-cost-checkbox" title="${cost.isFixed ? '고정비' : '변동비'}">
+                    <label class="sc-cost-checkbox" data-cost-id="${cost.id}" title="${cost.isFixed ? '고정비' : '변동비'}">
                         <input type="checkbox" class="chk-cost-toggle" data-sc-idx="${scIdx}" data-cost-id="${cost.id}" ${isChecked ? 'checked' : ''}>
                         <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             ${cost.name} ${cost.isFixed ? '<small style="color:#d97706;">(고정)</small>' : ''}
                         </span>
-                        <strong style="color: #475569; font-size: 11px;">+${fmt.won(unitAmt)}</strong>
+                        <strong class="cost-unit-amt" style="color: #475569; font-size: 11px;">+${fmt.won(unitAmt)}</strong>
                     </label>
                 `;
             }).join('');
 
-            // 금융이자 예상 개당 금액
             const estCapitalBase = goods.effectiveBase + sc.totalOverhead;
             const estFinInterest = Math.round(estCapitalBase * (annualRate / 100) * (periodDays / 365));
             const estUnitInterest = Math.round(estFinInterest / totalQty);
@@ -316,36 +354,32 @@ import { SalesMarginEngine } from './margin-engine.js';
                 </div>
 
                 <div class="sc-card-body">
-                    <!-- 기본 물품대 -->
                     <div class="sc-price-row">
                         <span>기본 물품대:</span>
-                        <strong>${fmt.won(goods.avgUnitGoodsPrice)}/개</strong>
+                        <strong class="sc-base-goods-val">${fmt.won(goods.avgUnitGoodsPrice)}/개</strong>
                     </div>
 
-                    <!-- 부대비용 항목 체크박스 영역 -->
                     <div style="font-size: 11px; font-weight: 700; color: #475569; margin: 8px 0 4px 0;">
-                        반영 부대비용 선택 (${includedSet.size}/${state.data.costsPool.length}개):
+                        반영 부대비용 선택 (<span class="sc-included-count">${includedSet.size}</span>/${state.data.costsPool.length}개):
                     </div>
                     <div class="sc-cost-list" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; border: 1px solid #f1f5f9; padding: 4px; border-radius: 3px; background: #fafafa;">
                         ${costCheckboxesHtml}
                     </div>
 
-                    <!-- 금융비용 반영 여부 -->
                     <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
                         <label class="sc-cost-checkbox" style="color: #6b21a8; font-weight: 700; background: var(--erp-purple-bg); border-color: #ddd6fe;">
                             <input type="checkbox" class="chk-financing-toggle" data-sc-idx="${scIdx}" ${rawSc.includeFinancing ? 'checked' : ''}>
                             <span>금융이자 반영 (${periodDays}일 · ${annualRate}%)</span>
-                            <strong>+${fmt.won(estUnitInterest)}</strong>
+                            <strong class="sc-fin-amt">+${fmt.won(estUnitInterest)}</strong>
                         </label>
                     </div>
 
-                    <!-- 최종 원가 합계 박스 -->
                     <div class="sc-total-box" style="margin-top: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; text-align: right;">
                         <div style="font-size: 10.5px; color: #64748b;">이 시나리오의 총 소요 매입원가</div>
-                        <div style="font-size: 16px; font-weight: 800; color: #1e293b;">
+                        <div style="font-size: 16px; font-weight: 800; color: #1e293b;" class="sc-unit-cost-text">
                             ${fmt.won(sc.unitCost)} <span style="font-size: 11px; font-weight: 500; color: #64748b;">/개</span>
                         </div>
-                        <div style="font-size: 10.5px; color: #94a3b8;">(총 ${fmt.won(sc.totalCost)})</div>
+                        <div style="font-size: 10.5px; color: #94a3b8;" class="sc-total-cost-text">(총 ${fmt.won(sc.totalCost)})</div>
                     </div>
                 </div>
             `;
@@ -354,12 +388,52 @@ import { SalesMarginEngine } from './margin-engine.js';
         });
     }
 
-    // ── Step 3 렌더링: 판매가 시나리오 1, 2, 3 ──
-    function renderSalesScenarios(evaluatedCosts, salesScenarios) {
+    // ── Step 2 In-place 값만 업데이트 ──
+    function updateCostScenariosValues(goods, evaluatedCosts) {
+        if (!els.costScenariosContainer) return;
+        const totalQty = goods.totalQty > 0 ? goods.totalQty : 1;
+        const periodDays = Number(state.data.financing.periodDays) || 60;
+        const annualRate = Number(state.data.financing.annualRatePct) || 5.0;
+
+        const cards = els.costScenariosContainer.querySelectorAll('.sc-card');
+        evaluatedCosts.forEach((sc, scIdx) => {
+            const card = cards[scIdx];
+            if (!card) return;
+
+            // 기본 물품대
+            const baseGoodsEl = card.querySelector('.sc-base-goods-val');
+            if (baseGoodsEl) baseGoodsEl.innerText = `${fmt.won(goods.avgUnitGoodsPrice)}/개`;
+
+            // 개별 부대비용 단가 갱신
+            state.data.costsPool.forEach(cost => {
+                const label = card.querySelector(`.sc-cost-checkbox[data-cost-id="${cost.id}"]`);
+                if (label) {
+                    const unitAmtEl = label.querySelector('.cost-unit-amt');
+                    if (unitAmtEl) unitAmtEl.innerText = `+${fmt.won(Math.round(cost.amount / totalQty))}`;
+                }
+            });
+
+            // 금융이자 단가 갱신
+            const estCapitalBase = goods.effectiveBase + sc.totalOverhead;
+            const estFinInterest = Math.round(estCapitalBase * (annualRate / 100) * (periodDays / 365));
+            const estUnitInterest = Math.round(estFinInterest / totalQty);
+            const finAmtEl = card.querySelector('.sc-fin-amt');
+            if (finAmtEl) finAmtEl.innerText = `+${fmt.won(estUnitInterest)}`;
+
+            // 총원가 갱신
+            const unitCostEl = card.querySelector('.sc-unit-cost-text');
+            if (unitCostEl) unitCostEl.innerHTML = `${fmt.won(sc.unitCost)} <span style="font-size: 11px; font-weight: 500; color: #64748b;">/개</span>`;
+
+            const totalCostEl = card.querySelector('.sc-total-cost-text');
+            if (totalCostEl) totalCostEl.innerText = `(총 ${fmt.won(sc.totalCost)})`;
+        });
+    }
+
+    // ── Step 3 DOM 완전 빌드: 판매가 시나리오 1, 2, 3 ──
+    function buildSalesScenariosDOM(evaluatedCosts, salesScenarios) {
         if (!els.salesScenariosContainer) return;
         els.salesScenariosContainer.innerHTML = '';
 
-        // 기준 원가 (매입 시나리오 2 [표준실무원가] 우선, 없으면 0번)
         const benchmarkUnitCost = (evaluatedCosts[1] || evaluatedCosts[0] || {}).unitCost || 0;
 
         salesScenarios.forEach((sSc, sIdx) => {
@@ -385,7 +459,6 @@ import { SalesMarginEngine } from './margin-engine.js';
                         </div>
                     </div>
 
-                    <!-- 표준원가(시나리오2) 대비 마진율 퀵 역산 버튼 -->
                     <div style="font-size: 10.5px; color: #64748b; margin-bottom: 4px;">목표 마진율 기준 판매가 역산:</div>
                     <div style="display: flex; gap: 4px; margin-bottom: 8px;">
                         <button type="button" class="btn-erp btn-sm btn-reverse-calc" data-s-idx="${sIdx}" data-margin="15" title="마진 15% 역산">15%</button>
@@ -396,7 +469,7 @@ import { SalesMarginEngine } from './margin-engine.js';
 
                     <div style="font-size: 11px; padding: 4px 8px; background: #f8fafc; border-radius: 3px; display: flex; justify-content: space-between;">
                         <span style="color: #64748b;">표준원가 대비 마진:</span>
-                        <strong style="color: ${Number(marginRate) >= 18 ? '#047857' : Number(marginRate) >= 10 ? '#d97706' : '#dc2626'};">
+                        <strong class="sales-benchmark-margin" style="color: ${Number(marginRate) >= 18 ? '#047857' : Number(marginRate) >= 10 ? '#d97706' : '#dc2626'};">
                             ${fmt.won(marginAmt)} (${marginRate}%)
                         </strong>
                     </div>
@@ -404,6 +477,27 @@ import { SalesMarginEngine } from './margin-engine.js';
             `;
 
             els.salesScenariosContainer.appendChild(card);
+        });
+    }
+
+    // ── Step 3 In-place 값만 업데이트 ──
+    function updateSalesScenariosValues(evaluatedCosts, salesScenarios) {
+        if (!els.salesScenariosContainer) return;
+        const benchmarkUnitCost = (evaluatedCosts[1] || evaluatedCosts[0] || {}).unitCost || 0;
+
+        const cards = els.salesScenariosContainer.querySelectorAll('.sales-card');
+        salesScenarios.forEach((sSc, sIdx) => {
+            const card = cards[sIdx];
+            if (!card) return;
+
+            const marginAmt = sSc.targetPrice - benchmarkUnitCost;
+            const marginRate = sSc.targetPrice > 0 ? ((marginAmt / sSc.targetPrice) * 100).toFixed(1) : '0.0';
+
+            const marginEl = card.querySelector('.sales-benchmark-margin');
+            if (marginEl) {
+                marginEl.innerText = `${fmt.won(marginAmt)} (${marginRate}%)`;
+                marginEl.style.color = Number(marginRate) >= 18 ? '#047857' : Number(marginRate) >= 10 ? '#d97706' : '#dc2626';
+            }
         });
     }
 
@@ -441,7 +535,6 @@ import { SalesMarginEngine } from './margin-engine.js';
 
             bodyHtml += `<tr>`;
 
-            // 좌측 헤더 (매입 시나리오 요약)
             bodyHtml += `
                 <td style="background: ${isSelectedRow ? '#eff6ff' : '#f8fafc'}; border-right: 2px solid #cbd5e1;">
                     <div style="font-weight: 800; font-size: 12px; color: #1e293b;">${cSc.name}</div>
@@ -454,11 +547,9 @@ import { SalesMarginEngine } from './margin-engine.js';
                 </td>
             `;
 
-            // 3개의 셀 (각 판매 시나리오와의 조합)
             row.cells.forEach((cell, salesIdx) => {
                 const isSelectedCell = (costIdx === state.data.selectedCrossIndex.costIdx && salesIdx === state.data.selectedCrossIndex.salesIdx);
 
-                // 마진 상태별 스타일
                 let badgeClass = 'badge-healthy';
                 let badgeText = '안전 마진';
                 let marginColor = '#047857';
@@ -557,7 +648,6 @@ import { SalesMarginEngine } from './margin-engine.js';
                         <stop offset="100%" stop-color="#047857" />
                     </linearGradient>
                 </defs>
-                <!-- Baseline -->
                 <line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${width - margin.right}" y2="${margin.top + plotHeight}" stroke="#cbd5e1" stroke-width="1.5" />
         `;
 
@@ -586,13 +676,10 @@ import { SalesMarginEngine } from './margin-engine.js';
             const fill = st.type === 'start' ? 'url(#wfBlueGrad)' : st.type === 'end' ? 'url(#wfGreenGrad)' : st.color;
 
             svgContent += `
-                <!-- Bar -->
                 <rect x="${x}" y="${barY}" width="${barWidth}" height="${barH}" rx="3" fill="${fill}" />
-                <!-- Value Label -->
                 <text x="${x + barWidth / 2}" y="${barY - 5}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1e293b">
                     ${fmt.num(st.amount)}
                 </text>
-                <!-- Step Label -->
                 <text x="${x + barWidth / 2}" y="${margin.top + plotHeight + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-weight="600">
                     ${st.label}
                 </text>
@@ -619,7 +706,6 @@ import { SalesMarginEngine } from './margin-engine.js';
         const { costIdx, salesIdx } = state.data.selectedCrossIndex;
         const selectedCell = matrix.matrix[costIdx].cells[salesIdx];
 
-        // 9가지 경우의 수 중 최고/최저 마진 찾기
         let maxMarginCell = null;
         let minMarginCell = null;
 
@@ -672,45 +758,46 @@ import { SalesMarginEngine } from './margin-engine.js';
             });
         }
 
-        // 부가세 포함/미포함 토글
+        // 부가세 포함/미포함 토글 (테이블 컬럼 가시성 변경 필요하므로 rebuildGoods: true)
         if (els.chkIncludeVat) {
             els.chkIncludeVat.addEventListener('change', e => {
                 state.data.includeVat = e.target.checked;
-                recalculateAll();
+                recalculateAll({ rebuildGoods: true, rebuildScenarios: false });
                 showToast(`부가세 원가 산입: ${state.data.includeVat ? '포함(10%)' : '미포함(공급가액)'}`);
             });
         }
 
-        // 금융이자 일수 및 연이율 변경
+        // 금융이자 일수 및 연이율 변경 (In-place 값 업데이트)
         if (els.inputPeriodDays) {
             els.inputPeriodDays.addEventListener('input', e => {
                 state.data.financing.periodDays = Math.max(0, Number(e.target.value) || 0);
-                recalculateAll();
+                recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
             });
         }
         if (els.inputAnnualRate) {
             els.inputAnnualRate.addEventListener('input', e => {
                 state.data.financing.annualRatePct = Math.max(0, Number(e.target.value) || 0);
-                recalculateAll();
+                recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
             });
         }
 
-        // 매입 품목 추가
+        // 매입 품목 추가 (행이 늘어나므로 rebuildGoods: true)
         if (els.btnAddGoodsRow) {
             els.btnAddGoodsRow.addEventListener('click', () => {
                 state.data.items.push({
                     id: fmt.uid('item'),
-                    name: '신규 품목',
-                    spec: '표준 규격',
+                    name: '',
+                    spec: '',
                     qty: 1000,
                     unitPrice: 2000
                 });
-                recalculateAll();
+                recalculateAll({ rebuildGoods: true, rebuildScenarios: false });
             });
         }
 
         // 매입 품목 테이블 인풋 및 삭제 위임
         if (els.tbodyGoods) {
+            // ★ 중요: 사용자가 타이핑할 때는 In-place 업데이트(rebuildGoods: false)로 포커스를 100% 보존!
             els.tbodyGoods.addEventListener('input', e => {
                 const target = e.target;
                 const idx = Number(target.dataset.idx);
@@ -721,14 +808,15 @@ import { SalesMarginEngine } from './margin-engine.js';
                 } else if (target.classList.contains('item-spec')) {
                     state.data.items[idx].spec = target.value;
                 } else if (target.classList.contains('item-qty')) {
-                    state.data.items[idx].qty = Math.max(0, Number(target.value) || 0);
-                    recalculateAll();
+                    state.data.items[idx].qty = target.value === '' ? 0 : Number(target.value);
+                    recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
                 } else if (target.classList.contains('item-price')) {
-                    state.data.items[idx].unitPrice = Math.max(0, Number(target.value) || 0);
-                    recalculateAll();
+                    state.data.items[idx].unitPrice = target.value === '' ? 0 : Number(target.value);
+                    recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
                 }
             });
 
+            // 행 삭제 버튼 클릭 (행이 줄어드므로 rebuildGoods: true)
             els.tbodyGoods.addEventListener('click', e => {
                 const btn = e.target.closest('.btn-remove-item');
                 if (!btn) return;
@@ -738,11 +826,11 @@ import { SalesMarginEngine } from './margin-engine.js';
                     return;
                 }
                 state.data.items.splice(idx, 1);
-                recalculateAll();
+                recalculateAll({ rebuildGoods: true, rebuildScenarios: false });
             });
         }
 
-        // 부대비용 항목 신규 추가 버튼
+        // 부대비용 항목 신규 추가 버튼 (새 항목이 생기므로 rebuildScenarios: true)
         if (els.btnAddCostItem) {
             els.btnAddCostItem.addEventListener('click', () => {
                 const name = prompt('새로 추가할 부대비용 항목명을 입력하세요 (예: 팔레트 포장비, 인증검사비):', '추가 부대비용');
@@ -759,10 +847,9 @@ import { SalesMarginEngine } from './margin-engine.js';
                     isFixed: false
                 });
 
-                // 시나리오 3(풀부담)에 자동 체크 반영
                 state.data.costScenarios[2].includedCostIds.push(newCostId);
 
-                recalculateAll();
+                recalculateAll({ rebuildGoods: false, rebuildScenarios: true });
                 showToast(`'${name.trim()}' 부대비용이 추가되었습니다.`, 'success');
             });
         }
@@ -782,10 +869,15 @@ import { SalesMarginEngine } from './margin-engine.js';
                     if (target.checked) set.add(costId);
                     else set.delete(costId);
                     sc.includedCostIds = Array.from(set);
-                    recalculateAll();
+
+                    // 체크박스 개수 배지 갱신
+                    const countEl = target.closest('.sc-card').querySelector('.sc-included-count');
+                    if (countEl) countEl.innerText = sc.includedCostIds.length;
+
+                    recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
                 } else if (target.classList.contains('chk-financing-toggle')) {
                     sc.includeFinancing = target.checked;
-                    recalculateAll();
+                    recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
                 }
             });
 
@@ -808,8 +900,8 @@ import { SalesMarginEngine } from './margin-engine.js';
                 if (isNaN(sIdx) || !state.data.salesScenarios[sIdx]) return;
 
                 if (target.classList.contains('sales-price-input')) {
-                    state.data.salesScenarios[sIdx].targetPrice = Math.max(0, Number(target.value) || 0);
-                    recalculateAll();
+                    state.data.salesScenarios[sIdx].targetPrice = target.value === '' ? 0 : Number(target.value);
+                    recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
                 } else if (target.classList.contains('sales-name-input')) {
                     state.data.salesScenarios[sIdx].name = target.value;
                     renderCrossMatrix(state.calculated.matrix);
@@ -823,13 +915,20 @@ import { SalesMarginEngine } from './margin-engine.js';
                 const sIdx = Number(btn.dataset.sIdx);
                 const targetMargin = Number(btn.dataset.margin) || 20;
 
-                // 기준 원가: 매입 시나리오 2 [표준실무원가]
                 const benchmarkUnitCost = (state.calculated.matrix.evaluatedCosts[1] || state.calculated.matrix.evaluatedCosts[0] || {}).unitCost || 0;
                 const reversePrice = SalesMarginEngine.calculateReversePrice(benchmarkUnitCost, targetMargin);
 
                 state.data.salesScenarios[sIdx].targetPrice = reversePrice;
-                recalculateAll();
-                showToast(`시나리오 ${String.fromCharCode(65 + sIdx)} 목표 판가가 마진 ${targetMargin}% 기준(${fmt.won(reversePrice)})으로 역산되었습니다.`);
+
+                // 해당 카드의 판매단가 인풋 value 직접 반영
+                const card = btn.closest('.sales-card');
+                if (card) {
+                    const priceInput = card.querySelector('.sales-price-input');
+                    if (priceInput) priceInput.value = reversePrice;
+                }
+
+                recalculateAll({ rebuildGoods: false, rebuildScenarios: false });
+                showToast(`시나리오 ${String.fromCharCode(65 + sIdx)} 판가가 마진 ${targetMargin}% 기준(${fmt.won(reversePrice)})으로 역산되었습니다.`);
             });
         }
 
@@ -843,12 +942,23 @@ import { SalesMarginEngine } from './margin-engine.js';
                 if (isNaN(costIdx) || isNaN(salesIdx)) return;
 
                 state.data.selectedCrossIndex = { costIdx, salesIdx };
-                renderCostScenarios(state.calculated.goods, state.calculated.matrix.evaluatedCosts);
-                renderSalesScenarios(state.calculated.matrix.evaluatedCosts, state.data.salesScenarios);
+
+                // 매트릭스 셀 선택 스타일 및 상세 갱신
                 renderCrossMatrix(state.calculated.matrix);
                 renderSelectedComboDetail();
 
-                // 모바일/작은 화면에서 스크롤 부드럽게
+                // 카드 활성 테두리 갱신
+                if (els.costScenariosContainer) {
+                    els.costScenariosContainer.querySelectorAll('.sc-card').forEach((c, i) => {
+                        c.classList.toggle('active', i === costIdx);
+                    });
+                }
+                if (els.salesScenariosContainer) {
+                    els.salesScenariosContainer.querySelectorAll('.sales-card').forEach((c, i) => {
+                        c.classList.toggle('active', i === salesIdx);
+                    });
+                }
+
                 showToast(`매입 시나리오 ${costIdx + 1} × 판매 시나리오 ${String.fromCharCode(65 + salesIdx)} 조합이 선택되었습니다.`);
             });
         }
@@ -923,7 +1033,7 @@ import { SalesMarginEngine } from './margin-engine.js';
                     remarks: ''
                 };
                 if (els.inputDocTitle) els.inputDocTitle.value = state.data.docTitle;
-                recalculateAll();
+                recalculateAll({ rebuildGoods: true, rebuildScenarios: true });
                 showToast('새 문서 양식이 준비되었습니다.');
             });
         }
@@ -934,7 +1044,7 @@ import { SalesMarginEngine } from './margin-engine.js';
                 if (!confirm('실무 샘플 데이터를 다시 불러오시겠습니까?')) return;
                 state.data = JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
                 if (els.inputDocTitle) els.inputDocTitle.value = state.data.docTitle;
-                recalculateAll();
+                recalculateAll({ rebuildGoods: true, rebuildScenarios: true });
                 showToast('실무 샘플 데이터가 성공적으로 복원되었습니다.', 'success');
             });
         }
@@ -1051,7 +1161,6 @@ import { SalesMarginEngine } from './margin-engine.js';
                 els.tbodySavedDocs.appendChild(tr);
             });
 
-            // 모달 내 버튼 위임
             els.tbodySavedDocs.querySelectorAll('.btn-load-saved').forEach(b => {
                 b.addEventListener('click', () => {
                     const id = b.dataset.id;
@@ -1060,7 +1169,7 @@ import { SalesMarginEngine } from './margin-engine.js';
                         state.data = JSON.parse(JSON.stringify(found.data));
                         state.docId = found.id;
                         if (els.inputDocTitle) els.inputDocTitle.value = state.data.docTitle;
-                        recalculateAll();
+                        recalculateAll({ rebuildGoods: true, rebuildScenarios: true });
                         closeArchiveModal();
                         showToast(`'${found.title}' 문서를 불러왔습니다.`, 'success');
                     }
@@ -1093,12 +1202,11 @@ import { SalesMarginEngine } from './margin-engine.js';
         const matrix = state.calculated.matrix;
         const goods = state.calculated.goods;
 
-        let csv = '\uFEFF'; // UTF-8 BOM
+        let csv = '\uFEFF';
         csv += `[K&G 원가·마진 시뮬레이션 보고서 - 내부검토용]\r\n`;
         csv += `검토 건명,${state.data.docTitle || ''}\r\n`;
         csv += `검토 일자,${new Date().toISOString().split('T')[0]}\r\n\r\n`;
 
-        // 1. 물품대 내역
         csv += `[1. 물품 대금 매입 내역]\r\n`;
         csv += `품목명,규격,수량,매입단가,공급가액,부가세\r\n`;
         goods.items.forEach(it => {
@@ -1106,7 +1214,6 @@ import { SalesMarginEngine } from './margin-engine.js';
         });
         csv += `합계,,${goods.totalQty},${goods.avgUnitGoodsPrice},${goods.totalSupplyPrice},${goods.totalVat}\r\n\r\n`;
 
-        // 2. 3×3 매트릭스
         csv += `[2. 3×3 시나리오 교차 분석 매트릭스]\r\n`;
         csv += `매입 시나리오,개당 원가,판매 시나리오,목표 판매단가,개당 마진,마진율(%),총 예상 영업이익,BEP수량\r\n`;
         matrix.matrix.forEach(row => {
@@ -1131,7 +1238,7 @@ import { SalesMarginEngine } from './margin-engine.js';
     document.addEventListener('DOMContentLoaded', () => {
         initElements();
         bindEvents();
-        recalculateAll();
+        recalculateAll({ rebuildGoods: true, rebuildScenarios: true });
     });
 
 })();
