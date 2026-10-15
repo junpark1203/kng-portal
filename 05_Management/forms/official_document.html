@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공문 / 업무협조전 작성기 - 주식회사 케앤지</title>
+    <!-- Web Fonts & Icons -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Standalone Stylesheet -->
+    <link rel="stylesheet" href="./official_document.css?v=20261015_1">
+</head>
+<body>
+
+    <!-- ═══ 1. Top ERP Header & Action Toolbar ═══ -->
+    <header class="app-header no-print">
+        <div class="header-left">
+            <div class="brand-badge">
+                <i class='bx bxs-file-blank'></i>
+                <span>공문 / 업무협조전</span>
+            </div>
+
+            <div class="nav-tabs-custom">
+                <button type="button" class="nav-tab-btn active" id="tabEditor">
+                    <i class='bx bx-edit-alt'></i> 문서 작성 및 미리보기
+                </button>
+                <button type="button" class="nav-tab-btn" id="tabArchive">
+                    <i class='bx bx-archive'></i> 공문 보관함 <span class="badge-tag" id="archiveCountBadge">0</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button type="button" class="btn-custom btn-outline-custom" id="btnSettings" title="회사 기본 정보 및 로고 설정">
+                <i class='bx bx-cog'></i> 회사 정보
+            </button>
+            <button type="button" class="btn-custom btn-outline-custom" id="btnNewDoc">
+                <i class='bx bx-plus-circle'></i> 새 문서
+            </button>
+            <button type="button" class="btn-custom btn-outline-custom" id="btnSaveDoc">
+                <i class='bx bx-save'></i> 보관함 저장
+            </button>
+            <button type="button" class="btn-custom btn-primary-custom" id="btnPrint">
+                <i class='bx bx-printer'></i> 인쇄 / PDF 저장
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══ 2. Main Content ═══ -->
+    <main class="main-wrapper">
+        <!-- ── TAB 1: Editor & Real-time Live Preview ── -->
+        <div class="split-layout" id="viewEditor">
+            <!-- Left: Input Form Panel -->
+            <section class="editor-panel no-print">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class='bx bx-slider-alt text-primary'></i>
+                        <span>문서 작성 항목</span>
+                    </div>
+                    <div class="preset-selector">
+                        <span style="font-size: 11.5px; color: var(--slate-600); font-weight: 600;"><i class='bx bx-bookmark-alt'></i> 템플릿:</span>
+                        <select id="presetSelect" class="preset-select">
+                            <option value="sample_request">[기본] 샘플 송부 및 조끼 제작 견적 의뢰서</option>
+                            <option value="cooperation_request">[업무협조] 납품 일정 및 현장 실사 협조 요청</option>
+                            <option value="price_notice">[안내문] 단가 조정 및 공급 조건 안내</option>
+                            <option value="payment_request">[확인/청구] 거래사실 확인 및 대금 청구서</option>
+                            <option value="blank">[자유 서식] 빈 공문 양식</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    <!-- 1. 문서 기본 제원 -->
+                    <div class="form-section-title">
+                        <i class='bx bx-info-circle'></i> 기본 서식 정보
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="inputDocTitle">문서 중앙 대제목</label>
+                            <input type="text" id="inputDocTitle" class="form-control-custom" placeholder="예: 샘플 송부 안내 및 조끼 제작 견적 의뢰서">
+                        </div>
+                        <div class="form-group">
+                            <label for="inputDocDate">시행 일자</label>
+                            <input type="text" id="inputDocDate" class="form-control-custom" placeholder="예: 2026년 10월 15일">
+                        </div>
+                    </div>
+
+                    <!-- 2. 수신 및 발신 정보 -->
+                    <div class="form-section-title" style="margin-top: 12px;">
+                        <i class='bx bx-user-pin'></i> 수신 및 발신 정보
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="inputTo">수신 (To)</label>
+                            <input type="text" id="inputTo" class="form-control-custom" placeholder="예: (주)일터루코리아 고영종 실장님">
+                        </div>
+                        <div class="form-group">
+                            <label for="inputCc">참조 (Cc) <span class="text-muted" style="font-weight: 400; font-size: 11px;">(선택)</span></label>
+                            <input type="text" id="inputCc" class="form-control-custom" placeholder="예: (주)일터루코리아 고병삼 대표님">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label for="inputFromText" style="margin-bottom: 0;">
+                                발신 (From)
+                                <span class="user-tag" id="userBadgeName">담당자</span>
+                            </label>
+                            <button type="button" id="btnSaveSenderPreset" class="btn-custom btn-outline-custom" style="padding: 2px 7px; font-size: 10.5px;" title="현재 입력된 발신자 정보를 내 기본 정보로 저장합니다">
+                                <i class='bx bx-save'></i> 내 기본 발신인으로 저장
+                            </button>
+                        </div>
+                        <input type="text" id="inputFromText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준 과장 (02-2038-0160 / contact@junparks.com)">
+                    </div>
+
+                    <!-- 3. 공문 제목 및 본문 -->
+                    <div class="form-section-title" style="margin-top: 14px;">
+                        <i class='bx bx-detail'></i> 공문 제목 및 본문
+                    </div>
+                    <div class="form-group">
+                        <label for="inputSubject">공문 세부 제목</label>
+                        <input type="text" id="inputSubject" class="form-control-custom" placeholder="예: 안전조끼 샘플 송부 및 OEM 제작 견적 의뢰의 건">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="inputBody">공문 본문 내용</label>
+                        <!-- Quick Format Insertion Bar -->
+                        <div class="quick-insert-bar">
+                            <span style="font-size: 11px; color: var(--slate-500); font-weight: 700; margin-right: 2px;">빠른 서식:</span>
+                            <button type="button" class="quick-btn" id="btnQuickGreeting">+ 인사말</button>
+                            <button type="button" class="quick-btn" id="btnQuickBelow">+ [- 아 래 -]</button>
+                            <button type="button" class="quick-btn" id="btnQuickSection">+ [■ 1. 항목]</button>
+                            <button type="button" class="quick-btn" id="btnQuickBullet">+ [• 불릿]</button>
+                            <button type="button" class="quick-btn" id="btnQuickAttach">+ [* 첨부물]</button>
+                        </div>
+                        <textarea id="inputBody" class="textarea-body" rows="14" placeholder="공문 본문 내용을 입력하세요..."></textarea>
+                    </div>
+
+                    <!-- 4. 첨부물 및 하단 서명 -->
+                    <div class="form-section-title" style="margin-top: 14px;">
+                        <i class='bx bx-paperclip'></i> 첨부물 및 하단 서명
+                    </div>
+                    <div class="form-group">
+                        <label for="inputAttachments">첨부물 및 맺음말 <span class="text-muted" style="font-weight: 400; font-size: 11px;">(선택)</span></label>
+                        <textarea id="inputAttachments" class="form-control-custom" rows="2" style="resize: vertical;" placeholder="* 첨부물 : 검토용 조끼 실물 샘플 1벌, 당사 명함 1매.&#10;* 샘플 확인 후 궁금하신 사항은..."></textarea>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="inputSignText">하단 서명 문구</label>
+                            <input type="text" id="inputSignText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준 과장 배상">
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
+                            <label class="toggle-label" style="padding: 7px 10px; margin-bottom: 0; width: 100%; justify-content: flex-start;">
+                                <input type="checkbox" id="chkIncludeStamp" style="cursor: pointer;">
+                                <span>대표 직인(도장) 날인 포함</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right: Real-time Live A4 Preview Panel -->
+            <section class="preview-panel">
+                <div class="preview-toolbar no-print">
+                    <div class="preview-status">
+                        <i class='bx bx-file-find text-primary'></i>
+                        <span>실시간 A4 정품 미리보기 (실제 인쇄물과 100% 동일)</span>
+                    </div>
+                    <div class="preview-controls">
+                        <button type="button" class="btn-custom btn-primary-custom" onclick="window.print()" style="padding: 4px 10px; font-size: 11.5px;">
+                            <i class='bx bx-printer'></i> 빠른 인쇄
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ═══ Standard A4 Paper Sheet (@media print 전용 겸용) ═══ -->
+                <div class="a4-sheet" id="printSheet">
+                    <!-- Top Section: Header + Meta + Title + Body -->
+                    <div class="a4-content-top">
+                        <!-- 1. Company Letterhead Header -->
+                        <header class="letterhead-header">
+                            <div class="letterhead-top">
+                                <div class="letterhead-brand">
+                                    <img id="prevLogoImg" src="../../assets/images/logo.png" class="letterhead-logo" alt="K&G LOGO">
+                                    <span id="prevLogoFallback" class="letterhead-logo-fallback" style="display: none;">K&G</span>
+                                    <div class="letterhead-name-group">
+                                        <span class="letterhead-corp-kr" id="prevCorpKr">주식회사 케앤지</span>
+                                        <span class="letterhead-corp-en" id="prevCorpEn">K&G Co., LTD.</span>
+                                    </div>
+                                </div>
+                                <div class="letterhead-contact">
+                                    <div class="letterhead-contact-line">
+                                        <span id="prevTel">TEL: 02-2038-0160</span>
+                                        <span id="prevFax">FAX: 02-2038-0162</span>
+                                    </div>
+                                    <div class="letterhead-contact-line" style="margin-top: 2px;">
+                                        <span id="prevEmail">E-MAIL: contact@junparks.com</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="letterhead-subline">
+                                <span id="prevAddress">서울시 강동구 구천면로 159, 1층 2호, 3호</span>
+                                <span>OFFICIAL BUSINESS CORRESPONDENCE</span>
+                            </div>
+                        </header>
+
+                        <!-- 2. Document Title -->
+                        <div class="doc-title-wrapper">
+                            <h1 class="doc-main-title" id="prevDocTitle">샘플 송부 안내 및 조끼 제작 견적 의뢰서</h1>
+                        </div>
+
+                        <!-- 3. Document Meta Grid -->
+                        <table class="doc-meta-table">
+                            <tbody>
+                                <tr>
+                                    <td class="meta-label">■ 수  신</td>
+                                    <td class="meta-colon">:</td>
+                                    <td class="meta-val" id="prevTo">(주)일터루코리아 고영종 실장님</td>
+                                </tr>
+                                <tr id="prevCcRow">
+                                    <td class="meta-label">■ 참  조</td>
+                                    <td class="meta-colon">:</td>
+                                    <td class="meta-val" id="prevCc">(주)일터루코리아 고병삼 대표님</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">■ 발  신</td>
+                                    <td class="meta-colon">:</td>
+                                    <td class="meta-val" id="prevFrom">주식회사 케앤지 박준 과장 (02-2038-0160 / contact@junparks.com)</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">■ 일  자</td>
+                                    <td class="meta-colon">:</td>
+                                    <td class="meta-val" id="prevDate">2026년 10월 15일</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">■ 제  목</td>
+                                    <td class="meta-colon">:</td>
+                                    <td class="meta-val" id="prevSubject" style="font-weight: 700; color: #0f172a;">안전조끼 샘플 송부 및 OEM 제작 견적 의뢰의 건 ((주)행복한안전 이한우 대표님 소개 건)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="meta-divider"></div>
+
+                        <!-- 4. Document Body -->
+                        <div class="doc-body-content" id="prevBody"></div>
+
+                        <!-- 5. Attachments Box -->
+                        <div class="doc-attach-box" id="prevAttachBox">
+                            <div id="prevAttachContent"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Section: Closing Sign-off + Footer -->
+                    <div class="a4-content-bottom">
+                        <!-- Closing Sign-off -->
+                        <div class="doc-closing-area">
+                            <div class="doc-sign-text">
+                                <span id="prevSignText">주식회사 케앤지 박준 과장 배상</span>
+                                <img id="prevSealImg" src="../../assets/images/stamp.png" class="doc-seal-img" style="display: none;" alt="직인">
+                            </div>
+                        </div>
+
+                        <!-- Bottom Paper Footer -->
+                        <footer class="a4-footer">
+                            <span id="prevFooterInfo">주식회사 케앤지 | 사업자등록번호: 845-88-00551 | 서울시 강동구 구천면로 159, 1층 2호, 3호</span>
+                            <span>K&G ERP SYSTEM</span>
+                        </footer>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ── TAB 2: Official Document Archive (보관함 및 발송대장) ── -->
+        <div class="archive-wrapper" id="viewArchive">
+            <div class="archive-toolbar">
+                <div class="panel-title">
+                    <i class='bx bx-archive-in text-primary'></i>
+                    <span>공문 발송 대장 및 보관함</span>
+                </div>
+                <div class="archive-search-box">
+                    <input type="text" id="archiveSearchInput" class="form-control-custom" style="width: 260px;" placeholder="수신처, 제목, 일자, 발신자 검색...">
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 130px;">문서 번호</th>
+                            <th style="width: 120px;">시행 일자</th>
+                            <th style="width: 180px;">수신처</th>
+                            <th>공문 제목</th>
+                            <th style="width: 160px;">발신자</th>
+                            <th style="width: 150px;">저장 일시</th>
+                            <th style="width: 120px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archiveTableBody">
+                        <!-- 동적 렌더링 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══ 3. Settings Modal (회사 기본 정보 관리) ═══ -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <div class="modal-header-custom">
+                <h3><i class='bx bx-buildings text-primary'></i> 회사 기본 정보 및 로고 설정</h3>
+                <button type="button" class="btn-custom btn-outline-custom" id="btnCloseSettings" style="border: none; padding: 2px 6px;">
+                    <i class='bx bx-x' style="font-size: 18px;"></i>
+                </button>
+            </div>
+            <div class="modal-body-custom">
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="setCorpKr">회사명 (국문)</label>
+                        <input type="text" id="setCorpKr" class="form-control-custom">
+                    </div>
+                    <div class="form-group">
+                        <label for="setCorpEn">회사명 (영문)</label>
+                        <input type="text" id="setCorpEn" class="form-control-custom">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="setAddress">본사 주소</label>
+                    <input type="text" id="setAddress" class="form-control-custom">
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="setTel">대표 전화 (TEL)</label>
+                        <input type="text" id="setTel" class="form-control-custom">
+                    </div>
+                    <div class="form-group">
+                        <label for="setFax">팩스 번호 (FAX)</label>
+                        <input type="text" id="setFax" class="form-control-custom">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="setEmail">대표 이메일</label>
+                    <input type="email" id="setEmail" class="form-control-custom">
+                </div>
+                <div class="form-group">
+                    <label for="setLogoUrl">로고 이미지 경로 / URL</label>
+                    <input type="text" id="setLogoUrl" class="form-control-custom" placeholder="../../assets/images/logo.png">
+                    <span style="font-size: 11px; color: var(--slate-500); margin-top: 3px; display: block;">기본: <code>../../assets/images/logo.png</code></span>
+                </div>
+            </div>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-custom btn-outline-custom" id="btnCancelSettings">취소</button>
+                <button type="button" class="btn-custom btn-primary-custom" id="btnSaveSettings">설정 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./official_document.js?v=20261015_1"></script>
+</body>
+</html>

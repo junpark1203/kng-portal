@@ -1,0 +1,802 @@
+/* ═══════════════════════════════════════════════════════════════
+   K&G Official Document & Business Letter Design System
+   주식회사 케앤지 공식 공문 / 업무협조전 스타일시트
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+    --border-color: #cbd5e1;
+    --danger-color: #ef4444;
+    --success-color: #10b981;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --a4-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f1f5f9;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    color: var(--slate-800);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 1. Top ERP Header & Toolbar ── */
+.app-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate-900);
+}
+
+.brand-badge i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.nav-tabs-custom {
+    display: flex;
+    background: var(--slate-100);
+    border-radius: 6px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.nav-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--slate-600);
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.nav-tab-btn:hover {
+    color: var(--slate-900);
+}
+
+.nav-tab-btn.active {
+    background: #ffffff;
+    color: var(--primary-dark);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-custom i {
+    font-size: 15px;
+}
+
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+.btn-primary-custom:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.btn-outline-custom {
+    background-color: #ffffff;
+    color: var(--slate-700);
+    border-color: var(--border-color);
+}
+.btn-outline-custom:hover {
+    background-color: var(--slate-50);
+    border-color: var(--slate-400);
+    color: var(--slate-900);
+}
+
+.btn-success-custom {
+    background-color: var(--success-color);
+    color: #ffffff;
+    border-color: var(--success-color);
+}
+.btn-success-custom:hover {
+    background-color: #059669;
+}
+
+/* ── 2. Main Dual Layout (Editor + Live Preview) ── */
+.main-wrapper {
+    padding: 16px 20px 30px;
+    max-width: 1720px;
+    margin: 0 auto;
+}
+
+.split-layout {
+    display: grid;
+    grid-template-columns: minmax(440px, 48%) 1fr;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+@media (max-width: 1100px) {
+    .split-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── 3. Left Panel: Editor Form ── */
+.editor-panel {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.panel-header {
+    background: var(--slate-50);
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--slate-800);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preset-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preset-select {
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    background: #ffffff;
+    outline: none;
+    cursor: pointer;
+}
+.preset-select:focus {
+    border-color: var(--primary-color);
+}
+
+.panel-body {
+    padding: 16px;
+}
+
+.form-section-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--slate-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    margin-bottom: 4px;
+}
+
+.form-control-custom {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 12.5px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    outline: none;
+    color: var(--slate-800);
+    background-color: #ffffff;
+    transition: border-color 0.15s;
+    font-family: inherit;
+}
+
+.form-control-custom:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.user-tag {
+    font-size: 11px;
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: 500;
+}
+
+/* Quick Insertion Bar */
+.quick-insert-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: var(--slate-50);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 10px;
+}
+
+.quick-btn {
+    border: 1px solid var(--border-color);
+    background: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--slate-700);
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.quick-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-color: #93c5fd;
+}
+
+.textarea-body {
+    width: 100%;
+    min-height: 280px;
+    padding: 10px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 4px 4px;
+    outline: none;
+    color: var(--slate-900);
+    resize: vertical;
+    font-family: 'Consolas', 'Pretendard', monospace;
+}
+
+.textarea-body:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+/* ── 4. Right Panel: Real-time Live A4 Preview ── */
+.preview-panel {
+    background: var(--slate-200);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 800px;
+    position: sticky;
+    top: 65px;
+    overflow-y: auto;
+    max-height: calc(100vh - 85px);
+}
+
+.preview-toolbar {
+    width: 100%;
+    max-width: 210mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.preview-status {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    user-select: none;
+    background: #ffffff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+/* ── 5. Standard A4 Paper Sheet (Screen & Print) ── */
+.a4-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    background: #ffffff;
+    box-shadow: var(--a4-shadow);
+    padding: 16mm 20mm 18mm 20mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    color: #111827;
+    line-height: 1.6;
+}
+
+/* A4 Company Letterhead Header */
+.letterhead-header {
+    border-bottom: 2.5px solid var(--slate-800);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+}
+
+.letterhead-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.letterhead-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.letterhead-logo {
+    max-height: 38px;
+    max-width: 130px;
+    object-fit: contain;
+}
+
+.letterhead-logo-fallback {
+    font-size: 18px;
+    font-weight: 900;
+    color: #1e3a8a;
+    letter-spacing: -0.5px;
+    border: 2px solid #1e3a8a;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.letterhead-name-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.letterhead-corp-kr {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.letterhead-corp-en {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--slate-500);
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+}
+
+.letterhead-contact {
+    text-align: right;
+    font-size: 10px;
+    color: var(--slate-600);
+    line-height: 1.45;
+}
+
+.letterhead-contact-line {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.letterhead-subline {
+    margin-top: 5px;
+    padding-top: 4px;
+    border-top: 1px solid var(--slate-200);
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: var(--slate-500);
+}
+
+/* Document Title */
+.doc-title-wrapper {
+    text-align: center;
+    margin: 18px 0 20px;
+}
+
+.doc-main-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 2px;
+    display: inline-block;
+    padding: 0 10px 4px;
+    border-bottom: 2px solid #0f172a;
+    margin: 0;
+}
+
+/* Document Meta Info Grid */
+.doc-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    font-size: 12.5px;
+}
+
+.doc-meta-table td {
+    padding: 4px 6px;
+    vertical-align: top;
+}
+
+.doc-meta-table .meta-label {
+    width: 72px;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.doc-meta-table .meta-colon {
+    width: 12px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.doc-meta-table .meta-val {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.doc-meta-table .meta-subval {
+    color: var(--slate-600);
+    font-size: 11.5px;
+    margin-top: 2px;
+}
+
+.meta-divider {
+    border-bottom: 1.5px solid #cbd5e1;
+    margin: 12px 0 18px;
+}
+
+/* Document Body Content */
+.doc-body-content {
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #1e293b;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 160px;
+    margin-bottom: 20px;
+    font-family: inherit;
+}
+
+/* Attached Items & Postscript */
+.doc-attach-box {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+/* Document Bottom Closing Sign-off */
+.doc-closing-area {
+    margin-top: 28px;
+    text-align: right;
+    position: relative;
+    padding-right: 20px;
+}
+
+.doc-sign-text {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    position: relative;
+}
+
+.doc-seal-img {
+    position: absolute;
+    right: -45px;
+    top: -14px;
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+/* A4 Footer Info */
+.a4-footer {
+    border-top: 1px solid var(--slate-200);
+    padding-top: 8px;
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: var(--slate-500);
+}
+
+/* ── 6. Archive View (공문 보관함 / 발송대장) ── */
+.archive-wrapper {
+    display: none;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 20px;
+}
+
+.archive-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.archive-search-box {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.archive-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.archive-table th {
+    background: var(--slate-50);
+    padding: 10px;
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 700;
+    color: var(--slate-700);
+    text-align: left;
+}
+
+.archive-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--slate-200);
+    color: var(--slate-800);
+    vertical-align: middle;
+}
+
+.archive-table tr:hover td {
+    background-color: var(--slate-50);
+}
+
+.badge-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--slate-100);
+    color: var(--slate-700);
+}
+
+/* ── 7. Settings Modal ── */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-card {
+    background: #ffffff;
+    border-radius: 8px;
+    width: 520px;
+    max-width: 92vw;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.modal-header-custom {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--slate-50);
+}
+
+.modal-header-custom h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--slate-800);
+}
+
+.modal-body-custom {
+    padding: 18px;
+}
+
+.modal-footer-custom {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    background: var(--slate-50);
+}
+
+/* ── 8. Printing Styles (@media print) ── */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 14mm 16mm 14mm 16mm;
+    }
+
+    body, html {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 11pt !important;
+    }
+
+    /* Hide everything except the A4 preview sheet */
+    .app-header,
+    .editor-panel,
+    .preview-toolbar,
+    .archive-wrapper,
+    .modal-overlay,
+    .no-print {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .split-layout {
+        display: block !important;
+    }
+
+    .preview-panel {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        max-height: none !important;
+        position: static !important;
+        overflow: visible !important;
+    }
+
+    .a4-sheet {
+        width: 100% !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: #000000 !important;
+        page-break-inside: avoid;
+    }
+
+    .letterhead-header {
+        border-bottom: 2.5px solid #000000 !important;
+    }
+
+    .doc-main-title {
+        border-bottom: 2px solid #000000 !important;
+        color: #000000 !important;
+    }
+
+    .meta-divider {
+        border-bottom: 1.5px solid #000000 !important;
+    }
+
+    .doc-seal-img {
+        mix-blend-mode: normal !important;
+    }
+}
