@@ -531,7 +531,7 @@
             if (!topEl) return false;
             const topH = topEl.offsetHeight || 0;
             const bottomH = bottomEl ? bottomEl.offsetHeight : 0;
-            return (topH + bottomH) > 995;
+            return (topH + bottomH) > 970;
         }
 
         // 1페이지에 온전히 다 들어가는 경우

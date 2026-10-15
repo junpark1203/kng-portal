@@ -927,16 +927,18 @@ html, body {
 @media print {
     @page {
         size: A4 portrait;
-        margin: 12mm 15mm 12mm 15mm;
+        margin: 0 !important;
     }
 
     body, html {
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 210mm !important;
         height: auto !important;
         overflow: visible !important;
-        font-size: 11pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
     /* Hide everything except A4 sheets */
@@ -948,63 +950,67 @@ html, body {
     .page-divider-bar,
     .no-print {
         display: none !important;
-    }
-
-    .main-wrapper {
-        padding: 0 !important;
+        height: 0 !important;
         margin: 0 !important;
-        max-width: 100% !important;
-        height: auto !important;
-    }
-
-    .split-layout {
-        display: block !important;
-        height: auto !important;
-    }
-
-    .preview-panel {
-        background: transparent !important;
         padding: 0 !important;
-        min-height: auto !important;
-        max-height: none !important;
-        position: static !important;
-        overflow: visible !important;
         border: none !important;
-        height: auto !important;
     }
 
-    .a4-preview-viewport {
-        padding: 0 !important;
-        overflow: visible !important;
-        display: block !important;
-    }
-
-    .a4-zoom-wrapper {
-        transform: none !important;
-        width: 100% !important;
-    }
-
+    .main-wrapper,
+    .split-layout,
+    .preview-panel,
+    .a4-preview-viewport,
+    .a4-zoom-wrapper,
     .a4-pages-container {
         display: block !important;
-        gap: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        max-width: 210mm !important;
+        min-height: auto !important;
+        max-height: none !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+        overflow: visible !important;
     }
 
     .a4-sheet {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 270mm !important;
-        max-height: none !important;
-        box-shadow: none !important;
-        padding: 0 0 10mm 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+        box-sizing: border-box !important;
+        padding: 15mm 20mm !important;
         margin: 0 !important;
-        color: #000000 !important;
+        background: #ffffff !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: hidden !important;
+        page-break-before: auto !important;
         page-break-after: always !important;
         break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .a4-sheet:last-child {
         page-break-after: auto !important;
         break-after: auto !important;
+    }
+
+    .a4-content-top,
+    .a4-content-bottom,
+    .letterhead-header,
+    .doc-meta-container,
+    .doc-closing-area,
+    .a4-footer {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .letterhead-header {
