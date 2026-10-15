@@ -241,36 +241,13 @@
 
             // Zoom & Viewport
             a4ZoomWrapper: document.getElementById('a4ZoomWrapper'),
-            printSheet: document.getElementById('printSheet'),
+            a4PagesContainer: document.getElementById('a4PagesContainer'),
             zoomLevelDisplay: document.getElementById('zoomLevelDisplay'),
             btnZoomOut: document.getElementById('btnZoomOut'),
             btnZoomIn: document.getElementById('btnZoomIn'),
             btnZoomFit: document.getElementById('btnZoomFit'),
             btnZoom100: document.getElementById('btnZoom100'),
             pageFitBadge: document.getElementById('pageFitBadge'),
-
-            // Live A4 Preview Elements
-            prevCorpKr: document.getElementById('prevCorpKr'),
-            prevCorpEn: document.getElementById('prevCorpEn'),
-            prevAddress: document.getElementById('prevAddress'),
-            prevTel: document.getElementById('prevTel'),
-            prevFax: document.getElementById('prevFax'),
-            prevLogoImg: document.getElementById('prevLogoImg'),
-            prevLogoFallback: document.getElementById('prevLogoFallback'),
-
-            prevDocTitle: document.getElementById('prevDocTitle'),
-            prevTo: document.getElementById('prevTo'),
-            prevCcRow: document.getElementById('prevCcRow'),
-            prevCc: document.getElementById('prevCc'),
-            prevFrom: document.getElementById('prevFrom'),
-            prevDate: document.getElementById('prevDate'),
-            prevSubject: document.getElementById('prevSubject'),
-            prevBody: document.getElementById('prevBody'),
-            prevAttachBox: document.getElementById('prevAttachBox'),
-            prevAttachContent: document.getElementById('prevAttachContent'),
-            prevSignText: document.getElementById('prevSignText'),
-            prevSealImg: document.getElementById('prevSealImg'),
-            prevFooterInfo: document.getElementById('prevFooterInfo'),
 
             // Archive
             archiveTableBody: document.getElementById('archiveTableBody'),
@@ -390,9 +367,112 @@
         renderPreview();
     }
 
-    // ── 9. 실시간 A4 미리보기 렌더링 ──
+    // ── 9. HTML 템플릿 빌더들 (레터헤드, 메타, 푸터 등) ──
+    function buildLetterheadHtml() {
+        return `
+            <header class="letterhead-header">
+                <div class="letterhead-top">
+                    <div class="letterhead-brand">
+                        <img src="${escapeHtml(state.company.logoUrl)}" class="letterhead-logo" alt="K&G LOGO" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-block';">
+                        <span class="letterhead-logo-fallback" style="display: none;">K&G</span>
+                        <div class="letterhead-name-group">
+                            <span class="letterhead-corp-kr">${escapeHtml(state.company.nameKr)}</span>
+                            <span class="letterhead-corp-en">${escapeHtml(state.company.nameEn)}</span>
+                        </div>
+                    </div>
+                    <div class="letterhead-contact">
+                        <div class="letterhead-contact-line">
+                            <span>TEL: ${escapeHtml(state.company.tel)}</span>
+                            <span class="contact-sep">|</span>
+                            <span>FAX: ${escapeHtml(state.company.fax)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="letterhead-subline">
+                    <span>${escapeHtml(state.company.address)}</span>
+                </div>
+            </header>
+        `;
+    }
+
+    function buildFooterHtml(pageNum, totalPages) {
+        const pageText = totalPages > 1 ? `- ${pageNum} / ${totalPages} -` : `- ${pageNum} -`;
+        return `
+            <footer class="a4-footer">
+                <span class="footer-corp-info">${escapeHtml(state.company.nameKr)} | 사업자등록번호: ${escapeHtml(state.company.bizNum)} | ${escapeHtml(state.company.address)}</span>
+                <span class="footer-page-num">${pageText}</span>
+            </footer>
+        `;
+    }
+
+    function buildMetaTableHtml(to, cc, from, date, subject) {
+        const ccRow = cc ? `
+            <tr>
+                <td class="meta-label">■ 참  조</td>
+                <td class="meta-colon">:</td>
+                <td class="meta-val">${escapeHtml(cc)}</td>
+            </tr>
+        ` : '';
+
+        return `
+            <table class="doc-meta-table">
+                <tbody>
+                    <tr>
+                        <td class="meta-label">■ 수  신</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val">${escapeHtml(to || '(수신처 미입력)')}</td>
+                    </tr>
+                    ${ccRow}
+                    <tr>
+                        <td class="meta-label">■ 발  신</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val">${escapeHtml(from || '(발신자 미입력)')}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">■ 일  자</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val">${escapeHtml(date || getTodayFormatted())}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">■ 제  목</td>
+                        <td class="meta-colon">:</td>
+                        <td class="meta-val" style="font-weight: 700; color: #0f172a;">${escapeHtml(subject || '(공문 제목 미입력)')}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="meta-divider"></div>
+        `;
+    }
+
+    function buildAttachmentsHtml(attach) {
+        if (!attach) return '';
+        return `
+            <div class="doc-attach-box">
+                <div>${escapeHtml(attach)}</div>
+            </div>
+        `;
+    }
+
+    function buildSignHtml(signText, includeStamp) {
+        const stampImg = includeStamp ? `
+            <img src="${escapeHtml(state.company.stampUrl)}" class="doc-seal-img" alt="직인">
+        ` : '';
+
+        return `
+            <div class="doc-closing-area">
+                <div class="doc-sign-text">
+                    <span>${escapeHtml(signText || `${state.company.nameKr} 배상`)}</span>
+                    ${stampImg}
+                </div>
+            </div>
+        `;
+    }
+
+    // ── 10. 스마트 다페이지(A4 Multi-page) 분할 렌더링 엔진 ──
     function renderPreview() {
-        // Form Data Sync
+        if (!els.a4PagesContainer) return;
+
+        // Form Inputs
         const docTitle = els.inputDocTitle.value.trim() || '공 문 서';
         const to = els.inputTo.value.trim();
         const cc = els.inputCc.value.trim();
@@ -404,88 +484,190 @@
         const sign = els.inputSignText.value.trim();
         const stamp = els.chkIncludeStamp.checked;
 
-        // Company Info Header (헤더 영역: 대표 이메일 제외, TEL/FAX 단일 행 표시)
-        els.prevCorpKr.textContent = state.company.nameKr;
-        els.prevCorpEn.textContent = state.company.nameEn;
-        els.prevAddress.textContent = state.company.address;
-        els.prevTel.textContent = `TEL: ${state.company.tel}`;
-        els.prevFax.textContent = `FAX: ${state.company.fax}`;
+        // Container 초기화
+        els.a4PagesContainer.innerHTML = '';
 
-        // Header Logo Test
-        if (state.company.logoUrl) {
-            els.prevLogoImg.src = state.company.logoUrl;
-            els.prevLogoImg.style.display = 'block';
-            els.prevLogoFallback.style.display = 'none';
-        } else {
-            els.prevLogoImg.style.display = 'none';
-            els.prevLogoFallback.style.display = 'inline-block';
+        // 1단계: 1페이지 가상 시트 생성하여 전체 분량 측정
+        const sheet1 = document.createElement('div');
+        sheet1.className = 'a4-sheet';
+        sheet1.setAttribute('data-page', '1');
+
+        sheet1.innerHTML = `
+            <div class="a4-content-top">
+                ${buildLetterheadHtml()}
+                <div class="doc-title-wrapper">
+                    <h1 class="doc-main-title">${escapeHtml(docTitle)}</h1>
+                </div>
+                ${buildMetaTableHtml(to, cc, from, date, subject)}
+                <div class="doc-body-content" id="_tempP1Body"></div>
+                ${buildAttachmentsHtml(attach)}
+            </div>
+            <div class="a4-content-bottom">
+                ${buildSignHtml(sign, stamp)}
+                ${buildFooterHtml(1, 1)}
+            </div>
+        `;
+
+        els.a4PagesContainer.appendChild(sheet1);
+        const tempP1Body = sheet1.querySelector('#_tempP1Body');
+        tempP1Body.textContent = body;
+
+        // A4 297mm 기준 96DPI 환산 높이 (안전 마진 포함 약 1,120px)
+        const A4_MAX_HEIGHT = 1120;
+
+        // 1페이지에 온전히 다 들어가는 경우
+        if (sheet1.scrollHeight <= A4_MAX_HEIGHT) {
+            updateFitBadge(1, 1);
+            saveDraft();
+            return;
         }
 
-        // Meta Values
-        els.prevDocTitle.textContent = docTitle;
-        els.prevTo.textContent = to || '(수신처 미입력)';
+        // ── 2단계: 2페이지 이상 분할 필요 ──
+        // 본문 줄바꿈 기준 분할 계산
+        const lines = body.split('\n');
 
-        if (cc) {
-            els.prevCcRow.style.display = 'table-row';
-            els.prevCc.textContent = cc;
-        } else {
-            els.prevCcRow.style.display = 'none';
+        // Page 1에서 첨부/서명 분리 (Page 1은 본문 일부만 포함)
+        sheet1.innerHTML = `
+            <div class="a4-content-top">
+                ${buildLetterheadHtml()}
+                <div class="doc-title-wrapper">
+                    <h1 class="doc-main-title">${escapeHtml(docTitle)}</h1>
+                </div>
+                ${buildMetaTableHtml(to, cc, from, date, subject)}
+                <div class="doc-body-content" id="_p1Body"></div>
+            </div>
+            <div class="a4-content-bottom">
+                ${buildFooterHtml(1, 2)}
+            </div>
+        `;
+
+        const p1Body = sheet1.querySelector('#_p1Body');
+
+        // 이진 탐색으로 1페이지에 들어갈 수 있는 최대 줄 수(k) 탐색
+        let low = 1;
+        let high = lines.length;
+        let bestK = 1;
+
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            p1Body.textContent = lines.slice(0, mid).join('\n');
+            if (sheet1.scrollHeight <= A4_MAX_HEIGHT) {
+                bestK = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
         }
 
-        els.prevFrom.textContent = from || '(발신자 미입력)';
-        els.prevDate.textContent = date || getTodayFormatted();
-        els.prevSubject.textContent = subject || '(공문 제목을 입력해 주세요)';
+        // 1페이지 내용 확정
+        p1Body.textContent = lines.slice(0, bestK).join('\n');
 
-        // Body Content
-        els.prevBody.textContent = body;
+        // 2페이지 생성 (방식 1: 동일한 정품 레터헤드 유지)
+        const divider1 = document.createElement('div');
+        divider1.className = 'page-divider-bar no-print';
+        divider1.innerHTML = `<i class='bx bx-file'></i> A4 2페이지 분할 시작 (인쇄 시 2번째 장으로 출력)`;
+        els.a4PagesContainer.appendChild(divider1);
 
-        // Attachments Box
-        if (attach) {
-            els.prevAttachBox.style.display = 'block';
-            els.prevAttachContent.textContent = attach;
-        } else {
-            els.prevAttachBox.style.display = 'none';
+        const sheet2 = document.createElement('div');
+        sheet2.className = 'a4-sheet';
+        sheet2.setAttribute('data-page', '2');
+
+        const remainingLines = lines.slice(bestK);
+
+        sheet2.innerHTML = `
+            <div class="a4-content-top">
+                ${buildLetterheadHtml()}
+                <div class="doc-body-content" id="_p2Body"></div>
+                ${buildAttachmentsHtml(attach)}
+            </div>
+            <div class="a4-content-bottom">
+                ${buildSignHtml(sign, stamp)}
+                ${buildFooterHtml(2, 2)}
+            </div>
+        `;
+
+        els.a4PagesContainer.appendChild(sheet2);
+        const p2Body = sheet2.querySelector('#_p2Body');
+        p2Body.textContent = remainingLines.join('\n');
+
+        // 2페이지 분량 체크 (만약 3페이지까지 넘치는 극단적인 경우 처리)
+        if (sheet2.scrollHeight <= A4_MAX_HEIGHT) {
+            updateFitBadge(2, 2);
+            saveDraft();
+            return;
         }
 
-        // Closing Sign-off
-        els.prevSignText.textContent = sign || `${state.company.nameKr} 배상`;
+        // ── 3단계: 3페이지 분할 처리 (초장문 공문) ──
+        sheet2.innerHTML = `
+            <div class="a4-content-top">
+                ${buildLetterheadHtml()}
+                <div class="doc-body-content" id="_p2BodyOnly"></div>
+            </div>
+            <div class="a4-content-bottom">
+                ${buildFooterHtml(2, 3)}
+            </div>
+        `;
+        const p2BodyOnly = sheet2.querySelector('#_p2BodyOnly');
 
-        // Seal Image
-        if (stamp) {
-            els.prevSealImg.src = state.company.stampUrl;
-            els.prevSealImg.style.display = 'block';
-        } else {
-            els.prevSealImg.style.display = 'none';
+        let low2 = 1, high2 = remainingLines.length, bestK2 = 1;
+        while (low2 <= high2) {
+            const mid = Math.floor((low2 + high2) / 2);
+            p2BodyOnly.textContent = remainingLines.slice(0, mid).join('\n');
+            if (sheet2.scrollHeight <= A4_MAX_HEIGHT) {
+                bestK2 = mid;
+                low2 = mid + 1;
+            } else {
+                high2 = mid - 1;
+            }
         }
+        p2BodyOnly.textContent = remainingLines.slice(0, bestK2).join('\n');
 
-        // Footer Info
-        els.prevFooterInfo.textContent = `${state.company.nameKr} | 사업자등록번호: ${state.company.bizNum} | ${state.company.address}`;
+        // 3페이지 추가
+        const divider2 = document.createElement('div');
+        divider2.className = 'page-divider-bar no-print';
+        divider2.innerHTML = `<i class='bx bx-file'></i> A4 3페이지 분할 시작 (인쇄 시 3번째 장으로 출력)`;
+        els.a4PagesContainer.appendChild(divider2);
 
-        // A4 1페이지 규격 적합도 검사
-        checkPageFit();
+        const sheet3 = document.createElement('div');
+        sheet3.className = 'a4-sheet';
+        sheet3.setAttribute('data-page', '3');
+        sheet3.innerHTML = `
+            <div class="a4-content-top">
+                ${buildLetterheadHtml()}
+                <div class="doc-body-content" id="_p3Body"></div>
+                ${buildAttachmentsHtml(attach)}
+            </div>
+            <div class="a4-content-bottom">
+                ${buildSignHtml(sign, stamp)}
+                ${buildFooterHtml(3, 3)}
+            </div>
+        `;
+        els.a4PagesContainer.appendChild(sheet3);
+        sheet3.querySelector('#_p3Body').textContent = remainingLines.slice(bestK2).join('\n');
 
-        // Save Temporary Draft
+        // 1, 2, 3페이지 푸터 번호 업데이트
+        sheet1.querySelector('.footer-page-num').textContent = '- 1 / 3 -';
+        sheet2.querySelector('.footer-page-num').textContent = '- 2 / 3 -';
+        sheet3.querySelector('.footer-page-num').textContent = '- 3 / 3 -';
+
+        updateFitBadge(3, 3);
         saveDraft();
     }
 
-    // ── 10. A4 1페이지 규격 초과 검사 및 배지 표시 ──
-    function checkPageFit() {
-        if (!els.printSheet || !els.pageFitBadge) return;
-        const currentHeight = els.printSheet.scrollHeight;
-        const maxHeightA4 = 1135; // A4 297mm 기준 96DPI 환산 높이
-
-        if (currentHeight > maxHeightA4) {
-            els.pageFitBadge.className = 'page-fit-badge fit-warn';
-            els.pageFitBadge.innerHTML = `<i class='bx bx-error-circle'></i> 2페이지 초과 주의`;
-            els.pageFitBadge.title = `현재 높이: ${Math.round(currentHeight)}px (A4 1페이지 기준 ${maxHeightA4}px 초과). 인쇄 시 2장으로 출력될 수 있으니 본문 분량 조절을 권장합니다.`;
-        } else {
+    // ── 11. 페이지 적합도 및 줌 배율 제어 ──
+    function updateFitBadge(pageCount, total) {
+        if (!els.pageFitBadge) return;
+        if (total === 1) {
             els.pageFitBadge.className = 'page-fit-badge fit-ok';
-            els.pageFitBadge.innerHTML = `✓ 1페이지 적합`;
-            els.pageFitBadge.title = `현재 높이: ${Math.round(currentHeight)}px. A4 1장으로 깔끔하게 출력되는 적정 분량입니다.`;
+            els.pageFitBadge.innerHTML = `<i class='bx bx-check-circle'></i> 1페이지 문서 (1/1)`;
+            els.pageFitBadge.title = 'A4 1장으로 출력되는 적정 분량입니다.';
+        } else {
+            els.pageFitBadge.className = 'page-fit-badge fit-warn';
+            els.pageFitBadge.innerHTML = `<i class='bx bx-book-open'></i> 총 ${total}페이지 문서 분할`;
+            els.pageFitBadge.title = `내용이 많아 ${total}장의 A4 시트로 정확히 분할되었습니다. 각 페이지 상단에 동일한 공식 레터헤드가 유지됩니다.`;
         }
     }
 
-    // ── 11. 미리보기 줌(배율) 제어 ──
     function setZoom(level) {
         state.currentZoom = Math.min(1.4, Math.max(0.5, Math.round(level * 100) / 100));
         if (els.zoomLevelDisplay) {
@@ -830,12 +1012,6 @@
         if (els.archiveSearchInput) {
             els.archiveSearchInput.addEventListener('input', renderArchiveTable);
         }
-
-        // Image error fallback
-        els.prevLogoImg.addEventListener('error', () => {
-            els.prevLogoImg.style.display = 'none';
-            els.prevLogoFallback.style.display = 'inline-block';
-        });
     }
 
     // ── 20. 초기화 실행 ──
