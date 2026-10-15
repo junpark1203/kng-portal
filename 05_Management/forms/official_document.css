@@ -13,6 +13,7 @@
     --slate-600: #475569;
     --slate-500: #64748b;
     --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
     --slate-200: #e2e8f0;
     --slate-100: #f1f5f9;
     --slate-50: #f8fafc;
@@ -27,9 +28,11 @@
     box-sizing: border-box;
 }
 
-body {
+html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
+    overflow: hidden;
     background-color: #f1f5f9;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     color: var(--slate-800);
@@ -46,9 +49,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 100;
+    height: 52px;
 }
 
 .header-left {
@@ -152,55 +155,61 @@ body {
     color: var(--slate-900);
 }
 
-.btn-success-custom {
-    background-color: var(--success-color);
-    color: #ffffff;
-    border-color: var(--success-color);
-}
-.btn-success-custom:hover {
-    background-color: #059669;
-}
-
 /* ── 2. Main Dual Layout (Editor + Live Preview) ── */
 .main-wrapper {
-    padding: 16px 20px 30px;
-    max-width: 1720px;
+    padding: 12px 16px;
+    max-width: 1760px;
     margin: 0 auto;
+    height: calc(100vh - 52px);
+    box-sizing: border-box;
 }
 
 .split-layout {
     display: grid;
-    grid-template-columns: minmax(440px, 48%) 1fr;
-    gap: 20px;
-    align-items: flex-start;
+    grid-template-columns: minmax(440px, 46%) 1fr;
+    gap: 16px;
+    height: 100%;
+    align-items: stretch;
 }
 
 @media (max-width: 1100px) {
+    html, body {
+        overflow: auto;
+        height: auto;
+    }
+    .main-wrapper {
+        height: auto;
+    }
     .split-layout {
         grid-template-columns: 1fr;
+        height: auto;
     }
 }
 
-/* ── 3. Left Panel: Editor Form ── */
+/* ── 3. Left Panel: Editor Form (독립 스크롤) ── */
 .editor-panel {
     background: #ffffff;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     overflow: hidden;
 }
 
 .panel-header {
     background: var(--slate-50);
     border-bottom: 1px solid var(--border-color);
-    padding: 12px 16px;
+    padding: 10px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .panel-title {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--slate-800);
     display: flex;
@@ -215,7 +224,7 @@ body {
 }
 
 .preset-select {
-    padding: 5px 10px;
+    padding: 4px 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 12px;
@@ -229,7 +238,9 @@ body {
     border-color: var(--primary-color);
 }
 
-.panel-body {
+.editor-panel .panel-body {
+    flex: 1;
+    overflow-y: auto;
     padding: 16px;
 }
 
@@ -296,14 +307,14 @@ body {
 .quick-insert-bar {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
     background: var(--slate-50);
     border: 1px solid var(--border-color);
     border-bottom: none;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
-    padding: 6px 10px;
+    padding: 5px 8px;
 }
 
 .quick-btn {
@@ -312,7 +323,7 @@ body {
     font-size: 11px;
     font-weight: 600;
     color: var(--slate-700);
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.1s;
@@ -326,7 +337,7 @@ body {
 
 .textarea-body {
     width: 100%;
-    min-height: 280px;
+    min-height: 260px;
     padding: 10px;
     font-size: 12.5px;
     line-height: 1.6;
@@ -345,26 +356,29 @@ body {
 
 /* ── 4. Right Panel: Real-time Live A4 Preview ── */
 .preview-panel {
-    background: var(--slate-200);
+    background: #e2e8f0;
     border-radius: 8px;
-    padding: 20px;
+    padding: 12px 14px 30px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    min-height: 800px;
-    position: sticky;
-    top: 65px;
+    height: 100%;
     overflow-y: auto;
-    max-height: calc(100vh - 85px);
+    position: relative;
+    border: 1px solid var(--border-color);
 }
 
 .preview-toolbar {
     width: 100%;
-    max-width: 210mm;
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(203, 213, 225, 0.8);
 }
 
 .preview-status {
@@ -382,6 +396,71 @@ body {
     gap: 8px;
 }
 
+/* Zoom Controls */
+.zoom-btn-group {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.zoom-btn {
+    border: none;
+    background: transparent;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--slate-600);
+    cursor: pointer;
+    transition: background 0.15s;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-btn:hover {
+    background: var(--slate-100);
+    color: var(--slate-900);
+}
+
+.zoom-btn.active {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.zoom-level {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--slate-800);
+    padding: 0 4px;
+    min-width: 32px;
+    text-align: center;
+}
+
+/* Page Fit Warning Badge */
+.page-fit-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-left: 4px;
+}
+
+.page-fit-badge.fit-ok {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.page-fit-badge.fit-warn {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
 .toggle-label {
     font-size: 12px;
     font-weight: 600;
@@ -397,7 +476,20 @@ body {
     border: 1px solid var(--border-color);
 }
 
-/* ── 5. Standard A4 Paper Sheet (Screen & Print) ── */
+/* ── 5. Standard A4 Paper Viewport & Sheet ── */
+.a4-preview-viewport {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding-bottom: 40px;
+    overflow-x: auto;
+}
+
+.a4-zoom-wrapper {
+    transform-origin: top center;
+    transition: transform 0.15s ease-out;
+}
+
 .a4-sheet {
     width: 210mm;
     min-height: 297mm;
@@ -471,19 +563,26 @@ body {
 
 .letterhead-contact {
     text-align: right;
-    font-size: 10px;
-    color: var(--slate-600);
+    font-size: 10.5px;
+    color: var(--slate-700);
     line-height: 1.45;
 }
 
 .letterhead-contact-line {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    align-items: center;
+    font-weight: 600;
+}
+
+.contact-sep {
+    color: var(--slate-300);
+    margin: 0 6px;
+    font-weight: 400;
 }
 
 .letterhead-subline {
-    margin-top: 5px;
+    margin-top: 6px;
     padding-top: 4px;
     border-top: 1px solid var(--slate-200);
     display: flex;
@@ -495,7 +594,7 @@ body {
 /* Document Title */
 .doc-title-wrapper {
     text-align: center;
-    margin: 18px 0 20px;
+    margin: 16px 0 18px;
 }
 
 .doc-main-title {
@@ -513,12 +612,12 @@ body {
 .doc-meta-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     font-size: 12.5px;
 }
 
 .doc-meta-table td {
-    padding: 4px 6px;
+    padding: 3.5px 6px;
     vertical-align: top;
 }
 
@@ -540,50 +639,44 @@ body {
     font-weight: 500;
 }
 
-.doc-meta-table .meta-subval {
-    color: var(--slate-600);
-    font-size: 11.5px;
-    margin-top: 2px;
-}
-
 .meta-divider {
     border-bottom: 1.5px solid #cbd5e1;
-    margin: 12px 0 18px;
+    margin: 10px 0 16px;
 }
 
 /* Document Body Content */
 .doc-body-content {
-    font-size: 12.5px;
-    line-height: 1.8;
+    font-size: 12px;
+    line-height: 1.75;
     color: #1e293b;
     white-space: pre-wrap;
     word-break: break-all;
     min-height: 160px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     font-family: inherit;
 }
 
 /* Attached Items & Postscript */
 .doc-attach-box {
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: 12px;
+    padding-top: 10px;
     border-top: 1px dashed #cbd5e1;
-    font-size: 12px;
+    font-size: 11.5px;
     color: #334155;
-    line-height: 1.7;
+    line-height: 1.65;
     white-space: pre-wrap;
 }
 
 /* Document Bottom Closing Sign-off */
 .doc-closing-area {
-    margin-top: 28px;
+    margin-top: 24px;
     text-align: right;
     position: relative;
     padding-right: 20px;
 }
 
 .doc-sign-text {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 700;
     color: #0f172a;
     letter-spacing: 0.5px;
@@ -605,8 +698,8 @@ body {
 /* A4 Footer Info */
 .a4-footer {
     border-top: 1px solid var(--slate-200);
-    padding-top: 8px;
-    margin-top: 20px;
+    padding-top: 6px;
+    margin-top: 16px;
     display: flex;
     justify-content: space-between;
     font-size: 9.5px;
@@ -621,6 +714,8 @@ body {
     border-radius: 8px;
     box-shadow: var(--card-shadow);
     padding: 20px;
+    height: 100%;
+    overflow-y: auto;
 }
 
 .archive-toolbar {
@@ -741,6 +836,8 @@ body {
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
         font-size: 11pt !important;
     }
 
@@ -758,10 +855,12 @@ body {
         padding: 0 !important;
         margin: 0 !important;
         max-width: 100% !important;
+        height: auto !important;
     }
 
     .split-layout {
         display: block !important;
+        height: auto !important;
     }
 
     .preview-panel {
@@ -771,6 +870,19 @@ body {
         max-height: none !important;
         position: static !important;
         overflow: visible !important;
+        border: none !important;
+        height: auto !important;
+    }
+
+    .a4-preview-viewport {
+        padding: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    .a4-zoom-wrapper {
+        transform: none !important;
+        width: 100% !important;
     }
 
     .a4-sheet {

@@ -179,8 +179,9 @@
     // ── 3. 앱 상태 관리 ──
     const state = {
         activeTab: 'editor', // 'editor' | 'archive'
+        currentZoom: 0.8,    // 기본 80% 배율 (스크롤 없이 A4 한눈에 보기)
         company: Object.assign({}, DEFAULT_COMPANY_INFO),
-        currentUser: { name: '', email: '', rank: '과장', department: '주식회사 케앤지' },
+        currentUser: { name: '', email: '', rank: '차장', department: '주식회사 케앤지' },
         currentDoc: {
             id: null,
             docTitle: '',
@@ -238,13 +239,22 @@
             btnQuickAttach: document.getElementById('btnQuickAttach'),
             btnQuickGreeting: document.getElementById('btnQuickGreeting'),
 
+            // Zoom & Viewport
+            a4ZoomWrapper: document.getElementById('a4ZoomWrapper'),
+            printSheet: document.getElementById('printSheet'),
+            zoomLevelDisplay: document.getElementById('zoomLevelDisplay'),
+            btnZoomOut: document.getElementById('btnZoomOut'),
+            btnZoomIn: document.getElementById('btnZoomIn'),
+            btnZoomFit: document.getElementById('btnZoomFit'),
+            btnZoom100: document.getElementById('btnZoom100'),
+            pageFitBadge: document.getElementById('pageFitBadge'),
+
             // Live A4 Preview Elements
             prevCorpKr: document.getElementById('prevCorpKr'),
             prevCorpEn: document.getElementById('prevCorpEn'),
             prevAddress: document.getElementById('prevAddress'),
             prevTel: document.getElementById('prevTel'),
             prevFax: document.getElementById('prevFax'),
-            prevEmail: document.getElementById('prevEmail'),
             prevLogoImg: document.getElementById('prevLogoImg'),
             prevLogoFallback: document.getElementById('prevLogoFallback'),
 
@@ -276,7 +286,6 @@
             setAddress: document.getElementById('setAddress'),
             setTel: document.getElementById('setTel'),
             setFax: document.getElementById('setFax'),
-            setEmail: document.getElementById('setEmail'),
             setLogoUrl: document.getElementById('setLogoUrl')
         };
     }
@@ -297,7 +306,7 @@
         if (!email) email = localStorage.getItem('kngCurrentUserEmail') || '';
 
         state.currentUser.name = name || '담당자';
-        state.currentUser.email = email || state.company.email;
+        state.currentUser.email = email || '';
 
         // 직급 및 부서 감지 시도 (admin_users API or portal_users)
         try {
@@ -340,7 +349,11 @@
         }
 
         const nameWithRank = state.currentUser.name ? `${state.currentUser.name} ${state.currentUser.rank}` : '담당자';
-        const fromText = `${state.company.nameKr} ${nameWithRank} (${state.company.tel} / ${state.currentUser.email || state.company.email})`;
+        const contactInfo = state.currentUser.email 
+            ? `${state.company.tel} / ${state.currentUser.email}`
+            : state.company.tel;
+
+        const fromText = `${state.company.nameKr} ${nameWithRank} (${contactInfo})`;
         const signText = `${state.company.nameKr} ${nameWithRank} 배상`;
 
         return { fromText, signText };
@@ -391,13 +404,12 @@
         const sign = els.inputSignText.value.trim();
         const stamp = els.chkIncludeStamp.checked;
 
-        // Company Info Header
+        // Company Info Header (헤더 영역: 대표 이메일 제외, TEL/FAX 단일 행 표시)
         els.prevCorpKr.textContent = state.company.nameKr;
         els.prevCorpEn.textContent = state.company.nameEn;
         els.prevAddress.textContent = state.company.address;
         els.prevTel.textContent = `TEL: ${state.company.tel}`;
         els.prevFax.textContent = `FAX: ${state.company.fax}`;
-        els.prevEmail.textContent = `E-MAIL: ${state.company.email}`;
 
         // Header Logo Test
         if (state.company.logoUrl) {
@@ -449,11 +461,48 @@
         // Footer Info
         els.prevFooterInfo.textContent = `${state.company.nameKr} | 사업자등록번호: ${state.company.bizNum} | ${state.company.address}`;
 
+        // A4 1페이지 규격 적합도 검사
+        checkPageFit();
+
         // Save Temporary Draft
         saveDraft();
     }
 
-    // ── 10. 자동 임시저장 (Auto Draft) ──
+    // ── 10. A4 1페이지 규격 초과 검사 및 배지 표시 ──
+    function checkPageFit() {
+        if (!els.printSheet || !els.pageFitBadge) return;
+        const currentHeight = els.printSheet.scrollHeight;
+        const maxHeightA4 = 1135; // A4 297mm 기준 96DPI 환산 높이
+
+        if (currentHeight > maxHeightA4) {
+            els.pageFitBadge.className = 'page-fit-badge fit-warn';
+            els.pageFitBadge.innerHTML = `<i class='bx bx-error-circle'></i> 2페이지 초과 주의`;
+            els.pageFitBadge.title = `현재 높이: ${Math.round(currentHeight)}px (A4 1페이지 기준 ${maxHeightA4}px 초과). 인쇄 시 2장으로 출력될 수 있으니 본문 분량 조절을 권장합니다.`;
+        } else {
+            els.pageFitBadge.className = 'page-fit-badge fit-ok';
+            els.pageFitBadge.innerHTML = `✓ 1페이지 적합`;
+            els.pageFitBadge.title = `현재 높이: ${Math.round(currentHeight)}px. A4 1장으로 깔끔하게 출력되는 적정 분량입니다.`;
+        }
+    }
+
+    // ── 11. 미리보기 줌(배율) 제어 ──
+    function setZoom(level) {
+        state.currentZoom = Math.min(1.4, Math.max(0.5, Math.round(level * 100) / 100));
+        if (els.zoomLevelDisplay) {
+            els.zoomLevelDisplay.textContent = Math.round(state.currentZoom * 100) + '%';
+        }
+        if (els.a4ZoomWrapper) {
+            els.a4ZoomWrapper.style.transform = `scale(${state.currentZoom})`;
+        }
+        if (els.btnZoomFit) {
+            els.btnZoomFit.classList.toggle('active', Math.abs(state.currentZoom - 0.8) < 0.02);
+        }
+        if (els.btnZoom100) {
+            els.btnZoom100.classList.toggle('active', Math.abs(state.currentZoom - 1.0) < 0.02);
+        }
+    }
+
+    // ── 12. 자동 임시저장 (Auto Draft) ──
     function saveDraft() {
         const draft = {
             docTitle: els.inputDocTitle.value,
@@ -495,7 +544,7 @@
         return false;
     }
 
-    // ── 11. 문서 보관함 (Archive) 저장 및 관리 ──
+    // ── 13. 문서 보관함 (Archive) 저장 및 관리 ──
     function loadArchive() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY_ARCHIVE);
@@ -574,7 +623,7 @@
         }
 
         let html = '';
-        filtered.forEach((item, idx) => {
+        filtered.forEach((item) => {
             html += `
                 <tr>
                     <td style="font-weight: 700; color: var(--slate-700);">${item.docNo || '-'}</td>
@@ -627,7 +676,7 @@
         renderArchiveTable();
     }
 
-    // ── 12. 탭 전환 ──
+    // ── 14. 탭 전환 ──
     function switchTab(tabName) {
         state.activeTab = tabName;
         if (tabName === 'editor') {
@@ -644,7 +693,7 @@
         }
     }
 
-    // ── 13. 본문 퀵 인서트 도우미 ──
+    // ── 15. 본문 퀵 인서트 도우미 ──
     function insertToBody(textToInsert) {
         const textarea = els.inputBody;
         const start = textarea.selectionStart;
@@ -657,7 +706,7 @@
         renderPreview();
     }
 
-    // ── 14. 회사 기본 정보 설정 모달 ──
+    // ── 16. 회사 기본 정보 설정 모달 ──
     function loadCompanySettings() {
         const saved = localStorage.getItem(STORAGE_KEY_COMPANY);
         if (saved) {
@@ -674,7 +723,6 @@
         els.setAddress.value = state.company.address;
         els.setTel.value = state.company.tel;
         els.setFax.value = state.company.fax;
-        els.setEmail.value = state.company.email;
         els.setLogoUrl.value = state.company.logoUrl;
         els.settingsModal.classList.add('active');
     }
@@ -689,7 +737,6 @@
         state.company.address = els.setAddress.value.trim() || DEFAULT_COMPANY_INFO.address;
         state.company.tel = els.setTel.value.trim() || DEFAULT_COMPANY_INFO.tel;
         state.company.fax = els.setFax.value.trim() || DEFAULT_COMPANY_INFO.fax;
-        state.company.email = els.setEmail.value.trim() || DEFAULT_COMPANY_INFO.email;
         state.company.logoUrl = els.setLogoUrl.value.trim();
 
         localStorage.setItem(STORAGE_KEY_COMPANY, JSON.stringify(state.company));
@@ -698,7 +745,7 @@
         alert('회사 기본 정보가 저장되었습니다.');
     }
 
-    // ── 15. 발신자 프로필 영구 저장 ──
+    // ── 17. 발신자 프로필 영구 저장 ──
     function saveSenderPreset() {
         const profile = {
             fromText: els.inputFromText.value.trim(),
@@ -708,7 +755,7 @@
         alert('현재 입력된 [발신인] 및 [하단 서명] 정보가 기본 프로필로 저장되었습니다.\n다음 새 공문 작성 시 이 정보가 자동으로 반영됩니다.');
     }
 
-    // ── 16. 유틸리티 ──
+    // ── 18. 유틸리티 ──
     function escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -718,7 +765,7 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ── 17. 이벤트 바인딩 ──
+    // ── 19. 이벤트 바인딩 ──
     function bindEvents() {
         // Tab switching
         els.tabEditor.addEventListener('click', () => switchTab('editor'));
@@ -744,6 +791,12 @@
         });
 
         els.chkIncludeStamp.addEventListener('change', renderPreview);
+
+        // Zoom Controller Buttons
+        if (els.btnZoomOut) els.btnZoomOut.addEventListener('click', () => setZoom(state.currentZoom - 0.1));
+        if (els.btnZoomIn) els.btnZoomIn.addEventListener('click', () => setZoom(state.currentZoom + 0.1));
+        if (els.btnZoomFit) els.btnZoomFit.addEventListener('click', () => setZoom(0.8));
+        if (els.btnZoom100) els.btnZoom100.addEventListener('click', () => setZoom(1.0));
 
         // Quick Format Buttons
         els.btnQuickBelow.addEventListener('click', () => insertToBody('\n\n                         - 아   래 -\n\n'));
@@ -785,12 +838,15 @@
         });
     }
 
-    // ── 18. 초기화 실행 ──
+    // ── 20. 초기화 실행 ──
     async function init() {
         initElements();
         loadCompanySettings();
         await detectCurrentUser();
         loadArchive();
+
+        // 기본 80% 배율 적용 (스크롤 없이 전체 A4 한눈에 보기)
+        setZoom(0.8);
 
         // 임시저장 내용이 없으면 기본 1호 템플릿 로드
         const restored = restoreDraft();

@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Standalone Stylesheet -->
-    <link rel="stylesheet" href="./official_document.css?v=20261015_1">
+    <link rel="stylesheet" href="./official_document.css?v=20261015_2">
 </head>
 <body>
 
@@ -111,7 +111,7 @@
                                 <i class='bx bx-save'></i> 내 기본 발신인으로 저장
                             </button>
                         </div>
-                        <input type="text" id="inputFromText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준 과장 (02-2038-0160 / contact@junparks.com)">
+                        <input type="text" id="inputFromText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준영 차장 (02-2038-0160 / email)">
                     </div>
 
                     <!-- 3. 공문 제목 및 본문 -->
@@ -149,7 +149,7 @@
                     <div class="form-grid-2">
                         <div class="form-group">
                             <label for="inputSignText">하단 서명 문구</label>
-                            <input type="text" id="inputSignText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준 과장 배상">
+                            <input type="text" id="inputSignText" class="form-control-custom" placeholder="예: 주식회사 케앤지 박준영 차장 배상">
                         </div>
                         <div class="form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
                             <label class="toggle-label" style="padding: 7px 10px; margin-bottom: 0; width: 100%; justify-content: flex-start;">
@@ -166,108 +166,119 @@
                 <div class="preview-toolbar no-print">
                     <div class="preview-status">
                         <i class='bx bx-file-find text-primary'></i>
-                        <span>실시간 A4 정품 미리보기 (실제 인쇄물과 100% 동일)</span>
+                        <span>실시간 A4 미리보기</span>
+                        <span class="page-fit-badge fit-ok" id="pageFitBadge">✓ 1페이지 적합</span>
                     </div>
                     <div class="preview-controls">
+                        <!-- Zoom Controller -->
+                        <div class="zoom-btn-group">
+                            <button type="button" class="zoom-btn" id="btnZoomOut" title="축소"><i class='bx bx-minus'></i></button>
+                            <span class="zoom-level" id="zoomLevelDisplay">80%</span>
+                            <button type="button" class="zoom-btn" id="btnZoomIn" title="확대"><i class='bx bx-plus'></i></button>
+                            <button type="button" class="zoom-btn active" id="btnZoomFit" title="화면 맞춤 (80%)">맞춤</button>
+                            <button type="button" class="zoom-btn" id="btnZoom100" title="원본 크기 (100%)">100%</button>
+                        </div>
                         <button type="button" class="btn-custom btn-primary-custom" onclick="window.print()" style="padding: 4px 10px; font-size: 11.5px;">
                             <i class='bx bx-printer'></i> 빠른 인쇄
                         </button>
                     </div>
                 </div>
 
-                <!-- ═══ Standard A4 Paper Sheet (@media print 전용 겸용) ═══ -->
-                <div class="a4-sheet" id="printSheet">
-                    <!-- Top Section: Header + Meta + Title + Body -->
-                    <div class="a4-content-top">
-                        <!-- 1. Company Letterhead Header -->
-                        <header class="letterhead-header">
-                            <div class="letterhead-top">
-                                <div class="letterhead-brand">
-                                    <img id="prevLogoImg" src="../../assets/images/logo.png" class="letterhead-logo" alt="K&G LOGO">
-                                    <span id="prevLogoFallback" class="letterhead-logo-fallback" style="display: none;">K&G</span>
-                                    <div class="letterhead-name-group">
-                                        <span class="letterhead-corp-kr" id="prevCorpKr">주식회사 케앤지</span>
-                                        <span class="letterhead-corp-en" id="prevCorpEn">K&G Co., LTD.</span>
+                <!-- ═══ Standard A4 Paper Viewport with Zoom Wrapper ═══ -->
+                <div class="a4-preview-viewport">
+                    <div class="a4-zoom-wrapper" id="a4ZoomWrapper">
+                        <div class="a4-sheet" id="printSheet">
+                            <!-- Top Section: Header + Meta + Title + Body -->
+                            <div class="a4-content-top">
+                                <!-- 1. Company Letterhead Header (대표 이메일 제외, TEL/FAX 단일 행) -->
+                                <header class="letterhead-header">
+                                    <div class="letterhead-top">
+                                        <div class="letterhead-brand">
+                                            <img id="prevLogoImg" src="../../assets/images/logo.png" class="letterhead-logo" alt="K&G LOGO">
+                                            <span id="prevLogoFallback" class="letterhead-logo-fallback" style="display: none;">K&G</span>
+                                            <div class="letterhead-name-group">
+                                                <span class="letterhead-corp-kr" id="prevCorpKr">주식회사 케앤지</span>
+                                                <span class="letterhead-corp-en" id="prevCorpEn">K&G Co., LTD.</span>
+                                            </div>
+                                        </div>
+                                        <div class="letterhead-contact">
+                                            <div class="letterhead-contact-line">
+                                                <span id="prevTel">TEL: 02-2038-0160</span>
+                                                <span class="contact-sep">|</span>
+                                                <span id="prevFax">FAX: 02-2038-0162</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="letterhead-subline">
+                                        <span id="prevAddress">서울시 강동구 구천면로 159, 1층 2호, 3호</span>
+                                        <span>OFFICIAL BUSINESS CORRESPONDENCE</span>
+                                    </div>
+                                </header>
+
+                                <!-- 2. Document Title -->
+                                <div class="doc-title-wrapper">
+                                    <h1 class="doc-main-title" id="prevDocTitle">샘플 송부 안내 및 조끼 제작 견적 의뢰서</h1>
+                                </div>
+
+                                <!-- 3. Document Meta Grid -->
+                                <table class="doc-meta-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="meta-label">■ 수  신</td>
+                                            <td class="meta-colon">:</td>
+                                            <td class="meta-val" id="prevTo">(주)일터루코리아 고영종 실장님</td>
+                                        </tr>
+                                        <tr id="prevCcRow">
+                                            <td class="meta-label">■ 참  조</td>
+                                            <td class="meta-colon">:</td>
+                                            <td class="meta-val" id="prevCc">(주)일터루코리아 고병삼 대표님</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="meta-label">■ 발  신</td>
+                                            <td class="meta-colon">:</td>
+                                            <td class="meta-val" id="prevFrom">주식회사 케앤지 박준영 차장 (02-2038-0160 / email)</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="meta-label">■ 일  자</td>
+                                            <td class="meta-colon">:</td>
+                                            <td class="meta-val" id="prevDate">2026년 10월 15일</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="meta-label">■ 제  목</td>
+                                            <td class="meta-colon">:</td>
+                                            <td class="meta-val" id="prevSubject" style="font-weight: 700; color: #0f172a;">안전조끼 샘플 송부 및 OEM 제작 견적 의뢰의 건 ((주)행복한안전 이한우 대표님 소개 건)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <div class="meta-divider"></div>
+
+                                <!-- 4. Document Body -->
+                                <div class="doc-body-content" id="prevBody"></div>
+
+                                <!-- 5. Attachments Box -->
+                                <div class="doc-attach-box" id="prevAttachBox">
+                                    <div id="prevAttachContent"></div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Section: Closing Sign-off + Footer -->
+                            <div class="a4-content-bottom">
+                                <!-- Closing Sign-off -->
+                                <div class="doc-closing-area">
+                                    <div class="doc-sign-text">
+                                        <span id="prevSignText">주식회사 케앤지 박준영 차장 배상</span>
+                                        <img id="prevSealImg" src="../../assets/images/stamp.png" class="doc-seal-img" style="display: none;" alt="직인">
                                     </div>
                                 </div>
-                                <div class="letterhead-contact">
-                                    <div class="letterhead-contact-line">
-                                        <span id="prevTel">TEL: 02-2038-0160</span>
-                                        <span id="prevFax">FAX: 02-2038-0162</span>
-                                    </div>
-                                    <div class="letterhead-contact-line" style="margin-top: 2px;">
-                                        <span id="prevEmail">E-MAIL: contact@junparks.com</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="letterhead-subline">
-                                <span id="prevAddress">서울시 강동구 구천면로 159, 1층 2호, 3호</span>
-                                <span>OFFICIAL BUSINESS CORRESPONDENCE</span>
-                            </div>
-                        </header>
 
-                        <!-- 2. Document Title -->
-                        <div class="doc-title-wrapper">
-                            <h1 class="doc-main-title" id="prevDocTitle">샘플 송부 안내 및 조끼 제작 견적 의뢰서</h1>
-                        </div>
-
-                        <!-- 3. Document Meta Grid -->
-                        <table class="doc-meta-table">
-                            <tbody>
-                                <tr>
-                                    <td class="meta-label">■ 수  신</td>
-                                    <td class="meta-colon">:</td>
-                                    <td class="meta-val" id="prevTo">(주)일터루코리아 고영종 실장님</td>
-                                </tr>
-                                <tr id="prevCcRow">
-                                    <td class="meta-label">■ 참  조</td>
-                                    <td class="meta-colon">:</td>
-                                    <td class="meta-val" id="prevCc">(주)일터루코리아 고병삼 대표님</td>
-                                </tr>
-                                <tr>
-                                    <td class="meta-label">■ 발  신</td>
-                                    <td class="meta-colon">:</td>
-                                    <td class="meta-val" id="prevFrom">주식회사 케앤지 박준 과장 (02-2038-0160 / contact@junparks.com)</td>
-                                </tr>
-                                <tr>
-                                    <td class="meta-label">■ 일  자</td>
-                                    <td class="meta-colon">:</td>
-                                    <td class="meta-val" id="prevDate">2026년 10월 15일</td>
-                                </tr>
-                                <tr>
-                                    <td class="meta-label">■ 제  목</td>
-                                    <td class="meta-colon">:</td>
-                                    <td class="meta-val" id="prevSubject" style="font-weight: 700; color: #0f172a;">안전조끼 샘플 송부 및 OEM 제작 견적 의뢰의 건 ((주)행복한안전 이한우 대표님 소개 건)</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div class="meta-divider"></div>
-
-                        <!-- 4. Document Body -->
-                        <div class="doc-body-content" id="prevBody"></div>
-
-                        <!-- 5. Attachments Box -->
-                        <div class="doc-attach-box" id="prevAttachBox">
-                            <div id="prevAttachContent"></div>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Section: Closing Sign-off + Footer -->
-                    <div class="a4-content-bottom">
-                        <!-- Closing Sign-off -->
-                        <div class="doc-closing-area">
-                            <div class="doc-sign-text">
-                                <span id="prevSignText">주식회사 케앤지 박준 과장 배상</span>
-                                <img id="prevSealImg" src="../../assets/images/stamp.png" class="doc-seal-img" style="display: none;" alt="직인">
+                                <!-- Bottom Paper Footer -->
+                                <footer class="a4-footer">
+                                    <span id="prevFooterInfo">주식회사 케앤지 | 사업자등록번호: 845-88-00551 | 서울시 강동구 구천면로 159, 1층 2호, 3호</span>
+                                    <span>K&G ERP SYSTEM</span>
+                                </footer>
                             </div>
                         </div>
-
-                        <!-- Bottom Paper Footer -->
-                        <footer class="a4-footer">
-                            <span id="prevFooterInfo">주식회사 케앤지 | 사업자등록번호: 845-88-00551 | 서울시 강동구 구천면로 159, 1층 2호, 3호</span>
-                            <span>K&G ERP SYSTEM</span>
-                        </footer>
                     </div>
                 </div>
             </section>
@@ -341,10 +352,6 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="setEmail">대표 이메일</label>
-                    <input type="email" id="setEmail" class="form-control-custom">
-                </div>
-                <div class="form-group">
                     <label for="setLogoUrl">로고 이미지 경로 / URL</label>
                     <input type="text" id="setLogoUrl" class="form-control-custom" placeholder="../../assets/images/logo.png">
                     <span style="font-size: 11px; color: var(--slate-500); margin-top: 3px; display: block;">기본: <code>../../assets/images/logo.png</code></span>
@@ -358,6 +365,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="./official_document.js?v=20261015_1"></script>
+    <script src="./official_document.js?v=20261015_2"></script>
 </body>
 </html>
