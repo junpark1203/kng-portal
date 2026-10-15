@@ -512,11 +512,19 @@
         const tempP1Body = sheet1.querySelector('#_tempP1Body');
         tempP1Body.textContent = body;
 
-        // A4 297mm 기준 96DPI 환산 높이 (안전 마진 포함 약 1,120px)
-        const A4_MAX_HEIGHT = 1120;
+        // A4 297mm (1122.5px) - 30mm vertical padding (113.4px) = 1009px inner height
+        // 내부 안전 마진 995px 기준으로 실제 컨텐츠 높이 오버플로우 검사
+        function isSheetOverflowing(sheet) {
+            const topEl = sheet.querySelector('.a4-content-top');
+            const bottomEl = sheet.querySelector('.a4-content-bottom');
+            if (!topEl) return false;
+            const topH = topEl.offsetHeight || 0;
+            const bottomH = bottomEl ? bottomEl.offsetHeight : 0;
+            return (topH + bottomH) > 995;
+        }
 
         // 1페이지에 온전히 다 들어가는 경우
-        if (sheet1.scrollHeight <= A4_MAX_HEIGHT) {
+        if (!isSheetOverflowing(sheet1)) {
             updateFitBadge(1, 1);
             saveDraft();
             return;
@@ -551,7 +559,7 @@
         while (low <= high) {
             const mid = Math.floor((low + high) / 2);
             p1Body.textContent = lines.slice(0, mid).join('\n');
-            if (sheet1.scrollHeight <= A4_MAX_HEIGHT) {
+            if (!isSheetOverflowing(sheet1)) {
                 bestK = mid;
                 low = mid + 1;
             } else {
@@ -591,7 +599,7 @@
         p2Body.textContent = remainingLines.join('\n');
 
         // 2페이지 분량 체크 (만약 3페이지까지 넘치는 극단적인 경우 처리)
-        if (sheet2.scrollHeight <= A4_MAX_HEIGHT) {
+        if (!isSheetOverflowing(sheet2)) {
             updateFitBadge(2, 2);
             saveDraft();
             return;
@@ -613,7 +621,7 @@
         while (low2 <= high2) {
             const mid = Math.floor((low2 + high2) / 2);
             p2BodyOnly.textContent = remainingLines.slice(0, mid).join('\n');
-            if (sheet2.scrollHeight <= A4_MAX_HEIGHT) {
+            if (!isSheetOverflowing(sheet2)) {
                 bestK2 = mid;
                 low2 = mid + 1;
             } else {
