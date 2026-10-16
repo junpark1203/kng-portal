@@ -1,7 +1,11 @@
 /* ==========================================================================
-   K&G Sales Cost & Margin Simulator - High-Density Single-Column Stylesheet
-   규격: 위에서 아래로 순차 진행되는 직관적 워크플로우 (1열 탑다운 레이아웃)
-         매입 시나리오 1..3 × 판매 시나리오 1..3 경우의 수 교차 분석 매트릭스
+   K&G Sales Cost & Margin Simulator v2.0 - High-Density Single-Column Stylesheet
+   규격:
+   - Step 1: 프로젝트 공통 조건(사업기간·여신기간) + 물류/포장단위(EA/BOX, BOX/PLT, 중량)
+   - Step 2: 통합 매입 원가 시나리오 비교 & 개별 오버라이드 시트 (최소 1~최대 5개)
+   - Step 3: 판매가 시나리오 1~5개 (자유 명칭 + 전 매입시나리오 동시 비교 & 역산)
+   - Step 4: 매입(M) × 판매(N) 경우의 수 교차 분석 매트릭스 (최대 5×5 = 25조합)
+   - Step 5: 전 시나리오 조합 심층 분석 전수 펼침 (워터폴 + BEP + 품목별 권장단가)
    ========================================================================== */
 
 :root {
@@ -47,7 +51,7 @@ body {
     background-color: var(--erp-bg);
     color: var(--erp-text);
     margin: 0;
-    padding: 8px 12px 24px;
+    padding: 8px 12px 28px;
     font-size: var(--erp-font-size);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
@@ -155,11 +159,17 @@ body {
     font-size: 11px;
 }
 
+.btn-erp.btn-xs {
+    height: 19px;
+    padding: 0 5px;
+    font-size: 10px;
+}
+
 /* ─────────────────────────────────────────────────────────────
    2. 위에서 아래로 내려가는 1열 메인 워크플로우 (.sim-flow-container)
    ───────────────────────────────────────────────────────────── */
 .sim-flow-container {
-    max-width: 1360px;
+    max-width: 1460px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -182,6 +192,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .step-badge {
@@ -196,6 +208,7 @@ body {
     font-size: 11px;
     font-weight: 800;
     margin-right: 6px;
+    flex-shrink: 0;
 }
 
 .step-panel-title {
@@ -204,6 +217,7 @@ body {
     color: #0f172a;
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .step-panel-subtitle {
@@ -218,7 +232,103 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   3. 테이블 및 인풋 규격
+   3. Step 1: 프로젝트 공통 조건 바 & 물류 포장단위 스타일
+   ───────────────────────────────────────────────────────────── */
+.project-meta-bar {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--erp-border-light);
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 11.5px;
+}
+
+.meta-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.meta-label {
+    font-weight: 700;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.meta-chip {
+    font-size: 11px;
+    color: #0369a1;
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.meta-divider {
+    width: 1px;
+    height: 16px;
+    background: #cbd5e1;
+}
+
+.pkg-calc-caption {
+    margin-top: 3px;
+    font-size: 10.5px;
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 2px;
+    padding: 1px 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.pkg-calc-caption.heavy-warn {
+    color: #b45309;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+.logistics-summary-bar {
+    background: linear-gradient(90deg, #f0fdf4 0%, #f8fafc 100%);
+    border-top: 1px solid #bbf7d0;
+    padding: 7px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 11.5px;
+}
+
+.logistics-metrics-wrap {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.logi-metric-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #1e293b;
+}
+
+.logi-metric-pill strong {
+    color: #15803d;
+    font-size: 12.5px;
+    font-weight: 800;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   4. 테이블 및 인풋 규격
    ───────────────────────────────────────────────────────────── */
 .erp-table {
     width: 100%;
@@ -229,7 +339,7 @@ body {
 .erp-table th,
 .erp-table td {
     border: 1px solid var(--erp-border-light);
-    padding: 5px 8px;
+    padding: 5px 7px;
     height: 29px;
     vertical-align: middle;
 }
@@ -251,7 +361,7 @@ body {
 .erp-input {
     width: 100%;
     height: 25px;
-    padding: 2px 7px;
+    padding: 2px 6px;
     font-size: 11.5px;
     font-family: inherit;
     color: var(--erp-text);
@@ -271,153 +381,137 @@ body {
 .erp-input.text-center { text-align: center; }
 
 /* ─────────────────────────────────────────────────────────────
-   4. 매입 시나리오 1, 2, 3 설정 카드 그리드
+   5. Step 2: 통합 매입 원가 시나리오 비교 & 오버라이드 테이블
    ───────────────────────────────────────────────────────────── */
-.sc-card-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-}
-
-@media (max-width: 900px) {
-    .sc-card-grid { grid-template-columns: 1fr; }
-}
-
-.sc-card {
-    background: #ffffff;
-    border: 1px solid var(--erp-border);
-    border-radius: 4px;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    transition: all 0.15s ease;
-}
-
-.sc-card:hover {
-    border-color: #94a3b8;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
-}
-
-.sc-card-header {
-    border-bottom: 1px solid var(--erp-border-light);
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.sc-tag {
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: #ffffff;
-    white-space: nowrap;
-}
-
-.tag-sc1 { background: #10b981; }
-.tag-sc2 { background: #2563eb; }
-.tag-sc3 { background: #8b5cf6; }
-
-.sc-cost-checklist {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-size: 11px;
-    min-height: 110px;
-}
-
-.sc-check-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 3px 6px;
-    border-radius: 3px;
+.cost-driver-guide {
     background: #f8fafc;
-    cursor: pointer;
-    user-select: none;
+    border: 1px solid var(--erp-border-light);
+    border-left: 3px solid var(--erp-primary);
+    border-radius: 3px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
-.sc-check-item:hover {
-    background: #f1f5f9;
-}
-
-.sc-check-item input[type="checkbox"] {
-    margin-right: 6px;
-    cursor: pointer;
-}
-
-.sc-check-amt {
+.guide-chip {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 2px;
+    font-weight: 700;
     font-size: 10.5px;
-    color: var(--erp-text-muted);
-    font-variant-numeric: tabular-nums;
+}
+.guide-chip.fixed { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.guide-chip.var { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+.cost-matrix-table th,
+.cost-matrix-table td {
+    padding: 5px 6px;
 }
 
-.sc-card-footer {
-    border-top: 1.5px solid var(--erp-border);
-    padding-top: 8px;
-    margin-top: 8px;
+.cost-sc-th {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    min-width: 175px;
+    vertical-align: top !important;
+    padding: 7px 8px !important;
+}
+
+.cost-sc-th.active-sc {
+    background: #1e3a8a !important;
+    box-shadow: inset 0 3px 0 #38bdf8;
+}
+
+.sc-cell-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sc-cell-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sc-cell-bottom {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
+    font-size: 10px;
+    color: #64748b;
 }
 
-.sc-unit-cost-label {
-    font-size: 10.5px;
-    color: var(--erp-text-muted);
-    font-weight: 600;
+.sc-override-badge {
+    font-size: 9.5px;
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+    padding: 0 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 700;
+}
+.sc-override-badge:hover {
+    background: #fef3c7;
 }
 
-.sc-unit-cost-val {
-    font-size: 18px;
-    font-weight: 900;
-    color: #0f172a;
-    font-variant-numeric: tabular-nums;
+.sc-cell-disabled {
+    background: #f8fafc !important;
+    opacity: 0.6;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   5. 판매가 시나리오 1, 2, 3 설정 카드 그리드
+   6. Step 3: 판매가 시나리오 (1~5개 가변 · 전 매입시나리오 동시 비교)
    ───────────────────────────────────────────────────────────── */
 .sales-card-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 12px;
-}
-
-@media (max-width: 900px) {
-    .sales-card-grid { grid-template-columns: 1fr; }
 }
 
 .sales-card {
     background: #ffffff;
-    border: 1px solid var(--erp-border);
+    border: 1.5px solid var(--erp-border);
     border-radius: 4px;
     padding: 10px 12px;
-}
-
-.sales-tag {
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: #ffffff;
-    white-space: nowrap;
-}
-
-.tag-sales1 { background: #0284c7; }
-.tag-sales2 { background: #0f766e; }
-.tag-sales3 { background: #c026d3; }
-
-.sales-quick-btns {
     display: flex;
-    gap: 3px;
-    margin-top: 6px;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.15s ease;
+}
+
+.sales-card.active {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.25);
+}
+
+.sales-cost-subtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    border: 1px solid var(--erp-border-light);
+}
+
+.sales-cost-subtable th {
+    background: #f1f5f9;
+    color: #334155;
+    padding: 4px 6px;
+    font-size: 10.5px;
+    border: 1px solid var(--erp-border-light);
+    text-align: center;
+}
+
+.sales-cost-subtable td {
+    padding: 4px 6px;
+    border: 1px solid var(--erp-border-light);
+    vertical-align: middle;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   6. [핵심] 매입 × 판매 시나리오 경우의 수 교차 매트릭스 (3×3)
+   7. Step 4: 매입 × 판매 경우의 수 교차 매트릭스 (M × N)
    ───────────────────────────────────────────────────────────── */
 .matrix-container {
     overflow-x: auto;
@@ -426,35 +520,29 @@ body {
 .matrix-table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 6px;
+    border-spacing: 5px;
     font-size: 12px;
 }
 
 .matrix-table th {
     background: #0f172a;
     color: #ffffff;
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-radius: 3px;
     text-align: center;
     font-weight: 700;
-}
-
-.matrix-cost-th {
-    background: #1e293b !important;
-    text-align: left !important;
-    padding: 8px 12px !important;
-    width: 22%;
 }
 
 .matrix-cell {
     background: #ffffff;
     border: 1.5px solid var(--erp-border);
     border-radius: 4px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     cursor: pointer;
     transition: all 0.15s ease;
     vertical-align: top;
     position: relative;
+    min-width: 180px;
 }
 
 .matrix-cell:hover {
@@ -469,19 +557,9 @@ body {
     box-shadow: 0 0 0 2px var(--erp-primary);
 }
 
-.matrix-cell-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 1px 6px;
-    border-radius: 2px;
-    font-size: 10px;
-    font-weight: 800;
-}
-
-.matrix-badge, .matrix-cell-badge {
+.matrix-badge {
     display: inline-block;
-    padding: 2px 7px;
+    padding: 2px 6px;
     border-radius: 3px;
     font-size: 10px;
     font-weight: 800;
@@ -491,8 +569,8 @@ body {
 .badge-warning { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
 .badge-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
-.matrix-cell-margin, .matrix-margin-amount {
-    font-size: 17px;
+.matrix-cell-margin {
+    font-size: 16px;
     font-weight: 900;
     margin: 4px 0 2px 0;
     letter-spacing: -0.3px;
@@ -500,89 +578,107 @@ body {
 }
 
 .matrix-cell-profit {
-    font-size: 11.5px;
+    font-size: 11px;
     color: #334155;
     margin-top: 2px;
 }
 
-.sc-cost-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 6px;
-    border-radius: 3px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    font-size: 11px;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.1s ease;
-}
-
-.sc-cost-checkbox:hover {
-    border-color: #cbd5e1;
+/* ─────────────────────────────────────────────────────────────
+   8. Step 5: 전체 시나리오 조합 심층 분석 전수 펼침
+   ───────────────────────────────────────────────────────────── */
+.deep-dive-group-panel {
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
     background: #f8fafc;
+    overflow: hidden;
 }
 
-.sc-cost-checkbox input[type="checkbox"] {
-    margin: 0;
-    cursor: pointer;
-}
-
-.sc-card.active, .sales-card.active {
-    border-color: var(--erp-primary);
-    box-shadow: 0 0 0 1.5px var(--erp-primary);
-}
-
-.matrix-sub-info {
-    font-size: 10.5px;
-    color: var(--erp-text-muted);
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--erp-border-light);
+.deep-dive-group-header {
+    background: #1e293b;
+    color: #ffffff;
+    padding: 8px 12px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   7. 선택 조합 심층 분석 (워터폴 + BEP)
-   ───────────────────────────────────────────────────────────── */
-.detail-grid {
+.deep-dive-cards-grid {
+    padding: 10px;
     display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(410px, 1fr));
+    gap: 10px;
 }
 
-@media (max-width: 960px) {
-    .detail-grid { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+    .deep-dive-cards-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.bep-metric-box {
-    background: #f8fafc;
-    border: 1px solid var(--erp-border-light);
+.combo-deep-card {
+    background: #ffffff;
+    border: 1.5px solid var(--erp-border);
     border-radius: 4px;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    justify-content: space-between;
+    gap: 8px;
+    transition: all 0.15s ease;
 }
 
-.bep-row {
+.combo-deep-card.is-selected-combo {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    background: #fcfdff;
+}
+
+.combo-deep-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--erp-border-light);
+    padding-bottom: 6px;
+    gap: 6px;
+}
+
+.combo-wf-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    padding: 6px 8px;
+}
+
+.combo-bep-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    padding: 6px 10px;
+    font-size: 11px;
+}
+
+.combo-bep-item {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    font-size: 11.5px;
-    padding: 3px 0;
-    border-bottom: 1px dashed var(--erp-border-light);
+    border-bottom: 1px dashed #e2e8f0;
+    padding: 2px 0;
 }
 
-.bep-row:last-child {
-    border-bottom: none;
+.combo-itemized-box {
+    background: #f8fbff;
+    border: 1px solid #dbeafe;
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 10.5px;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   8. 부대비용 마스터 인라인 편집기 & 공통 유틸리티
+   9. 공통 유틸리티 & 보관함 모달 (.modal-overlay)
    ───────────────────────────────────────────────────────────── */
 .text-right { text-align: right !important; font-variant-numeric: tabular-nums; }
 .text-center { text-align: center !important; }
@@ -608,43 +704,6 @@ body {
     box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
 }
 
-.cost-pool-editor-wrap {
-    margin-bottom: 12px;
-    border: 1px solid var(--erp-border);
-    border-radius: 4px;
-    background: #ffffff;
-    overflow: hidden;
-}
-
-.cost-pool-editor-wrap.collapsed {
-    display: none;
-}
-
-.cost-pool-header-bar {
-    background: #f1f5f9;
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--erp-border-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 11.5px;
-    color: #1e293b;
-}
-
-.sc-price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 3px;
-    font-size: 11.5px;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   9. 보관함 모달 (.modal-overlay)
-   ───────────────────────────────────────────────────────────── */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -723,19 +782,18 @@ body {
    ───────────────────────────────────────────────────────────── */
 @media print {
     @page {
-        size: A4 portrait;
-        margin: 10mm 12mm !important;
+        size: A4 landscape;
+        margin: 8mm 10mm !important;
     }
 
     body {
         background: #ffffff !important;
         padding: 0 !important;
-        font-size: 9.5pt !important;
+        font-size: 9pt !important;
     }
 
     .erp-top-toolbar,
     .btn-erp,
-    .sales-quick-btns,
     .no-print,
     .modal-overlay {
         display: none !important;
@@ -749,7 +807,7 @@ body {
     }
 
     .print-report-title {
-        font-size: 16pt;
+        font-size: 15pt;
         font-weight: 800;
         margin: 0 0 4px 0;
         color: #0f172a;
@@ -765,8 +823,12 @@ body {
     .step-panel {
         border: 1px solid #cbd5e1 !important;
         margin-bottom: 8px !important;
-        page-break-inside: avoid !important;
         box-shadow: none !important;
+    }
+
+    .combo-deep-card {
+        page-break-inside: avoid !important;
+        border: 1px solid #cbd5e1 !important;
     }
 
     .matrix-cell {
