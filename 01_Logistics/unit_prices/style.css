@@ -952,7 +952,7 @@ body {
 }
 
 /* ==========================================================================
-   6. 공식 결재/보고용 A4 가로 인쇄 서식 (@media print)
+   6. 공식 결재/보고용 A4 세로(기본)·가로 인쇄 서식 (@media print)
    ========================================================================== */
 .print-only {
     display: none;
@@ -960,8 +960,8 @@ body {
 
 @media print {
     @page {
-        size: A4 landscape;
-        margin: 10mm 8mm 10mm 8mm;
+        size: A4 portrait;
+        margin: 10mm 7mm 10mm 7mm;
     }
 
     html,
@@ -977,7 +977,7 @@ body {
         background: #ffffff !important;
         padding: 0 !important;
         margin: 0 !important;
-        font-size: 9.5pt !important;
+        font-size: 9pt !important;
         color: #000000 !important;
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif !important;
         -webkit-print-color-adjust: exact !important;
@@ -996,6 +996,14 @@ body {
     .btn-table-action,
     .btn-hist,
     .modal-footer,
+    .mobile-price-header,
+    .mobile-batch-bar,
+    .mobile-filter-backdrop,
+    .mobile-filter-drawer,
+    #priceCardsContainer,
+    #mobileBatchBar,
+    #mobileFilterBackdrop,
+    #mobileFilterDrawer,
     #priceGridWrapper,
     #itemPaginationBar,
     #quoteComparisonWrapper {
@@ -1019,22 +1027,28 @@ body {
 
     /* 인쇄 섹션 및 테이블 다중 페이지 넘김(Pagination) 제어 */
     .print-quote-section {
-        margin-bottom: 20px !important;
+        margin-bottom: 16px !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
 
-    .print-quote-table {
+    .print-quote-table,
+    .print-summary-table {
         width: 100% !important;
+        table-layout: fixed !important;
         border-collapse: collapse !important;
         page-break-inside: auto !important;
+        word-break: keep-all !important;
+        overflow-wrap: break-word !important;
     }
 
-    .print-quote-table thead {
+    .print-quote-table thead,
+    .print-summary-table thead {
         display: table-header-group !important;
     }
 
-    .print-quote-table tr {
+    .print-quote-table tr,
+    .print-summary-table tr {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
@@ -1476,7 +1490,20 @@ body {
 /* ==========================================================================
    9. 라디오 버튼 왜곡 방지 & 정통 ECOUNT ERP 세그먼트 토글 스타일
    ========================================================================== */
-/* 라디오 버튼 왜곡 방지 및 완벽한 정원형 보장 */
+/* 상위 styles.css의 input { height: 32px; padding: 0 8px; } 간섭 차단 및 체크박스/라디오 정렬 복원 */
+.form-check:not(.form-switch) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 0 !important;
+    min-height: 20px;
+    margin-bottom: 0;
+}
+.form-check:not(.form-switch) .form-check-label {
+    margin-bottom: 0;
+    line-height: 1.35;
+    cursor: pointer;
+}
 .form-check-input[type="radio"] {
     width: 14px !important;
     height: 14px !important;
@@ -1484,24 +1511,40 @@ body {
     min-height: 14px !important;
     max-width: 14px !important;
     max-height: 14px !important;
+    padding: 0 !important;
+    float: none !important;
     flex-shrink: 0 !important;
     aspect-ratio: 1 / 1 !important;
     border-radius: 50% !important;
     margin: 0 !important;
     vertical-align: middle;
+    cursor: pointer;
 }
-.form-check-input[type="checkbox"] {
+.form-check:not(.form-switch) .form-check-input[type="checkbox"],
+.erp-sheet-table .form-check-input[type="checkbox"],
+.quote-compare-table .form-check-input[type="checkbox"],
+.sec-card-header .form-check-input[type="checkbox"] {
     width: 14px !important;
     height: 14px !important;
     min-width: 14px !important;
     min-height: 14px !important;
     max-width: 14px !important;
     max-height: 14px !important;
+    padding: 0 !important;
+    float: none !important;
     flex-shrink: 0 !important;
     aspect-ratio: 1 / 1 !important;
     border-radius: 2px !important;
     margin: 0 !important;
     vertical-align: middle;
+    cursor: pointer;
+}
+.form-switch .form-check-input {
+    width: 2em !important;
+    height: 1.1em !important;
+    padding: 0 !important;
+    border-radius: 2em !important;
+    cursor: pointer;
 }
 
 /* ECOUNT ERP 정통 세그먼트 토글 버튼 그룹 */
@@ -1624,18 +1667,20 @@ body {
    11. 인쇄 맞춤 설정 모달 보고서 프리셋 토글 버튼 스타일
    ========================================================================== */
 .btn-preset-toggle {
+    flex: 1 1 0%;
     background-color: #ffffff;
     border: 1.5px solid #cbd5e1;
     color: #475569;
     font-size: 11.5px;
     font-weight: 500;
-    padding: 7px 10px;
+    padding: 8px 10px;
     border-radius: 4px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
+    white-space: nowrap;
     transition: all 0.15s ease-in-out;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     position: relative;
@@ -1648,6 +1693,10 @@ body {
 }
 .btn-preset-toggle:active {
     transform: translateY(1px);
+}
+.btn-preset-toggle .preset-icon {
+    flex-shrink: 0;
+    font-size: 14px;
 }
 
 /* 1) 구매/대외 발주용 선택(Active) 상태 */
@@ -1681,6 +1730,9 @@ body {
     border-radius: 10px;
     margin-left: 2px;
     font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.3;
     display: none;
 }
 .btn-preset-toggle.active .preset-selected-tag {
@@ -1695,7 +1747,7 @@ body {
     color: #ffffff;
 }
 
-/* ── 모달 뷰포트 중앙 배치 및 상단 잘림 방지 ── */
+/* ── 모달 뷰포트 중앙 배치 및 상단 잘림 방지 (상위 styles.css 여백 간섭 초기화) ── */
 .modal {
     position: fixed !important;
     top: 0 !important;
@@ -1703,6 +1755,56 @@ body {
     width: 100% !important;
     height: 100% !important;
     z-index: 1055 !important;
+}
+/* 보관함 상세 모달(#archiveDetailModal) 위에서 열리는 하위 모달들의 z-index 상향 */
+#newSectionModal,
+#editSectionNameModal,
+#editRateModal,
+#sectionQuickAddItemModal,
+#printOptionModal {
+    z-index: 1068 !important;
+}
+.modal-dialog .modal-header {
+    margin-bottom: 0 !important;
+}
+.modal-dialog .modal-footer {
+    margin-top: 0 !important;
+}
+.modal-dialog .btn-outline-secondary,
+.modal-dialog .btn-secondary {
+    border: 1px solid #cbd5e1 !important;
+    background-color: #ffffff;
+    color: #475569;
+}
+.modal-dialog .btn-outline-secondary:hover,
+.modal-dialog .btn-secondary:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+/* ERP 경량 토스트 알림 */
+.erp-toast-banner {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1090;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border-left: 4px solid #10b981;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+    font-size: 12.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: erpToastIn 0.2s ease-out;
+}
+@keyframes erpToastIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .modal.fade .modal-dialog.modal-dialog-centered {
@@ -1951,6 +2053,11 @@ body {
 /* ══════════════════════════════════════════════════════════════
    MOBILE SPECIALIZED UI/UX OPTIMIZATIONS (≤ 768px)
    ══════════════════════════════════════════════════════════════ */
+.mobile-filter-drawer,
+.mobile-filter-backdrop {
+    display: none;
+}
+
 @media (max-width: 768px) {
     body {
         padding: 8px 10px 80px 10px !important;

@@ -120,11 +120,21 @@ const app = {
     archiveProjects: [],
     archiveSearchQuery: '',
     quoteSections: [],
+    currentProject: null,
+    activeArchiveProjectId: null,
+    activeArchiveProject: null,
+    activeArchiveSections: [],
+    targetProjectIdForNewSection: 0,
+    quickAddTargetSectionId: null,
+    quickAddTargetProjectId: 0,
+    quickAddCheckedIds: new Set(),
     addToQuoteModalInstance: null,
     newSectionModalInstance: null,
     editSectionNameModalInstance: null,
     saveToArchiveModalInstance: null,
     quoteArchiveModalInstance: null,
+    archiveDetailModalInstance: null,
+    sectionQuickAddItemModalInstance: null,
     editRateModalInstance: null,
     currentPage: 1,
     pageSize: 50,
@@ -137,6 +147,7 @@ const app = {
 
     init: async function() {
         this.initViewMode();
+        this.loadDraftMeta();
         this.bindEvents();
         this.setupMobileEvents();
         this.parseUrlParams();
@@ -162,6 +173,12 @@ const app = {
         }
         if ($('quoteArchiveModal') && window.bootstrap) {
             this.quoteArchiveModalInstance = new bootstrap.Modal($('quoteArchiveModal'));
+        }
+        if ($('archiveDetailModal') && window.bootstrap) {
+            this.archiveDetailModalInstance = new bootstrap.Modal($('archiveDetailModal'));
+        }
+        if ($('sectionQuickAddItemModal') && window.bootstrap) {
+            this.sectionQuickAddItemModalInstance = new bootstrap.Modal($('sectionQuickAddItemModal'));
         }
         if ($('editRateModal') && window.bootstrap) {
             this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
@@ -2603,8 +2620,8 @@ const app = {
 
         if (btnAddToCompare) btnAddToCompare.classList.toggle('d-none', size === 0);
         if (btnTopAddToCompare) btnTopAddToCompare.classList.toggle('d-none', size === 0);
-        if (textAddToCompare) textAddToCompare.innerText = `견적 비교 테이블에 담기 (${size})`;
-        if (textTopAddToCompare) textTopAddToCompare.innerText = `비교 테이블에 담기 (${size})`;
+        if (textAddToCompare) textAddToCompare.innerText = `비교표에 담기 (${size})`;
+        if (textTopAddToCompare) textTopAddToCompare.innerText = `비교표에 담기 (${size})`;
 
         const btnBatchEdit = $('btnBatchEdit');
         const textBatchEdit = $('batchEditText');
@@ -3186,8 +3203,65 @@ const app = {
     },
 
     // ─────────────────────────────────────────
-    // 견적 비교 작업대 및 검토서 보관함 시스템 (Tab 2)
+    // 단가 비교표 및 저장된 검토서 관리 시스템 (Tab 2)
     // ─────────────────────────────────────────
+    showToast: function(message) {
+        let banner = document.querySelector('.erp-toast-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'erp-toast-banner';
+            document.body.appendChild(banner);
+        }
+        banner.innerHTML = `<i class='bx bx-check-circle fs-5' style="color:#34d399;"></i> <span>${escapeHtml(message)}</span>`;
+        banner.classList.add('show');
+        if (this._toastTimer) clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+            banner.classList.remove('show');
+        }, 2600);
+    },
+
+    loadDraftMeta: function() {
+        const today = new Date().toISOString().split('T')[0];
+        let meta = {
+            title: `[${today}] 자재 구매 단가 비교 검토`,
+            doc_date: today,
+            memo: ''
+        };
+        try {
+            const raw = localStorage.getItem('kng_quote_draft_meta');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    meta.title = parsed.title || meta.title;
+                    meta.doc_date = parsed.doc_date || meta.doc_date;
+                    meta.memo = parsed.memo || '';
+                }
+            }
+        } catch (e) {}
+
+        this.currentProject = meta;
+        if ($('inpDraftTitle')) $('inpDraftTitle').value = meta.title;
+        if ($('inpDraftDate')) $('inpDraftDate').value = meta.doc_date;
+        if ($('inpDraftMemo')) $('inpDraftMemo').value = meta.memo;
+    },
+
+    saveDraftMeta: function(silent = true) {
+        const today = new Date().toISOString().split('T')[0];
+        const title = ($('inpDraftTitle')?.value || '').trim() || `[${today}] 자재 구매 단가 비교 검토`;
+        const doc_date = ($('inpDraftDate')?.value || '').trim() || today;
+        const memo = ($('inpDraftMemo')?.value || '').trim();
+        this.currentProject = { title, doc_date, memo };
+        try {
+            localStorage.setItem('kng_quote_draft_meta', JSON.stringify(this.currentProject));
+        } catch (e) {}
+        if (this.viewMode === 'quote') {
+            this.renderQuoteExecutiveSummary();
+        }
+        if (!silent) {
+            this.showToast('비교표 문서 기본정보가 반영되었습니다.');
+        }
+    },
+
     loadArchiveList: async function() {
         try {
             const data = await authFetch(`${API_BASE}/quote-projects`);
@@ -3197,23 +3271,28 @@ const app = {
             this.archiveProjects = [];
         }
 
+        const count = this.archiveProjects.length;
         const badge = $('archiveCountBadge');
-        if (badge) badge.innerText = this.archiveProjects.length;
+        if (badge) badge.innerText = count;
+        const topBadge = $('topArchiveCountBadge');
+        if (topBadge) topBadge.innerText = count;
     },
 
     openSaveToArchiveModal: function() {
         if (!this.quoteSections || this.quoteSections.length === 0) {
-            alert('현재 작업대에 저장할 비교 섹션이 없습니다.\n[품목별 단가표]에서 비교할 품목들을 먼저 담아주세요.');
+            alert('현재 단가 비교표에 저장할 비교 섹션이 없습니다.\n[품목별 단가표]에서 비교할 품목들을 먼저 담아주세요.');
             return;
         }
 
+        this.saveDraftMeta(true);
         const today = new Date().toISOString().split('T')[0];
+        const draft = this.currentProject || {};
         const inpTitle = $('inpArchiveTitle');
-        if (inpTitle) inpTitle.value = `[${today}] 자재 구매 단가 비교 검토`;
+        if (inpTitle) inpTitle.value = draft.title || `[${today}] 자재 구매 단가 비교 검토`;
         const inpDate = $('inpArchiveDate');
-        if (inpDate) inpDate.value = today;
+        if (inpDate) inpDate.value = draft.doc_date || today;
         const inpMemo = $('inpArchiveMemo');
-        if (inpMemo) inpMemo.value = '';
+        if (inpMemo) inpMemo.value = draft.memo || '';
         const chkClear = $('chkArchiveClearDraft');
         if (chkClear) chkClear.checked = false;
 
@@ -3257,11 +3336,18 @@ const app = {
 
             await this.loadArchiveList();
             if (clearDraft) {
+                try { localStorage.removeItem('kng_quote_draft_meta'); } catch (e) {}
+                this.loadDraftMeta();
                 await this.loadQuoteSections();
+            } else {
+                if ($('inpDraftTitle')) $('inpDraftTitle').value = title;
+                if ($('inpDraftDate')) $('inpDraftDate').value = docDate;
+                if ($('inpDraftMemo')) $('inpDraftMemo').value = memo;
+                this.saveDraftMeta(true);
             }
-            alert(res.message || '검토서가 보관함에 성공적으로 저장되었습니다.');
+            this.showToast(res.message || '검토서가 성공적으로 저장되었습니다.');
         } catch (err) {
-            alert('보관함 저장 실패: ' + err.message);
+            alert('검토서 저장 실패: ' + err.message);
         }
     },
 
@@ -3298,7 +3384,7 @@ const app = {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-4 text-muted">
-                        ${this.archiveSearchQuery ? '검색 결과와 일치하는 검토서가 없습니다.' : '보관함에 저장된 검토서가 없습니다. 작업대에서 [보관함에 저장]을 눌러 저장해보세요.'}
+                        ${this.archiveSearchQuery ? '검색 결과와 일치하는 검토서가 없습니다.' : '저장된 검토서가 없습니다. 단가 비교표에서 [검토서 저장]을 눌러 저장해보세요.'}
                     </td>
                 </tr>
             `;
@@ -3312,27 +3398,30 @@ const app = {
                 <tr>
                     <td class="text-center fw-bold text-secondary">${idx + 1}</td>
                     <td class="text-start ps-2">
-                        <strong class="text-dark">${escapeHtml(p.title)}</strong>
+                        <a href="javascript:void(0)" onclick="app.openArchiveDetailModal(${p.id})" class="text-decoration-none d-inline-flex align-items-center gap-1 hover-primary" title="클릭하여 상세 보기, 수정 및 인쇄">
+                            <i class='bx bx-file-find text-primary'></i>
+                            <strong class="text-dark">${escapeHtml(p.title)}</strong>
+                        </a>
                     </td>
                     <td class="text-center text-muted">${dateStr}</td>
                     <td class="text-center">
                         <span class="badge bg-secondary">${p.section_count || 0}섹션 / ${p.item_count || 0}품목</span>
                     </td>
-                    <td class="text-start ps-2 small text-muted text-truncate" style="max-width: 160px;" title="${escapeHtml(p.memo || '')}">
+                    <td class="text-start ps-2 small text-muted text-truncate" style="max-width: 170px;" title="${escapeHtml(p.memo || '')}">
                         ${escapeHtml(p.memo || '-')}
                     </td>
                     <td class="text-center">
                         <div class="d-flex justify-content-center gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px; height: 24px;" 
-                                    onclick="app.restoreFromArchive(${p.id})" title="이 검토서를 작업대로 불러와서 이어서 편집합니다">
-                                <i class='bx bx-import'></i> 불러오기
+                            <button type="button" class="btn btn-sm btn-primary py-0 px-2" style="font-size: 11px; height: 24px;" 
+                                    onclick="app.openArchiveDetailModal(${p.id})" title="현재 비교표를 덮어쓰지 않고 전용 창에서 상세 내용을 확인·수정·인쇄합니다">
+                                <i class='bx bx-edit-alt'></i> 상세 / 수정
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 11px; height: 24px;" 
-                                    onclick="app.printArchivedProject(${p.id})" title="작업대 변경 없이 이 검토서 내용으로 즉시 A4 보고서를 인쇄합니다">
+                                    onclick="app.printArchivedProject(${p.id})" title="이 검토서 내용으로 즉시 A4 보고서를 인쇄합니다">
                                 <i class='bx bx-printer'></i> 인쇄
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size: 11px; height: 24px;" 
-                                    onclick="app.deleteArchivedProject(${p.id})" title="이 검토서를 보관함에서 삭제합니다">
+                                    onclick="app.deleteArchivedProject(${p.id})" title="이 검토서를 삭제합니다">
                                 <i class='bx bx-trash'></i>
                             </button>
                         </div>
@@ -3343,28 +3432,613 @@ const app = {
         tbody.innerHTML = html;
     },
 
-    restoreFromArchive: async function(projectId) {
-        const p = (this.archiveProjects || []).find(item => item.id === projectId);
-        const name = p ? p.title : '선택한 검토서';
+    // ─────────────────────────────────────────
+    // 저장된 검토서 전용 상세 조회 · 수정 · 인쇄 모달 (#archiveDetailModal)
+    // ─────────────────────────────────────────
+    openArchiveDetailModal: async function(projectId) {
+        if (!projectId) return;
+        this.activeArchiveProjectId = projectId;
 
-        if (!confirm(`[${name}] 검토서 내용을 현재 비교 작업대로 불러오시겠습니까?\n\n※ 주의: 현재 작업대에 작성 중이던 섹션과 품목은 이 검토서 내용으로 대체됩니다.`)) {
+        if (this.quoteArchiveModalInstance) {
+            this.quoteArchiveModalInstance.hide();
+        }
+
+        await this.refreshActiveArchiveDetail();
+
+        if (!this.archiveDetailModalInstance && window.bootstrap && $('archiveDetailModal')) {
+            this.archiveDetailModalInstance = new bootstrap.Modal($('archiveDetailModal'));
+        }
+        if (this.archiveDetailModalInstance) {
+            this.archiveDetailModalInstance.show();
+        }
+    },
+
+    refreshActiveArchiveDetail: async function() {
+        const projectId = this.activeArchiveProjectId;
+        if (!projectId) return;
+        try {
+            const res = await authFetch(`${API_BASE}/quote-projects/${projectId}/sections`);
+            if (!res || !res.project) {
+                alert('검토서 상세 정보를 불러올 수 없습니다.');
+                return;
+            }
+            this.activeArchiveProject = res.project;
+            this.activeArchiveSections = Array.isArray(res.sections) ? res.sections : [];
+
+            const p = this.activeArchiveProject;
+            const secs = this.activeArchiveSections;
+            let totalItems = 0;
+            secs.forEach(s => { totalItems += (s.items || []).length; });
+
+            if ($('archiveDetailTitleText')) $('archiveDetailTitleText').innerText = p.title || '검토서 상세';
+            if ($('archiveDetailCountBadge')) $('archiveDetailCountBadge').innerText = `${secs.length}섹션 / ${totalItems}품목`;
+            if ($('inpArchiveDetailTitle')) $('inpArchiveDetailTitle').value = p.title || '';
+            if ($('inpArchiveDetailDate')) $('inpArchiveDetailDate').value = p.doc_date ? p.doc_date.substring(0, 10) : '';
+            if ($('inpArchiveDetailMemo')) $('inpArchiveDetailMemo').value = p.memo || '';
+
+            this.renderArchiveDetailSummary();
+            this.renderArchiveDetailSections();
+            await this.loadArchiveList();
+        } catch (err) {
+            alert('검토서 상세 조회 실패: ' + err.message);
+        }
+    },
+
+    saveArchiveDetailMeta: async function() {
+        const projectId = this.activeArchiveProjectId;
+        if (!projectId) return;
+        const title = ($('inpArchiveDetailTitle')?.value || '').trim();
+        if (!title) {
+            alert('검토서 명칭을 입력해주세요.');
+            $('inpArchiveDetailTitle')?.focus();
+            return;
+        }
+        const doc_date = ($('inpArchiveDetailDate')?.value || '').trim();
+        const memo = ($('inpArchiveDetailMemo')?.value || '').trim();
+
+        try {
+            await authFetch(`${API_BASE}/quote-projects/${projectId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ title, doc_date, memo })
+            });
+            if (this.activeArchiveProject) {
+                this.activeArchiveProject.title = title;
+                this.activeArchiveProject.doc_date = doc_date;
+                this.activeArchiveProject.memo = memo;
+            }
+            if ($('archiveDetailTitleText')) $('archiveDetailTitleText').innerText = title;
+            this.renderArchiveDetailSummary();
+            await this.loadArchiveList();
+            this.showToast('검토서 기본정보가 저장되었습니다.');
+        } catch (err) {
+            alert('검토서 정보 수정 실패: ' + err.message);
+        }
+    },
+
+    backToArchiveListModal: async function() {
+        if (this.archiveDetailModalInstance) {
+            this.archiveDetailModalInstance.hide();
+        }
+        this.activeArchiveProjectId = null;
+        await this.openArchiveModal();
+    },
+
+    openArchiveDetailPrintModal: function(singleSecId = null) {
+        if (!this.activeArchiveProject) return;
+        const targetSections = singleSecId
+            ? (this.activeArchiveSections || []).filter(s => s.id === singleSecId)
+            : (this.activeArchiveSections || []);
+        this.openArchivePrintOptionModal(this.activeArchiveProject, targetSections);
+    },
+
+    renderArchiveDetailSummary: function() {
+        const wrapper = $('archiveDetailSummaryWrapper');
+        if (!wrapper) return;
+        const sections = this.activeArchiveSections || [];
+        if (sections.length === 0) {
+            wrapper.innerHTML = '';
             return;
         }
 
-        try {
-            const res = await authFetch(`${API_BASE}/quote-projects/${projectId}/restore-to-draft`, {
-                method: 'POST'
-            });
+        const summaryItems = [];
+        sections.forEach(sec => {
+            const items = sec.items || [];
+            if (items.length === 0) return;
+            const analyzed = items.map(it => ({
+                ...it,
+                norm: this.parseUnitNormalize(it.spec, it.buy_price)
+            }));
+            const normUnits = analyzed.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
+            const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0]))
+                ? normUnits[0]
+                : null;
 
-            if (this.quoteArchiveModalInstance) {
-                this.quoteArchiveModalInstance.hide();
+            let bestId = null;
+            let minVal = Infinity;
+            if (commonUnit) {
+                analyzed.forEach(it => {
+                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                        minVal = it.norm.normPrice;
+                        bestId = it.id;
+                    }
+                });
+            } else {
+                analyzed.forEach(it => {
+                    const b = it.buy_price || 0;
+                    if (b > 0 && b < minVal) {
+                        minVal = b;
+                        bestId = it.id;
+                    }
+                });
+            }
+            const bestItem = analyzed.find(it => it.id === bestId) || analyzed[0];
+            const benchmarks = this.getSectionBenchmarks(sec);
+            if (bestItem) {
+                summaryItems.push({
+                    secId: sec.id,
+                    secName: sec.section_name,
+                    benchmarks,
+                    item: bestItem,
+                    commonUnit,
+                    totalCandidates: items.length
+                });
+            }
+        });
+
+        if (summaryItems.length === 0) {
+            wrapper.innerHTML = '';
+            return;
+        }
+
+        let rowsHtml = '';
+        summaryItems.forEach((sum, sIdx) => {
+            const it = sum.item;
+            const buy = it.buy_price || 0;
+            const isForeign = it.currency && it.currency !== 'KRW';
+            const currSym = this.currencySymbols[it.currency] || '$';
+
+            let buyHtml = isForeign && it.foreign_buy_price > 0
+                ? `<div class="d-flex flex-column align-items-end">
+                       <span class="fw-bold text-dark" style="font-size: 11.5px;">${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                       <span class="text-muted" style="font-size: 10px;">(₩${buy ? buy.toLocaleString() : '0'} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</span>
+                   </div>`
+                : `<strong class="text-dark">₩${buy ? buy.toLocaleString() : '-'}</strong>`;
+
+            const normHtml = it.norm
+                ? `<span class="badge-norm-price fw-bold" style="background:#ecfdf5; color:#047857; border-color:#a7f3d0; font-size:12px; padding:3px 7px;">₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}</span>`
+                : '<span class="text-muted">-</span>';
+
+            const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+            const freightBadge = isFreightIn
+                ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}</span>`
+                : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도</span>`;
+
+            rowsHtml += `
+                <tr style="background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#fcfdfd'};">
+                    <td class="text-center fw-bold text-secondary" style="font-size: 11px;">${sIdx + 1}</td>
+                    <td class="text-start ps-2">
+                        <span class="fw-bold text-dark d-inline-flex align-items-center gap-1">
+                            <i class='bx bx-folder text-primary'></i> ${escapeHtml(sum.secName)}
+                        </span>
+                        <span class="text-muted ms-1" style="font-size: 10px;">(${sum.totalCandidates}개 후보)</span>
+                    </td>
+                    <td class="text-start ps-2 text-truncate" style="max-width: 130px;"><strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong></td>
+                    <td class="text-start ps-2">
+                        <div class="d-flex align-items-center gap-1">
+                            <i class='bx bx-check-circle text-success fs-6 flex-shrink-0'></i>
+                            <span class="fw-bold text-success text-truncate" style="max-width: 200px;">${escapeHtml(it.item)}</span>
+                        </div>
+                    </td>
+                    <td class="text-start ps-2"><span class="spec-pill">${escapeHtml(it.spec || '-')}</span></td>
+                    <td class="text-center">${freightBadge}</td>
+                    <td class="text-end pe-2">${buyHtml}</td>
+                    <td class="text-end pe-2">${normHtml}</td>
+                    <td class="text-start ps-2 py-1">
+                        <input type="text" class="form-control form-control-sm summary-note-input quote-item-note-input-${it.id}" 
+                               style="font-size: 11.5px; height: 26px; padding: 2px 6px; background-color: #fff;" 
+                               value="${escapeHtml(it.note || '')}" 
+                               placeholder="선정사유/비고 입력..." 
+                               onchange="app.updateQuoteItemNote(${it.id}, this.value)">
+                    </td>
+                </tr>
+            `;
+        });
+
+        const projectName = this.activeArchiveProject ? escapeHtml(this.activeArchiveProject.title) : '검토서';
+        const projectDate = this.activeArchiveProject?.doc_date ? this.activeArchiveProject.doc_date.substring(0, 10) : '-';
+
+        wrapper.innerHTML = `
+            <div class="card border-0 shadow-sm mb-3" style="border: 1px solid #10b981 !important; border-radius: 6px; overflow: hidden;">
+                <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%); border-bottom: 1px solid #a7f3d0;">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center bg-success text-white rounded-circle" style="width: 24px; height: 24px;">
+                            <i class='bx bx-check-shield fs-6'></i>
+                        </div>
+                        <div>
+                            <span class="fw-bold text-dark" style="font-size: 13px;">품목별 최저단가 추천 종합 요약 (Executive Summary)</span>
+                            <span class="text-muted ms-2" style="font-size: 11px;">각 비교군별 단위단가 기준 1위 추천</span>
+                        </div>
+                    </div>
+                    <span class="badge bg-white text-dark border px-2 py-1" style="font-size: 11px;">
+                        <i class='bx bx-file text-primary me-1'></i>${projectName} (${projectDate})
+                    </span>
+                </div>
+                <div class="table-responsive">
+                    <table class="quote-compare-table w-100 mb-0" style="font-size: 11.5px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                <th style="width: 45px;" class="text-center">순번</th>
+                                <th style="min-width: 140px;" class="text-start ps-2">비교 품목군 (섹션)</th>
+                                <th style="width: 130px;" class="text-start ps-2">추천 공급업체</th>
+                                <th style="min-width: 160px;" class="text-start ps-2">추천 선정 품목</th>
+                                <th style="width: 120px;" class="text-start ps-2">규격</th>
+                                <th style="width: 95px;" class="text-center">운임조건</th>
+                                <th style="width: 130px;" class="text-end pe-2">매입단가 (환율)</th>
+                                <th style="width: 125px;" class="text-end pe-2">환산단가 (최저)</th>
+                                <th style="min-width: 180px;" class="text-start ps-2">선정사유 및 비고 (실시간 저장)</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    },
+
+    renderArchiveDetailSections: function() {
+        const container = $('archiveDetailSectionsContainer');
+        if (!container) return;
+        const sections = this.activeArchiveSections || [];
+        const pid = this.activeArchiveProjectId;
+
+        if (sections.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted bg-white rounded border">
+                    <p class="mb-2 fw-semibold">이 검토서에 등록된 비교 섹션이 없습니다.</p>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="app.openNewSectionModal(${pid})">
+                        <i class='bx bx-plus'></i> 새 비교 섹션 추가
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        sections.forEach(sec => {
+            const items = sec.items || [];
+            const analyzedItems = items.map(it => ({
+                ...it,
+                norm: this.parseUnitNormalize(it.spec, it.buy_price)
+            }));
+            const normUnits = analyzedItems.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
+            const commonUnit = (normUnits.length > 0 && normUnits.length === analyzedItems.length && normUnits.every(u => u === normUnits[0]))
+                ? normUnits[0]
+                : null;
+
+            let bestItemId = null;
+            let minVal = Infinity;
+            if (commonUnit) {
+                analyzedItems.forEach(it => {
+                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                        minVal = it.norm.normPrice;
+                        bestItemId = it.id;
+                    }
+                });
+            } else {
+                analyzedItems.forEach(it => {
+                    const b = it.buy_price || 0;
+                    if (b > 0 && b < minVal) {
+                        minVal = b;
+                        bestItemId = it.id;
+                    }
+                });
+            }
+            const bestItem = analyzedItems.find(it => it.id === bestItemId);
+            const benchmarks = this.getSectionBenchmarks(sec);
+
+            let benchmarkRowHtml = '';
+            if (benchmarks.length > 0) {
+                benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
+                    const badgeText = benchmarks.length === 1 ? '권장' : `권장 ${bIdx + 1}`;
+                    return `
+                        <tr class="row-benchmark-spec">
+                            <td class="text-center"><span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2 py-0.5" style="font-size: 10px;">${badgeText}</span></td>
+                            <td class="text-center"><span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span></td>
+                            <td class="text-center text-muted">-</td>
+                            <td class="text-start ps-2 text-truncate fw-bold" style="color: #2563eb;">${escapeHtml(this.formatBenchmarkItem(bm))}</td>
+                            <td class="text-start ps-2 text-truncate fw-bold" style="color: #2563eb;">${escapeHtml(bm.spec || '-')}</td>
+                            <td class="text-center text-muted">-</td>
+                            <td class="text-center text-muted">-</td>
+                            <td class="text-end pe-2 text-muted">-</td>
+                            <td class="text-end pe-2 text-muted">-</td>
+                            <td class="text-center text-muted" style="font-size: 11px;">제조사 권장 기준</td>
+                            <td class="text-center text-muted">-</td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
-            await this.loadQuoteSections();
-            this.switchViewMode('quote');
-            alert(res.message || '검토서가 비교 작업대로 성공적으로 불러와졌습니다.');
+            let rowsHtml = benchmarkRowHtml;
+            if (analyzedItems.length === 0) {
+                rowsHtml += `
+                    <tr>
+                        <td colspan="11" class="text-center py-3 text-muted">
+                            등록된 비교 품목이 없습니다. 우측 상단 <strong>[+ 품목 추가]</strong> 버튼을 눌러 품목을 담아보세요.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                analyzedItems.forEach((it, cIdx) => {
+                    const isBest = (it.id === bestItemId) && analyzedItems.length > 1;
+                    const buy = it.buy_price || 0;
+                    const sell = it.sell_price || 0;
+                    const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
+                    const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
+                    const pt = it.price_type || '견적가';
+                    let ptBadgeClass = 'badge-pt-quote';
+                    if (pt === '계약가') ptBadgeClass = 'badge-pt-contract';
+                    else if (pt === '일시가') ptBadgeClass = 'badge-pt-spot';
+                    else if (pt === '표준가') ptBadgeClass = 'badge-pt-std';
+
+                    const isForeign = it.currency && it.currency !== 'KRW';
+                    const currSymbol = this.currencySymbols[it.currency] || '$';
+                    const fBuy = it.foreign_buy_price || 0;
+                    const rate = it.exchange_rate || 0;
+
+                    const buyCellHtml = (isForeign && fBuy > 0)
+                        ? `<div class="d-flex flex-column align-items-end">
+                               <span class="${isBest ? 'text-success fw-bold' : 'fw-bold text-dark'}" style="font-size: 11.5px;">${currSymbol}${parseFloat(fBuy).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                               <div class="d-flex align-items-center gap-1">
+                                   <span class="text-muted" style="font-size: 10px;">(₩${buy ? buy.toLocaleString() : '0'})</span>
+                                   <button type="button" class="rate-badge-btn" onclick="app.openEditRateModal(${it.id}, ${rate}, '${it.currency}', '${escapeHtml(it.item)}', ${fBuy})">
+                                       <i class='bx bx-edit'></i> @${rate.toLocaleString()}원
+                                   </button>
+                               </div>
+                           </div>`
+                        : `<span class="${isBest ? 'text-success fw-bold' : 'fw-semibold text-dark'}">${buy ? `₩${buy.toLocaleString()}` : '-'}</span>`;
+
+                    let normHtml = '<span class="text-muted small">-</span>';
+                    if (it.norm) {
+                        const isUnitBest = isBest && commonUnit;
+                        let savingsBadge = '';
+                        if (commonUnit && !isBest && bestItem && bestItem.norm && it.norm.normPrice > bestItem.norm.normPrice) {
+                            const diffPct = Math.round(((it.norm.normPrice - bestItem.norm.normPrice) / bestItem.norm.normPrice) * 1000) / 10;
+                            savingsBadge = `<span class="badge-savings ms-1">+${diffPct}% 고가</span>`;
+                        } else if (isUnitBest) {
+                            savingsBadge = `<span class="badge bg-success text-white ms-1" style="font-size: 10px;">최저단가</span>`;
+                        }
+                        normHtml = `<div class="d-flex align-items-center justify-content-end gap-1"><span class="badge-norm-price">₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}</span>${savingsBadge}</div>`;
+                    }
+
+                    const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+                    const freightBadge = isFreightIn
+                        ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}</span>`
+                        : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도</span>`;
+
+                    rowsHtml += `
+                        <tr class="${isBest ? 'row-best-price' : ''}">
+                            <td class="text-center">
+                                <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
+                            </td>
+                            <td class="text-center"><span class="${ptBadgeClass}">${escapeHtml(pt)}</span></td>
+                            <td class="text-start ps-2 text-truncate"><strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong></td>
+                            <td class="text-start ps-2 fw-bold text-dark text-truncate">${escapeHtml(it.item)}</td>
+                            <td class="text-start ps-2 text-truncate"><span class="spec-pill">${escapeHtml(it.spec || '-')}</span></td>
+                            <td class="text-center">${freightBadge}</td>
+                            <td class="text-end pe-2">${buyCellHtml}</td>
+                            <td class="text-end pe-2">${normHtml}</td>
+                            <td class="text-end pe-2">
+                                ${(sell > 0 && buy > 0) ? `<span class="${marginRate >= 20 ? 'text-success' : (marginRate < 0 ? 'text-danger' : 'text-dark')} fw-semibold">₩${marginAmt.toLocaleString()} (${marginRate}%)</span>` : '<span class="text-muted">-</span>'}
+                            </td>
+                            <td class="text-start ps-2 py-1">
+                                <input type="text" class="form-control form-control-sm quote-item-note-input-${it.id}" 
+                                       style="font-size: 11px; height: 25px; padding: 2px 6px;" 
+                                       value="${escapeHtml(it.note || '')}" 
+                                       placeholder="비고 입력..." 
+                                       onchange="app.updateQuoteItemNote(${it.id}, this.value)">
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn-table-action btn-del" onclick="app.deleteQuoteItem(${it.id})" title="이 섹션에서 제외">
+                                    <i class='bx bx-x text-danger fs-5'></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            html += `
+                <div class="quote-section-card mb-3">
+                    <div class="quote-section-header">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" style="cursor: pointer;">
+                                <i class='bx bx-folder-open text-primary'></i>
+                                <span>${escapeHtml(sec.section_name)}</span>
+                            </span>
+                            <button type="button" class="btn-edit-sec" onclick="app.openEditSectionNameModal(${sec.id})">
+                                <i class='bx bx-edit-alt'></i> 수정
+                            </button>
+                            <span class="badge bg-secondary">${analyzedItems.length}개 후보 비교</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <button type="button" class="btn-erp btn-sm" style="color: #2563eb; border-color: #93c5fd; background: #eff6ff;" onclick="app.openQuickAddItemModal(${sec.id}, '${escapeHtml(sec.section_name)}', ${pid})">
+                                <i class='bx bx-plus-circle'></i> 품목 추가
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" onclick="app.openArchiveDetailPrintModal(${sec.id})">
+                                <i class='bx bx-printer'></i> 섹션 인쇄
+                            </button>
+                            <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteQuoteSection(${sec.id})">
+                                <i class='bx bx-trash text-danger'></i> 섹션 삭제
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-white">
+                        <div class="table-responsive">
+                            <table class="quote-compare-table w-100">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 65px;">후보</th>
+                                        <th style="width: 70px;">단가구분</th>
+                                        <th style="width: 130px;" class="text-start ps-2">공급업체</th>
+                                        <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
+                                        <th style="width: 120px;" class="text-start ps-2">규격</th>
+                                        <th style="width: 110px;">운임조건</th>
+                                        <th style="width: 135px;" class="text-end pe-2">기준 매입단가(환율)</th>
+                                        <th style="width: 140px;" class="text-end pe-2">환산단가(가성비)</th>
+                                        <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
+                                        <th class="text-start ps-2">비고</th>
+                                        <th style="width: 45px;">제외</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2 p-2 bg-light border rounded">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="form-label small fw-bold text-dark mb-0">
+                                    <i class='bx bx-edit text-primary'></i> ※ 담당자 종합 검토 의견 및 추천 사유
+                                </label>
+                                <span class="text-muted" style="font-size: 10.5px;">입력 시 실시간 자동저장</span>
+                            </div>
+                            <textarea class="form-control form-control-sm quote-section-memo" rows="2" 
+                                      placeholder="경영진 및 결재권자를 위한 검토 의견을 입력하세요..."
+                                      onchange="app.updateSectionMemo(${sec.id}, this)">${escapeHtml(sec.section_note || '')}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    },
+
+    // ─────────────────────────────────────────
+    // 섹션 내 단가표 품목 즉시 검색·추가 모달 (#sectionQuickAddItemModal)
+    // ─────────────────────────────────────────
+    openQuickAddItemModal: function(sectionId, sectionName = '', projectId = 0) {
+        this.quickAddTargetSectionId = sectionId;
+        this.quickAddTargetProjectId = projectId || 0;
+        this.quickAddCheckedIds = new Set();
+
+        if ($('quickAddTargetSectionId')) $('quickAddTargetSectionId').value = sectionId;
+        if ($('quickAddTargetProjectId')) $('quickAddTargetProjectId').value = projectId || 0;
+        if ($('quickAddSectionTitleBadge')) $('quickAddSectionTitleBadge').innerText = `[${sectionName || '섹션'}]`;
+        if ($('inpQuickAddSearch')) $('inpQuickAddSearch').value = '';
+        if ($('quickAddSelectedCountBadge')) $('quickAddSelectedCountBadge').innerText = '0건 선택됨';
+
+        this.renderQuickAddItemList();
+
+        if (!this.sectionQuickAddItemModalInstance && window.bootstrap && $('sectionQuickAddItemModal')) {
+            this.sectionQuickAddItemModalInstance = new bootstrap.Modal($('sectionQuickAddItemModal'));
+        }
+        if (this.sectionQuickAddItemModalInstance) {
+            this.sectionQuickAddItemModalInstance.show();
+            setTimeout(() => { $('inpQuickAddSearch')?.focus(); }, 200);
+        }
+    },
+
+    toggleQuickAddItem: function(id, checked) {
+        if (checked) this.quickAddCheckedIds.add(id);
+        else this.quickAddCheckedIds.delete(id);
+        if ($('quickAddSelectedCountBadge')) {
+            $('quickAddSelectedCountBadge').innerText = `${this.quickAddCheckedIds.size}건 선택됨`;
+        }
+    },
+
+    renderQuickAddItemList: function() {
+        const tbody = $('quickAddItemListBody');
+        if (!tbody) return;
+        const kw = ($('inpQuickAddSearch')?.value || '').trim().toLowerCase();
+
+        let list = this.priceList || [];
+        if (kw) {
+            list = list.filter(p =>
+                (p.item || '').toLowerCase().includes(kw) ||
+                (p.spec || '').toLowerCase().includes(kw) ||
+                (p.default_supplier || '').toLowerCase().includes(kw) ||
+                (p.category || '').toLowerCase().includes(kw)
+            );
+        }
+
+        const displayList = list.slice(0, 100);
+        if (displayList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">일치하는 단가 품목이 없습니다.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = displayList.map(it => {
+            const checked = this.quickAddCheckedIds.has(it.id) ? 'checked' : '';
+            const buyStr = it.buy_price ? `₩${it.buy_price.toLocaleString()}` : '-';
+            const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+            const freightStr = isFreightIn ? '하차도' : '상차도';
+            return `
+                <tr onclick="const cb = this.querySelector('input[type=checkbox]'); if(event.target !== cb){ cb.checked = !cb.checked; app.toggleQuickAddItem(${it.id}, cb.checked); }" style="cursor: pointer;">
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input" ${checked} onchange="app.toggleQuickAddItem(${it.id}, this.checked)">
+                    </td>
+                    <td class="text-start ps-2 fw-semibold text-dark">${escapeHtml(it.default_supplier || '-')}</td>
+                    <td class="text-start ps-2 fw-bold text-primary">${escapeHtml(it.item || '-')}</td>
+                    <td class="text-start ps-2"><span class="spec-pill">${escapeHtml(it.spec || '-')}</span></td>
+                    <td class="text-center"><span class="badge bg-light text-secondary border">${freightStr}</span></td>
+                    <td class="text-end pe-2 fw-bold text-dark">${buyStr}</td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    submitQuickAddItems: async function() {
+        const sectionId = this.quickAddTargetSectionId;
+        const projectId = this.quickAddTargetProjectId || 0;
+        if (!sectionId) return;
+        if (this.quickAddCheckedIds.size === 0) {
+            alert('섹션에 추가할 품목을 1개 이상 선택해주세요.');
+            return;
+        }
+
+        const selected = (this.priceList || []).filter(p => this.quickAddCheckedIds.has(p.id));
+        const itemsPayload = selected.map(p => ({
+            unit_price_id: p.id,
+            item: p.item,
+            spec: p.spec,
+            category: p.category,
+            unit: p.unit,
+            buy_price: p.buy_price || 0,
+            sell_price: p.sell_price || 0,
+            currency: p.currency || 'KRW',
+            exchange_rate: parseFloat(p.exchange_rate) || 1.0,
+            foreign_buy_price: parseFloat(p.foreign_buy_price) || 0,
+            foreign_sell_price: parseFloat(p.foreign_sell_price) || 0,
+            price_type: p.price_type || '견적가',
+            default_supplier: p.default_supplier,
+            default_destination: p.default_destination,
+            freight_type: p.freight_type || ((p.is_freight_included === 1 || p.is_freight_included === true) ? '하차도' : '상차도'),
+            freight_region: p.freight_region || '',
+            is_freight_included: (p.is_freight_included === 1 || p.is_freight_included === true || p.freight_type === '하차도') ? 1 : 0,
+            note: p.note
+        }));
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/add-items`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    project_id: projectId,
+                    section_id: sectionId,
+                    items: itemsPayload
+                })
+            });
+
+            if (this.sectionQuickAddItemModalInstance) {
+                this.sectionQuickAddItemModalInstance.hide();
+            }
+
+            if (projectId > 0 && this.activeArchiveProjectId === projectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
+            this.showToast(`${itemsPayload.length}개 품목이 섹션에 추가되었습니다.`);
         } catch (err) {
-            alert('불러오기 실패: ' + err.message);
+            alert('품목 추가 실패: ' + err.message);
         }
     },
 
@@ -3378,7 +4052,6 @@ const app = {
             if (this.quoteArchiveModalInstance) {
                 this.quoteArchiveModalInstance.hide();
             }
-            // 작업대 변경 없이 보관함 데이터 맞춤 설정 모달 열기
             this.openArchivePrintOptionModal(res.project, res.sections);
         } catch (err) {
             alert('인쇄 준비 실패: ' + err.message);
@@ -3388,7 +4061,7 @@ const app = {
     deleteArchivedProject: async function(projectId) {
         const p = (this.archiveProjects || []).find(item => item.id === projectId);
         const name = p ? p.title : '검토서';
-        if (!confirm(`[${name}] 검토서를 보관함에서 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+        if (!confirm(`[${name}] 검토서를 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
             return;
         }
 
@@ -3398,7 +4071,7 @@ const app = {
             });
             await this.loadArchiveList();
             this.renderArchiveList();
-            alert('검토서가 보관함에서 삭제되었습니다.');
+            this.showToast('검토서가 삭제되었습니다.');
         } catch (err) {
             alert('검토서 삭제 실패: ' + err.message);
         }
@@ -3406,11 +4079,11 @@ const app = {
 
     clearDraftSections: async function() {
         if (!this.quoteSections || this.quoteSections.length === 0) {
-            alert('현재 작업대에 비울 비교 섹션이 없습니다.');
+            alert('현재 단가 비교표에 초기화할 비교 섹션이 없습니다.');
             return;
         }
 
-        if (!confirm('현재 비교 작업대의 모든 섹션과 품목을 비우시겠습니까?\n\n※ 아직 [보관함에 저장]하지 않은 작업 내용은 삭제됩니다.')) {
+        if (!confirm('현재 단가 비교표의 모든 섹션과 품목을 초기화하시겠습니까?\n\n※ 아직 [검토서 저장]하지 않은 비교 내용은 삭제됩니다.')) {
             return;
         }
 
@@ -3418,15 +4091,17 @@ const app = {
             await authFetch(`${API_BASE}/quote-sections/clear-draft`, {
                 method: 'DELETE'
             });
+            try { localStorage.removeItem('kng_quote_draft_meta'); } catch (e) {}
+            this.loadDraftMeta();
             await this.loadQuoteSections();
-            alert('비교 작업대가 깨끗이 비워졌습니다. 단가표에서 새 비교 작업을 시작하실 수 있습니다.');
+            this.showToast('단가 비교표가 깨끗이 초기화되었습니다.');
         } catch (err) {
-            alert('작업대 비우기 실패: ' + err.message);
+            alert('비교표 초기화 실패: ' + err.message);
         }
     },
 
     // ─────────────────────────────────────────
-    // 사용자 정의 섹션 기반 견적 비교 테이블 시스템 (Tab 2: 작업대)
+    // 사용자 정의 섹션 기반 단가 비교표 시스템 (Tab 2)
     // ─────────────────────────────────────────
     loadQuoteSections: async function() {
         try {
@@ -3467,10 +4142,20 @@ const app = {
         const priceGrid = $('priceGridWrapper');
         const itemPagingBar = $('itemPaginationBar');
         const quoteWrapper = $('quoteComparisonWrapper');
+        const itemFilterRibbon = $('itemFilterRibbon');
+        const categoryTabGroup = $('categoryTabGroup');
 
         if (priceGrid) priceGrid.classList.toggle('d-none', mode !== 'item');
         if (itemPagingBar) itemPagingBar.classList.toggle('d-none', mode !== 'item');
         if (quoteWrapper) quoteWrapper.classList.toggle('d-none', mode !== 'quote');
+
+        if (itemFilterRibbon) {
+            itemFilterRibbon.classList.toggle('d-md-flex', mode === 'item');
+            itemFilterRibbon.classList.toggle('d-none', mode !== 'item');
+        }
+        if (categoryTabGroup) {
+            categoryTabGroup.classList.toggle('d-none', mode !== 'item');
+        }
 
         const exportExcelBtn = $('btnExportExcel');
         if (exportExcelBtn) exportExcelBtn.classList.toggle('d-none', mode !== 'item');
@@ -3478,6 +4163,7 @@ const app = {
         this.applyViewMode();
 
         if (mode === 'quote') {
+            if (!this.currentProject) this.loadDraftMeta();
             this.renderQuoteComparisonView();
         }
     },
@@ -3716,7 +4402,7 @@ const app = {
         }
     },
 
-    submitAddToQuote: async function() {
+    submitAddToQuote: async function(goToQuoteView = true) {
         const choiceRadio = document.querySelector('input[name="sectionChoice"]:checked');
         const choice = choiceRadio ? choiceRadio.value : 'new';
         let sectionId = null;
@@ -3801,19 +4487,22 @@ const app = {
             this.updateItemSelectionState();
             this.renderTable();
 
-            // 작업대 데이터 새로고침
+            // 비교표 데이터 새로고침
             await this.loadQuoteSections();
 
-            // 견적 비교 탭으로 자동 이동
-            this.switchViewMode('quote');
-
-            alert(`선택한 ${res.addedCount || itemsPayload.length}개 품목이 [${res.section_name || sectionName}] 비교 작업대에 성공적으로 담겼습니다.`);
+            if (goToQuoteView) {
+                this.switchViewMode('quote');
+                this.showToast(`선택한 ${res.addedCount || itemsPayload.length}개 품목이 [${res.section_name || sectionName}] 섹션에 담겼습니다.`);
+            } else {
+                this.showToast(`[${res.section_name || sectionName}]에 ${res.addedCount || itemsPayload.length}건 담김 — 다른 품목을 계속 선택하실 수 있습니다.`);
+            }
         } catch (err) {
-            alert('비교 작업대 담기 실패: ' + err.message);
+            alert('단가 비교표 담기 실패: ' + err.message);
         }
     },
 
-    openNewSectionModal: function() {
+    openNewSectionModal: function(projectId = 0) {
+        this.targetProjectIdForNewSection = projectId || 0;
         const inp = $('inpDirectSectionName');
         if (inp) inp.value = '';
         this.renderBenchmarkRows('directBenchmarkTableBody', []);
@@ -3838,12 +4527,13 @@ const app = {
         const targetMaker = benchmarks[0]?.maker || '';
         const targetItem = benchmarks[0]?.item || '';
         const targetSpec = benchmarks[0]?.spec || '';
+        const projectId = this.targetProjectIdForNewSection || 0;
 
         try {
             await authFetch(`${API_BASE}/quote-sections/add-items`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    project_id: 0,
+                    project_id: projectId,
                     section_name: name,
                     target_maker: targetMaker,
                     target_item: targetItem,
@@ -3855,14 +4545,22 @@ const app = {
             if (this.newSectionModalInstance) {
                 this.newSectionModalInstance.hide();
             }
-            await this.loadQuoteSections();
+            if (projectId > 0 && this.activeArchiveProjectId === projectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
+            this.showToast(`[${name}] 비교 섹션이 생성되었습니다.`);
         } catch (err) {
             alert('섹션 생성 실패: ' + err.message);
         }
     },
 
     openEditSectionNameModal: function(sectionId) {
-        const sec = (this.quoteSections || []).find(s => s.id === sectionId);
+        let sec = (this.quoteSections || []).find(s => s.id === sectionId);
+        if (!sec && this.activeArchiveSections) {
+            sec = (this.activeArchiveSections || []).find(s => s.id === sectionId);
+        }
         if (!sec) return;
         if ($('editSectionNameId')) $('editSectionNameId').value = sectionId;
         const inp = $('inpEditSectionName');
@@ -3913,29 +4611,26 @@ const app = {
                 })
             });
 
-            const sec = (this.quoteSections || []).find(s => s.id === secId);
-            if (sec) {
-                sec.section_name = newName;
-                sec.name = newName;
-                sec.target_maker = newMaker;
-                sec.target_item = newItem;
-                sec.target_spec = newSpec;
-                sec.recommended_spec = newSpec;
-                sec.target_benchmarks = JSON.stringify(benchmarks);
-            }
-
             if (this.editSectionNameModalInstance) {
                 this.editSectionNameModalInstance.hide();
             }
 
-            await this.loadQuoteSections();
+            if ($('archiveDetailModal')?.classList.contains('show') && this.activeArchiveProjectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
+            this.showToast('섹션 정보가 변경되었습니다.');
         } catch (err) {
             alert('섹션 정보 변경 실패: ' + err.message);
         }
     },
 
     deleteQuoteSection: async function(sectionId) {
-        const sec = this.quoteSections.find(s => s.id === sectionId);
+        let sec = (this.quoteSections || []).find(s => s.id === sectionId);
+        if (!sec && this.activeArchiveSections) {
+            sec = (this.activeArchiveSections || []).find(s => s.id === sectionId);
+        }
         const name = sec ? sec.section_name : '섹션';
         if (!confirm(`[${name}] 비교 섹션과 등록된 모든 비교 품목을 삭제하시겠습니까?`)) {
             return;
@@ -3945,7 +4640,12 @@ const app = {
             await authFetch(`${API_BASE}/quote-sections/${sectionId}`, {
                 method: 'DELETE'
             });
-            await this.loadQuoteSections();
+            if ($('archiveDetailModal')?.classList.contains('show') && this.activeArchiveProjectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
+            this.showToast(`[${name}] 섹션이 삭제되었습니다.`);
         } catch (err) {
             alert('섹션 삭제 실패: ' + err.message);
         }
@@ -3960,7 +4660,11 @@ const app = {
             await authFetch(`${API_BASE}/quote-items/${itemId}`, {
                 method: 'DELETE'
             });
-            await this.loadQuoteSections();
+            if ($('archiveDetailModal')?.classList.contains('show') && this.activeArchiveProjectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
         } catch (err) {
             alert('항목 제외 실패: ' + err.message);
         }
@@ -3973,8 +4677,10 @@ const app = {
                 method: 'PUT',
                 body: JSON.stringify({ section_note: note })
             });
-            const sec = this.quoteSections.find(s => s.id === sectionId);
+            const sec = (this.quoteSections || []).find(s => s.id === sectionId);
             if (sec) sec.section_note = note;
+            const archSec = (this.activeArchiveSections || []).find(s => s.id === sectionId);
+            if (archSec) archSec.section_note = note;
         } catch (err) {
             console.warn('updateSectionMemo error:', err);
         }
@@ -4219,6 +4925,13 @@ const app = {
                     }
                 });
             });
+            (this.activeArchiveSections || []).forEach(sec => {
+                (sec.items || []).forEach(it => {
+                    if (it.id === itemId) {
+                        it.note = finalNote;
+                    }
+                });
+            });
 
             // 상단 요약표와 하단 세부 비교표 내의 모든 동일 input 요소 값 동기화
             const inputs = document.querySelectorAll(`.quote-item-note-input-${itemId}`);
@@ -4245,17 +4958,17 @@ const app = {
             container.innerHTML = `
                 <div class="text-center py-5 text-muted bg-white rounded border">
                     <i class='bx bx-git-compare fs-1 text-secondary mb-2'></i>
-                    <p class="mb-2 fw-semibold">현재 비교 작업대에 담긴 품목이 없습니다.</p>
+                    <p class="mb-2 fw-semibold">현재 단가 비교표에 담긴 품목이 없습니다.</p>
                     <p class="small text-muted mb-3">
-                        좌측 [품목별 단가표]에서 비교할 품목들을 체크한 뒤 <strong>[작업대에 담기]</strong> 버튼을 누르거나,<br>
+                        좌측 [품목별 단가표]에서 비교할 품목들을 체크한 뒤 <strong>[비교표에 담기]</strong> 버튼을 누르거나,<br>
                         아래 버튼으로 새로운 비교 섹션을 바로 만들어보세요.
                     </p>
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-sm btn-primary" onclick="app.openNewSectionModal()">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="app.openNewSectionModal(0)">
                             <i class='bx bx-plus'></i> 새 비교 섹션 생성
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="app.openArchiveModal()">
-                            <i class='bx bx-folder-open'></i> 과거 검토서 보관함 열기
+                            <i class='bx bx-folder-open'></i> 저장된 검토서 열기
                         </button>
                     </div>
                 </div>
@@ -4365,7 +5078,7 @@ const app = {
                 rowsHtml = benchmarkRowHtml + `
                     <tr>
                         <td colspan="12" class="text-center py-4 text-muted">
-                            이 섹션에 담긴 품목이 없습니다. [품목별 단가표]에서 항목을 체크하여 이 섹션으로 담아보세요.
+                            이 섹션에 담긴 품목이 없습니다. 우측 상단 <strong>[+ 품목 추가]</strong> 버튼을 눌러 품목을 담아보세요.
                         </td>
                     </tr>
                 `;
@@ -4537,10 +5250,13 @@ const app = {
                             ${bestSummaryHtml}
                         </div>
                         <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <button type="button" class="btn-erp btn-sm" style="color: #2563eb; border-color: #93c5fd; background: #eff6ff;" onclick="app.openQuickAddItemModal(${sec.id}, '${escapeHtml(sec.section_name)}', 0)" title="단가표 화면으로 이동하지 않고 이 섹션에 품목을 즉시 검색·추가합니다">
+                                <i class='bx bx-plus-circle'></i> 품목 추가
+                            </button>
                             <button type="button" class="btn-erp btn-sm" onclick="app.selectBestOnlyInSection(${sec.id})" title="이 섹션의 최저가(가성비) 품목만 선택하고 나머지는 제외">
                                 <i class='bx bx-check-double text-success'></i> 최저가만 선택
                             </button>
-                            <button type="button" class="btn-erp btn-sm" onclick="app.openPrintOptionModal(${sec.id})" title="이 섹션만 A4 가로 보고서로 인쇄">
+                            <button type="button" class="btn-erp btn-sm" onclick="app.openPrintOptionModal(${sec.id})" title="이 섹션만 A4 보고서로 인쇄">
                                 <i class='bx bx-printer'></i> 인쇄
                             </button>
                             <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteQuoteSection(${sec.id})" title="섹션 및 전체 후보 삭제">
@@ -4664,14 +5380,19 @@ const app = {
                 this.editRateModalInstance.hide();
             }
 
-            await this.loadQuoteSections();
+            if ($('archiveDetailModal')?.classList.contains('show') && this.activeArchiveProjectId) {
+                await this.refreshActiveArchiveDetail();
+            } else {
+                await this.loadQuoteSections();
+            }
+            this.showToast('비교 환율이 반영되었습니다.');
         } catch (err) {
             alert('환율 변경 실패: ' + err.message);
         }
     },
 
     // ─────────────────────────────────────────
-    // 견적 비교 테이블 선택 항목 및 인쇄 설정 메서드
+    // 단가 비교표 선택 항목 및 인쇄 설정 메서드
     // ─────────────────────────────────────────
     toggleQuoteItemCheck: function(secId, itemId, checked) {
         if (!this.quoteSelectionMap) this.quoteSelectionMap = {};
@@ -4752,10 +5473,10 @@ const app = {
     },
 
     openPrintOptionModal: function(singleSecId = null) {
+        this.saveDraftMeta(true);
         this.printTargetSecId = singleSecId;
-        this.printArchiveData = null; // 작업대 인쇄 모드로 초기화
+        this.printArchiveData = null;
 
-        // 인쇄 범위 라디오 버튼 작업대 모드로 복원
         if ($('printScopeSelected')) {
             $('printScopeSelected').disabled = false;
             $('printScopeSelected').checked = true;
@@ -4774,7 +5495,7 @@ const app = {
                 const sec = (this.quoteSections || []).find(s => s.id === singleSecId);
                 modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> [${sec ? escapeHtml(sec.section_name) : ''}] 섹션 인쇄 맞춤 설정`;
             } else {
-                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> 견적 비교 보고서 인쇄 맞춤 설정 (작업대 대상)`;
+                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> 단가 비교 보고서 인쇄 맞춤 설정`;
             }
         }
 
@@ -4788,15 +5509,13 @@ const app = {
 
     openArchivePrintOptionModal: function(project, sections) {
         this.printTargetSecId = null;
-        this.printArchiveData = { project, sections }; // 보관함 인쇄 모드로 데이터 기억
+        this.printArchiveData = { project, sections };
 
-        // 보관함 내 전체 품목 수 계산
         let totalItems = 0;
         (sections || []).forEach(sec => {
             totalItems += (sec.items || []).length;
         });
 
-        // 인쇄 범위: 보관함 문서는 전체 출력으로 지정
         if ($('printScopeAll')) {
             $('printScopeAll').disabled = false;
             $('printScopeAll').checked = true;
@@ -4812,7 +5531,7 @@ const app = {
 
         const modalTitle = $('printOptionModalLabel');
         if (modalTitle) {
-            modalTitle.innerHTML = `<i class='bx bx-printer text-success me-1'></i> [보관함: ${escapeHtml(project.title || '검토서')}] 인쇄 맞춤 설정`;
+            modalTitle.innerHTML = `<i class='bx bx-printer text-success me-1'></i> [저장된 검토서: ${escapeHtml(project.title || '검토서')}] 인쇄 맞춤 설정`;
         }
 
         if (!this.printOptionModalInstance && window.bootstrap) {
@@ -4906,8 +5625,26 @@ const app = {
         }
     },
 
+    onPrintOrientationChange: function() {
+        const orientation = document.querySelector('input[name="printOrientation"]:checked')?.value || 'portrait';
+        const isPortrait = orientation === 'portrait';
+        const badge = $('modalPrintOrientationBadge');
+        if (badge) {
+            badge.textContent = isPortrait ? 'A4 세로(Portrait)' : 'A4 가로(Landscape)';
+        }
+        const footerHint = $('modalPrintFooterHint');
+        if (footerHint) {
+            footerHint.innerHTML = isPortrait
+                ? `<i class='bx bx-file text-secondary me-0.5'></i> A4 세로(Portrait) 결재·편철 규격 최적화`
+                : `<i class='bx bx-file text-secondary me-0.5'></i> A4 가로(Landscape) 와이드 규격 최적화`;
+        }
+        this.savePrintColumnSettings();
+    },
+
     savePrintColumnSettings: function() {
+        const orientation = document.querySelector('input[name="printOrientation"]:checked')?.value || 'portrait';
         const settings = {
+            orientation: orientation,
             supplier: $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true,
             buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
             normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
@@ -4922,10 +5659,14 @@ const app = {
     },
 
     loadPrintColumnSettings: function() {
+        let orientation = 'portrait';
         try {
             const saved = localStorage.getItem('kng_quote_print_columns');
             if (saved) {
                 const s = JSON.parse(saved);
+                orientation = (s.orientation === 'landscape') ? 'landscape' : 'portrait';
+                if ($('printOrientPortrait')) $('printOrientPortrait').checked = (orientation === 'portrait');
+                if ($('printOrientLandscape')) $('printOrientLandscape').checked = (orientation === 'landscape');
                 if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = s.supplier !== false;
                 if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = s.buyPrice !== false;
                 if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = s.normPrice !== false;
@@ -4933,17 +5674,22 @@ const app = {
                 if ($('chkPrintMargin')) $('chkPrintMargin').checked = Boolean(s.margin);
                 if ($('chkPrintNote')) $('chkPrintNote').checked = s.note !== false;
                 if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = s.opinion !== false;
+                this.onPrintOrientationChange();
                 return;
             }
         } catch (e) {}
 
-        // 기본값: 마진은 보안 차원에서 체크 해제
+        // 기본값: A4 세로 & 마진은 보안 차원에서 체크 해제
+        if ($('printOrientPortrait')) $('printOrientPortrait').checked = true;
+        if ($('printOrientLandscape')) $('printOrientLandscape').checked = false;
         if ($('chkPrintMargin')) $('chkPrintMargin').checked = false;
+        this.onPrintOrientationChange();
     },
 
     executePrintReport: function() {
         this.savePrintColumnSettings();
         const scope = document.querySelector('input[name="printScope"]:checked')?.value || 'selected';
+        const orientation = document.querySelector('input[name="printOrientation"]:checked')?.value || 'portrait';
         const columns = {
             supplier: $('chkPrintSupplier')?.checked !== false,
             buyPrice: $('chkPrintBuyPrice')?.checked !== false,
@@ -4957,11 +5703,18 @@ const app = {
         if (this.printOptionModalInstance) {
             this.printOptionModalInstance.hide();
         }
-        // modal-open 클래스 및 백드롭 즉시 제거 안전장치 (다중 페이지 페이징 방해 원인 차단)
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('overflow');
-        document.body.style.removeProperty('padding-right');
-        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        const isArchiveDetailOpen = Boolean($('archiveDetailModal')?.classList.contains('show'));
+        if (!isArchiveDetailOpen) {
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        } else {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            if (backdrops.length > 1) {
+                for (let i = 1; i < backdrops.length; i++) backdrops[i].remove();
+            }
+        }
 
         const runPrint = () => {
             document.body.classList.remove('modal-open');
@@ -4971,6 +5724,7 @@ const app = {
                 this.printArchiveData = null; // 인쇄 후 초기화
                 this.printExecutiveReport({
                     scope: 'all',
+                    orientation: orientation,
                     columns: columns,
                     customSections: archiveData.sections,
                     customProject: archiveData.project
@@ -4978,9 +5732,14 @@ const app = {
             } else {
                 this.printExecutiveReport({
                     scope: scope,
+                    orientation: orientation,
                     targetSecId: this.printTargetSecId,
                     columns: columns
                 });
+            }
+            if (isArchiveDetailOpen && $('archiveDetailModal')?.classList.contains('show')) {
+                document.body.classList.add('modal-open');
+                document.body.style.overflow = 'hidden';
             }
         };
 
@@ -4991,6 +5750,7 @@ const app = {
     printExecutiveReportFromData: function(project, sections) {
         this.printExecutiveReport({
             scope: 'all',
+            orientation: 'portrait',
             columns: {
                 supplier: true,
                 buyPrice: true,
@@ -5019,6 +5779,8 @@ const app = {
         if (!printArea) return;
 
         const scope = options.scope || 'selected';
+        const orientation = (options.orientation === 'landscape') ? 'landscape' : 'portrait';
+        const isPortrait = orientation === 'portrait';
         const targetSecId = options.targetSecId || null;
         const cols = options.columns || {
             supplier: true,
@@ -5029,6 +5791,41 @@ const app = {
             note: true,
             opinion: true
         };
+
+        // 동적 @page 용지 방향 주입 (세로 기본 / 가로 선택 즉시 반영)
+        let pageStyleEl = document.getElementById('dynamicPrintPageStyle');
+        if (!pageStyleEl) {
+            pageStyleEl = document.createElement('style');
+            pageStyleEl.id = 'dynamicPrintPageStyle';
+            document.head.appendChild(pageStyleEl);
+        }
+        pageStyleEl.textContent = `@media print { @page { size: A4 ${isPortrait ? 'portrait' : 'landscape'}; margin: ${isPortrait ? '10mm 7mm 10mm 7mm' : '10mm 8mm 10mm 8mm'}; } }`;
+
+        // 용지 방향 및 선택 컬럼에 따른 세부 비교표 비율(%) 폭 자동 계산
+        const allColsActive = cols.supplier && cols.freight && cols.buyPrice && cols.normPrice && cols.margin && cols.note;
+        const colW = isPortrait ? {
+            no: '4.5%',
+            supplier: allColsActive ? '10%' : '11%',
+            spec: allColsActive ? '10%' : '11%',
+            freight: allColsActive ? '8.5%' : '9%',
+            buyPrice: allColsActive ? '12.5%' : '13%',
+            normPrice: allColsActive ? '13.5%' : '14%',
+            margin: '10.5%',
+            note: allColsActive ? '9%' : '10%'
+        } : {
+            no: '4.5%',
+            supplier: '11%',
+            spec: '10.5%',
+            freight: '9%',
+            buyPrice: '12.5%',
+            normPrice: '13%',
+            margin: '10%',
+            note: '11.5%'
+        };
+
+        const tableFontSize = isPortrait ? '8.2pt' : '9pt';
+        const cellPad = isPortrait ? '4px 3px' : '6px 4px';
+        const cellPadText = isPortrait ? '4px 5px' : '6px 8px';
 
         const today = new Date().toISOString().split('T')[0];
 
@@ -5124,24 +5921,24 @@ const app = {
             let benchmarkRowHtml = '';
             if (benchmarks.length > 0) {
                 benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
-                    const badgeText = benchmarks.length === 1 ? '권장' : `권장 ${bIdx + 1}`;
+                    const badgeText = benchmarks.length === 1 ? '권장' : `권장${bIdx + 1}`;
                     return `
                         <tr style="background-color: #f8fafc; font-weight: 600; color: #1e293b;">
-                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-weight: bold; color: #2563eb; font-size: 8pt;">
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; font-weight: bold; color: #2563eb; font-size: 7.5pt; white-space: nowrap;">
                                 ${badgeText}
                             </td>
-                            ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
-                            <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; color: #2563eb; font-weight: bold;">
+                            ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #94a3b8;">-</td>` : ''}
+                            <td style="text-align: left; padding: ${cellPadText}; border: 1px solid #cbd5e1; color: #2563eb; font-weight: bold;">
                                 ${escapeHtml(this.formatBenchmarkItem(bm))}
                             </td>
-                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #2563eb; font-weight: bold;">
                                 ${escapeHtml(bm.spec || '-')}
                             </td>
-                            ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
-                            ${cols.buyPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
-                            ${cols.normPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
-                            ${cols.margin ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
-                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt;">제조사 권장 기준</td>` : ''}
+                            ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #94a3b8;">-</td>` : ''}
+                            ${cols.buyPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #94a3b8;">-</td>` : ''}
+                            ${cols.normPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #94a3b8;">-</td>` : ''}
+                            ${cols.margin ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #94a3b8;">-</td>` : ''}
+                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; color: #64748b; font-size: 7.5pt;">권장기준</td>` : ''}
                         </tr>
                     `;
                 }).join('');
@@ -5156,25 +5953,41 @@ const app = {
                 const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
                 
                 const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
-                const freightStr = isFreightIn 
-                    ? `하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}` 
-                    : '상차도';
+                let freightStr = '상차도';
+                if (isFreightIn) {
+                    if (it.freight_region) {
+                        freightStr = isPortrait
+                            ? `<div style="white-space: nowrap;">하차도</div><div style="font-size: 7.2pt; color: #475569; line-height: 1.15;">(${escapeHtml(it.freight_region)})</div>`
+                            : `하차도 (${escapeHtml(it.freight_region)})`;
+                    } else {
+                        freightStr = '하차도';
+                    }
+                }
 
                 const isForeign = it.currency && it.currency !== 'KRW';
                 const currSym = this.currencySymbols[it.currency] || '$';
 
-                let buyStr = buy ? `₩${buy.toLocaleString()}` : '-';
+                let buyStr = buy ? `<span style="white-space: nowrap;">₩${buy.toLocaleString()}</span>` : '-';
                 if (isForeign && it.foreign_buy_price > 0) {
-                    buyStr = `<div style="font-weight: 700;">${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div><div style="font-size: 8pt; color: #475569;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</div>`;
+                    buyStr = `<div style="font-weight: 700; white-space: nowrap;">${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div><div style="font-size: 7.2pt; color: #475569; white-space: nowrap; line-height: 1.15;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</div>`;
                 }
 
                 let normStr = '-';
                 if (it.norm) {
-                    normStr = `₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}`;
+                    normStr = `<span style="white-space: nowrap;">₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}</span>`;
                     if (commonUnit && !isBest && bestItem && bestItem.norm && it.norm.normPrice > bestItem.norm.normPrice) {
                         const diffPct = Math.round(((it.norm.normPrice - bestItem.norm.normPrice) / bestItem.norm.normPrice) * 1000) / 10;
-                        normStr += ` <span style="color: #dc2626; font-size: 8pt; font-weight: normal;">(+${diffPct}%)</span>`;
+                        normStr += isPortrait
+                            ? `<div style="color: #dc2626; font-size: 7.2pt; font-weight: 600; white-space: nowrap; line-height: 1.15;">(+${diffPct}%)</div>`
+                            : ` <span style="color: #dc2626; font-size: 8pt; font-weight: normal; white-space: nowrap;">(+${diffPct}%)</span>`;
                     }
+                }
+
+                let marginStr = '-';
+                if (sell > 0 && buy > 0) {
+                    marginStr = isPortrait
+                        ? `<div style="white-space: nowrap;">₩${marginAmt.toLocaleString()}</div><div style="font-size: 7.2pt; color: #475569; white-space: nowrap; line-height: 1.15;">(${marginRate}%)</div>`
+                        : `<span style="white-space: nowrap;">₩${marginAmt.toLocaleString()} (${marginRate}%)</span>`;
                 }
 
                 // 1번 최저가 행은 모든 셀에 2.5px 검정 굵은 테두리(상/하/좌/우) 및 은은한 그린 배경으로 완벽 강조
@@ -5187,42 +6000,42 @@ const app = {
 
                 rows += `
                     <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBest ? 'border-left: 2.5px solid #0f172a !important;' : ''}">${cIdx + 1}</td>
-                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('supplier')}">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
-                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('item')}">${escapeHtml(it.item)}</td>
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('spec')}">${escapeHtml(it.spec || '-')}</td>
-                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('freight')}">${freightStr}</td>` : ''}
-                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('buyPrice')}">${buyStr}</td>` : ''}
-                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''} ${bestTdBase} ${isBestLastCol('normPrice')}">${normStr}</td>` : ''}
-                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('margin')}">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
-                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('note')}">${escapeHtml(it.note || '-')}</td>` : ''}
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; ${bestTdBase} ${isBest ? 'border-left: 2.5px solid #0f172a !important;' : ''}">${cIdx + 1}</td>
+                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; ${bestTdBase} ${isBestLastCol('supplier')}">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        <td style="text-align: left; padding: ${cellPadText}; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('item')}">${escapeHtml(it.item)}</td>
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; ${bestTdBase} ${isBestLastCol('spec')}">${escapeHtml(it.spec || '-')}</td>
+                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; ${bestTdBase} ${isBestLastCol('freight')}">${freightStr}</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding: ${cellPadText}; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('buyPrice')}">${buyStr}</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding: ${cellPadText}; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''} ${bestTdBase} ${isBestLastCol('normPrice')}">${normStr}</td>` : ''}
+                        ${cols.margin ? `<td style="text-align: right; padding: ${cellPadText}; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('margin')}">${marginStr}</td>` : ''}
+                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: ${cellPad}; ${bestTdBase} ${isBestLastCol('note')}">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
                 `;
             });
 
             sectionsHtml += `
-                <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid; break-inside: avoid;">
-                    <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
+                <div class="print-quote-section" style="margin-bottom: ${isPortrait ? '16px' : '22px'}; page-break-inside: avoid; break-inside: avoid;">
+                    <div style="background: #0f172a; color: #ffffff; padding: 5px 10px; border-radius: 2px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px;">
+                        <span style="font-weight: 800; font-size: ${isPortrait ? '9.5pt' : '10.5pt'};">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
                         ${benchmarks.length > 0 ? `
-                            <span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
+                            <span style="font-size: ${isPortrait ? '8pt' : '8.5pt'}; background: rgba(255, 255, 255, 0.18); padding: 2px 7px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
                                 ${benchmarks.length === 1 ? '권장기준' : `권장기준 (${benchmarks.length}개)`}: ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
                             </span>
                         ` : ''}
                     </div>
 
-                    <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
+                    <table class="print-quote-table" style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 3px; font-size: ${tableFontSize};">
                         <thead>
                             <tr style="background: #f1f5f9; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: bold;">
-                                <th style="width: 48px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">순번</th>
-                                ${cols.supplier ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">공급업체</th>' : ''}
-                                <th style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center;">품목명</th>
-                                <th style="width: 105px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">규격</th>
-                                ${cols.freight ? '<th style="width: 95px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">운임조건</th>' : ''}
-                                ${cols.buyPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">매입단가(환율)</th>' : ''}
-                                ${cols.normPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">단위단가(최저가대비)</th>' : ''}
-                                ${cols.margin ? '<th style="width: 100px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">마진액(마진율)</th>' : ''}
-                                ${cols.note ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">비고</th>' : ''}
+                                <th style="width: ${colW.no}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">순번</th>
+                                ${cols.supplier ? `<th style="width: ${colW.supplier}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">공급업체</th>` : ''}
+                                <th style="border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">품목명</th>
+                                <th style="width: ${colW.spec}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">규격</th>
+                                ${cols.freight ? `<th style="width: ${colW.freight}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">운임조건</th>` : ''}
+                                ${cols.buyPrice ? `<th style="width: ${colW.buyPrice}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">매입단가</th>` : ''}
+                                ${cols.normPrice ? `<th style="width: ${colW.normPrice}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">${isPortrait ? '단위단가(대비)' : '단위단가(최저가대비)'}</th>` : ''}
+                                ${cols.margin ? `<th style="width: ${colW.margin}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">${isPortrait ? '마진(율)' : '마진액(마진율)'}</th>` : ''}
+                                ${cols.note ? `<th style="width: ${colW.note}; border: 1px solid #cbd5e1; padding: ${cellPad}; text-align: center;">비고</th>` : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -5231,7 +6044,7 @@ const app = {
                     </table>
 
                     ${cols.opinion ? `
-                        <div style="margin-top: 5px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 8.5pt;">
+                        <div style="margin-top: 4px; padding: 5px 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: ${isPortrait ? '8pt' : '8.5pt'};">
                             <strong style="color: #1e293b;">※ 담당자 검토 의견:</strong>
                             <span style="color: #334155; margin-left: 6px;">${escapeHtml(sec.section_note || '-(별도 기재 의견 없음)-')}</span>
                         </div>
@@ -5245,7 +6058,7 @@ const app = {
             return;
         }
 
-        // 최상단 품목별 최저가 추천 종합 요약표 (Executive Summary) 렌더링
+        // 최상단 품목별 최저가 추천 종합 요약표 (Executive Summary) 렌더링 - 선택 컬럼(cols) 연동
         let summaryTableHtml = '';
         if (executiveSummaryItems.length > 0) {
             let summaryRows = '';
@@ -5254,52 +6067,59 @@ const app = {
                 const buy = it.buy_price || 0;
                 const isForeign = it.currency && it.currency !== 'KRW';
                 const currSym = this.currencySymbols[it.currency] || '$';
-                let buyStr = buy ? `₩${buy.toLocaleString()}` : '-';
+                let buyStr = buy ? `<span style="white-space: nowrap;">₩${buy.toLocaleString()}</span>` : '-';
                 if (isForeign && it.foreign_buy_price > 0) {
-                    buyStr = `<strong>${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> <span style="font-size: 8pt; color: #475569;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</span>`;
+                    buyStr = `<div style="font-weight: 700; white-space: nowrap;">${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div><div style="font-size: 7.2pt; color: #475569; white-space: nowrap; line-height: 1.15;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</div>`;
                 }
 
-                let normStr = it.norm ? `₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}` : '-';
+                let normStr = it.norm ? `<span style="white-space: nowrap;">₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}</span>` : '-';
                 const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
-                const freightStr = isFreightIn 
-                    ? `하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}` 
-                    : '상차도';
+                let freightStr = '상차도';
+                if (isFreightIn) {
+                    if (it.freight_region) {
+                        freightStr = isPortrait
+                            ? `<div style="white-space: nowrap;">하차도</div><div style="font-size: 7.2pt; color: #475569; line-height: 1.15;">(${escapeHtml(it.freight_region)})</div>`
+                            : `하차도 (${escapeHtml(it.freight_region)})`;
+                    } else {
+                        freightStr = '하차도';
+                    }
+                }
 
                 summaryRows += `
                     <tr style="border-bottom: 1px solid #cbd5e1; background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
-                        <td style="text-align: left; padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
+                        <td style="text-align: center; padding: ${cellPad}; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
+                        <td style="text-align: left; padding: ${cellPadText}; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
                             ${escapeHtml(sum.sectionName)}
                         </td>
-                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
-                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
-                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.spec || '-')}</td>
-                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${freightStr}</td>
-                        <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>
-                        <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${normStr}</td>
-                        <td style="text-align: center; padding: 5px 6px; border: 1px solid #cbd5e1; color: #334155; font-size: 8.5pt;">${escapeHtml(it.note || '-')}</td>
+                        ${cols.supplier ? `<td style="text-align: center; padding: ${cellPad}; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        <td style="text-align: left; padding: ${cellPadText}; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
+                        <td style="text-align: center; padding: ${cellPad}; border: 1px solid #cbd5e1;">${escapeHtml(it.spec || '-')}</td>
+                        ${cols.freight ? `<td style="text-align: center; padding: ${cellPad}; border: 1px solid #cbd5e1;">${freightStr}</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding: ${cellPadText}; border: 1px solid #cbd5e1;">${buyStr}</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding: ${cellPadText}; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${normStr}</td>` : ''}
+                        ${cols.note ? `<td style="text-align: center; padding: ${cellPad}; border: 1px solid #cbd5e1; color: #334155; font-size: ${isPortrait ? '7.8pt' : '8.5pt'};">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
                 `;
             });
 
             summaryTableHtml = `
-                <div class="print-summary-box" style="margin-bottom: 22px; border: 1.5px solid #059669; border-radius: 3px; background: #ffffff; padding: 8px 10px; page-break-inside: avoid; break-inside: avoid;">
-                    <div style="font-size: 10.5pt; font-weight: 800; color: #065f46; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <div class="print-summary-box" style="margin-bottom: ${isPortrait ? '16px' : '22px'}; border: 1.5px solid #059669; border-radius: 3px; background: #ffffff; padding: ${isPortrait ? '6px 8px' : '8px 10px'}; page-break-inside: avoid; break-inside: avoid;">
+                    <div style="font-size: ${isPortrait ? '9.5pt' : '10.5pt'}; font-weight: 800; color: #065f46; margin-bottom: 5px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px;">
                         <span>■ 품목별 최저가 추천 종합 요약</span>
-                        <span style="font-size: 8.5pt; font-weight: normal; color: #047857;">* 각 비교군별 단위단가 기준 1위 최저단가 품목</span>
+                        <span style="font-size: 8pt; font-weight: normal; color: #047857;">* 각 비교군별 단위단가 기준 1위 최저단가 품목</span>
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                    <table class="print-summary-table" style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: ${isPortrait ? '8pt' : '8.5pt'};">
                         <thead>
                             <tr style="background: #ecfdf5; border-top: 1.5px solid #059669; border-bottom: 1.5px solid #059669; color: #065f46; font-weight: bold;">
-                                <th style="width: 40px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">순번</th>
-                                <th style="width: 135px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">비교 품목군</th>
-                                <th style="width: 110px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">공급업체</th>
-                                <th style="padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">추천 선정 품목</th>
-                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">규격</th>
-                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">운임조건</th>
-                                <th style="width: 130px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">매입단가(환율)</th>
-                                <th style="width: 125px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">단위단가(최저)</th>
-                                <th style="width: 135px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">비고</th>
+                                <th style="width: 4.5%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">순번</th>
+                                <th style="width: ${isPortrait ? '14%' : '13.5%'}; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">비교 품목군</th>
+                                ${cols.supplier ? `<th style="width: ${isPortrait ? '10.5%' : '11%'}; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">공급업체</th>` : ''}
+                                <th style="padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">추천 선정 품목</th>
+                                <th style="width: 10%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">규격</th>
+                                ${cols.freight ? `<th style="width: 8.5%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">운임조건</th>` : ''}
+                                ${cols.buyPrice ? `<th style="width: 12.5%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">매입단가</th>` : ''}
+                                ${cols.normPrice ? `<th style="width: 12.5%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">단위단가(최저)</th>` : ''}
+                                ${cols.note ? `<th style="width: 9.5%; padding: ${cellPad}; border: 1px solid #cbd5e1; text-align: center;">비고</th>` : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -5315,11 +6135,11 @@ const app = {
         const reportDate = (activeProject && activeProject.doc_date) ? activeProject.doc_date.substring(0, 10) : today;
 
         printArea.innerHTML = `
-            <div class="print-container" style="padding: 10px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
+            <div class="print-container ${isPortrait ? 'print-portrait' : 'print-landscape'}" style="padding: ${isPortrait ? '4px' : '10px'}; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
                 <!-- 보고서 심플 헤더 (결재란 및 문서번호 삭제) -->
-                <div class="report-header-wrap" style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 16px;">
-                    <h1 style="margin: 0 0 6px 0; font-size: 21pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-align: center;">${reportTitle}</h1>
-                    <div style="font-size: 9.5pt; color: #475569; text-align: center;">
+                <div class="report-header-wrap" style="border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: ${isPortrait ? '12px' : '16px'};">
+                    <h1 style="margin: 0 0 5px 0; font-size: ${isPortrait ? '18pt' : '21pt'}; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-align: center;">${reportTitle}</h1>
+                    <div style="font-size: ${isPortrait ? '9pt' : '9.5pt'}; color: #475569; text-align: center;">
                         <strong>보고일자:</strong> ${reportDate} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>대상:</strong> 총 ${validSectionsCount}개 품목 (${totalPrintedItemCount}개 규격)
                         ${activeProject?.memo ? `<div style="font-size: 8.5pt; color: #64748b; margin-top: 3px;">※ ${escapeHtml(activeProject.memo)}</div>` : ''}
                     </div>
@@ -5334,6 +6154,12 @@ const app = {
         `;
 
         setTimeout(() => {
+            const restoreAfterPrint = () => {
+                document.body.style.removeProperty('overflow');
+                window.removeEventListener('afterprint', restoreAfterPrint);
+            };
+            window.addEventListener('afterprint', restoreAfterPrint);
+            window.focus();
             window.print();
         }, 60);
     },

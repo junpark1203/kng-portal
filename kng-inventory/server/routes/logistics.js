@@ -129,7 +129,10 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_account TEXT DEFAULT ''",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_month TEXT DEFAULT ''",
                         "ALTER TABLE logistics_inbound ADD COLUMN freight_type TEXT DEFAULT '상차도'",
-                        "ALTER TABLE logistics_inbound ADD COLUMN freight_region TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_inbound ADD COLUMN freight_region TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_return INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_inbound ADD COLUMN parent_inbound_id INTEGER",
+                        "ALTER TABLE logistics_inbound ADD COLUMN return_reason TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -170,7 +173,10 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_account TEXT DEFAULT ''",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_month TEXT DEFAULT ''",
                         "ALTER TABLE logistics_outbound ADD COLUMN freight_type TEXT DEFAULT '상차도'",
-                        "ALTER TABLE logistics_outbound ADD COLUMN freight_region TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_outbound ADD COLUMN freight_region TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_return INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_outbound ADD COLUMN parent_outbound_id INTEGER",
+                        "ALTER TABLE logistics_outbound ADD COLUMN return_reason TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -2094,12 +2100,16 @@ router.post('/bulk-delete', async (req, res) => {
     }
 
     try {
-        // 1. 월간 확정 건 보호 검사
+        // 1. 월간 확정 건 및 하위 반품 건 보호 검사
         if (outboundIds.length > 0) {
             const placeholders = outboundIds.map(() => '?').join(',');
             const chk = await dbGet(`SELECT COUNT(*) as count FROM logistics_outbound WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, outboundIds);
             if (chk && chk.count > 0) {
                 return res.status(400).json({ error: `선택한 출고 내역 중 월간현황에서 이미 확정된 내역(${chk.count}건)이 포함되어 있어 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+            }
+            const childRetChk = await dbGet(`SELECT COUNT(*) as count FROM logistics_outbound WHERE parent_outbound_id IN (${placeholders}) AND id NOT IN (${placeholders})`, [...outboundIds, ...outboundIds]);
+            if (childRetChk && childRetChk.count > 0) {
+                return res.status(400).json({ error: `선택한 출고 내역 중 연결된 반품 내역(${childRetChk.count}건)이 존재하는 건이 있습니다. 반품 내역을 먼저 삭제하거나 함께 선택하여 삭제해주세요.` });
             }
         }
         if (inboundIds.length > 0) {
@@ -2119,14 +2129,21 @@ router.post('/bulk-delete', async (req, res) => {
         if (outboundIds.length > 0) {
             const outPlaceholders = outboundIds.map(() => '?').join(',');
             
-            const outRows = await dbAll(`SELECT id, item, spec, unit, qty, is_direct FROM logistics_outbound WHERE id IN (${outPlaceholders})`, outboundIds);
+            const outRows = await dbAll(`SELECT id, item, spec, unit, qty, is_direct, is_return FROM logistics_outbound WHERE id IN (${outPlaceholders})`, outboundIds);
 
             // 연결된 Lot 정보 조회
             const lots = await dbAll(`SELECT outbound_id, inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${outPlaceholders})`, outboundIds);
             
-            // 일반 입고건의 차감 수량 원복 (비동기 완료 보장)
+            // 일반 입고건의 차감 수량 원복 (비동기 완료 보장, 반품 삭제 시 잔여수량 부족 여부 검증)
             if (lots.length > 0) {
                 for (const lot of lots) {
+                    if (lot.consumed_qty < 0) {
+                        const inRow = await dbGet(`SELECT id, item, is_direct, qty_remaining FROM logistics_inbound WHERE id = ?`, [lot.inbound_id]);
+                        if (inRow && !inRow.is_direct && (inRow.qty_remaining + lot.consumed_qty < -1e-6)) {
+                            await dbRun("ROLLBACK");
+                            return res.status(400).json({ error: `[${inRow.item}] 반품으로 복구되었던 창고 재고가 이미 다른 출고 건에서 소진되어 해당 반품 내역을 삭제할 수 없습니다.` });
+                        }
+                    }
                     await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
                 }
             }
@@ -2333,6 +2350,336 @@ router.post('/outbound', async (req, res) => {
     }
 });
 
+// --- Outbound Returnable Info (출고 반품 가능 수량 및 원본 Lot 조회) ---
+router.get('/outbound/returnable/:id', async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: '유효하지 않은 출고 ID입니다.' });
+
+    try {
+        const row = await dbGet(`SELECT * FROM logistics_outbound WHERE id = ?`, [id]);
+        if (!row) return res.status(404).json({ error: '출고 내역을 찾을 수 없습니다.' });
+        if (row.is_return === 1 || parseFloat(row.qty) < 0) {
+            return res.status(400).json({ error: '이미 반품 처리된 전표는 다시 반품 등록할 수 없습니다.' });
+        }
+
+        const groupSql = row.transaction_group_id
+            ? `SELECT * FROM logistics_outbound WHERE transaction_group_id = ? AND COALESCE(is_return, 0) = 0 AND qty > 0 ORDER BY id ASC`
+            : `SELECT * FROM logistics_outbound WHERE date = ? AND destination = ? AND created_at = ? AND COALESCE(is_return, 0) = 0 AND qty > 0 ORDER BY id ASC`;
+        const groupParams = row.transaction_group_id ? [row.transaction_group_id] : [row.date, row.destination, row.created_at];
+
+        const items = await dbAll(groupSql, groupParams);
+        const itemIds = items.map(i => i.id);
+        if (itemIds.length === 0) {
+            return res.status(400).json({ error: '반품 가능한 원본 출고 품목이 없습니다.' });
+        }
+
+        const placeholders = itemIds.map(() => '?').join(',');
+
+        // 1. 원본 출고가 소진한 Lot 목록 조회
+        const lots = await dbAll(`
+            SELECT l.outbound_id, l.inbound_id, l.consumed_qty, i.supplier, i.date as inbound_date,
+                   i.location_id, loc.name as location_name, i.unit_price, i.qty_remaining
+            FROM logistics_outbound_lots l
+            JOIN logistics_inbound i ON l.inbound_id = i.id
+            LEFT JOIN logistics_locations loc ON i.location_id = loc.id
+            WHERE l.outbound_id IN (${placeholders})
+            ORDER BY l.id ASC
+        `, itemIds);
+
+        // 2. 이미 등록된 반품 전표(하위 반품 내역) 및 Lot별 기반품 수량 조회
+        const childReturns = await dbAll(`
+            SELECT id, parent_outbound_id, date, qty, selling_price, note, return_reason, transaction_group_id
+            FROM logistics_outbound
+            WHERE parent_outbound_id IN (${placeholders}) AND (is_return = 1 OR qty < 0)
+            ORDER BY date DESC, id DESC
+        `, itemIds);
+
+        const childLotReturns = await dbAll(`
+            SELECT o.parent_outbound_id, rl.inbound_id, SUM(ABS(rl.consumed_qty)) as returned_lot_qty
+            FROM logistics_outbound o
+            JOIN logistics_outbound_lots rl ON o.id = rl.outbound_id
+            WHERE o.parent_outbound_id IN (${placeholders}) AND (o.is_return = 1 OR o.qty < 0)
+            GROUP BY o.parent_outbound_id, rl.inbound_id
+        `, itemIds);
+
+        const returnedByParentMap = {};
+        childReturns.forEach(cr => {
+            const pId = cr.parent_outbound_id;
+            returnedByParentMap[pId] = (returnedByParentMap[pId] || 0) + Math.abs(parseFloat(cr.qty) || 0);
+        });
+
+        const returnedByLotMap = {};
+        childLotReturns.forEach(clr => {
+            const key = `${clr.parent_outbound_id}_${clr.inbound_id}`;
+            returnedByLotMap[key] = (returnedByLotMap[key] || 0) + (parseFloat(clr.returned_lot_qty) || 0);
+        });
+
+        items.forEach(item => {
+            const origQty = Math.abs(parseFloat(item.qty) || 0);
+            const alreadyRetQty = returnedByParentMap[item.id] || 0;
+            item.returned_qty = Number(alreadyRetQty.toFixed(4));
+            item.returnable_qty = Number(Math.max(0, origQty - alreadyRetQty).toFixed(4));
+
+            const itemLots = lots.filter(l => l.outbound_id === item.id).map(l => {
+                const origLotQty = Math.abs(parseFloat(l.consumed_qty) || 0);
+                const lotRetQty = returnedByLotMap[`${item.id}_${l.inbound_id}`] || 0;
+                return {
+                    ...l,
+                    returned_qty: Number(lotRetQty.toFixed(4)),
+                    returnable_qty: Number(Math.max(0, origLotQty - lotRetQty).toFixed(4))
+                };
+            });
+            item.consumed_lots = itemLots;
+
+            if (row.is_direct === 1 && itemLots.length > 0) {
+                item.supplier = itemLots[0].supplier;
+                item.inbound_price = itemLots[0].unit_price;
+                item.parent_inbound_id = itemLots[0].inbound_id;
+            }
+        });
+
+        if (row.is_direct === 1 && lots.length > 0) {
+            row.supplier = lots[0].supplier;
+            row.inbound_price = lots[0].unit_price;
+        }
+
+        row.type = 'outbound';
+        row.items = items;
+        row.existing_returns = childReturns;
+        res.json(row);
+    } catch (err) {
+        console.error('Returnable outbound fetch error:', err);
+        res.status(500).json({ error: err.message || '반품 가능 정보를 불러오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// --- Outbound Return Registration (출고/직출고 반품 전표 등록 및 Lot 복구) ---
+router.post('/outbound/return', async (req, res) => {
+    const {
+        date,
+        return_reason = '',
+        direct_return_mode = 'supplier', // 'supplier' (공급처 동시 반품 - 기본값) | 'warehouse' (자사 창고로 회수 입고)
+        return_location_id = 1,
+        items = []
+    } = req.body;
+
+    if (!date) {
+        return res.status(400).json({ error: '반품 일자를 입력해주세요.' });
+    }
+
+    const validItems = (Array.isArray(items) ? items : []).filter(i => (parseFloat(i.return_qty) || 0) > 0);
+    if (validItems.length === 0) {
+        return res.status(400).json({ error: '반품 수량이 0보다 큰 품목을 최소 1개 이상 입력해주세요.' });
+    }
+
+    const dateStr = (date || '').substring(0, 10).replace(/-/g, '') || new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const txGroupId = `RET-${dateStr}-${Date.now().toString().slice(-6)}`;
+
+    try {
+        await dbRun("BEGIN TRANSACTION");
+
+        const outInsertSql = `
+            INSERT INTO logistics_outbound 
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included,
+             note, category, transaction_group_id, trade_type, freight_type, freight_region, settlement_account,
+             is_direct, is_return, parent_outbound_id, return_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        `;
+
+        const inInsertSql = `
+            INSERT INTO logistics_inbound
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id,
+             note, is_direct, category, transaction_group_id, trade_type, shipping_fee, shipping_fee_vat_included,
+             freight_type, freight_region, settlement_account, is_return, parent_inbound_id, return_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        `;
+
+        let processedCount = 0;
+
+        for (const reqItem of validItems) {
+            const parentOutId = parseInt(reqItem.parent_outbound_id, 10);
+            const returnQty = Math.abs(parseFloat(reqItem.return_qty) || 0);
+            if (!parentOutId || returnQty <= 0) continue;
+
+            const origOut = await dbGet(`SELECT * FROM logistics_outbound WHERE id = ?`, [parentOutId]);
+            if (!origOut) {
+                throw new Error(`원본 출고 내역(ID: ${parentOutId})을 찾을 수 없습니다.`);
+            }
+            if (origOut.is_return === 1 || parseFloat(origOut.qty) <= 0) {
+                throw new Error(`[${origOut.item}] 이미 반품된 전표에 대해서는 중복 반품을 등록할 수 없습니다.`);
+            }
+
+            // 기존 누적 반품 수량 확인하여 초과 반품 차단
+            const prevRetRow = await dbGet(`
+                SELECT COALESCE(SUM(ABS(qty)), 0) as returned_qty
+                FROM logistics_outbound
+                WHERE parent_outbound_id = ? AND (is_return = 1 OR qty < 0)
+            `, [origOut.id]);
+            const alreadyReturned = parseFloat(prevRetRow ? prevRetRow.returned_qty : 0) || 0;
+            const origQty = parseFloat(origOut.qty) || 0;
+            const maxReturnable = Number((origQty - alreadyReturned).toFixed(4));
+
+            if (returnQty > maxReturnable + 1e-6) {
+                throw new Error(`[${origOut.item}] 반품 요청 수량(${returnQty})이 잔여 반품 가능 수량(${maxReturnable})을 초과합니다.`);
+            }
+
+            const origLots = await dbAll(`
+                SELECT l.inbound_id, l.consumed_qty, i.supplier, i.unit_price, i.location_id, i.trade_type,
+                       i.freight_type, i.freight_region, i.settlement_account
+                FROM logistics_outbound_lots l
+                JOIN logistics_inbound i ON l.inbound_id = i.id
+                WHERE l.outbound_id = ?
+                ORDER BY l.id ASC
+            `, [origOut.id]);
+
+            const sellingPrice = reqItem.selling_price !== undefined && reqItem.selling_price !== ''
+                ? (parseFloat(reqItem.selling_price) || 0)
+                : (parseFloat(origOut.selling_price) || 0);
+            const shippingFee = parseFloat(reqItem.shipping_fee) || 0;
+            const shippingVat = reqItem.shipping_fee_vat_included ? 1 : 0;
+
+            const rawNote = (reqItem.note || return_reason || '').trim();
+            const finalNote = rawNote.startsWith('[반품')
+                ? rawNote
+                : `[반품] ${rawNote || `${origOut.date} 출고분 반품`}`.trim();
+            const finalReason = (return_reason || reqItem.note || '').trim();
+            const freightType = reqItem.freight_type || origOut.freight_type || (origOut.is_direct ? '하차도' : '상차도');
+
+            if (origOut.is_direct === 1) {
+                const origInLot = origLots.length > 0 ? origLots[0] : null;
+                const supplierName = reqItem.supplier || (origInLot ? origInLot.supplier : '직출공급처');
+                const inboundUnitPrice = reqItem.inbound_price !== undefined && reqItem.inbound_price !== ''
+                    ? (parseFloat(reqItem.inbound_price) || 0)
+                    : (origInLot ? (parseFloat(origInLot.unit_price) || 0) : 0);
+
+                if (direct_return_mode === 'warehouse') {
+                    // 옵션: 직출고 건을 공급처가 아닌 당사 창고로 회수 입고하는 경우 (매출만 마이너스 차감 + 당사 창고 재고 생성)
+                    const locId = parseInt(return_location_id, 10) || 1;
+                    const whInRes = await dbRun(`
+                        INSERT INTO logistics_inbound
+                        (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id,
+                         note, is_direct, category, transaction_group_id, trade_type, shipping_fee, shipping_fee_vat_included,
+                         freight_type, freight_region, settlement_account, is_return, parent_inbound_id, return_reason)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, 0, ?, ?, ?, 0, ?, ?)
+                    `, [
+                        date, supplierName, origOut.item, origOut.spec, origOut.unit,
+                        returnQty, returnQty, inboundUnitPrice, locId,
+                        `[직출회수입고] ${finalNote}`, origOut.category || '', txGroupId,
+                        origOut.trade_type || '내수', freightType, origOut.freight_region || '',
+                        origOut.settlement_account || '', origInLot ? origInLot.inbound_id : null, finalReason
+                    ]);
+
+                    const outRes = await dbRun(outInsertSql, [
+                        date, origOut.destination, origOut.actual_destination || '',
+                        origOut.item, origOut.spec, origOut.unit,
+                        -returnQty, sellingPrice, shippingFee, shippingVat,
+                        finalNote, origOut.category || '', txGroupId, origOut.trade_type || '내수',
+                        freightType, origOut.freight_region || '', origOut.settlement_account || '',
+                        0, origOut.id, finalReason
+                    ]);
+                    // 창고 회수 입고의 경우 신규 Lot(qty_initial = returnQty, qty_remaining = returnQty)로 생성되므로 consumed_qty는 연결하지 않음
+                    void whInRes;
+                    void outRes;
+                } else {
+                    // 기본값 ('supplier'): 공급처로 바로 반품 (매입 -수량 / 매출 -수량 동시 차감)
+                    const inRes = await dbRun(inInsertSql, [
+                        date, supplierName, origOut.item, origOut.spec, origOut.unit,
+                        -returnQty, 0, inboundUnitPrice, origInLot ? (origInLot.location_id || 2) : 2,
+                        finalNote, 1, origOut.category || '', txGroupId,
+                        origInLot ? (origInLot.trade_type || '내수') : (origOut.trade_type || '내수'),
+                        0, 0,
+                        origInLot ? (origInLot.freight_type || '하차도') : '하차도',
+                        origInLot ? (origInLot.freight_region || '') : (origOut.freight_region || ''),
+                        origInLot ? (origInLot.settlement_account || '') : (origOut.settlement_account || ''),
+                        origInLot ? origInLot.inbound_id : null, finalReason
+                    ]);
+                    const newInboundId = inRes.lastID;
+
+                    const outRes = await dbRun(outInsertSql, [
+                        date, origOut.destination, origOut.actual_destination || '',
+                        origOut.item, origOut.spec, origOut.unit,
+                        -returnQty, sellingPrice, shippingFee, shippingVat,
+                        finalNote, origOut.category || '', txGroupId, origOut.trade_type || '내수',
+                        freightType, origOut.freight_region || '', origOut.settlement_account || '',
+                        1, origOut.id, finalReason
+                    ]);
+                    const newOutboundId = outRes.lastID;
+
+                    await dbRun(
+                        `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`,
+                        [newOutboundId, newInboundId, -returnQty]
+                    );
+                }
+            } else {
+                // 일반 창고 출고 반품: 매출 마이너스 전표 생성 + 원본 출고 Lot 재고 복원 (consumed_qty 음수 기록)
+                const outRes = await dbRun(outInsertSql, [
+                    date, origOut.destination, origOut.actual_destination || '',
+                    origOut.item, origOut.spec, origOut.unit,
+                    -returnQty, sellingPrice, shippingFee, shippingVat,
+                    finalNote, origOut.category || '', txGroupId, origOut.trade_type || '내수',
+                    freightType, origOut.freight_region || '', origOut.settlement_account || '',
+                    0, origOut.id, finalReason
+                ]);
+                const newOutboundId = outRes.lastID;
+
+                // Lot별 복구 수량 배분 (프론트에서 지정한 return_lots 우선, 없으면 원본 Lot에서 순차 복구)
+                let allocations = [];
+                if (Array.isArray(reqItem.return_lots) && reqItem.return_lots.length > 0) {
+                    allocations = reqItem.return_lots
+                        .map(rl => ({ inbound_id: parseInt(rl.inbound_id, 10), qty: Math.abs(parseFloat(rl.return_qty) || 0) }))
+                        .filter(rl => rl.inbound_id > 0 && rl.qty > 0);
+                }
+
+                if (allocations.length === 0 && origLots.length > 0) {
+                    let rem = returnQty;
+                    for (const lot of origLots) {
+                        if (rem <= 0) break;
+                        const prevLotRet = await dbGet(`
+                            SELECT COALESCE(SUM(ABS(rl.consumed_qty)), 0) as ret_qty
+                            FROM logistics_outbound o
+                            JOIN logistics_outbound_lots rl ON o.id = rl.outbound_id
+                            WHERE o.parent_outbound_id = ? AND rl.inbound_id = ? AND (o.is_return = 1 OR o.qty < 0)
+                        `, [origOut.id, lot.inbound_id]);
+                        const lotAvail = Math.max(0, (parseFloat(lot.consumed_qty) || 0) - (parseFloat(prevLotRet?.ret_qty) || 0));
+                        const alloc = Math.min(rem, lotAvail);
+                        if (alloc > 0) {
+                            allocations.push({ inbound_id: lot.inbound_id, qty: Number(alloc.toFixed(4)) });
+                            rem = Number((rem - alloc).toFixed(4));
+                        }
+                    }
+                }
+
+                for (const alloc of allocations) {
+                    await dbRun(
+                        `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`,
+                        [newOutboundId, alloc.inbound_id, -alloc.qty]
+                    );
+                    await dbRun(
+                        `UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`,
+                        [alloc.qty, alloc.inbound_id]
+                    );
+                }
+            }
+
+            processedCount++;
+        }
+
+        await dbRun("COMMIT");
+        await reconcileInventory();
+
+        res.status(201).json({
+            success: true,
+            transaction_group_id: txGroupId,
+            processedCount,
+            message: `반품 전표(${txGroupId})가 정상 등록되었으며 재고 및 정산 내역에 반영되었습니다.`
+        });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Outbound return error:', err);
+        res.status(500).json({ error: err.message || '반품 등록 처리 중 오류가 발생했습니다.' });
+    }
+});
+
 // --- History (입출고 전체 내역) ---
 router.get('/history', (req, res) => {
     let { 
@@ -2371,6 +2718,8 @@ router.get('/history', (req, res) => {
         if (include_direct !== 'true') {
             whereClauses.push("is_direct = 0");
         }
+    } else if (type === 'return') {
+        whereClauses.push("(is_return = 1 OR qty < 0)");
     }
 
     // Detailed search filters (일자 검색 - dateType에 따라 정산일자 또는 입출고일자)
@@ -2572,7 +2921,10 @@ router.get('/history', (req, res) => {
                 i.settlement_month as settlement_month,
                 SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7) as original_month,
                 COALESCE(i.freight_type, '상차도') as freight_type,
-                COALESCE(i.freight_region, '') as freight_region
+                COALESCE(i.freight_region, '') as freight_region,
+                COALESCE(i.is_return, CASE WHEN i.qty_initial < 0 THEN 1 ELSE 0 END) as is_return,
+                i.parent_inbound_id as parent_id,
+                COALESCE(i.return_reason, '') as return_reason
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
@@ -2599,7 +2951,10 @@ router.get('/history', (req, res) => {
                 o.settlement_month as settlement_month,
                 SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7) as original_month,
                 COALESCE(o.freight_type, CASE WHEN o.is_direct = 1 THEN '하차도' ELSE '상차도' END) as freight_type,
-                COALESCE(o.freight_region, '') as freight_region
+                COALESCE(o.freight_region, '') as freight_region,
+                COALESCE(o.is_return, CASE WHEN o.qty < 0 THEN 1 ELSE 0 END) as is_return,
+                o.parent_outbound_id as parent_id,
+                COALESCE(o.return_reason, '') as return_reason
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -2634,9 +2989,16 @@ router.get('/history', (req, res) => {
                 WHEN is_zero_tax = 0 AND outbound_total IS NOT NULL THEN ROUND(ROUND(outbound_total) * 0.1)
                 ELSE 0 
             END), 0) as outbound_vat,
-            COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as inbound_count,
-            COALESCE(SUM(CASE WHEN type = 'outbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as outbound_count,
-            COALESCE(SUM(CASE WHEN is_direct = 1 THEN 1 ELSE 0 END), 0) as direct_count,
+            COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 AND COALESCE(is_return, 0) = 0 AND qty >= 0 THEN 1 ELSE 0 END), 0) as inbound_count,
+            COALESCE(SUM(CASE WHEN type = 'outbound' AND is_direct = 0 AND COALESCE(is_return, 0) = 0 AND qty >= 0 THEN 1 ELSE 0 END), 0) as outbound_count,
+            COALESCE(SUM(CASE WHEN is_direct = 1 AND COALESCE(is_return, 0) = 0 AND qty >= 0 THEN 1 ELSE 0 END), 0) as direct_count,
+            COALESCE(SUM(CASE WHEN is_return = 1 OR qty < 0 THEN 1 ELSE 0 END), 0) as return_count,
+            COALESCE(SUM(CASE WHEN is_return = 1 OR qty < 0 THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as return_qty,
+            COALESCE(SUM(CASE 
+                WHEN (is_return = 1 OR qty < 0) AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN (is_return = 1 OR qty < 0) AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
+                ELSE 0 
+            END), 0) as return_supply_amt,
 
             -- 자재계정별 브레이크다운: 안전자재(일반)
             COALESCE(SUM(CASE WHEN settlement_account = '안전자재-일반' THEN 1 ELSE 0 END), 0) as safety_gen_count,
@@ -2726,6 +3088,10 @@ router.get('/history', (req, res) => {
         const outboundVat = summaryRow ? (summaryRow.outbound_vat || 0) : 0;
         const outboundTotal = outboundSupply + outboundVat;
 
+        const returnSupply = summaryRow ? (summaryRow.return_supply_amt || 0) : 0;
+        const returnVat = Math.round(returnSupply * 0.1);
+        const returnTotal = returnSupply + returnVat;
+
         db.all(dataSql, [...params, limit, offset], (err2, rows) => {
             if (err2) return res.status(500).json({ error: err2.message });
             res.json({
@@ -2740,6 +3106,8 @@ router.get('/history', (req, res) => {
                     inboundCount: summaryRow ? summaryRow.inbound_count : 0,
                     outboundCount: summaryRow ? summaryRow.outbound_count : 0,
                     directCount: summaryRow ? summaryRow.direct_count : 0,
+                    returnCount: summaryRow ? (summaryRow.return_count || 0) : 0,
+                    returnQty: summaryRow ? (summaryRow.return_qty || 0) : 0,
                     inbound: {
                         supplyAmt: inboundSupply,
                         vat: inboundVat,
@@ -2749,6 +3117,13 @@ router.get('/history', (req, res) => {
                         supplyAmt: outboundSupply,
                         vat: outboundVat,
                         totalAmt: outboundTotal
+                    },
+                    returns: {
+                        count: summaryRow ? (summaryRow.return_count || 0) : 0,
+                        qty: summaryRow ? (summaryRow.return_qty || 0) : 0,
+                        supplyAmt: returnSupply,
+                        vat: returnVat,
+                        totalAmt: returnTotal
                     },
                     breakdown: {
                         safetyGeneral: {
@@ -2856,22 +3231,37 @@ router.get('/history/outbound/:id', (req, res) => {
             db.all(lotsSql, itemIds, (err3, lots) => {
                 if (err3) return res.status(500).json({ error: err3.message });
                 
-                items.forEach(item => {
-                    const itemLots = lots.filter(l => l.outbound_id === item.id);
-                    item.consumed_lots = itemLots;
-                    if (row.is_direct === 1 && itemLots.length > 0) {
-                        item.supplier = itemLots[0].supplier;
-                        item.inbound_price = itemLots[0].unit_price;
+                // 하위 반품 내역도 함께 조회하여 아코디언/상세뷰에 반품 진행 여부 표시 지원
+                const childRetSql = `
+                    SELECT id, parent_outbound_id, date, qty, transaction_group_id, note, return_reason
+                    FROM logistics_outbound
+                    WHERE parent_outbound_id IN (${placeholders}) AND (is_return = 1 OR qty < 0)
+                `;
+                db.all(childRetSql, itemIds, (err4, childRets) => {
+                    const retMap = {};
+                    (childRets || []).forEach(cr => {
+                        retMap[cr.parent_outbound_id] = (retMap[cr.parent_outbound_id] || 0) + Math.abs(parseFloat(cr.qty) || 0);
+                    });
+
+                    items.forEach(item => {
+                        const itemLots = lots.filter(l => l.outbound_id === item.id);
+                        item.consumed_lots = itemLots;
+                        item.returned_qty = retMap[item.id] || 0;
+                        if (row.is_direct === 1 && itemLots.length > 0) {
+                            item.supplier = itemLots[0].supplier;
+                            item.inbound_price = itemLots[0].unit_price;
+                        }
+                    });
+                    
+                    if (row.is_direct === 1 && lots.length > 0) {
+                        row.supplier = lots[0].supplier;
+                        row.inbound_price = lots[0].unit_price;
                     }
+                    
+                    row.items = items;
+                    row.existing_returns = childRets || [];
+                    res.json(row);
                 });
-                
-                if (row.is_direct === 1 && lots.length > 0) {
-                    row.supplier = lots[0].supplier;
-                    row.inbound_price = lots[0].unit_price;
-                }
-                
-                row.items = items;
-                res.json(row);
             });
         });
     });
@@ -4103,12 +4493,17 @@ router.delete('/outbound/:id', async (req, res) => {
     const id = req.params.id;
 
     try {
-        const outRow = await dbGet(`SELECT id, item, spec, unit, qty, is_direct, settlement_month FROM logistics_outbound WHERE id = ?`, [id]);
+        const outRow = await dbGet(`SELECT id, item, spec, unit, qty, is_direct, is_return, settlement_month FROM logistics_outbound WHERE id = ?`, [id]);
         if (!outRow) {
             return res.status(404).json({ error: '출고 내역을 찾을 수 없습니다.' });
         }
         if (outRow.settlement_month) {
             return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+        }
+
+        const childRetChk = await dbGet(`SELECT COUNT(*) as count FROM logistics_outbound WHERE parent_outbound_id = ?`, [id]);
+        if (childRetChk && childRetChk.count > 0) {
+            return res.status(400).json({ error: `해당 출고 내역에 연결된 반품 내역(${childRetChk.count}건)이 존재하여 삭제할 수 없습니다. 먼저 반품 내역을 삭제해주세요.` });
         }
 
         await dbRun("BEGIN TRANSACTION");
@@ -4118,6 +4513,13 @@ router.delete('/outbound/:id', async (req, res) => {
 
         if (lots.length > 0) {
             for (const lot of lots) {
+                if (lot.consumed_qty < 0) {
+                    const inRow = await dbGet(`SELECT id, item, is_direct, qty_remaining FROM logistics_inbound WHERE id = ?`, [lot.inbound_id]);
+                    if (inRow && !inRow.is_direct && (inRow.qty_remaining + lot.consumed_qty < -1e-6)) {
+                        await dbRun("ROLLBACK");
+                        return res.status(400).json({ error: `[${inRow.item}] 반품으로 복구되었던 창고 재고가 이미 다른 출고 건에서 소진되어 해당 반품 내역을 삭제할 수 없습니다.` });
+                    }
+                }
                 await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
             }
         } else if (!outRow.is_direct) {

@@ -2713,19 +2713,40 @@ th.sortable.active.asc i {
 }
 
 @media print {
-    /* Hide sidebar and topbar when printing from any iframe or main window */
-    .sidebar, .topbar { display: none !important; }
-    
-    /* Expand main content */
-    .main-content { margin-left: 0 !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; }
-    
+    /* Hide sidebar, topbar, and MDI tab bar when printing from any iframe or main window */
+    .sidebar,
+    .topbar,
+    .portal-tab-bar,
+    .portal-tab-context-menu,
+    .mobile-bottom-nav {
+        display: none !important;
+    }
+
+    /* Expand main content and remove fixed viewport clipping */
+    html,
+    body,
+    .app-container,
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
     /* Make iframe full size for printing */
-    .iframe-container, #appIframe {
+    .iframe-container,
+    .tab-iframe-pane,
+    #appIframe {
         width: 100% !important;
         height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
+        overflow: visible !important;
     }
 }
 

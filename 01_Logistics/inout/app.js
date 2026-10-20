@@ -1651,7 +1651,7 @@ const app = {
 
         // 1. 구분 필터
         if (typeFilter !== 'all') {
-            const typeLabels = { inbound: '입고만', outbound: '출고만', direct: '직출고만' };
+            const typeLabels = { inbound: '입고만', outbound: '출고만', direct: '직출고만', return: '반품만' };
             chips.push(`
                 <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
                     <span class="text-secondary fw-normal">구분:</span> <strong>${typeLabels[typeFilter] || typeFilter}</strong>
@@ -1801,6 +1801,17 @@ const app = {
                     </span>
                 </div>
             `;
+        } else if (typeFilter === 'return') {
+            amountHtml = `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    ${inbound.totalAmt !== 0 ? `<span>직출매입차감: <strong class="text-primary tabular-nums">${inbound.totalAmt.toLocaleString()}원</strong></span><span class="text-muted">|</span>` : ''}
+                    <span>반품공급가: <strong class="text-dark tabular-nums">${outbound.supplyAmt.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span>부가세: <strong class="text-secondary tabular-nums">${outbound.vat.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span class="erp-badge erp-badge-return" style="font-size: 11px;">반품합계(매출차감): <strong>${outbound.totalAmt.toLocaleString()}</strong>원</span>
+                </div>
+            `;
         } else {
             // 전체 보기
             amountHtml = `
@@ -1820,6 +1831,7 @@ const app = {
                         <span class="erp-badge erp-badge-cat">입고 ${summary.inboundCount || 0}</span>
                         <span class="erp-badge erp-badge-cat">출고 ${summary.outboundCount || 0}</span>
                         <span class="erp-badge erp-badge-cat">직출고 ${summary.directCount || 0}</span>
+                        ${(summary.returnCount || 0) > 0 ? `<span class="erp-badge erp-badge-return">반품 ${summary.returnCount}</span>` : ''}
                     ` : ''}
                     <span class="text-muted ms-1 me-1">|</span>
                     <span class="text-muted">총 수량:</span>
@@ -1833,8 +1845,8 @@ const app = {
         let mobileAmountKpi = '';
         if (typeFilter === 'inbound') {
             mobileAmountKpi = `<span class="text-muted small">매입</span> <strong class="text-success">${this.formatCompactNum(inbound.totalAmt)}</strong>`;
-        } else if (typeFilter === 'outbound') {
-            mobileAmountKpi = `<span class="text-muted small">매출</span> <strong class="text-danger">${this.formatCompactNum(outbound.totalAmt)}</strong>`;
+        } else if (typeFilter === 'outbound' || typeFilter === 'return') {
+            mobileAmountKpi = `<span class="text-muted small">${typeFilter === 'return' ? '반품합계' : '매출'}</span> <strong class="text-danger">${this.formatCompactNum(outbound.totalAmt)}</strong>`;
         } else if (typeFilter === 'direct') {
             const margin = outbound.totalAmt - inbound.totalAmt;
             mobileAmountKpi = `<span class="text-muted small">마진</span> <strong class="${margin >= 0 ? 'text-primary' : 'text-danger'}">${this.formatCompactNum(margin)}</strong>`;
@@ -2067,9 +2079,15 @@ const app = {
 
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
+            const isReturn = r.is_return === 1 || Number(r.qty) < 0;
             let badge = isOut ? `<span class="erp-badge erp-badge-out">출고</span>` : `<span class="erp-badge erp-badge-in">입고</span>`;
             if (isOut && r.is_direct === 1) {
                 badge = `<span class="erp-badge erp-badge-direct">직출고</span>`;
+            }
+            if (isReturn) {
+                badge = r.is_direct === 1
+                    ? `<span class="erp-badge erp-badge-return">직출반품</span>`
+                    : `<span class="erp-badge erp-badge-return">출고반품</span>`;
             }
             if (r.trade_type && r.trade_type !== '내수') {
                 badge += ` <span class="erp-badge erp-badge-info">${r.trade_type}</span>`;
@@ -2095,8 +2113,13 @@ const app = {
             const txIdDisplay = r.transaction_group_id || (r.is_direct === 1 ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
             const dateStr = (r.date || '').split('T')[0];
 
+            // 출고/직출고 원본 건(양수 수량)에는 정산완료 여부와 무관하게 [반품] 등록 버튼 노출
+            const returnBtnHtml = (isOut && !isReturn)
+                ? `<button class="btn-grid-action btn-grid-action-return me-1" onclick="event.stopPropagation(); app.openReturnModal(${r.id})" title="해당 출고 건에서 반품 전표 등록 (원본 Lot 재고 복원)"><i class='bx bx-revision me-1'></i>반품</button>`
+                : '';
+
             return `
-            <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
+            <tr id="row_${r.id}" class="history-main-row ${isReturn ? 'erp-row-return' : ''}" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)"></td>
                 <td class="d-print-none user-select-none text-nowrap" style="font-size: 11.5px; color: #475569;">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
@@ -2107,18 +2130,22 @@ const app = {
                 <td class="text-center tabular-nums">${dateStr}</td>
                 <td title="${r.supplier || ''}">${renderCell(r.supplier)}</td>
                 <td title="${r.destination || ''}">${destHtml}</td>
-                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong></td>
+                <td title="${r.item || ''}">
+                    <strong class="text-dark">${r.item}</strong>
+                    ${isReturn ? `<span class="text-muted ms-1" style="font-size: 10.5px;">${r.return_reason ? `(${r.return_reason})` : ''}</span>` : ''}
+                </td>
                 <td class="text-center" title="${r.spec || ''}">${r.spec || '-'}</td>
                 <td class="text-center">${r.unit || '-'}</td>
-                <td class="text-end tabular-nums ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
+                <td class="text-end tabular-nums ${isReturn ? 'fw-bold' : (isOut ? 'text-danger fw-bold' : 'text-success fw-bold')}" style="${isReturn ? 'color:#7c3aed;' : ''}">${r.qty.toLocaleString()}</td>
                 <td class="text-end tabular-nums text-secondary">${renderCell(r.inbound_price, true)}</td>
                 <td class="text-end tabular-nums text-secondary">${renderCell(r.inbound_total, true)}</td>
                 <td class="text-end tabular-nums text-dark">${renderCell(r.outbound_price, true)}</td>
-                <td class="text-end tabular-nums fw-bold text-dark">${renderCell(r.outbound_total, true)}</td>
+                <td class="text-end tabular-nums fw-bold ${isReturn ? '' : 'text-dark'}" style="${isReturn ? 'color:#7c3aed;' : ''}">${renderCell(r.outbound_total, true)}</td>
                 <td class="text-center text-nowrap" onclick="event.stopPropagation()">
+                    ${returnBtnHtml}
                     ${r.settlement_status === '정산완료' 
                         ? `<span class="badge bg-secondary" style="font-size: 10px; padding: 2px 4px;">정산완료</span>` 
-                        : `<button class="btn-grid-action me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
+                        : `${!isReturn ? `<button class="btn-grid-action me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>` : ''}
                            <button class="btn-grid-action btn-grid-action-danger" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>`
                     }
                 </td>
@@ -2175,12 +2202,18 @@ const app = {
             
             const items = data.items || [data];
             const isDirect = type === 'outbound' && data.is_direct === 1;
+            const isReturn = data.is_return === 1 || Number(data.qty) < 0;
 
             let badgeHtml = type === 'inbound' 
                 ? '<span class="erp-badge erp-badge-in">입고</span>' 
                 : '<span class="erp-badge erp-badge-out">출고</span>';
             if (isDirect) {
                 badgeHtml = '<span class="erp-badge erp-badge-direct">직출고</span>';
+            }
+            if (isReturn) {
+                badgeHtml = isDirect
+                    ? '<span class="erp-badge erp-badge-return">직출반품</span>'
+                    : '<span class="erp-badge erp-badge-return">출고반품</span>';
             }
 
             const borderClass = isDirect ? 'border-direct' : (type === 'inbound' ? 'border-inbound' : 'border-outbound');
@@ -2252,11 +2285,17 @@ const app = {
                 ? `app.openEditDirectOutboundTx('${data.transaction_group_id || ''}', ${data.id})` 
                 : (type === 'outbound' ? `app.openEditOutboundTx('${data.transaction_group_id || ''}', ${data.id})` : `app.openEditInboundTx('${data.transaction_group_id || ''}', ${data.id})`);
 
-            let editBtn = `
+            const returnBtnAcc = (type === 'outbound' && !isReturn)
+                ? `<button type="button" class="btn-acc-secondary" style="border-color:#c4b5fd; background:#f5f3ff; color:#6d28d9; font-weight:700;" onclick="event.stopPropagation(); app.openReturnModal(${data.id})" title="반품 전표 등록">
+                       <i class='bx bx-revision me-1'></i>반품 등록
+                   </button>`
+                : '';
+
+            let editBtn = !isReturn ? `
                 <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); ${editTxFn}" title="전표 수정">
                     전표 수정
                 </button>
-            `;
+            ` : '';
 
             // Table Rows
             let totalQty = 0;
@@ -2277,14 +2316,25 @@ const app = {
 
                 let lotInfoHtml = '';
                 if (type === 'outbound' && !isDirect && item.consumed_lots && item.consumed_lots.length > 0) {
-                    const lotsBadges = item.consumed_lots.map(l => 
-                        `<span class="acc-lot-chip me-1 tabular-nums">
-                            ${l.inbound_date} 입고 (${l.supplier || '-'}) <strong class="text-danger">-${l.consumed_qty}</strong>
-                         </span>`
-                    ).join('');
+                    const lotsBadges = item.consumed_lots.map(l => {
+                        const isLotReturn = Number(l.consumed_qty) < 0;
+                        const qtyLabel = isLotReturn
+                            ? `<strong class="text-success">+${Math.abs(Number(l.consumed_qty))} (재고복원)</strong>`
+                            : `<strong class="text-danger">-${l.consumed_qty}</strong>`;
+                        return `<span class="acc-lot-chip me-1 tabular-nums">
+                            ${l.inbound_date} 입고 (${l.supplier || '-'}${l.location_name ? ' · ' + l.location_name : ''}) ${qtyLabel}
+                         </span>`;
+                    }).join('');
                     lotInfoHtml = `
                         <div class="mt-1 text-muted" style="font-size:11px;">
-                            <span class="acc-meta-label me-1">차감 Lot:</span>${lotsBadges}
+                            <span class="acc-meta-label me-1">${isReturn ? '복구 Lot:' : '차감 Lot:'}</span>${lotsBadges}
+                        </div>
+                    `;
+                }
+                if (item.returned_qty && item.returned_qty > 0) {
+                    lotInfoHtml += `
+                        <div class="mt-1" style="font-size:11px; color:#6d28d9;">
+                            <i class='bx bx-revision'></i> <strong>기반품 수량:</strong> ${item.returned_qty.toLocaleString()} ${item.unit || ''} (잔여 출고분: ${Math.max(0, itemQty - item.returned_qty).toLocaleString()} ${item.unit || ''})
                         </div>
                     `;
                 }
@@ -2298,6 +2348,7 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
+                                ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
@@ -2435,6 +2486,7 @@ const app = {
                         ${extraInfo}
                     </div>
                     <div class="d-flex align-items-center gap-1">
+                        ${returnBtnAcc}
                         ${printBtns}
                         ${editBtn}
                         <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.toggleAccordion(${id}, '${type}')" title="접기">
@@ -6443,10 +6495,16 @@ const app = {
         container.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
             const isDirect = (r.type === '직출고' || r.is_direct === 1);
+            const isReturn = r.is_return === 1 || Number(r.qty) < 0;
 
             let badge = isOut ? `<span class="erp-badge erp-badge-out">출고</span>` : `<span class="erp-badge erp-badge-in">입고</span>`;
             if (isDirect) {
                 badge = `<span class="erp-badge erp-badge-direct">직출고</span>`;
+            }
+            if (isReturn) {
+                badge = isDirect
+                    ? `<span class="erp-badge erp-badge-return">직출반품</span>`
+                    : `<span class="erp-badge erp-badge-return">출고반품</span>`;
             }
             if (r.trade_type && r.trade_type !== '내수') {
                 badge += ` <span class="erp-badge erp-badge-info">${r.trade_type}</span>`;
@@ -6490,8 +6548,14 @@ const app = {
             const priceDisplay = isOut ? (r.outbound_price ? Math.round(Number(r.outbound_price)).toLocaleString() : '-') : (r.inbound_price ? Math.round(Number(r.inbound_price)).toLocaleString() : '-');
             const totalDisplay = isOut ? (r.outbound_total ? Math.round(Number(r.outbound_total)).toLocaleString() : '0') : (r.inbound_total ? Math.round(Number(r.inbound_total)).toLocaleString() : '0');
 
+            const mobileReturnBtn = (isOut && !isReturn)
+                ? `<button type="button" class="btn btn-sm mobile-act-btn me-1" style="border:1px solid #c4b5fd; background:#f5f3ff; color:#6d28d9; font-weight:600;" onclick="event.stopPropagation(); app.openReturnModal(${r.id})">
+                       <i class='bx bx-revision'></i> 반품
+                   </button>`
+                : '';
+
             return `
-            <div class="mobile-tx-card" id="mobile_card_${r.id}">
+            <div class="mobile-tx-card" id="mobile_card_${r.id}" ${isReturn ? 'style="border-left: 3px solid #7c3aed;"' : ''}>
                 <div class="mobile-tx-card-header">
                     <div class="d-flex align-items-center gap-2 min-w-0" style="overflow: hidden;">
                         <input type="checkbox" class="form-check-input history-checkbox m-0 flex-shrink-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)">
@@ -6537,11 +6601,12 @@ const app = {
                         <i class='bx bx-chevron-down' id="mobile_acc_icon_${r.id}"></i> 상세 전표
                     </button>
                     <div class="mobile-tx-actions">
+                        ${mobileReturnBtn}
                         ${r.settlement_status === '정산완료'
                             ? `<span class="badge bg-secondary px-2 py-1">정산완료</span>`
-                            : `<button type="button" class="btn btn-sm btn-outline-primary mobile-act-btn me-1" onclick="event.stopPropagation(); ${editFn}">
+                            : `${!isReturn ? `<button type="button" class="btn btn-sm btn-outline-primary mobile-act-btn me-1" onclick="event.stopPropagation(); ${editFn}">
                                    <i class='bx bx-edit'></i> 수정
-                               </button>
+                               </button>` : ''}
                                <button type="button" class="btn btn-sm btn-outline-danger mobile-act-btn" onclick="event.stopPropagation(); ${delFn}">
                                    <i class='bx bx-trash'></i> 삭제
                                </button>`
@@ -6598,6 +6663,7 @@ const app = {
             }
             const items = data.items || [data];
             const isDirect = (type === 'outbound' && data.is_direct === 1) || type === '직출고';
+            const isReturn = data.is_return === 1 || Number(data.qty) < 0;
 
             let itemsHtml = items.map((item, idx) => {
                 const itemQty = type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
@@ -6610,8 +6676,11 @@ const app = {
                 if (type === 'outbound' && !isDirect && item.consumed_lots && item.consumed_lots.length > 0) {
                     lotsHtml = `
                         <div class="mobile-lot-box mt-1">
-                            <small class="text-muted fw-bold">차감 Lot:</small>
-                            ${item.consumed_lots.map(l => `<span class="badge bg-light text-dark border me-1">${l.inbound_date} (${l.supplier || '-'}) -${l.consumed_qty}</span>`).join('')}
+                            <small class="text-muted fw-bold">${isReturn ? '복구 Lot:' : '차감 Lot:'}</small>
+                            ${item.consumed_lots.map(l => {
+                                const isLotRet = Number(l.consumed_qty) < 0;
+                                return `<span class="badge bg-light text-dark border me-1">${l.inbound_date} (${l.supplier || '-'}) ${isLotRet ? '+' + Math.abs(Number(l.consumed_qty)) : '-' + l.consumed_qty}</span>`;
+                            }).join('')}
                         </div>
                     `;
                 }
@@ -6705,7 +6774,8 @@ const app = {
             'all': 'btnFilterAll',
             'inbound': 'btnFilterIn',
             'outbound': 'btnFilterOut',
-            'direct': 'btnFilterDirect'
+            'direct': 'btnFilterDirect',
+            'return': 'btnFilterReturn'
         };
         const radioId = targetRadioMap[type];
         if (radioId && $(radioId)) {
@@ -6788,6 +6858,351 @@ const app = {
     syncMobileLimitToDesktop: function() {
         if ($('historyLimit') && $('mobileLimitSelect')) {
             $('historyLimit').value = $('mobileLimitSelect').value;
+        }
+    },
+
+    // =========================================================================
+    // [출고 반품 전표 등록 및 원본 Lot 복구]
+    // =========================================================================
+    currentReturnVoucher: null,
+
+    openReturnModal: async function(outboundId) {
+        try {
+            const data = await authFetch(`${API_BASE}/outbound/returnable/${outboundId}`);
+            this.currentReturnVoucher = data;
+
+            const isDirect = data.is_direct === 1;
+            $('returnOrigOutboundId').value = data.id;
+            $('returnOrigIsDirect').value = isDirect ? '1' : '0';
+
+            const typeBadge = $('returnModalTypeBadge');
+            if (typeBadge) {
+                typeBadge.textContent = isDirect ? '직출고 반품' : '일반출고 반품';
+                typeBadge.className = isDirect
+                    ? 'badge bg-warning text-dark fw-bold'
+                    : 'badge bg-white text-dark fw-bold';
+            }
+
+            const txIdDisplay = data.transaction_group_id || `OUT-${(data.date || '').split('T')[0].replace(/-/g, '')}-${String(data.id).padStart(4, '0')}`;
+            $('returnOrigTxId').textContent = txIdDisplay;
+            $('returnOrigDate').textContent = (data.date || '').split('T')[0];
+            $('returnOrigDestination').textContent = data.destination + (data.actual_destination ? ` (실: ${data.actual_destination})` : '');
+
+            const supplierBox = $('returnOrigSupplierBox');
+            if (isDirect) {
+                if (supplierBox) supplierBox.style.display = 'block';
+                $('returnOrigSupplier').textContent = data.supplier || '-';
+            } else if (supplierBox) {
+                supplierBox.style.display = 'none';
+            }
+
+            // 기존 반품 이력 배너 표시
+            const existAlert = $('returnExistingHistoryAlert');
+            if (existAlert) {
+                if (data.existing_returns && data.existing_returns.length > 0) {
+                    const retLinks = data.existing_returns.map(er =>
+                        `<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">${er.date} (${er.transaction_group_id || '반품'}) : ${er.qty}</span>`
+                    ).join('');
+                    existAlert.innerHTML = `<i class='bx bx-info-circle me-1'></i><strong>기존 반품 내역 존재:</strong> ${retLinks}`;
+                    existAlert.classList.remove('d-none');
+                } else {
+                    existAlert.innerHTML = '';
+                    existAlert.classList.add('d-none');
+                }
+            }
+
+            // 반품 일자 기본값 (오늘) 및 사유 초기화
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            $('returnDate').value = `${yyyy}-${mm}-${dd}`;
+            $('returnReason').value = '';
+
+            // 직출고 반품 귀속 방식 (기본값: 공급처로 바로 반품 'supplier')
+            const directModeSec = $('returnDirectModeSection');
+            if (isDirect) {
+                directModeSec.classList.remove('d-none');
+                const supRadio = $('directReturnModeSupplier');
+                if (supRadio) supRadio.checked = true;
+                this.populateReturnLocations();
+                this.toggleDirectReturnModeUI();
+            } else {
+                directModeSec.classList.add('d-none');
+            }
+
+            // 품목 리스트 렌더링 (클릭한 행이 속한 품목이 하나이거나 특정 행을 클릭했을 때 해당 행에 기본 포커스/수량 보조)
+            const items = data.items || [];
+            const tbody = $('returnItemsTbody');
+            tbody.innerHTML = items.map((item, idx) => {
+                const origQty = Math.abs(parseFloat(item.qty) || 0);
+                const retQty = parseFloat(item.returned_qty) || 0;
+                const availQty = parseFloat(item.returnable_qty) || 0;
+                const isExhausted = availQty <= 0;
+                // 사용자가 클릭한 바로 그 행이거나 품목이 1개인 경우, 편의를 위해 잔여 반품가능 수량을 기본 입력
+                const defaultInputQty = (!isExhausted && (items.length === 1 || item.id === Number(outboundId))) ? availQty : 0;
+
+                let lotPreviewHtml = '';
+                if (isDirect) {
+                    lotPreviewHtml = `<div class="small text-secondary"><i class='bx bx-buildings me-1'></i>직출 공급처: <strong>${item.supplier || '-'}</strong> (매입단가 ${(item.inbound_price || 0).toLocaleString()}원)</div>`;
+                } else if (item.consumed_lots && item.consumed_lots.length > 0) {
+                    lotPreviewHtml = item.consumed_lots.map(lot => {
+                        const lotAvail = parseFloat(lot.returnable_qty) || 0;
+                        return `<div class="small text-secondary mb-1">
+                            <span class="badge bg-light text-dark border">Lot #${lot.inbound_id}</span>
+                            ${lot.inbound_date} (${lot.supplier || '-'} · ${lot.location_name || '창고'})
+                            <span class="text-primary fw-bold">복구가능: ${lotAvail}</span>
+                        </div>`;
+                    }).join('');
+                } else {
+                    lotPreviewHtml = `<div class="small text-muted">원본 Lot 정보 없음 (품목 기준 복구)</div>`;
+                }
+
+                return `
+                <tr data-parent-id="${item.id}" data-avail-qty="${availQty}" class="${isExhausted ? 'table-secondary opacity-75' : ''}">
+                    <td>
+                        <div class="fw-bold text-dark">${item.item}</div>
+                        <div class="text-muted small">${item.spec || '-'} (${item.unit || '-'})</div>
+                    </td>
+                    <td class="text-end tabular-nums">${origQty.toLocaleString()}</td>
+                    <td class="text-end tabular-nums ${retQty > 0 ? 'text-danger fw-bold' : 'text-muted'}">${retQty.toLocaleString()}</td>
+                    <td class="text-end tabular-nums fw-bold text-primary">${availQty.toLocaleString()}</td>
+                    <td style="background:#faf5ff;">
+                        <input type="number" step="any" min="0" max="${availQty}"
+                               class="form-control form-control-sm text-end fw-bold return-qty-input"
+                               data-idx="${idx}"
+                               value="${defaultInputQty}"
+                               ${isExhausted ? 'disabled' : ''}
+                               oninput="app.onReturnQtyChange(${idx})">
+                    </td>
+                    <td>
+                        <input type="number" step="any"
+                               class="form-control form-control-sm text-end return-price-input"
+                               data-idx="${idx}"
+                               value="${item.selling_price || 0}"
+                               ${isExhausted ? 'disabled' : ''}
+                               oninput="app.updateReturnModalSummary()">
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="any"
+                                   class="form-control form-control-sm text-end return-ship-input"
+                                   data-idx="${idx}"
+                                   value="0"
+                                   placeholder="운반비"
+                                   ${isExhausted ? 'disabled' : ''}>
+                            <div class="input-group-text bg-white px-1" title="운반비 부가세 포함 여부">
+                                <input class="form-check-input mt-0 return-ship-vat-input" type="checkbox" data-idx="${idx}" ${isExhausted ? 'disabled' : ''}>
+                                <span class="ms-1" style="font-size:10px;">VAT</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        ${lotPreviewHtml}
+                        <input type="text" class="form-control form-control-sm mt-1 return-note-input"
+                               data-idx="${idx}"
+                               placeholder="품목별 반품 비고 (선택)"
+                               ${isExhausted ? 'disabled' : ''}>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            this.updateReturnModalSummary();
+
+            const modalEl = $('returnModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        } catch (err) {
+            console.error('openReturnModal error:', err);
+            alert('반품 가능 정보를 불러올 수 없습니다: ' + (err.message || err));
+        }
+    },
+
+    populateReturnLocations: function() {
+        const sel = $('returnLocationSelect');
+        if (!sel) return;
+        const locs = (this.locations || []).filter(l => l.is_active !== 0 && !l.name.includes('직출'));
+        if (locs.length === 0) {
+            sel.innerHTML = `<option value="1">본사</option>`;
+        } else {
+            sel.innerHTML = locs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        }
+    },
+
+    toggleDirectReturnModeUI: function() {
+        const mode = document.querySelector('input[name="directReturnMode"]:checked')?.value || 'supplier';
+        const whCol = $('returnWarehouseSelectCol');
+        if (whCol) {
+            if (mode === 'warehouse') whCol.classList.remove('d-none');
+            else whCol.classList.add('d-none');
+        }
+    },
+
+    fillAllReturnMaxQty: function() {
+        const rows = document.querySelectorAll('#returnItemsTbody tr');
+        rows.forEach(tr => {
+            const avail = parseFloat(tr.dataset.availQty) || 0;
+            const input = tr.querySelector('.return-qty-input');
+            if (input && !input.disabled) {
+                input.value = avail;
+            }
+        });
+        this.updateReturnModalSummary();
+    },
+
+    clearAllReturnQty: function() {
+        document.querySelectorAll('#returnItemsTbody .return-qty-input').forEach(input => {
+            if (!input.disabled) input.value = 0;
+        });
+        this.updateReturnModalSummary();
+    },
+
+    onReturnQtyChange: function(idx) {
+        const input = document.querySelector(`.return-qty-input[data-idx="${idx}"]`);
+        if (!input) return;
+        const tr = input.closest('tr');
+        const avail = parseFloat(tr?.dataset.availQty) || 0;
+        let val = parseFloat(input.value);
+        if (isNaN(val) || val < 0) {
+            val = 0;
+        } else if (val > avail) {
+            alert(`반품 가능 수량(${avail})을 초과할 수 없습니다.`);
+            input.value = avail;
+        }
+        this.updateReturnModalSummary();
+    },
+
+    updateReturnModalSummary: function() {
+        let count = 0;
+        let totalQty = 0;
+        let totalSupplyAmt = 0;
+
+        const rows = document.querySelectorAll('#returnItemsTbody tr');
+        rows.forEach(tr => {
+            const qtyInput = tr.querySelector('.return-qty-input');
+            const priceInput = tr.querySelector('.return-price-input');
+            const qty = Math.abs(parseFloat(qtyInput?.value) || 0);
+            const price = parseFloat(priceInput?.value) || 0;
+            if (qty > 0) {
+                count++;
+                totalQty += qty;
+                totalSupplyAmt += Math.round(qty * price);
+            }
+        });
+
+        if ($('returnSummaryCount')) $('returnSummaryCount').textContent = count.toLocaleString();
+        if ($('returnSummaryQty')) $('returnSummaryQty').textContent = totalQty > 0 ? `-${totalQty.toLocaleString()}` : '0';
+        if ($('returnSummarySupplyAmt')) $('returnSummarySupplyAmt').textContent = totalSupplyAmt > 0 ? `-${totalSupplyAmt.toLocaleString()}원` : '0원';
+    },
+
+    submitReturnForm: async function(e) {
+        e.preventDefault();
+        if (!this.currentReturnVoucher) return;
+
+        const date = $('returnDate')?.value;
+        const returnReason = $('returnReason')?.value.trim() || '';
+        const isDirect = $('returnOrigIsDirect')?.value === '1';
+        const directReturnMode = isDirect
+            ? (document.querySelector('input[name="directReturnMode"]:checked')?.value || 'supplier')
+            : 'supplier';
+        const returnLocationId = parseInt($('returnLocationSelect')?.value, 10) || 1;
+
+        const voucherItems = this.currentReturnVoucher.items || [];
+        const rows = document.querySelectorAll('#returnItemsTbody tr');
+        const payloadItems = [];
+
+        for (let idx = 0; idx < rows.length; idx++) {
+            const tr = rows[idx];
+            const origItem = voucherItems[idx];
+            if (!origItem) continue;
+
+            const qty = Math.abs(parseFloat(tr.querySelector('.return-qty-input')?.value) || 0);
+            if (qty <= 0) continue;
+
+            const avail = parseFloat(tr.dataset.availQty) || 0;
+            if (qty > avail + 1e-6) {
+                alert(`[${origItem.item}] 반품 수량(${qty})이 반품 가능 수량(${avail})을 초과합니다.`);
+                return;
+            }
+
+            const sellingPrice = parseFloat(tr.querySelector('.return-price-input')?.value) || 0;
+            const shippingFee = parseFloat(tr.querySelector('.return-ship-input')?.value) || 0;
+            const shippingVat = tr.querySelector('.return-ship-vat-input')?.checked ? 1 : 0;
+            const itemNote = tr.querySelector('.return-note-input')?.value.trim() || '';
+
+            // 원본 소진 Lot에서 순차적으로 복구 수량 배분
+            const returnLots = [];
+            let rem = qty;
+            for (const lot of (origItem.consumed_lots || [])) {
+                if (rem <= 0) break;
+                const lotAvail = parseFloat(lot.returnable_qty) || 0;
+                const alloc = Math.min(rem, lotAvail);
+                if (alloc > 0) {
+                    returnLots.push({
+                        inbound_id: lot.inbound_id,
+                        return_qty: Number(alloc.toFixed(4))
+                    });
+                    rem = Number((rem - alloc).toFixed(4));
+                }
+            }
+
+            payloadItems.push({
+                parent_outbound_id: origItem.id,
+                return_qty: qty,
+                selling_price: sellingPrice,
+                inbound_price: origItem.inbound_price,
+                supplier: origItem.supplier,
+                shipping_fee: shippingFee,
+                shipping_fee_vat_included: shippingVat,
+                note: itemNote,
+                return_lots: returnLots
+            });
+        }
+
+        if (payloadItems.length === 0) {
+            alert('반품할 수량을 1개 이상 입력해주세요.');
+            return;
+        }
+
+        const confirmMsg = isDirect
+            ? (directReturnMode === 'supplier'
+                ? `선택한 직출고 건(${payloadItems.length}개 품목)을 [공급처 동시 반품(매입/매출 마이너스 차감)]으로 등록하시겠습니까?`
+                : `선택한 직출고 건(${payloadItems.length}개 품목)을 [당사 창고 회수 입고]로 등록하시겠습니까?`)
+            : `선택한 출고 건(${payloadItems.length}개 품목)에 대해 반품 전표를 생성하고 출고되었던 원본 Lot 재고를 복구하시겠습니까?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const submitBtn = $('btnSubmitReturn');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const res = await authFetch(`${API_BASE}/outbound/return`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date,
+                    return_reason: returnReason,
+                    direct_return_mode: directReturnMode,
+                    return_location_id: returnLocationId,
+                    items: payloadItems
+                })
+            });
+
+            const modalEl = $('returnModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            alert(res.message || '반품 전표가 성공적으로 등록되었습니다.');
+            await this.loadHistory(this.currentPage || 1);
+            if (typeof this.loadInventory === 'function') {
+                this.loadInventory();
+            }
+        } catch (err) {
+            console.error('submitReturnForm error:', err);
+            alert('반품 등록 실패: ' + (err.message || err));
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
 };

@@ -1037,6 +1037,14 @@
             color: #d97706;
             border: 1px solid #fde68a;
         }
+        .erp-badge-return {
+            background-color: #f5f3ff;
+            color: #7c3aed;
+            border: 1px solid #ddd6fe;
+        }
+        .erp-row-return td {
+            background-color: #faf5ff !important;
+        }
         .erp-badge-info {
             background-color: #f0f9ff;
             color: #0284c7;
@@ -1065,6 +1073,17 @@
         .btn-grid-action:hover {
             background: #f1f5f9;
             color: #0f172a;
+        }
+        .btn-grid-action-return {
+            border-color: #ddd6fe;
+            background: #f5f3ff;
+            color: #6d28d9;
+            font-weight: 600;
+        }
+        .btn-grid-action-return:hover {
+            background: #ede9fe;
+            color: #5b21b6;
+            border-color: #c4b5fd;
         }
         .btn-grid-action-danger:hover {
             background: #fee2e2;
@@ -2040,12 +2059,13 @@
             </div>
         </div>
 
-        <!-- 모바일 구분 세그먼트 탭 (전체 / 입고 / 출고 / 직출고) -->
+        <!-- 모바일 구분 세그먼트 탭 (전체 / 입고 / 출고 / 직출고 / 반품) -->
         <div class="mobile-type-tabs">
             <button type="button" class="mobile-type-tab active" data-type="all" onclick="app.setMobileTypeFilter('all')">전체</button>
             <button type="button" class="mobile-type-tab" data-type="inbound" onclick="app.setMobileTypeFilter('inbound')">입고</button>
             <button type="button" class="mobile-type-tab" data-type="outbound" onclick="app.setMobileTypeFilter('outbound')">출고</button>
             <button type="button" class="mobile-type-tab" data-type="direct" onclick="app.setMobileTypeFilter('direct')">직출고</button>
+            <button type="button" class="mobile-type-tab" data-type="return" onclick="app.setMobileTypeFilter('return')" style="color: #7c3aed;">반품</button>
         </div>
     </div>
 
@@ -2066,6 +2086,9 @@
                 
                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterDirect" value="direct" onchange="app.resetPageAndLoadHistory()">
                 <label class="erp-tab-btn" for="btnFilterDirect">직출고만 보기</label>
+
+                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterReturn" value="return" onchange="app.resetPageAndLoadHistory()">
+                <label class="erp-tab-btn" for="btnFilterReturn" style="color: #7c3aed;"><i class='bx bx-revision'></i> 반품만 보기</label>
             </div>
         </div>
 
@@ -3433,6 +3456,149 @@
                     </button>
                     <button type="button" class="btn btn-primary fw-bold" onclick="app.proceedDirectDuplicate('skip_duplicates')">
                         <i class='bx bx-check'></i> 중복 제외 신규건만 등록
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 출고/직출고 반품 전표 등록 모달 -->
+<div class="modal fade" id="returnModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white py-2" style="background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="modal-title fw-bold mb-0"><i class='bx bx-revision me-1'></i> 출고 반품 전표 등록 (원본 Lot 복구 및 매출 차감)</h6>
+                    <span class="badge bg-white text-dark fw-bold" id="returnModalTypeBadge" style="font-size: 11px;">일반출고 반품</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <form id="returnForm" onsubmit="app.submitReturnForm(event)">
+                    <input type="hidden" id="returnOrigOutboundId">
+                    <input type="hidden" id="returnOrigIsDirect" value="0">
+
+                    <!-- 원본 출고 전표 요약 배너 -->
+                    <div class="card border-0 shadow-sm mb-3" style="background: #faf5ff; border-left: 4px solid #7c3aed !important;">
+                        <div class="card-body py-2 px-3">
+                            <div class="row g-2 align-items-center" style="font-size: 12.5px;">
+                                <div class="col-md-3">
+                                    <span class="text-muted">원본 전표번호:</span>
+                                    <strong class="ms-1 font-monospace text-dark" id="returnOrigTxId">-</strong>
+                                </div>
+                                <div class="col-md-2">
+                                    <span class="text-muted">원본 출고일:</span>
+                                    <strong class="ms-1 text-dark" id="returnOrigDate">-</strong>
+                                </div>
+                                <div class="col-md-4">
+                                    <span class="text-muted">매출처(출고처):</span>
+                                    <strong class="ms-1 text-primary" id="returnOrigDestination">-</strong>
+                                </div>
+                                <div class="col-md-3" id="returnOrigSupplierBox" style="display: none;">
+                                    <span class="text-muted">직출 공급처:</span>
+                                    <strong class="ms-1 text-success" id="returnOrigSupplier">-</strong>
+                                </div>
+                            </div>
+                            <div id="returnExistingHistoryAlert" class="mt-2 pt-2 border-top small text-danger d-none">
+                                <!-- 기존 반품 내역 안내 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 반품 공통 설정 영역 -->
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body py-2 px-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold mb-1 text-dark">반품 일자 (회계/입고일) <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control form-control-sm" id="returnDate" required>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold mb-1 text-dark">반품 사유 / 전표 메모</label>
+                                    <input type="text" class="form-control form-control-sm" id="returnReason" placeholder="예: 현장 잔여물량 회수, 규격 오발주 반품, 불량 교체 등">
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="app.fillAllReturnMaxQty()">
+                                            <i class='bx bx-check-double'></i> 잔여 전량 반품 채우기
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="app.clearAllReturnQty()">
+                                            <i class='bx bx-reset'></i> 수량 초기화
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 직출고 전용: 반품 처리 방식 선택 (기본값: 공급처로 바로 반품) -->
+                            <div id="returnDirectModeSection" class="mt-2 pt-2 border-top d-none">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-8">
+                                        <label class="form-label small fw-bold mb-1 text-warning-emphasis">
+                                            <i class='bx bx-transfer-alt'></i> 직출고 반품 귀속 방식 선택
+                                        </label>
+                                        <div class="d-flex flex-wrap gap-3 align-items-center" style="font-size: 12px;">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="radio" name="directReturnMode" id="directReturnModeSupplier" value="supplier" checked onchange="app.toggleDirectReturnModeUI()">
+                                                <label class="form-check-label fw-bold text-dark" for="directReturnModeSupplier">
+                                                    공급처로 바로 반품 <span class="badge bg-warning-subtle text-dark border">기본 · 매입/매출 동시 (-)차감</span>
+                                                </label>
+                                            </div>
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="radio" name="directReturnMode" id="directReturnModeWarehouse" value="warehouse" onchange="app.toggleDirectReturnModeUI()">
+                                                <label class="form-check-label text-secondary" for="directReturnModeWarehouse">
+                                                    당사 창고로 회수 입고 <span class="text-muted">(매출만 (-)차감 후 창고 재고 편입)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-none" id="returnWarehouseSelectCol">
+                                        <label class="form-label small fw-bold mb-1">회수 입고 창고 위치</label>
+                                        <select class="form-select form-select-sm" id="returnLocationSelect"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 반품 품목 및 Lot 복구 지정 테이블 -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold small text-dark"><i class='bx bx-list-check text-primary me-1'></i> 품목별 반품 수량 및 복구 Lot 확인</span>
+                            <span class="text-muted" style="font-size: 11px;">반품할 품목의 <strong>반품수량</strong>을 입력하면 원본 출고 Lot로 자동 복원됩니다.</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm align-middle mb-0" style="font-size: 12px;">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th style="width: 18%;">품목 / 규격</th>
+                                        <th style="width: 7%;">원출고</th>
+                                        <th style="width: 7%;">기반품</th>
+                                        <th style="width: 8%;">반품가능</th>
+                                        <th style="width: 11%; background:#f5f3ff; color:#6d28d9;">반품수량 입력</th>
+                                        <th style="width: 11%;">반품단가(매출)</th>
+                                        <th style="width: 13%;">반품 운반비</th>
+                                        <th style="width: 25%;">복구 대상 원본 Lot / 비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="returnItemsTbody">
+                                    <!-- JS 동적 렌더링 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-white d-flex justify-content-between align-items-center py-2">
+                <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 12.5px;">
+                    <span>반품 선택 품목: <strong class="text-primary" id="returnSummaryCount">0</strong>건</span>
+                    <span>총 반품 수량: <strong class="text-danger" id="returnSummaryQty">0</strong></span>
+                    <span>매출 차감 합계(공급가): <strong class="text-danger" id="returnSummarySupplyAmt">0원</strong></span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" form="returnForm" class="btn btn-sm text-white fw-bold px-4" style="background-color: #6d28d9;" id="btnSubmitReturn">
+                        <i class='bx bx-check-circle me-1'></i> 반품 전표 확정 등록
                     </button>
                 </div>
             </div>
