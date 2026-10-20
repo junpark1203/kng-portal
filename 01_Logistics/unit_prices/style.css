@@ -986,6 +986,7 @@ body {
 
     /* 화면 UI 요소 전체 숨김 */
     .no-print,
+    .erp-toast-banner,
     .erp-top-toolbar,
     .erp-filter-ribbon,
     .btn-erp,
@@ -1797,10 +1798,14 @@ body {
     box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
     font-size: 12.5px;
     font-weight: 600;
-    display: flex;
+    display: none;
     align-items: center;
     gap: 8px;
+    pointer-events: none;
     animation: erpToastIn 0.2s ease-out;
+}
+.erp-toast-banner.show {
+    display: flex;
 }
 @keyframes erpToastIn {
     from { opacity: 0; transform: translateY(10px); }

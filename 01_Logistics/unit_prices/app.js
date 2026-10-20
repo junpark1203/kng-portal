@@ -3209,8 +3209,10 @@ const app = {
         let banner = document.querySelector('.erp-toast-banner');
         if (!banner) {
             banner = document.createElement('div');
-            banner.className = 'erp-toast-banner';
+            banner.className = 'erp-toast-banner no-print';
             document.body.appendChild(banner);
+        } else {
+            banner.classList.add('no-print');
         }
         banner.innerHTML = `<i class='bx bx-check-circle fs-5' style="color:#34d399;"></i> <span>${escapeHtml(message)}</span>`;
         banner.classList.add('show');
@@ -6374,6 +6376,9 @@ const app = {
                 ${sectionsHtml}
             </div>
         `;
+
+        const toastBanner = document.querySelector('.erp-toast-banner');
+        if (toastBanner) toastBanner.classList.remove('show');
 
         setTimeout(() => {
             const restoreAfterPrint = () => {
