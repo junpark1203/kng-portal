@@ -341,6 +341,9 @@
                 <button type="button" class="btn-erp" onclick="app.switchViewMode('item')" title="품목별 단가표로 이동하여 비교할 품목을 선택합니다">
                     <i class='bx bx-plus text-success'></i> 단가표에서 품목 선택
                 </button>
+                <button type="button" class="btn-erp" onclick="app.sortAllSectionsByPrice(0)" title="모든 비교 섹션의 품목을 단가(환산단가/매입단가)가 낮은 순번부터 1, 2, 3... 순으로 일괄 정렬합니다">
+                    <i class='bx bx-sort-up text-primary'></i> 전체 단가 낮은순 정렬
+                </button>
                 <div class="vr mx-1 my-auto" style="height: 20px;"></div>
                 <button type="button" class="btn btn-sm btn-primary fw-bold py-1 px-2.5 d-inline-flex align-items-center gap-1" style="font-size: 12px;" onclick="app.openSaveToArchiveModal()" title="현재 비교표를 검토서 보관함에 저장합니다">
                     <i class='bx bx-save fs-6'></i> 검토서 저장
@@ -1084,6 +1087,9 @@
                                 </div>
                             </div>
                             <div class="col-md-auto d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-2.5 d-inline-flex align-items-center gap-1" onclick="app.sortAllSectionsByPrice(app.activeArchiveProjectId)" title="이 검토서의 모든 섹션 품목을 단가가 낮은 순번부터 일괄 정렬합니다">
+                                    <i class='bx bx-sort-up text-primary'></i> 전체 단가 낮은순 정렬
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary fw-semibold px-2.5 d-inline-flex align-items-center gap-1" onclick="app.openNewSectionModal(app.activeArchiveProjectId)" title="이 검토서에 새로운 비교 섹션을 추가합니다">
                                     <i class='bx bx-folder-plus'></i> 새 섹션 추가
                                 </button>

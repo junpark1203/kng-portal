@@ -3472,9 +3472,12 @@ const app = {
 
             if ($('archiveDetailTitleText')) $('archiveDetailTitleText').innerText = p.title || '검토서 상세';
             if ($('archiveDetailCountBadge')) $('archiveDetailCountBadge').innerText = `${secs.length}섹션 / ${totalItems}품목`;
-            if ($('inpArchiveDetailTitle')) $('inpArchiveDetailTitle').value = p.title || '';
-            if ($('inpArchiveDetailDate')) $('inpArchiveDetailDate').value = p.doc_date ? p.doc_date.substring(0, 10) : '';
-            if ($('inpArchiveDetailMemo')) $('inpArchiveDetailMemo').value = p.memo || '';
+            const titleEl = $('inpDetailArchiveTitle') || $('inpArchiveDetailTitle');
+            const dateEl = $('inpDetailArchiveDate') || $('inpArchiveDetailDate');
+            const memoEl = $('inpDetailArchiveMemo') || $('inpArchiveDetailMemo');
+            if (titleEl) titleEl.value = p.title || '';
+            if (dateEl) dateEl.value = p.doc_date ? p.doc_date.substring(0, 10) : '';
+            if (memoEl) memoEl.value = p.memo || '';
 
             this.renderArchiveDetailSummary();
             this.renderArchiveDetailSections();
@@ -3487,14 +3490,17 @@ const app = {
     saveArchiveDetailMeta: async function() {
         const projectId = this.activeArchiveProjectId;
         if (!projectId) return;
-        const title = ($('inpArchiveDetailTitle')?.value || '').trim();
+        const titleEl = $('inpDetailArchiveTitle') || $('inpArchiveDetailTitle');
+        const dateEl = $('inpDetailArchiveDate') || $('inpArchiveDetailDate');
+        const memoEl = $('inpDetailArchiveMemo') || $('inpArchiveDetailMemo');
+        const title = (titleEl?.value || '').trim();
         if (!title) {
             alert('검토서 명칭을 입력해주세요.');
-            $('inpArchiveDetailTitle')?.focus();
+            titleEl?.focus();
             return;
         }
-        const doc_date = ($('inpArchiveDetailDate')?.value || '').trim();
-        const memo = ($('inpArchiveDetailMemo')?.value || '').trim();
+        const doc_date = (dateEl?.value || '').trim();
+        const memo = (memoEl?.value || '').trim();
 
         try {
             await authFetch(`${API_BASE}/quote-projects/${projectId}`, {
@@ -3512,6 +3518,184 @@ const app = {
             this.showToast('검토서 기본정보가 저장되었습니다.');
         } catch (err) {
             alert('검토서 정보 수정 실패: ' + err.message);
+        }
+    },
+
+    restoreFromArchive: async function(projectId) {
+        const pid = projectId || this.activeArchiveProjectId;
+        if (!pid) return;
+        const p = (this.archiveProjects || []).find(item => item.id === pid) || this.activeArchiveProject;
+        const name = p ? p.title : '선택한 검토서';
+
+        if (!confirm(`[${name}] 검토서 내용을 메인 단가 비교표 화면으로 복사하시겠습니까?\n\n※ 주의: 현재 메인 단가 비교표에 작성 중이던 내용은 이 검토서 사본으로 대체됩니다.`)) {
+            return;
+        }
+
+        try {
+            const res = await authFetch(`${API_BASE}/quote-projects/${pid}/restore-to-draft`, {
+                method: 'POST'
+            });
+
+            if (this.archiveDetailModalInstance) {
+                this.archiveDetailModalInstance.hide();
+            }
+            if (this.quoteArchiveModalInstance) {
+                this.quoteArchiveModalInstance.hide();
+            }
+
+            if (res.project) {
+                if ($('inpDraftTitle')) $('inpDraftTitle').value = res.project.title || '';
+                if ($('inpDraftDate')) $('inpDraftDate').value = res.project.doc_date ? res.project.doc_date.substring(0, 10) : '';
+                if ($('inpDraftMemo')) $('inpDraftMemo').value = res.project.memo || '';
+                this.saveDraftMeta(true);
+            }
+
+            await this.loadQuoteSections();
+            this.switchViewMode('quote');
+            this.showToast(res.message || '검토서 사본이 메인 비교표로 복사되었습니다.');
+        } catch (err) {
+            alert('사본 복사 실패: ' + err.message);
+        }
+    },
+
+    // ─────────────────────────────────────────
+    // 품목 및 섹션 순서 변경 · 단가순 정렬 메서드
+    // ─────────────────────────────────────────
+    moveQuoteItemOrder: async function(sectionId, itemId, direction, projectId = 0) {
+        const sections = projectId > 0 ? (this.activeArchiveSections || []) : (this.quoteSections || []);
+        const sec = sections.find(s => s.id === sectionId);
+        if (!sec || !Array.isArray(sec.items) || sec.items.length < 2) return;
+
+        const idx = sec.items.findIndex(it => it.id === itemId);
+        if (idx === -1) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= sec.items.length) return;
+
+        // 배열 내 위치 스왑 (즉시 UI 반영)
+        const temp = sec.items[idx];
+        sec.items[idx] = sec.items[targetIdx];
+        sec.items[targetIdx] = temp;
+
+        if (projectId > 0) {
+            this.renderArchiveDetailSections();
+        } else {
+            this.renderQuoteComparisonView();
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/${sectionId}/reorder-items`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    item_ids: sec.items.map(it => it.id)
+                })
+            });
+        } catch (err) {
+            console.warn('moveQuoteItemOrder error:', err);
+            alert('품목 순서 저장 실패: ' + err.message);
+        }
+    },
+
+    sortSectionItemsByPrice: async function(sectionId, projectId = 0, silent = false) {
+        const sections = projectId > 0 ? (this.activeArchiveSections || []) : (this.quoteSections || []);
+        const sec = sections.find(s => s.id === sectionId);
+        if (!sec || !Array.isArray(sec.items) || sec.items.length < 2) {
+            if (!silent) this.showToast('정렬할 후보 품목이 2개 이상이어야 합니다.');
+            return;
+        }
+
+        const analyzed = sec.items.map(it => ({
+            raw: it,
+            norm: this.parseUnitNormalize(it.spec, it.buy_price)
+        }));
+        const normUnits = analyzed.filter(a => a.norm && a.norm.unit).map(a => a.norm.unit);
+        const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0]))
+            ? normUnits[0]
+            : null;
+
+        analyzed.sort((a, b) => {
+            const pA = (commonUnit && a.norm && a.norm.normPrice > 0)
+                ? a.norm.normPrice
+                : ((a.raw.buy_price && a.raw.buy_price > 0) ? a.raw.buy_price : Infinity);
+            const pB = (commonUnit && b.norm && b.norm.normPrice > 0)
+                ? b.norm.normPrice
+                : ((b.raw.buy_price && b.raw.buy_price > 0) ? b.raw.buy_price : Infinity);
+            return pA - pB;
+        });
+
+        sec.items = analyzed.map(a => a.raw);
+
+        if (projectId > 0) {
+            this.renderArchiveDetailSections();
+        } else {
+            this.renderQuoteComparisonView();
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/${sectionId}/reorder-items`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    item_ids: sec.items.map(it => it.id)
+                })
+            });
+            if (!silent) {
+                this.showToast(`[${sec.section_name}] 품목이 단가 낮은 순(1, 2, 3...)으로 정렬되었습니다.`);
+            }
+        } catch (err) {
+            console.warn('sortSectionItemsByPrice error:', err);
+            if (!silent) alert('단가순 정렬 저장 실패: ' + err.message);
+        }
+    },
+
+    sortAllSectionsByPrice: async function(projectId = 0) {
+        const sections = projectId > 0 ? (this.activeArchiveSections || []) : (this.quoteSections || []);
+        if (!sections || sections.length === 0) {
+            alert('정렬할 비교 섹션이 없습니다.');
+            return;
+        }
+        let sortedCount = 0;
+        for (const sec of sections) {
+            if (Array.isArray(sec.items) && sec.items.length >= 2) {
+                await this.sortSectionItemsByPrice(sec.id, projectId, true);
+                sortedCount++;
+            }
+        }
+        if (sortedCount > 0) {
+            this.showToast(`총 ${sortedCount}개 섹션의 품목이 단가 낮은 순(1, 2, 3...)으로 일괄 정렬되었습니다.`);
+        } else {
+            this.showToast('2개 이상의 후보 품목을 가진 섹션이 없습니다.');
+        }
+    },
+
+    moveQuoteSectionOrder: async function(sectionId, direction, projectId = 0) {
+        const sections = projectId > 0 ? (this.activeArchiveSections || []) : (this.quoteSections || []);
+        if (!sections || sections.length < 2) return;
+
+        const idx = sections.findIndex(s => s.id === sectionId);
+        if (idx === -1) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= sections.length) return;
+
+        const temp = sections[idx];
+        sections[idx] = sections[targetIdx];
+        sections[targetIdx] = temp;
+
+        if (projectId > 0) {
+            this.renderArchiveDetailSummary();
+            this.renderArchiveDetailSections();
+        } else {
+            this.renderQuoteComparisonView();
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/reorder`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    section_ids: sections.map(s => s.id)
+                })
+            });
+        } catch (err) {
+            console.warn('moveQuoteSectionOrder error:', err);
+            alert('섹션 순서 저장 실패: ' + err.message);
         }
     },
 
@@ -3704,7 +3888,7 @@ const app = {
         }
 
         let html = '';
-        sections.forEach(sec => {
+        sections.forEach((sec, sIdx) => {
             const items = sec.items || [];
             const analyzedItems = items.map(it => ({
                 ...it,
@@ -3818,7 +4002,13 @@ const app = {
                     rowsHtml += `
                         <tr class="${isBest ? 'row-best-price' : ''}">
                             <td class="text-center">
-                                <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <div class="order-btn-group">
+                                        <button type="button" class="btn-order-step" onclick="app.moveQuoteItemOrder(${sec.id}, ${it.id}, -1, ${pid})" ${cIdx === 0 ? 'disabled' : ''} title="순서 위로 이동">▲</button>
+                                        <button type="button" class="btn-order-step" onclick="app.moveQuoteItemOrder(${sec.id}, ${it.id}, 1, ${pid})" ${cIdx === analyzedItems.length - 1 ? 'disabled' : ''} title="순서 아래로 이동">▼</button>
+                                    </div>
+                                    <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
+                                </div>
                             </td>
                             <td class="text-center"><span class="${ptBadgeClass}">${escapeHtml(pt)}</span></td>
                             <td class="text-start ps-2 text-truncate"><strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong></td>
@@ -3851,6 +4041,10 @@ const app = {
                 <div class="quote-section-card mb-3">
                     <div class="quote-section-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="order-btn-group horizontal me-0.5" title="비교 섹션 상하 순서 이동">
+                                <button type="button" class="btn-order-step" onclick="app.moveQuoteSectionOrder(${sec.id}, -1, ${pid})" ${sIdx === 0 ? 'disabled' : ''} title="이 섹션을 위로 이동">▲</button>
+                                <button type="button" class="btn-order-step" onclick="app.moveQuoteSectionOrder(${sec.id}, 1, ${pid})" ${sIdx === sections.length - 1 ? 'disabled' : ''} title="이 섹션을 아래로 이동">▼</button>
+                            </div>
                             <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" style="cursor: pointer;">
                                 <i class='bx bx-folder-open text-primary'></i>
                                 <span>${escapeHtml(sec.section_name)}</span>
@@ -3863,6 +4057,9 @@ const app = {
                         <div class="d-flex align-items-center gap-1 flex-wrap">
                             <button type="button" class="btn-erp btn-sm" style="color: #2563eb; border-color: #93c5fd; background: #eff6ff;" onclick="app.openQuickAddItemModal(${sec.id}, '${escapeHtml(sec.section_name)}', ${pid})">
                                 <i class='bx bx-plus-circle'></i> 품목 추가
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" onclick="app.sortSectionItemsByPrice(${sec.id}, ${pid})" title="이 섹션의 품목들을 단가(환산단가/매입단가)가 낮은 순번부터 1, 2, 3... 순으로 정렬합니다">
+                                <i class='bx bx-sort-up text-primary'></i> 단가 낮은순
                             </button>
                             <button type="button" class="btn-erp btn-sm" onclick="app.openArchiveDetailPrintModal(${sec.id})">
                                 <i class='bx bx-printer'></i> 섹션 인쇄
@@ -3877,7 +4074,7 @@ const app = {
                             <table class="quote-compare-table w-100">
                                 <thead>
                                     <tr>
-                                        <th style="width: 65px;">후보</th>
+                                        <th style="width: 90px;">후보 (순서)</th>
                                         <th style="width: 70px;">단가구분</th>
                                         <th style="width: 130px;" class="text-start ps-2">공급업체</th>
                                         <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
@@ -3920,11 +4117,11 @@ const app = {
         this.quickAddTargetProjectId = projectId || 0;
         this.quickAddCheckedIds = new Set();
 
-        if ($('quickAddTargetSectionId')) $('quickAddTargetSectionId').value = sectionId;
-        if ($('quickAddTargetProjectId')) $('quickAddTargetProjectId').value = projectId || 0;
-        if ($('quickAddSectionTitleBadge')) $('quickAddSectionTitleBadge').innerText = `[${sectionName || '섹션'}]`;
+        const titleEl = $('quickAddSectionTitleText') || $('quickAddSectionTitleBadge');
+        if (titleEl) titleEl.innerText = `[${sectionName || '섹션'}]`;
         if ($('inpQuickAddSearch')) $('inpQuickAddSearch').value = '';
-        if ($('quickAddSelectedCountBadge')) $('quickAddSelectedCountBadge').innerText = '0건 선택됨';
+        const badgeEl = $('quickAddSelectedBadge') || $('quickAddSelectedCountBadge');
+        if (badgeEl) badgeEl.innerText = '0건 선택됨';
 
         this.renderQuickAddItemList();
 
@@ -3940,29 +4137,29 @@ const app = {
     toggleQuickAddItem: function(id, checked) {
         if (checked) this.quickAddCheckedIds.add(id);
         else this.quickAddCheckedIds.delete(id);
-        if ($('quickAddSelectedCountBadge')) {
-            $('quickAddSelectedCountBadge').innerText = `${this.quickAddCheckedIds.size}건 선택됨`;
+        const badgeEl = $('quickAddSelectedBadge') || $('quickAddSelectedCountBadge');
+        if (badgeEl) {
+            badgeEl.innerText = `${this.quickAddCheckedIds.size}건 선택됨`;
         }
     },
 
     renderQuickAddItemList: function() {
-        const tbody = $('quickAddItemListBody');
+        const tbody = $('quickAddItemTableBody') || $('quickAddItemListBody');
         if (!tbody) return;
         const kw = ($('inpQuickAddSearch')?.value || '').trim().toLowerCase();
 
         let list = this.priceList || [];
         if (kw) {
-            list = list.filter(p =>
-                (p.item || '').toLowerCase().includes(kw) ||
-                (p.spec || '').toLowerCase().includes(kw) ||
-                (p.default_supplier || '').toLowerCase().includes(kw) ||
-                (p.category || '').toLowerCase().includes(kw)
-            );
+            const tokens = kw.split(/\s+/).filter(Boolean);
+            list = list.filter(p => {
+                const hay = `${p.item || ''} ${p.spec || ''} ${p.default_supplier || ''} ${p.category || ''}`.toLowerCase();
+                return tokens.every(t => hay.includes(t));
+            });
         }
 
         const displayList = list.slice(0, 100);
         if (displayList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">일치하는 단가 품목이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">일치하는 단가 품목이 없습니다.</td></tr>`;
             return;
         }
 
@@ -3971,11 +4168,13 @@ const app = {
             const buyStr = it.buy_price ? `₩${it.buy_price.toLocaleString()}` : '-';
             const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
             const freightStr = isFreightIn ? '하차도' : '상차도';
+            const pt = it.price_type || '견적가';
             return `
                 <tr onclick="const cb = this.querySelector('input[type=checkbox]'); if(event.target !== cb){ cb.checked = !cb.checked; app.toggleQuickAddItem(${it.id}, cb.checked); }" style="cursor: pointer;">
                     <td class="text-center">
                         <input type="checkbox" class="form-check-input" ${checked} onchange="app.toggleQuickAddItem(${it.id}, this.checked)">
                     </td>
+                    <td class="text-center"><span class="badge bg-light text-secondary border">${escapeHtml(pt)}</span></td>
                     <td class="text-start ps-2 fw-semibold text-dark">${escapeHtml(it.default_supplier || '-')}</td>
                     <td class="text-start ps-2 fw-bold text-primary">${escapeHtml(it.item || '-')}</td>
                     <td class="text-start ps-2"><span class="spec-pill">${escapeHtml(it.spec || '-')}</span></td>
@@ -5166,6 +5365,10 @@ const app = {
                             </td>
                             <td class="text-center">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <div class="order-btn-group">
+                                        <button type="button" class="btn-order-step" onclick="app.moveQuoteItemOrder(${sec.id}, ${it.id}, -1, 0)" ${cIdx === 0 ? 'disabled' : ''} title="순서 위로 이동">▲</button>
+                                        <button type="button" class="btn-order-step" onclick="app.moveQuoteItemOrder(${sec.id}, ${it.id}, 1, 0)" ${cIdx === analyzedItems.length - 1 ? 'disabled' : ''} title="순서 아래로 이동">▼</button>
+                                    </div>
                                     <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
                                     ${isBest ? '<i class="bx bx-check-circle text-success fs-6" title="최저가 추천 품목"></i>' : ''}
                                 </div>
@@ -5238,6 +5441,10 @@ const app = {
                 <div class="quote-section-card" id="quote_section_${sec.id}">
                     <div class="quote-section-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <div class="order-btn-group horizontal me-0.5" title="비교 섹션 상하 순서 이동">
+                                <button type="button" class="btn-order-step" onclick="app.moveQuoteSectionOrder(${sec.id}, -1, 0)" ${sIdx === 0 ? 'disabled' : ''} title="이 섹션을 위로 이동">▲</button>
+                                <button type="button" class="btn-order-step" onclick="app.moveQuoteSectionOrder(${sec.id}, 1, 0)" ${sIdx === this.quoteSections.length - 1 ? 'disabled' : ''} title="이 섹션을 아래로 이동">▼</button>
+                            </div>
                             <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" title="더블클릭하거나 수정 버튼을 눌러 섹션명 및 권장 규격을 변경할 수 있습니다" style="cursor: pointer;">
                                 <i class='bx bx-folder-open text-primary'></i>
                                 <span>${escapeHtml(sec.section_name)}</span>
@@ -5252,6 +5459,9 @@ const app = {
                         <div class="d-flex align-items-center gap-1 flex-wrap">
                             <button type="button" class="btn-erp btn-sm" style="color: #2563eb; border-color: #93c5fd; background: #eff6ff;" onclick="app.openQuickAddItemModal(${sec.id}, '${escapeHtml(sec.section_name)}', 0)" title="단가표 화면으로 이동하지 않고 이 섹션에 품목을 즉시 검색·추가합니다">
                                 <i class='bx bx-plus-circle'></i> 품목 추가
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" onclick="app.sortSectionItemsByPrice(${sec.id}, 0)" title="이 섹션의 품목들을 단가(환산단가/매입단가)가 낮은 순번부터 1, 2, 3... 순으로 정렬합니다">
+                                <i class='bx bx-sort-up text-primary'></i> 단가 낮은순
                             </button>
                             <button type="button" class="btn-erp btn-sm" onclick="app.selectBestOnlyInSection(${sec.id})" title="이 섹션의 최저가(가성비) 품목만 선택하고 나머지는 제외">
                                 <i class='bx bx-check-double text-success'></i> 최저가만 선택
@@ -5273,7 +5483,7 @@ const app = {
                                         <th style="width: 32px;" class="text-center" title="섹션 전체 선택/해제">
                                             <input type="checkbox" class="form-check-input" onchange="app.toggleAllInSection(${sec.id}, this.checked)" ${allSecChecked ? 'checked' : ''}>
                                         </th>
-                                        <th style="width: 70px;">후보</th>
+                                        <th style="width: 92px;">후보 (순서)</th>
                                         <th style="width: 70px;">단가구분</th>
                                         <th style="width: 130px;" class="text-start ps-2">공급업체</th>
                                         <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
@@ -5893,21 +6103,33 @@ const app = {
                 };
             });
 
-            // 공통 단위 판단 및 단위단가 기준 최저가순 오름차순 정렬
+            // 공통 단위 판단 및 최저가 품목(bestItemId) 도출 (화면에서 지정한 품목 순서는 그대로 보존!)
             const normUnits = analyzed.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
             const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0]))
                 ? normUnits[0]
                 : null;
 
-            // 오름차순 정렬: 단위단가(normPrice) 기준 최저가부터 점점 비싸지는 순서로 배치
-            analyzed.sort((a, b) => {
-                const priceA = (commonUnit && a.norm && a.norm.normPrice > 0) ? a.norm.normPrice : (a.buy_price || Infinity);
-                const priceB = (commonUnit && b.norm && b.norm.normPrice > 0) ? b.norm.normPrice : (b.buy_price || Infinity);
-                return priceA - priceB;
-            });
+            let bestItemId = null;
+            let minVal = Infinity;
+            if (commonUnit) {
+                analyzed.forEach(it => {
+                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                        minVal = it.norm.normPrice;
+                        bestItemId = it.id;
+                    }
+                });
+            } else {
+                analyzed.forEach(it => {
+                    const b = it.buy_price || 0;
+                    if (b > 0 && b < minVal) {
+                        minVal = b;
+                        bestItemId = it.id;
+                    }
+                });
+            }
 
             // 1위 최저가 품목 도출 (요약표 및 강조용)
-            const bestItem = analyzed[0];
+            const bestItem = analyzed.find(it => it.id === bestItemId) || analyzed[0];
             if (bestItem) {
                 executiveSummaryItems.push({
                     secIdx: validSectionsCount,
@@ -5946,7 +6168,7 @@ const app = {
 
             let rows = benchmarkRowHtml;
             analyzed.forEach((it, cIdx) => {
-                const isBest = (cIdx === 0) && analyzed.length > 1;
+                const isBest = (it.id === bestItemId) && analyzed.length > 1;
                 const buy = it.buy_price || 0;
                 const sell = it.sell_price || 0;
                 const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;

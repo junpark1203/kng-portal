@@ -1512,7 +1512,7 @@ router.post('/quote-projects/save-from-draft', async (req, res) => {
                 [newProjectId, sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.target_benchmarks || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
-            const draftItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
+            const draftItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ? ORDER BY display_order ASC, id ASC`, [sec.id]);
             for (const it of draftItems) {
                 await dbRun(`
                     INSERT INTO logistics_quote_items
@@ -1575,7 +1575,7 @@ router.post('/quote-projects/:id/restore-to-draft', async (req, res) => {
                 [sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.target_benchmarks || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
-            const items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
+            const items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ? ORDER BY display_order ASC, id ASC`, [sec.id]);
             for (const it of items) {
                 await dbRun(`
                     INSERT INTO logistics_quote_items
@@ -1896,6 +1896,51 @@ router.post('/quote-sections/add-items', async (req, res) => {
             addedCount: addedCount,
             message: `[${finalSectionName}] 섹션에 품목이 성공적으로 추가되었습니다.`
         });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2-1. 비교 섹션 간 순서 일괄 변경 API
+router.put('/quote-sections/reorder', async (req, res) => {
+    try {
+        const { section_ids } = req.body;
+        if (!Array.isArray(section_ids) || section_ids.length === 0) {
+            return res.status(400).json({ error: '순서를 변경할 섹션 ID 목록이 필요합니다.' });
+        }
+        await dbRun("BEGIN TRANSACTION");
+        for (let idx = 0; idx < section_ids.length; idx++) {
+            const secId = parseInt(section_ids[idx], 10);
+            if (secId) {
+                await dbRun(`UPDATE logistics_quote_sections SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [idx + 1, secId]);
+            }
+        }
+        await dbRun("COMMIT");
+        res.json({ success: true, message: '섹션 순서가 변경되었습니다.' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2-2. 섹션 내 품목 순서 일괄 변경 API (단가순 정렬 / 상하 이동 반영)
+router.put('/quote-sections/:id/reorder-items', async (req, res) => {
+    try {
+        const sectionId = parseInt(req.params.id, 10);
+        const { item_ids } = req.body;
+        if (!sectionId || !Array.isArray(item_ids) || item_ids.length === 0) {
+            return res.status(400).json({ error: '순서를 변경할 품목 ID 목록이 필요합니다.' });
+        }
+        await dbRun("BEGIN TRANSACTION");
+        for (let idx = 0; idx < item_ids.length; idx++) {
+            const itemId = parseInt(item_ids[idx], 10);
+            if (itemId) {
+                await dbRun(`UPDATE logistics_quote_items SET display_order = ? WHERE id = ? AND section_id = ?`, [idx + 1, itemId, sectionId]);
+            }
+        }
+        await dbRun("COMMIT");
+        res.json({ success: true, message: '품목 순서가 저장되었습니다.' });
     } catch (err) {
         try { await dbRun("ROLLBACK"); } catch (e) {}
         res.status(500).json({ error: err.message });

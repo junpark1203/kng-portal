@@ -2700,4 +2700,47 @@ body {
     }
 }
 
+/* ── 단가 비교표 품목 및 섹션 순서 변경 버튼 (▲/▼) ── */
+.order-btn-group {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 1px;
+    vertical-align: middle;
+}
+.order-btn-group.horizontal {
+    flex-direction: row;
+    gap: 2px;
+}
+.btn-order-step {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    padding: 0 3px;
+    height: 12px;
+    line-height: 10px;
+    font-size: 9px;
+    border-radius: 2px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+}
+.order-btn-group.horizontal .btn-order-step {
+    height: 20px;
+    width: 20px;
+    font-size: 11px;
+    border-radius: 3px;
+}
+.btn-order-step:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #2563eb;
+}
+.btn-order-step:disabled {
+    opacity: 0.32;
+    cursor: default;
+}
+
+
 
