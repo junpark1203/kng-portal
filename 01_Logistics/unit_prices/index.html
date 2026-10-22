@@ -1462,12 +1462,12 @@
                             </span>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn-preset-toggle preset-external flex-fill" id="btnPrintPresetExternal" onclick="app.applyPrintPreset('external')" title="구매/대외 발주용: 마진 및 매출처 숨김">
+                            <button type="button" class="btn-preset-toggle preset-external flex-fill" id="btnPrintPresetExternal" onclick="app.applyPrintPreset('external')" title="구매/대외 발주용: 매출단가 및 마진 숨김">
                                 <i class='bx bx-shield-quarter preset-icon'></i>
-                                <span>구매/대외 발주용 (마진·매출처 숨김)</span>
+                                <span>구매/대외 발주용 (매출가·마진 숨김)</span>
                                 <span class="preset-selected-tag">선택됨</span>
                             </button>
-                            <button type="button" class="btn-preset-toggle preset-internal flex-fill" id="btnPrintPresetInternal" onclick="app.applyPrintPreset('internal')" title="내부 경영진 결재용: 마진 및 매출처 포함 전체 출력">
+                            <button type="button" class="btn-preset-toggle preset-internal flex-fill" id="btnPrintPresetInternal" onclick="app.applyPrintPreset('internal')" title="내부 경영진 결재용: 매출단가 및 마진 포함 전체 출력">
                                 <i class='bx bx-briefcase-alt preset-icon'></i>
                                 <span>내부 경영진 결재용 (전체 포함)</span>
                                 <span class="preset-selected-tag">선택됨</span>
@@ -1509,6 +1509,14 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintSellPrice" onchange="app.onPrintColumnChange()">
+                                        <label class="form-check-label small fw-semibold text-primary" for="chkPrintSellPrice">
+                                            기준 매출단가 (매출가)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
                                         <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintMargin" onchange="app.onPrintColumnChange()">
                                         <label class="form-check-label small fw-semibold text-danger" for="chkPrintMargin">
                                             예상 마진액 및 마진율
@@ -1521,7 +1529,7 @@
                                         <label class="form-check-label small" for="chkPrintNote">비고 / 단가메모</label>
                                     </div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-6">
                                     <div class="form-check">
                                         <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintOpinion" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintOpinion">하단 담당자 종합 검토의견</label>
