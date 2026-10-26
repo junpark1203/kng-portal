@@ -685,6 +685,14 @@ body {
     width: 100%;
 }
 
+.ps-pages-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+}
+
 /* 실제 A4 도화지 (화면 미리보기 & 인쇄 겸용) */
 .a4-sheet {
     background: #ffffff;
@@ -695,6 +703,16 @@ body {
     overflow: hidden;
     position: relative;
     transition: width 0.2s ease, height 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sheet-footer-page-num {
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 600;
+    color: #475569;
+    padding-top: 2.5mm;
 }
 
 /* A4 세로 (210mm x 297mm) */
@@ -1569,7 +1587,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   6. 실제 종이 인쇄 (@media print) — A4 단 1장 칼맞춤 보장
+   6. 실제 종이 인쇄 (@media print) — 다중 A4 페이지 칼맞춤 보장
    -------------------------------------------------------------------------- */
 @media print {
     html, body {
@@ -1577,8 +1595,8 @@ body {
         padding: 0 !important;
         background: #ffffff !important;
         width: 100% !important;
-        height: 100% !important;
-        overflow: hidden !important;
+        height: auto !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
@@ -1590,10 +1608,12 @@ body {
     .ps-editor-wrap,
     .ps-workspace,
     .ps-preview-stage,
-    .ps-sheet-scroll-wrap {
+    .ps-sheet-scroll-wrap,
+    .ps-pages-container {
         display: block !important;
         margin: 0 !important;
         padding: 0 !important;
+        gap: 0 !important;
         background: #ffffff !important;
         width: 100% !important;
         height: auto !important;
@@ -1605,10 +1625,16 @@ body {
         box-shadow: none !important;
         margin: 0 !important;
         padding: 10mm !important;
-        page-break-after: avoid !important;
+        page-break-after: always !important;
+        break-after: page !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         overflow: hidden !important;
+    }
+
+    .a4-sheet:last-child {
+        page-break-after: avoid !important;
+        break-after: auto !important;
     }
 
     .a4-sheet.portrait {

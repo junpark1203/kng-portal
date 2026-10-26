@@ -1,8 +1,9 @@
 /**
  * ==========================================================================
- * 현장 사진 대지 (A4 Auto Photo Sheet) Controller (v2)
- * - 제목 + 최대 8장 사진 업로드 시 A4 세로(1×1 ~ 2×4) / 가로(1×1 ~ 4×2) 자동 리사이즈
- * - 동영상 스마트 핵심 장면 추출 (Laplacian 선명도 + 장면 전환 분석) 및 수동 0.1초 단위 캡처
+ * 현장 사진 대지 (A4 Auto Photo Sheet) Controller (v4 - 다중 페이지 & 마지막 페이지 옵션 지원)
+ * - 제목 + 사진(장수 제한 없음) 업로드 시 A4 세로(1×1 ~ 2×4) / 가로(1×1 ~ 4×2) 자동 리사이즈 및 다중 페이지 분할
+ * - 마지막 페이지에 남은 사진 처리 방식 선택 (남은 장수에 맞춰 크게 채우기 vs 앞 페이지와 동일 크기 유지)
+ * - 동영상 스마트 핵심 장면 추출 (Laplacian 선명도 + 장면 전환 분석), 클릭 시 고화질 확대(Lightbox)
  * - 대용량 동영상 청크 분할 업로드 + 서버 FFmpeg 모바일 경량화 + A4 우측 상단 QR 코드 생성
  * ==========================================================================
  */
@@ -12,8 +13,8 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
     : 'https://kng.junparks.com/api/report-builder';
 
 const DOC_PREFIX = '[PS]::';
-const MAX_PHOTOS = 8;
-const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB 단위 분할 업로드 (Cloudflare 100MB 제한 완벽 우회)
+const MAX_PER_PAGE_DEFAULT = 8;
+const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB 단위 분할 업로드 (Cloudflare 100MB 제한 우회)
 
 // 애플리케이션 상태
 let state = {
@@ -22,15 +23,16 @@ let state = {
     docDate: getTodayString(),
     showDate: true,
     orientation: 'portrait', // 'portrait' (세로 최대 2x4) | 'landscape' (가로 최대 4x2)
-    layoutMode: 'auto',      // 'auto' 또는 '1x2', '2x2' 등 수동 지정
+    layoutMode: 'auto',      // 'auto' (페이지당 최대 8장) 또는 '1x2', '2x2', '2x4' 등 페이지당 격자 지정
+    lastPageMode: 'expand',  // 'expand' (남은 장수에 맞춰 크게 채우기) | 'same_size' (앞 페이지와 동일 크기 유지)
     fitMode: 'contain',      // 'contain' (원본 비율) | 'cover' (꽉 채우기)
     showBorder: true,
     showIndex: false,
-    showQr: true,            // 우측 상단 QR 코드 표시 여부
-    videoServerUrl: '',      // 서버에 업로드된 동영상 경로 (/api/report-builder/uploads/...)
-    externalVideoUrl: '',    // 유튜브/드라이브 등 외부 동영상 URL
+    showQr: true,
+    videoServerUrl: '',
+    externalVideoUrl: '',
     qrLabel: '현장 영상 보기',
-    photos: []               // [{ id, url, caption }]
+    photos: []               // [{ id, url, caption }] (장수 제한 없음)
 };
 
 let allSavedDocs = [];
@@ -39,7 +41,7 @@ let draggedPhotoIndex = null;
 // 동영상 추출 모달 상태
 let currentVideoFile = null;
 let currentVideoObjectUrl = null;
-let extractedFrames = []; // [{ id, blob, dataUrl, timeSec, timeLabel, sharpness }]
+let extractedFrames = []; // [{ id, blob, dataUrl, timeSec, timeLabel }]
 let isExtractingSmart = false;
 
 // DOM 참조
@@ -53,6 +55,7 @@ const sheetDateInput = document.getElementById('sheetDateInput');
 const showDateCheck = document.getElementById('showDateCheck');
 const orientationGroup = document.getElementById('orientationGroup');
 const gridLayoutSelect = document.getElementById('gridLayoutSelect');
+const lastPageModeGroup = document.getElementById('lastPageModeGroup');
 const fitModeGroup = document.getElementById('fitModeGroup');
 const showBorderCheck = document.getElementById('showBorderCheck');
 const showIndexCheck = document.getElementById('showIndexCheck');
@@ -72,14 +75,7 @@ const photoItemList = document.getElementById('photoItemList');
 const photoCountBadge = document.getElementById('photoCountBadge');
 const currentGridBadge = document.getElementById('currentGridBadge');
 
-const a4Sheet = document.getElementById('a4Sheet');
-const previewTitle = document.getElementById('previewTitle');
-const previewDateWrap = document.getElementById('previewDateWrap');
-const previewDate = document.getElementById('previewDate');
-const sheetQrBox = document.getElementById('sheetQrBox');
-const qrCanvasContainer = document.getElementById('qrCanvasContainer');
-const previewQrLabel = document.getElementById('previewQrLabel');
-const sheetPhotoGrid = document.getElementById('sheetPhotoGrid');
+const pagesContainer = document.getElementById('pagesContainer');
 const dynamicPageStyle = document.getElementById('dynamicPageStyle');
 
 // 동영상 추출 모달 DOM
@@ -189,10 +185,10 @@ async function authFetch(url, opts = {}, _retries = 3) {
 }
 
 // --------------------------------------------------------------------------
-// 사진 개수 및 용지 방향에 따른 자동 그리드(열 × 행) 계산
+// 다중 페이지 분할 및 페이지별 그리드(열 × 행) 계산
 // --------------------------------------------------------------------------
 function computeAutoGrid(count, orientation) {
-    const n = Math.max(1, Math.min(MAX_PHOTOS, count || 1));
+    const n = Math.max(1, Math.min(MAX_PER_PAGE_DEFAULT, count || 1));
     if (orientation === 'portrait') {
         if (n === 1) return { cols: 1, rows: 1 };
         if (n === 2) return { cols: 1, rows: 2 };
@@ -209,45 +205,124 @@ function computeAutoGrid(count, orientation) {
     }
 }
 
-function getEffectiveGrid() {
-    const count = state.photos.length;
-    const autoGrid = computeAutoGrid(count, state.orientation);
-    if (state.layoutMode === 'auto') {
-        return autoGrid;
-    }
-    const parts = state.layoutMode.split('x').map(Number);
-    if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
-        const manualSlots = parts[0] * parts[1];
-        if (manualSlots >= count) {
-            return { cols: parts[0], rows: parts[1] };
+/**
+ * 전체 사진 배열을 페이지 단위로 분할하고, 각 페이지의 (cols, rows) 격자를 계산하여 반환
+ */
+function buildPaginatedPages(photos, orientation, layoutMode, lastPageMode) {
+    let baseCols = orientation === 'portrait' ? 2 : 4;
+    let baseRows = orientation === 'portrait' ? 4 : 2;
+    let maxPerPage = MAX_PER_PAGE_DEFAULT;
+
+    if (layoutMode && layoutMode !== 'auto') {
+        const parts = layoutMode.split('x').map(Number);
+        if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+            baseCols = parts[0];
+            baseRows = parts[1];
+            maxPerPage = baseCols * baseRows;
         }
     }
-    return autoGrid;
+
+    if (!photos || photos.length === 0) {
+        const emptyGrid = layoutMode === 'auto'
+            ? { cols: 1, rows: 1 }
+            : { cols: baseCols, rows: baseRows };
+        return [{
+            pageIndex: 0,
+            items: [],
+            cols: emptyGrid.cols,
+            rows: emptyGrid.rows
+        }];
+    }
+
+    const totalPhotos = photos.length;
+    const pages = [];
+
+    for (let i = 0; i < totalPhotos; i += maxPerPage) {
+        const slice = photos.slice(i, i + maxPerPage).map((p, offset) => ({
+            photo: p,
+            globalIdx: i + offset
+        }));
+        pages.push(slice);
+    }
+
+    const totalPages = pages.length;
+
+    return pages.map((items, pageIndex) => {
+        const isLastPage = pageIndex === totalPages - 1;
+        const countOnPage = items.length;
+
+        let cols = baseCols;
+        let rows = baseRows;
+
+        if (layoutMode === 'auto') {
+            if (totalPages === 1) {
+                // 1페이지뿐이면 사진 장수에 맞춰 자동 그리드
+                const g = computeAutoGrid(countOnPage, orientation);
+                cols = g.cols;
+                rows = g.rows;
+            } else if (!isLastPage || countOnPage === maxPerPage) {
+                // 꽉 찬 앞 페이지들은 8장 기준(2x4 또는 4x2)
+                const g = computeAutoGrid(maxPerPage, orientation);
+                cols = g.cols;
+                rows = g.rows;
+            } else {
+                // 다중 페이지의 마지막 페이지 (남은 장수가 8장 미만일 때)
+                if (lastPageMode === 'same_size') {
+                    const g = computeAutoGrid(maxPerPage, orientation);
+                    cols = g.cols;
+                    rows = g.rows;
+                } else {
+                    const g = computeAutoGrid(countOnPage, orientation);
+                    cols = g.cols;
+                    rows = g.rows;
+                }
+            }
+        } else {
+            // 수동 격자(예: 2x2, 2x4 등)를 선택한 경우
+            if (isLastPage && countOnPage < maxPerPage && lastPageMode === 'expand') {
+                // '남은 장수에 맞춰 크게 채우기' 선택 시 마지막 페이지는 남은 사진 수에 맞춰 확대 배치
+                const g = computeAutoGrid(countOnPage, orientation);
+                cols = g.cols;
+                rows = g.rows;
+            } else {
+                // '앞 페이지와 동일 크기 유지' 선택 시 지정한 수동 격자 그대로 유지
+                cols = baseCols;
+                rows = baseRows;
+            }
+        }
+
+        return {
+            pageIndex,
+            items,
+            cols,
+            rows
+        };
+    });
 }
 
 function populateLayoutOptions() {
     const currentVal = state.layoutMode || 'auto';
     const presets = state.orientation === 'portrait'
         ? [
-            { value: 'auto', label: '자동 맞춤 (사진 개수 기준)' },
-            { value: '1x1', label: '1 × 1 (1열 1행 · 최대 1장)' },
-            { value: '1x2', label: '1 × 2 (1열 2행 · 상하 2장)' },
-            { value: '2x1', label: '2 × 1 (2열 1행 · 좌우 2장)' },
-            { value: '1x3', label: '1 × 3 (1열 3행 · 상하 3장)' },
-            { value: '2x2', label: '2 × 2 (2열 2행 · 최대 4장)' },
-            { value: '2x3', label: '2 × 3 (2열 3행 · 최대 6장)' },
-            { value: '2x4', label: '2 × 4 (2열 4행 · 최대 8장)' }
+            { value: 'auto', label: '자동 맞춤 (페이지당 최대 8장)' },
+            { value: '1x1', label: '페이지당 1장 (1 × 1 · 전면)' },
+            { value: '1x2', label: '페이지당 2장 (1 × 2 · 상하 2단)' },
+            { value: '2x1', label: '페이지당 2장 (2 × 1 · 좌우 2단)' },
+            { value: '1x3', label: '페이지당 3장 (1 × 3 · 상하 3단)' },
+            { value: '2x2', label: '페이지당 4장 (2 × 2 · 2열 2행)' },
+            { value: '2x3', label: '페이지당 6장 (2 × 3 · 2열 3행)' },
+            { value: '2x4', label: '페이지당 8장 (2 × 4 · 2열 4행)' }
         ]
         : [
-            { value: 'auto', label: '자동 맞춤 (사진 개수 기준)' },
-            { value: '1x1', label: '1 × 1 (1열 1행 · 최대 1장)' },
-            { value: '2x1', label: '2 × 1 (2열 1행 · 좌우 2장)' },
-            { value: '1x2', label: '1 × 2 (1열 2행 · 상하 2장)' },
-            { value: '3x1', label: '3 × 1 (3열 1행 · 최대 3장)' },
-            { value: '2x2', label: '2 × 2 (2열 2행 · 최대 4장)' },
-            { value: '4x1', label: '4 × 1 (4열 1행 · 최대 4장)' },
-            { value: '3x2', label: '3 × 2 (3열 2행 · 최대 6장)' },
-            { value: '4x2', label: '4 × 2 (4열 2행 · 최대 8장)' }
+            { value: 'auto', label: '자동 맞춤 (페이지당 최대 8장)' },
+            { value: '1x1', label: '페이지당 1장 (1 × 1 · 전면)' },
+            { value: '2x1', label: '페이지당 2장 (2 × 1 · 좌우 2단)' },
+            { value: '1x2', label: '페이지당 2장 (1 × 2 · 상하 2단)' },
+            { value: '3x1', label: '페이지당 3장 (3 × 1 · 좌우 3단)' },
+            { value: '2x2', label: '페이지당 4장 (2 × 2 · 2열 2행)' },
+            { value: '4x1', label: '페이지당 4장 (4 × 1 · 좌우 4단)' },
+            { value: '3x2', label: '페이지당 6장 (3 × 2 · 3열 2행)' },
+            { value: '4x2', label: '페이지당 8장 (4 × 2 · 4열 2행)' }
         ];
 
     gridLayoutSelect.innerHTML = presets
@@ -290,17 +365,24 @@ function bindEvents() {
 
     sheetTitleInput.addEventListener('input', (e) => {
         state.title = e.target.value;
-        previewTitle.textContent = state.title.trim() || '제목을 입력하세요';
+        const displayTitleText = state.title.trim() || '제목을 입력하세요';
+        pagesContainer.querySelectorAll('.sheet-title').forEach(el => {
+            el.textContent = displayTitleText;
+        });
     });
 
     sheetDateInput.addEventListener('input', (e) => {
         state.docDate = e.target.value;
-        previewDate.textContent = state.docDate;
+        pagesContainer.querySelectorAll('.sheet-date-val').forEach(el => {
+            el.textContent = state.docDate;
+        });
     });
 
     showDateCheck.addEventListener('change', (e) => {
         state.showDate = e.target.checked;
-        previewDateWrap.style.display = state.showDate ? '' : 'none';
+        pagesContainer.querySelectorAll('.sheet-meta').forEach(el => {
+            el.style.display = state.showDate ? '' : 'none';
+        });
     });
 
     orientationGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
@@ -316,6 +398,14 @@ function bindEvents() {
     gridLayoutSelect.addEventListener('change', (e) => {
         state.layoutMode = e.target.value;
         renderPreviewSheet();
+    });
+
+    lastPageModeGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.lastPageMode = btn.dataset.lastMode;
+            renderControlsState();
+            renderPreviewSheet();
+        });
     });
 
     fitModeGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
@@ -349,7 +439,9 @@ function bindEvents() {
 
     qrLabelInput.addEventListener('input', (e) => {
         state.qrLabel = e.target.value;
-        previewQrLabel.textContent = state.qrLabel.trim() || '현장 영상 보기';
+        pagesContainer.querySelectorAll('.sheet-qr-label').forEach(el => {
+            el.textContent = state.qrLabel.trim() || '현장 영상 보기';
+        });
     });
 
     removeServerVideoBtn.addEventListener('click', async () => {
@@ -393,7 +485,7 @@ function bindEvents() {
         }
     });
 
-    [uploadDropzone, a4Sheet].forEach(zone => {
+    [uploadDropzone, pagesContainer].forEach(zone => {
         zone.addEventListener('dragover', (e) => {
             if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
                 e.preventDefault();
@@ -455,7 +547,6 @@ function bindVideoExtractorEvents() {
     extractVideoPlayer.addEventListener('timeupdate', updateVideoTimeBadge);
     extractVideoPlayer.addEventListener('loadedmetadata', updateVideoTimeBadge);
 
-    // 0.1초 / 1.0초 단위 미세 이동 버튼
     document.querySelectorAll('.btn-step').forEach(btn => {
         btn.addEventListener('click', () => {
             const delta = parseFloat(btn.dataset.seek || '0');
@@ -466,12 +557,8 @@ function bindVideoExtractorEvents() {
         });
     });
 
-    // 수동 현재 장면 캡처
+    // 수동 현재 장면 캡처 (장수 제한 없음)
     document.getElementById('captureCurrentFrameBtn').addEventListener('click', async () => {
-        if (extractedFrames.length >= MAX_PHOTOS) {
-            alert(`한 페이지에 최대 ${MAX_PHOTOS}장까지만 담을 수 있습니다.`);
-            return;
-        }
         extractVideoPlayer.pause();
         const frameObj = await captureHighResFrameAtCurrentTime(extractVideoPlayer);
         if (frameObj) {
@@ -481,23 +568,19 @@ function bindVideoExtractorEvents() {
         }
     });
 
-    // AI 스마트 핵심 장면 자동 추출 실행
     runSmartExtractBtn.addEventListener('click', () => {
         runSmartFrameExtraction();
     });
 
-    // 트레이 비우기
     document.getElementById('clearTrayBtn').addEventListener('click', () => {
         extractedFrames = [];
         renderExtractedTray();
     });
 
-    // 선택한 장면 사진 대지에 반영하기 (+ 동영상 서버 업로드 & QR 생성)
     document.getElementById('applyExtractedFramesBtn').addEventListener('click', () => {
         applyExtractedFramesToSheet();
     });
 
-    // 추출된 장면 확대 보기 (Lightbox) 이벤트 바인딩
     bindLightboxEvents();
 }
 
@@ -513,13 +596,6 @@ function openVideoExtractorModal(videoFile) {
     extractedFrames = [];
     renderExtractedTray();
     smartExtractProgressWrap.classList.add('hidden');
-
-    // 남은 사진 슬롯에 맞춰 기본 추출 장수 선택
-    const remaining = Math.max(1, MAX_PHOTOS - state.photos.length);
-    if (remaining >= 8) autoExtractCountSelect.value = '4';
-    else if (remaining >= 6) autoExtractCountSelect.value = '6';
-    else if (remaining >= 4) autoExtractCountSelect.value = '4';
-    else autoExtractCountSelect.value = '2';
 
     videoExtractModal.classList.remove('hidden');
 }
@@ -548,9 +624,6 @@ function seekVideoTo(videoEl, timeSec) {
     });
 }
 
-/**
- * 라플라시안 분산(Laplacian Variance) 기반 선명도(초점/흔들림) 점수 + 이전 프레임과의 장면 차이 계산
- */
 function analyzeFrameQuality(videoEl, analysisCanvas, analysisCtx, prevGrayData) {
     const w = 160;
     const h = 90;
@@ -569,7 +642,6 @@ function analyzeFrameQuality(videoEl, analysisCanvas, analysisCtx, prevGrayData)
     }
     meanLum /= (w * h);
 
-    // 1. Laplacian 2차 미분으로 에지 선명도(Blur 부재) 측정
     let lapSum = 0;
     let lapSqSum = 0;
     let count = 0;
@@ -585,7 +657,6 @@ function analyzeFrameQuality(videoEl, analysisCanvas, analysisCtx, prevGrayData)
     const lapMean = lapSum / count;
     const sharpnessVariance = (lapSqSum / count) - (lapMean * lapMean);
 
-    // 2. 직전 선택 장면과의 장면 변화량(Scene Change) 측정
     let sceneDiff = 30;
     if (prevGrayData && prevGrayData.length === gray.length) {
         let diffSum = 0;
@@ -595,13 +666,11 @@ function analyzeFrameQuality(videoEl, analysisCanvas, analysisCtx, prevGrayData)
         sceneDiff = diffSum / gray.length;
     }
 
-    // 3. 너무 어둡거나(암전) 너무 하얗게 날아간 프레임 감점
     let exposureFactor = 1.0;
     if (meanLum < 22 || meanLum > 238) {
         exposureFactor = 0.35;
     }
 
-    // 장면이 이전 컷과 거의 똑같으면(정지 화면) 감점, 새 장면이면 가산점
     const noveltyFactor = prevGrayData ? Math.min(1.4, Math.max(0.5, sceneDiff / 18)) : 1.0;
     const totalScore = sharpnessVariance * noveltyFactor * exposureFactor;
 
@@ -644,10 +713,6 @@ async function captureHighResFrameAtCurrentTime(videoEl) {
     };
 }
 
-/**
- * 영상을 N개 구간으로 나누고 각 구간 내 후보 프레임들의 선명도(Laplacian)와 장면 변화를 비교하여
- * 흔들리지 않은 가장 선명한 대표 장면 N장을 자동 추출
- */
 async function runSmartFrameExtraction() {
     if (isExtractingSmart) return;
     const duration = extractVideoPlayer.duration;
@@ -657,7 +722,6 @@ async function runSmartFrameExtraction() {
     }
 
     const requestedCount = parseInt(autoExtractCountSelect.value, 10) || 4;
-    const maxAllowed = Math.min(MAX_PHOTOS, requestedCount);
 
     isExtractingSmart = true;
     extractVideoPlayer.pause();
@@ -673,16 +737,15 @@ async function runSmartFrameExtraction() {
     const analysisCtx = analysisCanvas.getContext('2d', { willReadFrequently: true });
 
     try {
-        // 앞뒤 3% 트리밍 (시작/종료 시 카메라 흔들림 구간 배제)
         const startPad = Math.min(0.8, duration * 0.04);
         const endPad = Math.min(0.8, duration * 0.04);
         const usableDuration = Math.max(0.2, duration - startPad - endPad);
-        const segmentLen = usableDuration / maxAllowed;
+        const segmentLen = usableDuration / requestedCount;
         const candidatesPerSegment = duration > 3 ? 4 : 2;
 
         let prevBestGray = null;
 
-        for (let segIdx = 0; segIdx < maxAllowed; segIdx++) {
+        for (let segIdx = 0; segIdx < requestedCount; segIdx++) {
             const segStart = startPad + segIdx * segmentLen;
             let bestCandidateTime = segStart + segmentLen * 0.5;
             let bestScore = -1;
@@ -700,14 +763,13 @@ async function runSmartFrameExtraction() {
                     bestGray = result.grayData;
                 }
 
-                const progressPct = Math.round(((segIdx * candidatesPerSegment + c + 1) / (maxAllowed * candidatesPerSegment)) * 100);
+                const progressPct = Math.round(((segIdx * candidatesPerSegment + c + 1) / (requestedCount * candidatesPerSegment)) * 100);
                 smartExtractProgressBar.style.width = `${progressPct}%`;
-                smartExtractProgressText.textContent = `구간 ${segIdx + 1}/${maxAllowed} 선명도 분석 중 (${progressPct}%)...`;
+                smartExtractProgressText.textContent = `구간 ${segIdx + 1}/${requestedCount} 선명도 분석 중 (${progressPct}%)...`;
             }
 
             prevBestGray = bestGray;
 
-            // 해당 구간에서 가장 선명했던 시점으로 이동하여 고화질 캡처
             await seekVideoTo(extractVideoPlayer, bestCandidateTime);
             const highResFrame = await captureHighResFrameAtCurrentTime(extractVideoPlayer);
             extractedFrames.push(highResFrame);
@@ -874,8 +936,7 @@ async function applyExtractedFramesToSheet() {
         return;
     }
 
-    const remainingSlots = MAX_PHOTOS - state.photos.length;
-    const framesToUpload = extractedFrames.slice(0, Math.max(0, remainingSlots));
+    const framesToUpload = extractedFrames.slice();
     const includeTimestamp = autoTimestampCaptionCheck.checked;
     const shouldUploadVideoQr = uploadVideoForQrCheck.checked && currentVideoFile;
 
@@ -883,7 +944,6 @@ async function applyExtractedFramesToSheet() {
     showLoading(true, '추출된 장면을 사진 대지에 올리는 중...');
 
     try {
-        // 1. 추출된 프레임 이미지 업로드
         for (let i = 0; i < framesToUpload.length; i++) {
             showLoading(true, `핵심 장면 이미지 저장 중 (${i + 1}/${framesToUpload.length})...`);
             const f = framesToUpload[i];
@@ -905,7 +965,6 @@ async function applyExtractedFramesToSheet() {
             });
         }
 
-        // 2. 동영상 원본 청크 업로드 & 우측 상단 QR 코드 자동 연동
         if (shouldUploadVideoQr) {
             const uploadedVideoUrl = await uploadVideoWithChunkFallback(currentVideoFile);
             if (uploadedVideoUrl) {
@@ -929,10 +988,6 @@ async function applyExtractedFramesToSheet() {
     }
 }
 
-/**
- * 대용량 동영상을 8MB 단위 청크로 분할 업로드 후 서버 FFmpeg 경량화 실행
- * (만약 서버 도커가 아직 구버전이면 기본 /upload 엔드포인트로 자동 폴백)
- */
 async function uploadVideoWithChunkFallback(videoFile) {
     const uploadId = Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE);
@@ -980,7 +1035,6 @@ async function uploadVideoWithChunkFallback(videoFile) {
         return data.url;
     } catch (err) {
         if (err.message === 'FALLBACK_LEGACY_UPLOAD') {
-            // 서버가 아직 재시작 전인 경우 기존 /upload 라우트로 직접 업로드
             showLoading(true, 'QR 재생용 동영상 서버 업로드 중...');
             const fd = new FormData();
             fd.append('image', videoFile, videoFile.name || 'video.mp4');
@@ -1002,11 +1056,9 @@ async function uploadVideoWithChunkFallback(videoFile) {
 // A4 우측 상단 QR 코드 생성 및 렌더링
 // --------------------------------------------------------------------------
 function getActiveQrTargetUrl() {
-    // 1순위: 사용자가 직접 입력한 외부 영상 URL
     if (state.externalVideoUrl && state.externalVideoUrl.trim()) {
         return state.externalVideoUrl.trim();
     }
-    // 2순위: 서버에 업로드된 동영상 -> 모바일 전용 플레이어(watch.html) URL 생성
     if (state.videoServerUrl && state.videoServerUrl.trim()) {
         const filename = state.videoServerUrl.split('/').pop();
         const origin = window.location.origin;
@@ -1017,32 +1069,40 @@ function getActiveQrTargetUrl() {
 
 function renderQrCodeOnSheet() {
     const targetUrl = getActiveQrTargetUrl();
-    previewQrLabel.textContent = (state.qrLabel || '').trim() || '현장 영상 보기';
+    const labelText = (state.qrLabel || '').trim() || '현장 영상 보기';
 
-    if (!state.showQr || !targetUrl) {
-        sheetQrBox.classList.add('hidden');
-        qrCanvasContainer.innerHTML = '';
-        return;
-    }
+    const qrBoxes = pagesContainer.querySelectorAll('.sheet-qr-box');
+    qrBoxes.forEach(box => {
+        const codeContainer = box.querySelector('.sheet-qr-code');
+        const labelEl = box.querySelector('.sheet-qr-label');
+        if (labelEl) labelEl.textContent = labelText;
 
-    sheetQrBox.classList.remove('hidden');
-    qrCanvasContainer.innerHTML = '';
+        if (!state.showQr || !targetUrl) {
+            box.classList.add('hidden');
+            if (codeContainer) codeContainer.innerHTML = '';
+            return;
+        }
 
-    if (typeof window.QRCode === 'function') {
-        new window.QRCode(qrCanvasContainer, {
-            text: targetUrl,
-            width: 128,
-            height: 128,
-            colorDark: '#0f172a',
-            colorLight: '#ffffff',
-            correctLevel: window.QRCode.CorrectLevel.M
-        });
-    } else {
-        const fallbackImg = document.createElement('img');
-        fallbackImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(targetUrl)}`;
-        fallbackImg.alt = 'QR Code';
-        qrCanvasContainer.appendChild(fallbackImg);
-    }
+        box.classList.remove('hidden');
+        if (codeContainer) {
+            codeContainer.innerHTML = '';
+            if (typeof window.QRCode === 'function') {
+                new window.QRCode(codeContainer, {
+                    text: targetUrl,
+                    width: 128,
+                    height: 128,
+                    colorDark: '#0f172a',
+                    colorLight: '#ffffff',
+                    correctLevel: window.QRCode.CorrectLevel.M
+                });
+            } else {
+                const fallbackImg = document.createElement('img');
+                fallbackImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(targetUrl)}`;
+                fallbackImg.alt = 'QR Code';
+                codeContainer.appendChild(fallbackImg);
+            }
+        }
+    });
 }
 
 // --------------------------------------------------------------------------
@@ -1107,9 +1167,8 @@ function renderSheetList(docs) {
         const parsed = item.parsed || {};
         const photos = parsed.photos || [];
         const orientation = parsed.orientation === 'landscape' ? 'landscape' : 'portrait';
-        const grid = computeAutoGrid(photos.length, orientation);
+        const pages = buildPaginatedPages(photos, orientation, parsed.layoutMode || 'auto', parsed.lastPageMode || 'expand');
         const orientLabel = orientation === 'landscape' ? 'A4 가로' : 'A4 세로';
-        const gridLabel = photos.length > 0 ? `${grid.cols}×${grid.rows}` : '-';
         const hasVideoQr = Boolean(parsed.showQr && (parsed.videoServerUrl || parsed.externalVideoUrl));
 
         const previewPhotos = photos.slice(0, 4);
@@ -1131,8 +1190,8 @@ function renderSheetList(docs) {
                 ${thumbHtml}
                 <div class="ps-doc-badges">
                     ${hasVideoQr ? `<span class="ps-mini-badge qr-badge"><i class='bx bx-qr'></i> 영상QR</span>` : ''}
-                    <span class="ps-mini-badge">${orientLabel} (${gridLabel})</span>
-                    <span class="ps-mini-badge">${photos.length}장</span>
+                    <span class="ps-mini-badge">${orientLabel} · ${pages.length}쪽</span>
+                    <span class="ps-mini-badge">총 ${photos.length}장</span>
                 </div>
             </div>
             <div class="ps-doc-body">
@@ -1184,6 +1243,7 @@ function parseContentJson(rawJson) {
         return {
             orientation: data.orientation === 'landscape' ? 'landscape' : 'portrait',
             layoutMode: data.layoutMode || 'auto',
+            lastPageMode: data.lastPageMode === 'same_size' ? 'same_size' : 'expand',
             fitMode: data.fitMode === 'cover' ? 'cover' : 'contain',
             showDate: data.showDate !== undefined ? Boolean(data.showDate) : true,
             docDate: data.docDate || getTodayString(),
@@ -1193,7 +1253,7 @@ function parseContentJson(rawJson) {
             videoServerUrl,
             externalVideoUrl: data.externalVideoUrl || '',
             qrLabel: data.qrLabel !== undefined ? data.qrLabel : '현장 영상 보기',
-            photos: photos.slice(0, MAX_PHOTOS).map(p => ({
+            photos: photos.map(p => ({
                 id: p.id || generateId(),
                 url: p.url || '',
                 caption: p.caption || ''
@@ -1203,6 +1263,7 @@ function parseContentJson(rawJson) {
         return {
             orientation: 'portrait',
             layoutMode: 'auto',
+            lastPageMode: 'expand',
             fitMode: 'contain',
             showDate: true,
             docDate: getTodayString(),
@@ -1222,6 +1283,7 @@ function serializeContentJson() {
         docType: 'photo_sheet',
         orientation: state.orientation,
         layoutMode: state.layoutMode,
+        lastPageMode: state.lastPageMode,
         fitMode: state.fitMode,
         showDate: state.showDate,
         docDate: state.docDate,
@@ -1252,6 +1314,7 @@ function createNewSheet() {
         showDate: true,
         orientation: 'portrait',
         layoutMode: 'auto',
+        lastPageMode: 'expand',
         fitMode: 'contain',
         showBorder: true,
         showIndex: false,
@@ -1423,7 +1486,7 @@ async function deleteServerFileSilent(url) {
 }
 
 // --------------------------------------------------------------------------
-// 일반 사진 압축 및 업로드 (최대 8장)
+// 일반 사진 압축 및 업로드 (장수 제한 없음)
 // --------------------------------------------------------------------------
 function compressImage(file) {
     return new Promise((resolve) => {
@@ -1471,23 +1534,11 @@ async function handleFilesUpload(files) {
     const imageFiles = files.filter(f => f.type && f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
-    const remainingSlots = MAX_PHOTOS - state.photos.length;
-    if (remainingSlots <= 0) {
-        alert(`사진은 한 페이지당 최대 ${MAX_PHOTOS}장까지만 올릴 수 있습니다.`);
-        return;
-    }
-
-    let targetFiles = imageFiles;
-    if (imageFiles.length > remainingSlots) {
-        alert(`최대 ${MAX_PHOTOS}장 제한으로 인해 앞의 ${remainingSlots}장만 추가됩니다.`);
-        targetFiles = imageFiles.slice(0, remainingSlots);
-    }
-
-    showLoading(true, `사진 업로드 및 자동 리사이징 중 (0/${targetFiles.length})...`);
+    showLoading(true, `사진 업로드 및 자동 리사이징 중 (0/${imageFiles.length})...`);
     try {
-        for (let i = 0; i < targetFiles.length; i++) {
-            showLoading(true, `사진 업로드 및 자동 리사이징 중 (${i + 1}/${targetFiles.length})...`);
-            const compressed = await compressImage(targetFiles[i]);
+        for (let i = 0; i < imageFiles.length; i++) {
+            showLoading(true, `사진 업로드 및 자동 리사이징 중 (${i + 1}/${imageFiles.length})...`);
+            const compressed = await compressImage(imageFiles[i]);
             const formData = new FormData();
             formData.append('image', compressed, compressed.name);
 
@@ -1508,7 +1559,7 @@ async function handleFilesUpload(files) {
         }
         renderPhotoList();
         renderPreviewSheet();
-        showToast(`사진 ${targetFiles.length}장이 추가되었습니다.`);
+        showToast(`사진 ${imageFiles.length}장이 추가되었습니다.`);
     } catch (err) {
         console.error(err);
         alert(`사진 업로드 중 오류가 발생했습니다.\n${err.message}`);
@@ -1518,7 +1569,7 @@ async function handleFilesUpload(files) {
 }
 
 // --------------------------------------------------------------------------
-// UI 렌더링 (좌측 컨트롤 / 사진 리스트 / 우측 실시간 A4 시트)
+// UI 렌더링 (좌측 컨트롤 / 사진 리스트 / 우측 다중 A4 시트)
 // --------------------------------------------------------------------------
 function renderControlsState() {
     sheetTitleInput.value = state.title;
@@ -1535,12 +1586,17 @@ function renderControlsState() {
         const filename = state.videoServerUrl.split('/').pop();
         previewServerVideoLink.href = `watch.html?f=${encodeURIComponent(filename)}&t=${encodeURIComponent(state.title || '현장 동영상')}`;
     } else {
+        videoServerStatusBox.classList.remove('hidden');
         videoServerStatusBox.classList.add('hidden');
         previewServerVideoLink.href = '#';
     }
 
     orientationGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.orientation === state.orientation);
+    });
+
+    lastPageModeGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lastMode === state.lastPageMode);
     });
 
     fitModeGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
@@ -1616,9 +1672,8 @@ function renderPhotoList() {
     });
 }
 
-function updateCaptionOnPreview(idx, captionText) {
-    const cells = sheetPhotoGrid.querySelectorAll('.sheet-photo-cell');
-    const cell = cells[idx];
+function updateCaptionOnPreview(globalIdx, captionText) {
+    const cell = pagesContainer.querySelector(`.sheet-photo-cell[data-photo-idx="${globalIdx}"]`);
     if (!cell) return;
     const capEl = cell.querySelector('.sheet-photo-caption');
     if (!capEl) return;
@@ -1642,93 +1697,126 @@ function syncPrintPageRule() {
 function renderPreviewSheet() {
     syncPrintPageRule();
 
-    const count = state.photos.length;
-    const { cols, rows } = getEffectiveGrid();
+    const totalCount = state.photos.length;
+    const pages = buildPaginatedPages(state.photos, state.orientation, state.layoutMode, state.lastPageMode);
+    const totalPages = pages.length;
     const orientName = state.orientation === 'landscape' ? 'A4 가로' : 'A4 세로';
 
-    photoCountBadge.textContent = `${count} / ${MAX_PHOTOS}장`;
-    currentGridBadge.textContent = count > 0
-        ? `${orientName} · ${cols} × ${rows} 배치 (${cols}열 ${rows}행)`
-        : `${orientName} · 사진 대기 중`;
-
-    a4Sheet.className = [
-        'a4-sheet',
-        state.orientation === 'landscape' ? 'landscape' : 'portrait',
-        state.showBorder ? 'show-border' : '',
-        state.showIndex ? 'show-index' : '',
-        state.fitMode === 'cover' ? 'fit-cover' : 'fit-contain'
-    ].filter(Boolean).join(' ');
-
-    previewTitle.textContent = (state.title || '').trim() || '제목을 입력하세요';
-    previewDate.textContent = state.docDate || getTodayString();
-    previewDateWrap.style.display = state.showDate ? '' : 'none';
-
-    // 우측 상단 QR 코드 렌더링
-    renderQrCodeOnSheet();
-
-    sheetPhotoGrid.style.setProperty('--cols', cols);
-    sheetPhotoGrid.style.setProperty('--rows', rows);
-    sheetPhotoGrid.setAttribute('data-cols', cols);
-    sheetPhotoGrid.setAttribute('data-rows', rows);
-
-    sheetPhotoGrid.innerHTML = '';
-    if (count === 0) {
-        sheetPhotoGrid.innerHTML = `
-            <div class="sheet-empty-placeholder no-print">
-                <i class='bx bx-movie-play'></i>
-                <div>좌측에서 <b>사진 또는 동영상</b>을 선택하거나 <b>Ctrl + V</b>로 붙여넣으면</div>
-                <div>A4 1장에 자동 리사이즈 배치되며, 동영상은 우측 상단 QR 코드로 함께 연동됩니다.</div>
-            </div>
-        `;
-        return;
+    photoCountBadge.textContent = `총 ${totalCount}장 · ${totalPages}페이지`;
+    if (totalCount === 0) {
+        currentGridBadge.textContent = `${orientName} · 사진 대기 중`;
+    } else if (totalPages === 1) {
+        currentGridBadge.textContent = `${orientName} · ${pages[0].cols} × ${pages[0].rows} 배치`;
+    } else {
+        const firstG = `${pages[0].cols}×${pages[0].rows}`;
+        const lastG = `${pages[totalPages - 1].cols}×${pages[totalPages - 1].rows}`;
+        currentGridBadge.textContent = firstG === lastG
+            ? `${orientName} · 페이지당 ${firstG} (${totalPages}쪽)`
+            : `${orientName} · 본문 ${firstG} / 마지막쪽 ${lastG}`;
     }
 
-    state.photos.forEach((photo, idx) => {
-        const cell = document.createElement('div');
-        cell.className = 'sheet-photo-cell';
-        cell.draggable = true;
+    pagesContainer.innerHTML = '';
 
-        const trimmedCap = (photo.caption || '').trim();
-        cell.innerHTML = `
-            <div class="sheet-photo-frame">
-                <span class="sheet-photo-index">${idx + 1}</span>
-                <img src="${getImgSrc(photo.url)}" alt="사진 ${idx + 1}">
+    const displayTitleText = (state.title || '').trim() || '제목을 입력하세요';
+    const displayDateText = state.docDate || getTodayString();
+
+    pages.forEach((pageObj, pIdx) => {
+        const sheetEl = document.createElement('div');
+        sheetEl.className = [
+            'a4-sheet',
+            state.orientation === 'landscape' ? 'landscape' : 'portrait',
+            state.showBorder ? 'show-border' : '',
+            state.showIndex ? 'show-index' : '',
+            state.fitMode === 'cover' ? 'fit-cover' : 'fit-contain'
+        ].filter(Boolean).join(' ');
+
+        const qrBoxHtml = pIdx === 0
+            ? `
+                <div class="sheet-qr-box hidden">
+                    <div class="sheet-qr-code"></div>
+                    <div class="sheet-qr-label">${escapeHtml((state.qrLabel || '').trim() || '현장 영상 보기')}</div>
+                </div>
+            `
+            : '';
+
+        sheetEl.innerHTML = `
+            <div class="sheet-header">
+                <div class="sheet-header-main">
+                    <h1 class="sheet-title">${escapeHtml(displayTitleText)}</h1>
+                    <div class="sheet-meta" style="${state.showDate ? '' : 'display: none;'}">
+                        <span>작성일: <strong class="sheet-date-val">${escapeHtml(displayDateText)}</strong></span>
+                    </div>
+                </div>
+                ${qrBoxHtml}
             </div>
-            <div class="sheet-photo-caption ${trimmedCap ? '' : 'empty-caption'}">${escapeHtml(trimmedCap)}</div>
+            <div class="sheet-photo-grid" style="--cols: ${pageObj.cols}; --rows: ${pageObj.rows};" data-cols="${pageObj.cols}" data-rows="${pageObj.rows}"></div>
+            ${totalPages > 1 ? `<div class="sheet-footer-page-num">- ${pIdx + 1} / ${totalPages} -</div>` : ''}
         `;
 
-        cell.addEventListener('dragstart', (e) => {
-            draggedPhotoIndex = idx;
-            e.dataTransfer.effectAllowed = 'move';
-        });
-        cell.addEventListener('dragover', (e) => {
-            if (draggedPhotoIndex === null || draggedPhotoIndex === idx) return;
-            e.preventDefault();
-            cell.classList.add('drag-over-cell');
-        });
-        cell.addEventListener('dragleave', () => {
-            cell.classList.remove('drag-over-cell');
-        });
-        cell.addEventListener('drop', (e) => {
-            cell.classList.remove('drag-over-cell');
-            if (draggedPhotoIndex !== null && draggedPhotoIndex !== idx) {
-                e.preventDefault();
-                e.stopPropagation();
-                const temp = state.photos[draggedPhotoIndex];
-                state.photos[draggedPhotoIndex] = state.photos[idx];
-                state.photos[idx] = temp;
-                draggedPhotoIndex = null;
-                renderPhotoList();
-                renderPreviewSheet();
-            }
-        });
-        cell.addEventListener('dragend', () => {
-            cell.classList.remove('drag-over-cell');
-            draggedPhotoIndex = null;
-        });
+        const gridEl = sheetEl.querySelector('.sheet-photo-grid');
 
-        sheetPhotoGrid.appendChild(cell);
+        if (pageObj.items.length === 0) {
+            gridEl.innerHTML = `
+                <div class="sheet-empty-placeholder no-print">
+                    <i class='bx bx-movie-play'></i>
+                    <div>좌측에서 <b>사진 또는 동영상</b>을 선택하거나 <b>Ctrl + V</b>로 붙여넣으면</div>
+                    <div>8장 초과 시에도 자동으로 2쪽, 3쪽으로 나뉘어 A4 규격에 맞게 배치됩니다.</div>
+                </div>
+            `;
+        } else {
+            pageObj.items.forEach(({ photo, globalIdx }) => {
+                const cell = document.createElement('div');
+                cell.className = 'sheet-photo-cell';
+                cell.setAttribute('data-photo-idx', String(globalIdx));
+                cell.draggable = true;
+
+                const trimmedCap = (photo.caption || '').trim();
+                cell.innerHTML = `
+                    <div class="sheet-photo-frame">
+                        <span class="sheet-photo-index">${globalIdx + 1}</span>
+                        <img src="${getImgSrc(photo.url)}" alt="사진 ${globalIdx + 1}">
+                    </div>
+                    <div class="sheet-photo-caption ${trimmedCap ? '' : 'empty-caption'}">${escapeHtml(trimmedCap)}</div>
+                `;
+
+                cell.addEventListener('dragstart', (e) => {
+                    draggedPhotoIndex = globalIdx;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                cell.addEventListener('dragover', (e) => {
+                    if (draggedPhotoIndex === null || draggedPhotoIndex === globalIdx) return;
+                    e.preventDefault();
+                    cell.classList.add('drag-over-cell');
+                });
+                cell.addEventListener('dragleave', () => {
+                    cell.classList.remove('drag-over-cell');
+                });
+                cell.addEventListener('drop', (e) => {
+                    cell.classList.remove('drag-over-cell');
+                    if (draggedPhotoIndex !== null && draggedPhotoIndex !== globalIdx) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const temp = state.photos[draggedPhotoIndex];
+                        state.photos[draggedPhotoIndex] = state.photos[globalIdx];
+                        state.photos[globalIdx] = temp;
+                        draggedPhotoIndex = null;
+                        renderPhotoList();
+                        renderPreviewSheet();
+                    }
+                });
+                cell.addEventListener('dragend', () => {
+                    cell.classList.remove('drag-over-cell');
+                    draggedPhotoIndex = null;
+                });
+
+                gridEl.appendChild(cell);
+            });
+        }
+
+        pagesContainer.appendChild(sheetEl);
     });
+
+    renderQrCodeOnSheet();
 }
 
 function escapeHtml(str) {

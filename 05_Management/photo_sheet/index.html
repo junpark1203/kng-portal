@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style id="dynamicPageStyle">
         @media print {
@@ -24,7 +24,7 @@
         <header class="ps-list-header">
             <div class="ps-header-title">
                 <h1><i class='bx bx-grid'></i> 현장 사진 대지</h1>
-                <p class="ps-subtitle">제목과 사진(최대 8장) 또는 동영상을 올리면 A4(세로/가로) 1장 규격에 맞춰 자동 리사이즈 및 QR 코드로 출력됩니다.</p>
+                <p class="ps-subtitle">제목과 사진·동영상을 올리면 장수 제한 없이 A4(세로/가로) 규격에 맞춰 자동 리사이즈 및 다중 페이지로 출력됩니다.</p>
             </div>
             <div class="ps-header-controls">
                 <div class="ps-search-box">
@@ -52,7 +52,7 @@
                 <button type="button" class="btn-ps-outline" id="backToListBtn">
                     <i class='bx bx-arrow-back'></i> 목록으로
                 </button>
-                <span class="ps-status-pill" id="photoCountBadge">0 / 8장</span>
+                <span class="ps-status-pill" id="photoCountBadge">총 0장 · 1페이지</span>
                 <span class="ps-layout-pill" id="currentGridBadge">배치 대기</span>
             </div>
             <div class="ps-topbar-right">
@@ -103,13 +103,13 @@
                     </div>
 
                     <div class="ps-form-row">
-                        <div class="ps-form-group" style="flex: 1;">
-                            <label for="gridLayoutSelect">배치 구성 (열 × 행)</label>
+                        <div class="ps-form-group" style="flex: 1.2;">
+                            <label for="gridLayoutSelect">페이지당 배치 구성 (열 × 행)</label>
                             <select id="gridLayoutSelect" class="ps-input">
-                                <option value="auto">자동 맞춤 (사진 개수 기준)</option>
+                                <option value="auto">자동 맞춤 (페이지당 최대 8장)</option>
                             </select>
                         </div>
-                        <div class="ps-form-group" style="flex: 1;">
+                        <div class="ps-form-group" style="flex: 0.8;">
                             <label>사진 리사이즈 방식</label>
                             <div class="ps-segment-group ps-seg-sm" id="fitModeGroup">
                                 <button type="button" class="ps-seg-btn active" data-fit="contain" title="사진이 잘리지 않게 원본 비율 그대로 칸 안에 맞춤">
@@ -119,6 +119,18 @@
                                     꽉 채우기
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-group">
+                        <label>마지막 페이지(남은 사진) 크기 처리</label>
+                        <div class="ps-segment-group ps-seg-sm" id="lastPageModeGroup">
+                            <button type="button" class="ps-seg-btn active" data-last-mode="expand" title="예: 마지막 페이지에 2장이 남으면 1×2로 칸을 크게 채움">
+                                남은 장수에 맞춰 크게 채우기
+                            </button>
+                            <button type="button" class="ps-seg-btn" data-last-mode="same_size" title="앞 페이지와 동일한 격자(예: 2×4)를 유지해 사진 크기를 똑같이 맞춤">
+                                앞 페이지와 동일 크기 유지
+                            </button>
                         </div>
                     </div>
 
@@ -173,7 +185,7 @@
                 <!-- 사진 & 동영상 업로드 및 순서/캡션 관리 카드 -->
                 <div class="ps-panel-card ps-photo-manager-card">
                     <div class="ps-card-header-row">
-                        <h3 class="ps-card-title"><i class='bx bx-images'></i> 사진 & 동영상 관리 (최대 8장)</h3>
+                        <h3 class="ps-card-title"><i class='bx bx-images'></i> 사진 & 동영상 관리 (장수 제한 없음)</h3>
                         <button type="button" class="btn-ps-clear" id="clearAllPhotosBtn" title="전체 사진 비우기">
                             <i class='bx bx-trash'></i> 전체 삭제
                         </button>
@@ -186,7 +198,7 @@
                         <i class='bx bx-cloud-upload'></i>
                         <div class="ps-dropzone-text">
                             <strong>클릭하여 사진·동영상 선택</strong> 또는 이곳으로 드래그<br>
-                            <span>화면 어디서나 <b>Ctrl + V</b> 붙여넣기 가능</span>
+                            <span>8장 초과 시 자동으로 A4 2페이지, 3페이지...로 분할 출력됩니다</span>
                         </div>
                     </div>
 
@@ -205,33 +217,15 @@
                 </div>
             </aside>
 
-            <!-- 우측 실시간 A4 미리보기 캔버스 (인쇄 시 이 영역이 그대로 A4 1장으로 출력됨) -->
+            <!-- 우측 실시간 A4 미리보기 캔버스 (다중 페이지 자동 생성 & 인쇄 영역) -->
             <section class="ps-preview-stage">
                 <div class="ps-preview-Banner no-print">
-                    <span><i class='bx bx-show'></i> 실시간 A4 인쇄 미리보기 (미리보기 사진도 드래그하여 위치를 서로 바꿀 수 있습니다)</span>
+                    <span><i class='bx bx-show'></i> 실시간 A4 인쇄 미리보기 (8장 초과 시 아래로 2쪽, 3쪽이 자동 생성되며 드래그로 순서 변경 가능)</span>
                 </div>
 
                 <div class="ps-sheet-scroll-wrap">
-                    <div id="a4Sheet" class="a4-sheet portrait show-border fit-contain">
-                        <!-- 상단 제목 및 우측 QR 코드 헤더 -->
-                        <div class="sheet-header">
-                            <div class="sheet-header-main">
-                                <h1 id="previewTitle" class="sheet-title">안전조끼 매입처 현장 사진</h1>
-                                <div id="previewDateWrap" class="sheet-meta">
-                                    <span>작성일: <strong id="previewDate">2026-10-26</strong></span>
-                                </div>
-                            </div>
-                            <!-- 우측 상단 QR 코드 박스 (동영상 연결 시 자동 표시) -->
-                            <div id="sheetQrBox" class="sheet-qr-box hidden">
-                                <div id="qrCanvasContainer" class="sheet-qr-code"></div>
-                                <div id="previewQrLabel" class="sheet-qr-label">현장 영상 보기</div>
-                            </div>
-                        </div>
-
-                        <!-- 하단 자동 리사이즈 사진 그리드 -->
-                        <div id="sheetPhotoGrid" class="sheet-photo-grid" data-cols="1" data-rows="1">
-                            <!-- JS 동적 렌더링 -->
-                        </div>
+                    <div id="pagesContainer" class="ps-pages-container">
+                        <!-- JS에서 1장 이상의 .a4-sheet 페이지들을 동적 렌더링 -->
                     </div>
                 </div>
             </section>
@@ -281,11 +275,13 @@
                         </div>
                         <div class="ps-smart-extract-controls">
                             <label for="autoExtractCountSelect">추출할 사진 수:</label>
-                            <select id="autoExtractCountSelect" class="ps-input" style="width: 110px;">
-                                <option value="2">2장 (1×2)</option>
-                                <option value="4" selected>4장 (2×2)</option>
-                                <option value="6">6장 (2×3)</option>
-                                <option value="8">8장 (2×4)</option>
+                            <select id="autoExtractCountSelect" class="ps-input" style="width: 120px;">
+                                <option value="2">2장 추출</option>
+                                <option value="4" selected>4장 추출</option>
+                                <option value="6">6장 추출</option>
+                                <option value="8">8장 (1페이지)</option>
+                                <option value="12">12장 (2페이지)</option>
+                                <option value="16">16장 (2페이지)</option>
                             </select>
                             <button type="button" class="btn-ps-indigo" id="runSmartExtractBtn">
                                 <i class='bx bxs-bolt'></i> 핵심 장면 자동 추출 실행
@@ -298,7 +294,7 @@
                     </div>
 
                     <div class="ps-extracted-tray-header">
-                        <h4>추출된 장면 목록 (<span id="trayCountText">0</span> / 8장) <span class="ps-tray-hint">· 사진 클릭 시 크게 보기</span></h4>
+                        <h4>추출된 장면 목록 (<span id="trayCountText">0</span>장) <span class="ps-tray-hint">· 사진 클릭 시 크게 보기</span></h4>
                         <button type="button" class="btn-ps-clear" id="clearTrayBtn">목록 비우기</button>
                     </div>
 
@@ -339,7 +335,7 @@
             </div>
             <div class="ps-lightbox-actions">
                 <button type="button" class="btn-ps-outline btn-ps-sm" id="lightboxJumpToVideoBtn" title="이 장면이 찍힌 영상 시간으로 이동하여 미세 조정">
-                    <i class='bx bx-Time-five'></i> 이 시점으로 영상 이동
+                    <i class='bx bx-time-five'></i> 이 시점으로 영상 이동
                 </button>
                 <button type="button" class="btn-ps-danger-sm" id="lightboxDeleteFrameBtn" title="이 장면을 목록에서 제외">
                     <i class='bx bx-trash'></i> 이 장면 목록에서 제외
@@ -375,6 +371,6 @@
 
     <div id="toastContainer" class="ps-toast-container no-print"></div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>
