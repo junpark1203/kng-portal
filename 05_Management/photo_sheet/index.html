@@ -7,7 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=2">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style id="dynamicPageStyle">
         @media print {
             @page {
@@ -23,7 +24,7 @@
         <header class="ps-list-header">
             <div class="ps-header-title">
                 <h1><i class='bx bx-grid'></i> 현장 사진 대지</h1>
-                <p class="ps-subtitle">제목과 사진(최대 8장)만 올리면 사진 개수와 A4(세로/가로) 규격에 맞춰 1장으로 자동 리사이즈 출력됩니다.</p>
+                <p class="ps-subtitle">제목과 사진(최대 8장) 또는 동영상을 올리면 A4(세로/가로) 1장 규격에 맞춰 자동 리사이즈 및 QR 코드로 출력됩니다.</p>
             </div>
             <div class="ps-header-controls">
                 <div class="ps-search-box">
@@ -83,7 +84,7 @@
                         <div class="ps-form-group" style="flex: 1;">
                             <label for="sheetDateInput">작성일자 표시</label>
                             <div class="ps-date-row">
-                                <input type="checkbox" id="showDateCheck" checked title="인쇄 시 우측 상단에 날짜 표시">
+                                <input type="checkbox" id="showDateCheck" checked title="인쇄 시 상단에 날짜 표시">
                                 <input type="date" id="sheetDateInput" class="ps-input">
                             </div>
                         </div>
@@ -96,7 +97,7 @@
                                 <i class='bx bx-file-blank'></i> A4 세로 (최대 2×4)
                             </button>
                             <button type="button" class="ps-seg-btn" data-orientation="landscape">
-                                <i class='bx bx-Dock-top bx-rotate-90'></i> A4 가로 (최대 4×2)
+                                <i class='bx bx-dock-top bx-rotate-90'></i> A4 가로 (최대 4×2)
                             </button>
                         </div>
                     </div>
@@ -128,32 +129,73 @@
                         </label>
                         <label class="ps-checkbox-label">
                             <input type="checkbox" id="showIndexCheck">
-                            <span>사진 번호(①, ②...) 표시</span>
+                            <span>사진 번호(1, 2...) 표시</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- 사진 업로드 및 순서/캡션 관리 카드 -->
+                <!-- 동영상 QR 코드 연동 설정 카드 -->
+                <div class="ps-panel-card ps-qr-card">
+                    <div class="ps-card-header-row">
+                        <h3 class="ps-card-title"><i class='bx bx-qr-scan'></i> 우측 상단 동영상 QR 코드</h3>
+                        <label class="ps-checkbox-label">
+                            <input type="checkbox" id="showQrCheck" checked>
+                            <span>QR 표시</span>
+                        </label>
+                    </div>
+
+                    <div id="videoServerStatusBox" class="ps-video-status-box hidden">
+                        <div class="ps-video-status-info">
+                            <i class='bx bxs-video'></i>
+                            <span>서버에 현장 동영상이 연결되었습니다.</span>
+                        </div>
+                        <div class="ps-video-status-actions">
+                            <a id="previewServerVideoLink" href="#" target="_blank" class="btn-ps-outline btn-ps-sm">
+                                <i class='bx bx-play-circle'></i> 재생 확인
+                            </a>
+                            <button type="button" id="removeServerVideoBtn" class="btn-ps-danger-sm">
+                                <i class='bx bx-trash'></i> 영상 삭제
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-group" style="margin-bottom: 8px;">
+                        <label for="externalVideoUrlInput">또는 외부 동영상 링크 직접 입력 (유튜브 / 드라이브 등)</label>
+                        <input type="url" id="externalVideoUrlInput" class="ps-input" placeholder="https://... (동영상 업로드 시 자동 생성됨)">
+                    </div>
+
+                    <div class="ps-form-group" style="margin-bottom: 0;">
+                        <label for="qrLabelInput">QR 코드 하단 안내 문구</label>
+                        <input type="text" id="qrLabelInput" class="ps-input" value="현장 영상 보기" placeholder="예: 현장 영상 보기">
+                    </div>
+                </div>
+
+                <!-- 사진 & 동영상 업로드 및 순서/캡션 관리 카드 -->
                 <div class="ps-panel-card ps-photo-manager-card">
                     <div class="ps-card-header-row">
-                        <h3 class="ps-card-title"><i class='bx bx-images'></i> 사진 관리 (최대 8장)</h3>
+                        <h3 class="ps-card-title"><i class='bx bx-images'></i> 사진 & 동영상 관리 (최대 8장)</h3>
                         <button type="button" class="btn-ps-clear" id="clearAllPhotosBtn" title="전체 사진 비우기">
                             <i class='bx bx-trash'></i> 전체 삭제
                         </button>
                     </div>
 
-                    <!-- 업로드 드롭존 -->
+                    <!-- 업로드 드롭존 (사진 + 동영상 모두 지원) -->
                     <div id="uploadDropzone" class="ps-dropzone" tabindex="0">
-                        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+                        <input type="file" id="fileInput" accept="image/*,video/*" multiple hidden>
+                        <input type="file" id="videoOnlyInput" accept="video/*" hidden>
                         <i class='bx bx-cloud-upload'></i>
                         <div class="ps-dropzone-text">
-                            <strong>클릭하여 사진 선택</strong> 또는 이곳으로 사진 드래그<br>
-                            <span>화면 어디서나 <b>Ctrl + V</b>로 클립보드 사진 붙여넣기 가능</span>
+                            <strong>클릭하여 사진·동영상 선택</strong> 또는 이곳으로 드래그<br>
+                            <span>화면 어디서나 <b>Ctrl + V</b> 붙여넣기 가능</span>
                         </div>
                     </div>
 
+                    <button type="button" class="btn-ps-video-extract" id="openVideoExtractorBtn">
+                        <i class='bx bx-movie-play'></i> 동영상에서 핵심 장면 추출 & QR 생성하기
+                    </button>
+
                     <p class="ps-help-tip">
-                        <i class='bx bx-move'></i> 마우스 드래그로 사진 순서를 바꿀 수 있습니다. 메모를 비워두면 사진만 꽉 차게 출력됩니다.
+                        <i class='bx bx-move'></i> 드래그로 사진 순서를 바꿀 수 있습니다. 메모를 비워두면 사진만 꽉 차게 출력됩니다.
                     </p>
 
                     <!-- 업로드된 사진 리스트 (드래그 순서 변경 + 한 줄 메모 입력) -->
@@ -171,11 +213,18 @@
 
                 <div class="ps-sheet-scroll-wrap">
                     <div id="a4Sheet" class="a4-sheet portrait show-border fit-contain">
-                        <!-- 상단 제목 헤더 -->
+                        <!-- 상단 제목 및 우측 QR 코드 헤더 -->
                         <div class="sheet-header">
-                            <h1 id="previewTitle" class="sheet-title">안전조끼 매입처 현장 사진</h1>
-                            <div id="previewDateWrap" class="sheet-meta">
-                                <span id="previewDate">2026-10-26</span>
+                            <div class="sheet-header-main">
+                                <h1 id="previewTitle" class="sheet-title">안전조끼 매입처 현장 사진</h1>
+                                <div id="previewDateWrap" class="sheet-meta">
+                                    <span>작성일: <strong id="previewDate">2026-10-26</strong></span>
+                                </div>
+                            </div>
+                            <!-- 우측 상단 QR 코드 박스 (동영상 연결 시 자동 표시) -->
+                            <div id="sheetQrBox" class="sheet-qr-box hidden">
+                                <div id="qrCanvasContainer" class="sheet-qr-code"></div>
+                                <div id="previewQrLabel" class="sheet-qr-label">현장 영상 보기</div>
                             </div>
                         </div>
 
@@ -189,6 +238,98 @@
         </div>
     </div>
 
+    <!-- 3. 동영상 핵심 장면 스마트 추출 & 핀포인트 캡처 모달 -->
+    <div id="videoExtractModal" class="ps-modal hidden no-print">
+        <div class="ps-modal-dialog">
+            <div class="ps-modal-header">
+                <div class="ps-modal-title-wrap">
+                    <h2><i class='bx bx-movie-play'></i> 동영상 핵심 장면 스마트 추출기</h2>
+                    <span id="videoFileNameBadge" class="ps-video-file-badge">video.mp4</span>
+                </div>
+                <button type="button" class="ps-modal-close" id="closeVideoModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+
+            <div class="ps-modal-body">
+                <!-- 좌측: 비디오 플레이어 & 수동 핀포인트 캡처 -->
+                <div class="ps-video-left">
+                    <div class="ps-video-player-wrap">
+                        <video id="extractVideoPlayer" controls playsinline preload="auto"></video>
+                    </div>
+
+                    <div class="ps-video-step-controls">
+                        <div class="ps-step-btns">
+                            <button type="button" class="btn-step" data-seek="-1">-1.0초</button>
+                            <button type="button" class="btn-step" data-seek="-0.1">◀ -0.1초</button>
+                            <span id="videoTimeDisplay" class="ps-time-badge">00:00.0 / 00:00.0</span>
+                            <button type="button" class="btn-step" data-seek="0.1">+0.1초 ▶</button>
+                            <button type="button" class="btn-step" data-seek="1">+1.0초</button>
+                        </div>
+                        <button type="button" class="btn-ps-primary" id="captureCurrentFrameBtn">
+                            <i class='bx bx-camera'></i> 현재 장면 바로 담기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 우측: AI 스마트 핵심 장면 자동 추출 & 추출 트레이 -->
+                <div class="ps-video-right">
+                    <div class="ps-smart-extract-box">
+                        <div class="ps-smart-extract-head">
+                            <div>
+                                <h4><i class='bx bxs-magic-wand'></i> 핵심 장면 자동 추출 (흔들림/블러 자동 제외)</h4>
+                                <p>영상을 구간별로 분석하여 장면이 전환되고 가장 초점이 선명한 베스트 컷을 자동으로 골라냅니다.</p>
+                            </div>
+                        </div>
+                        <div class="ps-smart-extract-controls">
+                            <label for="autoExtractCountSelect">추출할 사진 수:</label>
+                            <select id="autoExtractCountSelect" class="ps-input" style="width: 110px;">
+                                <option value="2">2장 (1×2)</option>
+                                <option value="4" selected>4장 (2×2)</option>
+                                <option value="6">6장 (2×3)</option>
+                                <option value="8">8장 (2×4)</option>
+                            </select>
+                            <button type="button" class="btn-ps-indigo" id="runSmartExtractBtn">
+                                <i class='bx bxs-bolt'></i> 핵심 장면 자동 추출 실행
+                            </button>
+                        </div>
+                        <div id="smartExtractProgressWrap" class="ps-progress-wrap hidden">
+                            <div class="ps-progress-bar"><div id="smartExtractProgressBar" class="ps-progress-fill" style="width: 0%"></div></div>
+                            <span id="smartExtractProgressText">장면 선명도 분석 중...</span>
+                        </div>
+                    </div>
+
+                    <div class="ps-extracted-tray-header">
+                        <h4>추출된 장면 목록 (<span id="trayCountText">0</span> / 8장)</h4>
+                        <button type="button" class="btn-ps-clear" id="clearTrayBtn">목록 비우기</button>
+                    </div>
+
+                    <div id="extractedFramesTray" class="ps-extracted-tray">
+                        <div class="ps-tray-empty">
+                            상단의 <b>[핵심 장면 자동 추출 실행]</b>을 누르거나<br>좌측 영상에서 원하는 순간에 <b>[현재 장면 바로 담기]</b>를 눌러주세요.
+                        </div>
+                    </div>
+
+                    <div class="ps-video-modal-options">
+                        <label class="ps-checkbox-label">
+                            <input type="checkbox" id="autoTimestampCaptionCheck">
+                            <span>사진 하단 메모에 영상 시간(예: <code>[00:12]</code>) 자동 입력</span>
+                        </label>
+                        <label class="ps-checkbox-label">
+                            <input type="checkbox" id="uploadVideoForQrCheck" checked>
+                            <span><b>동영상도 서버에 저장하여 A4 우측 상단에 재생용 QR 코드 자동 생성</b></span>
+                        </label>
+                    </div>
+
+                    <div class="ps-modal-footer">
+                        <button type="button" class="btn-ps-outline" id="cancelVideoModalBtn">취소</button>
+                        <button type="button" class="btn-ps-save" id="applyExtractedFramesBtn">
+                            <i class='bx bx-check-circle'></i> 선택한 장면 사진 대지에 반영하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 전역 로딩 오버레이 -->
     <div id="globalLoading" class="ps-loading hidden no-print">
         <div class="ps-loading-box">
@@ -199,6 +340,6 @@
 
     <div id="toastContainer" class="ps-toast-container no-print"></div>
 
-    <script src="app.js?v=1"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>

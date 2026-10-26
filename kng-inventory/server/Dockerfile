@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# 모바일 동영상 압축/변환용 FFmpeg 설치
+RUN apk add --no-cache ffmpeg
+
 # 앱 디렉터리 생성
 WORKDIR /usr/src/app
 

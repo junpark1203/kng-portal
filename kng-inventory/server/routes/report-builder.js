@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 
 let db;
 
@@ -67,6 +68,87 @@ router.post('/upload', upload.single('image'), (req, res) => {
     } catch (err) {
         console.error('이미지 업로드 에러:', err);
         res.status(500).json({ error: '서버 업로드 에러' });
+    }
+});
+
+// 대용량 동영상 청크(분할) 업로드 & FFmpeg 모바일 경량화 API
+const chunkUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 } // 청크당 최대 25MB
+});
+
+router.post('/video-chunk', chunkUpload.single('chunk'), (req, res) => {
+    try {
+        const uploadId = String(req.body.uploadId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!uploadId || !req.file) {
+            return res.status(400).json({ error: '청크 데이터가 누락되었습니다.' });
+        }
+        const tempFilePath = path.join(REPORT_BUILDER_UPLOAD_DIR, `temp-vid-${uploadId}.part`);
+        fs.appendFileSync(tempFilePath, req.file.buffer);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('동영상 청크 저장 에러:', err);
+        res.status(500).json({ error: '청크 저장 실패: ' + err.message });
+    }
+});
+
+router.post('/video-complete', (req, res) => {
+    try {
+        const uploadId = String(req.body.uploadId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const originalName = String(req.body.originalName || 'video.mp4');
+        const tempFilePath = path.join(REPORT_BUILDER_UPLOAD_DIR, `temp-vid-${uploadId}.part`);
+
+        if (!uploadId || !fs.existsSync(tempFilePath)) {
+            return res.status(404).json({ error: '업로드된 임시 동영상 파일을 찾을 수 없습니다.' });
+        }
+
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const finalFilename = `report-vid-${uniqueSuffix}.mp4`;
+        const finalFilePath = path.join(REPORT_BUILDER_UPLOAD_DIR, finalFilename);
+
+        // FFmpeg로 모바일 QR 스트리밍에 최적화된 720p H.264 MP4로 경량화 변환 시도
+        const ffmpegArgs = [
+            '-y',
+            '-i', tempFilePath,
+            '-vf', "scale='min(1280,iw)':-2",
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '28',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            '-c:a', 'aac',
+            '-b:a', '96k',
+            finalFilePath
+        ];
+
+        execFile('ffmpeg', ffmpegArgs, { timeout: 180000 }, (err) => {
+            if (!err && fs.existsSync(finalFilePath)) {
+                try { fs.unlinkSync(tempFilePath); } catch (e) {}
+                return res.json({
+                    url: `/api/report-builder/uploads/${finalFilename}`,
+                    filename: finalFilename,
+                    compressed: true
+                });
+            }
+            // FFmpeg 미설치 환경이거나 변환 실패 시 원본 조립본을 그대로 저장 (폴백)
+            const fallbackExt = path.extname(originalName) || '.mp4';
+            const fallbackName = `report-vid-${uniqueSuffix}${fallbackExt}`;
+            const fallbackPath = path.join(REPORT_BUILDER_UPLOAD_DIR, fallbackName);
+            try {
+                fs.renameSync(tempFilePath, fallbackPath);
+            } catch (renameErr) {
+                fs.copyFileSync(tempFilePath, fallbackPath);
+                try { fs.unlinkSync(tempFilePath); } catch (e) {}
+            }
+            return res.json({
+                url: `/api/report-builder/uploads/${fallbackName}`,
+                filename: fallbackName,
+                compressed: false
+            });
+        });
+    } catch (err) {
+        console.error('동영상 완료 처리 에러:', err);
+        res.status(500).json({ error: '동영상 처리 실패: ' + err.message });
     }
 });
 
@@ -149,6 +231,9 @@ router.post('/copy', (req, res) => {
                     content.photos[idx].url = copiedUrl;
                 }
             });
+        }
+        if (content.videoServerUrl && content.rows && content.rows[0] && Array.isArray(content.rows[0].col_video) && content.rows[0].col_video[0]) {
+            content.videoServerUrl = content.rows[0].col_video[0];
         }
         
         const newContentJson = JSON.stringify(content);

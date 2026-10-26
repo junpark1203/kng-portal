@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>K&G 현장 동영상 플레이어</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .watch-header {
+            padding: 16px 20px;
+            background: rgba(30, 41, 59, 0.9);
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .watch-title-group {
+            min-width: 0;
+        }
+        .watch-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.2);
+            padding: 3px 8px;
+            border-radius: 999px;
+            margin-bottom: 4px;
+        }
+        .watch-title {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+            word-break: keep-all;
+        }
+        .watch-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .video-box {
+            width: 100%;
+            max-width: 960px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+        }
+        video {
+            width: 100%;
+            max-height: 75vh;
+            display: block;
+            background: #000;
+        }
+        .watch-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .error-msg {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px 20px;
+        }
+    </style>
+</head>
+<body>
+    <header class="watch-header">
+        <div class="watch-title-group">
+            <div class="watch-badge"><i class='bx bx-video'></i> K&G 현장 사진 대지 연동 영상</div>
+            <h1 class="watch-title" id="docTitle">현장 동영상</h1>
+        </div>
+    </header>
+
+    <main class="watch-stage" id="stageArea">
+        <div class="video-box">
+            <video id="player" controls playsinline autoplay preload="metadata"></video>
+        </div>
+        <div class="watch-actions">
+            <a id="downloadLink" class="btn-download" href="#" download>
+                <i class='bx bx-download'></i> 동영상 저장
+            </a>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const file = params.get('f');
+            const rawUrl = params.get('u');
+            const title = params.get('t') || '현장 첨부 동영상';
+
+            document.getElementById('docTitle').textContent = title;
+            document.title = title + ' - K&G 현장 동영상';
+
+            const apiHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? `http://${window.location.hostname}:3000`
+                : 'https://kng.junparks.com';
+
+            let videoSrc = '';
+            if (file) {
+                videoSrc = `${apiHost}/api/report-builder/uploads/${encodeURIComponent(file)}`;
+            } else if (rawUrl) {
+                if (rawUrl.startsWith('/api/')) {
+                    videoSrc = apiHost + rawUrl;
+                } else {
+                    videoSrc = rawUrl;
+                }
+            }
+
+            if (!videoSrc) {
+                document.getElementById('stageArea').innerHTML = '<div class="error-msg">재생할 동영상 경로가 올바르지 않습니다.</div>';
+                return;
+            }
+
+            // 외부 링크(유튜브 등)인 경우 바로 리다이렉트
+            if (!file && /^https?:\/\//i.test(videoSrc) && !videoSrc.includes('/api/report-builder/uploads/')) {
+                window.location.replace(videoSrc);
+                return;
+            }
+
+            const player = document.getElementById('player');
+            const downloadLink = document.getElementById('downloadLink');
+            player.src = videoSrc;
+            downloadLink.href = videoSrc;
+        })();
+    </script>
+</body>
+</html>

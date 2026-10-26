@@ -1,5 +1,5 @@
 /* ==========================================================================
-   현장 사진 대지 (A4 Auto Photo Sheet) 스타일시트
+   현장 사진 대지 (A4 Auto Photo Sheet) 스타일시트 (v2: 동영상 추출 & QR 연동 포함)
    ========================================================================== */
 
 :root {
@@ -174,7 +174,9 @@ body {
     top: 10px;
     right: 10px;
     display: flex;
-    gap: 6px;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .ps-mini-badge {
@@ -185,6 +187,10 @@ body {
     padding: 3px 8px;
     border-radius: 999px;
     backdrop-filter: blur(4px);
+}
+
+.ps-mini-badge.qr-badge {
+    background: rgba(79, 70, 229, 0.9);
 }
 
 .ps-doc-body {
@@ -296,19 +302,19 @@ body {
 .ps-sidebar {
     background: #f8fafc;
     border-right: 1px solid var(--ps-border);
-    padding: 18px;
+    padding: 16px;
     overflow-y: auto;
     max-height: calc(100vh - 61px);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .ps-panel-card {
     background: var(--ps-surface);
     border: 1px solid var(--ps-border);
     border-radius: 10px;
-    padding: 16px;
+    padding: 15px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
@@ -324,8 +330,8 @@ body {
 }
 
 .ps-card-title {
-    margin: 0 0 14px 0;
-    font-size: 14.5px;
+    margin: 0 0 12px 0;
+    font-size: 14px;
     font-weight: 700;
     color: #1e293b;
     display: flex;
@@ -339,21 +345,21 @@ body {
 }
 
 .ps-form-group {
-    margin-bottom: 12px;
+    margin-bottom: 11px;
 }
 
 .ps-form-group label {
     display: block;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     color: #475569;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 
 .ps-form-row {
     display: flex;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 11px;
     align-items: center;
 }
 
@@ -375,7 +381,7 @@ body {
     padding: 8px 11px;
     border: 1px solid #cbd5e1;
     border-radius: 7px;
-    font-size: 13.5px;
+    font-size: 13px;
     font-family: inherit;
     color: var(--ps-text);
     background: #fff;
@@ -443,12 +449,45 @@ body {
     accent-color: var(--ps-primary);
 }
 
+/* 동영상 서버 연결 상태 박스 */
+.ps-video-status-box {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ps-video-status-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #3730a3;
+}
+
+.ps-video-status-info i {
+    font-size: 17px;
+    color: #4f46e5;
+}
+
+.ps-video-status-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 /* 드롭존 */
 .ps-dropzone {
     border: 2px dashed #93c5fd;
     background: #eff6ff;
     border-radius: 10px;
-    padding: 18px 12px;
+    padding: 16px 12px;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
@@ -462,7 +501,7 @@ body {
 }
 
 .ps-dropzone i {
-    font-size: 28px;
+    font-size: 26px;
     color: var(--ps-primary);
     display: block;
     margin-bottom: 4px;
@@ -477,6 +516,30 @@ body {
 .ps-dropzone-text span {
     font-size: 11.5px;
     color: #3b82f6;
+}
+
+.btn-ps-video-extract {
+    width: 100%;
+    margin-top: 8px;
+    padding: 9px 12px;
+    background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+.btn-ps-video-extract:hover {
+    opacity: 0.94;
+    transform: translateY(-1px);
 }
 
 .ps-help-tip {
@@ -626,7 +689,7 @@ body {
 .a4-sheet {
     background: #ffffff;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-    padding: 12mm;
+    padding: 11mm;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -646,34 +709,84 @@ body {
     height: 210mm;
 }
 
-/* 상단 문서 제목 영역 */
+/* 상단 문서 제목 + 우측 상단 QR 코드 헤더 */
 .sheet-header {
     flex-shrink: 0;
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
     border-bottom: 2px solid #0f172a;
-    padding-bottom: 3.5mm;
-    margin-bottom: 4.5mm;
-    gap: 10px;
+    padding-bottom: 3mm;
+    margin-bottom: 4mm;
+    gap: 4mm;
+}
+
+.sheet-header-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 .sheet-title {
     margin: 0;
-    font-size: 21pt;
+    font-size: 20pt;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.02em;
     line-height: 1.2;
-    flex: 1;
     text-align: center;
     word-break: keep-all;
+    width: 100%;
 }
 
 .sheet-meta {
-    font-size: 9.5pt;
+    width: 100%;
+    text-align: right;
+    font-size: 9pt;
     color: #334155;
     font-weight: 500;
+    margin-top: 1.5mm;
+}
+
+/* 우측 상단 동영상 재생 QR 코드 박스 */
+.sheet-qr-box {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 2mm;
+    padding: 1.5mm 2mm;
+    background: #ffffff;
+}
+
+.sheet-qr-code {
+    width: 16mm;
+    height: 16mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sheet-qr-code canvas,
+.sheet-qr-code img {
+    width: 16mm !important;
+    height: 16mm !important;
+    display: block;
+}
+
+.sheet-qr-label {
+    margin-top: 1mm;
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+    line-height: 1.1;
     white-space: nowrap;
 }
 
@@ -804,7 +917,349 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   4. 버튼 및 공통 UI 컴포넌트
+   4. 동영상 핵심 장면 스마트 추출기 모달
+   -------------------------------------------------------------------------- */
+.ps-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    padding: 20px;
+}
+
+.ps-modal-dialog {
+    background: #ffffff;
+    border-radius: 14px;
+    width: 1120px;
+    max-width: 96vw;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.ps-modal-header {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--ps-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+}
+
+.ps-modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ps-modal-title-wrap h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #0f172a;
+}
+
+.ps-modal-title-wrap h2 i {
+    color: var(--ps-indigo);
+    font-size: 22px;
+}
+
+.ps-video-file-badge {
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.ps-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.ps-modal-body {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 20px;
+    padding: 20px 22px;
+    overflow-y: auto;
+}
+
+@media (max-width: 920px) {
+    .ps-modal-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ps-video-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ps-video-player-wrap {
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 360px;
+}
+
+.ps-video-player-wrap video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.ps-video-step-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid var(--ps-border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.ps-step-btns {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.btn-step {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+}
+
+.btn-step:hover {
+    background: #f1f5f9;
+}
+
+.ps-time-badge {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    background: #e2e8f0;
+    padding: 5px 10px;
+    border-radius: 6px;
+}
+
+.ps-video-right {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ps-smart-extract-box {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.ps-smart-extract-head h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #312e81;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ps-smart-extract-head p {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: #4338ca;
+}
+
+.ps-smart-extract-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ps-smart-extract-controls label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #312e81;
+    white-space: nowrap;
+}
+
+.btn-ps-indigo {
+    flex: 1;
+    background: var(--ps-indigo);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.btn-ps-indigo:hover {
+    background: var(--ps-indigo-hover);
+}
+
+.ps-progress-wrap {
+    margin-top: 10px;
+}
+
+.ps-progress-bar {
+    height: 7px;
+    background: #c7d2fe;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.ps-progress-fill {
+    height: 100%;
+    background: var(--ps-indigo);
+    transition: width 0.15s ease;
+}
+
+#smartExtractProgressText {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #3730a3;
+}
+
+.ps-extracted-tray-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ps-extracted-tray-header h4 {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.ps-extracted-tray {
+    border: 1px solid var(--ps-border);
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 170px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.ps-tray-empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 12.5px;
+    line-height: 1.5;
+    padding: 32px 10px;
+}
+
+.ps-tray-item {
+    position: relative;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.ps-tray-item img {
+    width: 100%;
+    height: 72px;
+    object-fit: cover;
+    display: block;
+}
+
+.ps-tray-meta {
+    padding: 3px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+}
+
+.ps-tray-del {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.9);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+.ps-video-modal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #f8fafc;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--ps-border);
+}
+
+.ps-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   5. 버튼 및 공통 UI 컴포넌트
    -------------------------------------------------------------------------- */
 .btn-ps-primary,
 .btn-ps-save,
@@ -823,6 +1278,7 @@ body {
     transition: all 0.15s;
     border: none;
     font-family: inherit;
+    text-decoration: none;
 }
 
 .btn-ps-primary {
@@ -949,7 +1405,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   5. 실제 종이 인쇄 (@media print) — A4 단 1장 칼맞춤 보장
+   6. 실제 종이 인쇄 (@media print) — A4 단 1장 칼맞춤 보장
    -------------------------------------------------------------------------- */
 @media print {
     html, body {
