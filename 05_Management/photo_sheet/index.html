@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현장 사진 대지 (A4 Auto Photo Sheet)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="style.css?v=1">
+    <style id="dynamicPageStyle">
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 1. 저장된 사진 대지 목록 뷰 -->
+    <div id="listView" class="ps-container no-print">
+        <header class="ps-list-header">
+            <div class="ps-header-title">
+                <h1><i class='bx bx-grid'></i> 현장 사진 대지</h1>
+                <p class="ps-subtitle">제목과 사진(최대 8장)만 올리면 사진 개수와 A4(세로/가로) 규격에 맞춰 1장으로 자동 리사이즈 출력됩니다.</p>
+            </div>
+            <div class="ps-header-controls">
+                <div class="ps-search-box">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="searchInput" placeholder="제목으로 검색...">
+                </div>
+                <button type="button" class="btn-ps-primary" id="createNewBtn">
+                    <i class='bx bx-plus'></i> 새 사진 대지 작성
+                </button>
+            </div>
+        </header>
+
+        <div id="sheetList" class="ps-card-grid">
+            <div class="ps-empty-state">
+                <i class='bx bx-loader-alt bx-spin'></i> 저장된 목록을 불러오는 중...
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 작성 및 실시간 A4 미리보기 에디터 뷰 -->
+    <div id="editorView" class="ps-editor-wrap hidden">
+        <!-- 상단 액션 바 (인쇄 시 숨김) -->
+        <header class="ps-topbar no-print">
+            <div class="ps-topbar-left">
+                <button type="button" class="btn-ps-outline" id="backToListBtn">
+                    <i class='bx bx-arrow-back'></i> 목록으로
+                </button>
+                <span class="ps-status-pill" id="photoCountBadge">0 / 8장</span>
+                <span class="ps-layout-pill" id="currentGridBadge">배치 대기</span>
+            </div>
+            <div class="ps-topbar-right">
+                <button type="button" class="btn-ps-outline" id="saveCopyBtn" style="display: none;">
+                    <i class='bx bx-copy'></i> 복사본 저장
+                </button>
+                <button type="button" class="btn-ps-save" id="saveBtn">
+                    <i class='bx bx-save'></i> 서버에 저장
+                </button>
+                <button type="button" class="btn-ps-print" id="printBtn">
+                    <i class='bx bx-printer'></i> A4 인쇄하기
+                </button>
+            </div>
+        </header>
+
+        <div class="ps-workspace">
+            <!-- 좌측 컨트롤 패널 (인쇄 시 숨김) -->
+            <aside class="ps-sidebar no-print">
+                <!-- 기본 설정 카드 -->
+                <div class="ps-panel-card">
+                    <h3 class="ps-card-title"><i class='bx bx-slider-alt'></i> 문서 및 출력 설정</h3>
+
+                    <div class="ps-form-group">
+                        <label for="sheetTitleInput">문서 제목 (상단 표시)</label>
+                        <input type="text" id="sheetTitleInput" class="ps-input" placeholder="예: 안전조끼 매입처 현장 사진">
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-form-group" style="flex: 1;">
+                            <label for="sheetDateInput">작성일자 표시</label>
+                            <div class="ps-date-row">
+                                <input type="checkbox" id="showDateCheck" checked title="인쇄 시 우측 상단에 날짜 표시">
+                                <input type="date" id="sheetDateInput" class="ps-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-group">
+                        <label>용지 방향 (A4)</label>
+                        <div class="ps-segment-group" id="orientationGroup">
+                            <button type="button" class="ps-seg-btn active" data-orientation="portrait">
+                                <i class='bx bx-file-blank'></i> A4 세로 (최대 2×4)
+                            </button>
+                            <button type="button" class="ps-seg-btn" data-orientation="landscape">
+                                <i class='bx bx-Dock-top bx-rotate-90'></i> A4 가로 (최대 4×2)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row">
+                        <div class="ps-form-group" style="flex: 1;">
+                            <label for="gridLayoutSelect">배치 구성 (열 × 행)</label>
+                            <select id="gridLayoutSelect" class="ps-input">
+                                <option value="auto">자동 맞춤 (사진 개수 기준)</option>
+                            </select>
+                        </div>
+                        <div class="ps-form-group" style="flex: 1;">
+                            <label>사진 리사이즈 방식</label>
+                            <div class="ps-segment-group ps-seg-sm" id="fitModeGroup">
+                                <button type="button" class="ps-seg-btn active" data-fit="contain" title="사진이 잘리지 않게 원본 비율 그대로 칸 안에 맞춤">
+                                    원본 비율
+                                </button>
+                                <button type="button" class="ps-seg-btn" data-fit="cover" title="여백 없이 사진 칸에 꽉 차게 맞춤">
+                                    꽉 채우기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ps-form-row" style="margin-bottom: 0;">
+                        <label class="ps-checkbox-label">
+                            <input type="checkbox" id="showBorderCheck" checked>
+                            <span>사진 칸 테두리선 표시</span>
+                        </label>
+                        <label class="ps-checkbox-label">
+                            <input type="checkbox" id="showIndexCheck">
+                            <span>사진 번호(①, ②...) 표시</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 사진 업로드 및 순서/캡션 관리 카드 -->
+                <div class="ps-panel-card ps-photo-manager-card">
+                    <div class="ps-card-header-row">
+                        <h3 class="ps-card-title"><i class='bx bx-images'></i> 사진 관리 (최대 8장)</h3>
+                        <button type="button" class="btn-ps-clear" id="clearAllPhotosBtn" title="전체 사진 비우기">
+                            <i class='bx bx-trash'></i> 전체 삭제
+                        </button>
+                    </div>
+
+                    <!-- 업로드 드롭존 -->
+                    <div id="uploadDropzone" class="ps-dropzone" tabindex="0">
+                        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+                        <i class='bx bx-cloud-upload'></i>
+                        <div class="ps-dropzone-text">
+                            <strong>클릭하여 사진 선택</strong> 또는 이곳으로 사진 드래그<br>
+                            <span>화면 어디서나 <b>Ctrl + V</b>로 클립보드 사진 붙여넣기 가능</span>
+                        </div>
+                    </div>
+
+                    <p class="ps-help-tip">
+                        <i class='bx bx-move'></i> 마우스 드래그로 사진 순서를 바꿀 수 있습니다. 메모를 비워두면 사진만 꽉 차게 출력됩니다.
+                    </p>
+
+                    <!-- 업로드된 사진 리스트 (드래그 순서 변경 + 한 줄 메모 입력) -->
+                    <div id="photoItemList" class="ps-photo-list">
+                        <!-- JS 동적 렌더링 -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 우측 실시간 A4 미리보기 캔버스 (인쇄 시 이 영역이 그대로 A4 1장으로 출력됨) -->
+            <section class="ps-preview-stage">
+                <div class="ps-preview-Banner no-print">
+                    <span><i class='bx bx-show'></i> 실시간 A4 인쇄 미리보기 (미리보기 사진도 드래그하여 위치를 서로 바꿀 수 있습니다)</span>
+                </div>
+
+                <div class="ps-sheet-scroll-wrap">
+                    <div id="a4Sheet" class="a4-sheet portrait show-border fit-contain">
+                        <!-- 상단 제목 헤더 -->
+                        <div class="sheet-header">
+                            <h1 id="previewTitle" class="sheet-title">안전조끼 매입처 현장 사진</h1>
+                            <div id="previewDateWrap" class="sheet-meta">
+                                <span id="previewDate">2026-10-26</span>
+                            </div>
+                        </div>
+
+                        <!-- 하단 자동 리사이즈 사진 그리드 -->
+                        <div id="sheetPhotoGrid" class="sheet-photo-grid" data-cols="1" data-rows="1">
+                            <!-- JS 동적 렌더링 -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 전역 로딩 오버레이 -->
+    <div id="globalLoading" class="ps-loading hidden no-print">
+        <div class="ps-loading-box">
+            <i class='bx bx-loader-alt bx-spin'></i>
+            <span id="loadingText">처리 중...</span>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="ps-toast-container no-print"></div>
+
+    <script src="app.js?v=1"></script>
+</body>
+</html>

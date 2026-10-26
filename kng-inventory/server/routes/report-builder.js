@@ -143,8 +143,18 @@ router.post('/copy', (req, res) => {
             });
         }
         
+        if (Array.isArray(content.photos) && content.rows && content.rows[0] && Array.isArray(content.rows[0].col_photos)) {
+            content.rows[0].col_photos.forEach((copiedUrl, idx) => {
+                if (content.photos[idx] && copiedUrl) {
+                    content.photos[idx].url = copiedUrl;
+                }
+            });
+        }
+        
         const newContentJson = JSON.stringify(content);
-        const copyTitle = title ? `[복사본] ${title}` : '제목 없는 보고서';
+        const copyTitle = (title && title.startsWith('[PS]::'))
+            ? `[PS]::[복사본] ${title.slice(6)}`
+            : (title ? `[복사본] ${title}` : '제목 없는 보고서');
         
         const sql = `INSERT INTO report_documents (id, title, content_json, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`;
         db.run(sql, [id, copyTitle, newContentJson, now, now], function(err) {

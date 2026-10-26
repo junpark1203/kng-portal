@@ -137,7 +137,7 @@ async function loadReportList() {
     try {
         const res = await authFetch(API_BASE);
         if (!res.ok) throw new Error('목록 조회 실패');
-        const list = await res.json();
+        const list = (await res.json()).filter(item => !String(item.title || '').startsWith('[PS]::'));
         
         reportList.innerHTML = '';
         if (list.length === 0) {

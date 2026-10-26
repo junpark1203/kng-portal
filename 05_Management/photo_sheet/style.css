@@ -1,0 +1,1003 @@
+/* ==========================================================================
+   현장 사진 대지 (A4 Auto Photo Sheet) 스타일시트
+   ========================================================================== */
+
+:root {
+    --ps-bg: #f1f5f9;
+    --ps-surface: #ffffff;
+    --ps-border: #e2e8f0;
+    --ps-text: #0f172a;
+    --ps-muted: #64748b;
+    --ps-primary: #2563eb;
+    --ps-primary-hover: #1d4ed8;
+    --ps-success: #10b981;
+    --ps-success-hover: #059669;
+    --ps-indigo: #4f46e5;
+    --ps-indigo-hover: #4338ca;
+    --ps-danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--ps-bg);
+    color: var(--ps-text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. 목록 뷰 (List View)
+   -------------------------------------------------------------------------- */
+.ps-container {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 28px 24px;
+}
+
+.ps-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+    background: var(--ps-surface);
+    padding: 22px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--ps-border);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.ps-header-title h1 {
+    margin: 0 0 6px 0;
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ps-text);
+}
+
+.ps-header-title h1 i {
+    color: var(--ps-primary);
+    font-size: 26px;
+}
+
+.ps-subtitle {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ps-muted);
+}
+
+.ps-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ps-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.ps-search-box i {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    font-size: 17px;
+}
+
+.ps-search-box input {
+    padding: 9px 14px 9px 36px;
+    border: 1px solid var(--ps-border);
+    border-radius: 8px;
+    font-size: 13.5px;
+    width: 240px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ps-search-box input:focus {
+    border-color: var(--ps-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* 저장된 문서 카드 그리드 */
+.ps-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 18px;
+}
+
+.ps-doc-card {
+    background: var(--ps-surface);
+    border: 1px solid var(--ps-border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.ps-doc-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.1);
+    border-color: #cbd5e1;
+}
+
+.ps-doc-thumb-grid {
+    height: 156px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--ps-border);
+    display: grid;
+    gap: 2px;
+    padding: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ps-doc-thumb-grid.thumbs-1 { grid-template-columns: 1fr; }
+.ps-doc-thumb-grid.thumbs-2 { grid-template-columns: 1fr 1fr; }
+.ps-doc-thumb-grid.thumbs-3,
+.ps-doc-thumb-grid.thumbs-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.ps-doc-thumb-grid img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #e2e8f0;
+}
+
+.ps-doc-thumb-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #94a3b8;
+    font-size: 13px;
+    gap: 6px;
+}
+
+.ps-doc-badges {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 6px;
+}
+
+.ps-mini-badge {
+    background: rgba(15, 23, 42, 0.78);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+}
+
+.ps-doc-body {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.ps-doc-title {
+    margin: 0 0 6px 0;
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--ps-text);
+    line-height: 1.35;
+    word-break: keep-all;
+}
+
+.ps-doc-meta {
+    font-size: 12px;
+    color: var(--ps-muted);
+    margin: 0 0 12px 0;
+}
+
+.ps-doc-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.ps-empty-state {
+    grid-column: 1 / -1;
+    background: var(--ps-surface);
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 56px 20px;
+    text-align: center;
+    color: var(--ps-muted);
+    font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   2. 에디터 뷰 (Editor & Live A4 Preview)
+   -------------------------------------------------------------------------- */
+.ps-editor-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.ps-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: var(--ps-surface);
+    border-bottom: 1px solid var(--ps-border);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.ps-topbar-left,
+.ps-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ps-status-pill {
+    background: #eff6ff;
+    color: var(--ps-primary);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+}
+
+.ps-layout-pill {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--ps-border);
+}
+
+.ps-workspace {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 0;
+    flex: 1;
+    min-height: calc(100vh - 61px);
+}
+
+@media (max-width: 1100px) {
+    .ps-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 좌측 컨트롤 사이드바 */
+.ps-sidebar {
+    background: #f8fafc;
+    border-right: 1px solid var(--ps-border);
+    padding: 18px;
+    overflow-y: auto;
+    max-height: calc(100vh - 61px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ps-panel-card {
+    background: var(--ps-surface);
+    border: 1px solid var(--ps-border);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.ps-card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ps-card-header-row .ps-card-title {
+    margin-bottom: 0;
+}
+
+.ps-card-title {
+    margin: 0 0 14px 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ps-card-title i {
+    color: var(--ps-primary);
+    font-size: 17px;
+}
+
+.ps-form-group {
+    margin-bottom: 12px;
+}
+
+.ps-form-group label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.ps-form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.ps-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ps-date-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ps-primary);
+    cursor: pointer;
+}
+
+.ps-input {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: var(--ps-text);
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ps-input:focus {
+    border-color: var(--ps-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* 세그먼트 버튼 그룹 */
+.ps-segment-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    gap: 3px;
+}
+
+.ps-seg-btn {
+    border: none;
+    background: transparent;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.15s;
+}
+
+.ps-seg-btn.active {
+    background: #fff;
+    color: var(--ps-primary);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.ps-seg-sm .ps-seg-btn {
+    padding: 7px 6px;
+    font-size: 12px;
+}
+
+.ps-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ps-checkbox-label input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--ps-primary);
+}
+
+/* 드롭존 */
+.ps-dropzone {
+    border: 2px dashed #93c5fd;
+    background: #eff6ff;
+    border-radius: 10px;
+    padding: 18px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.ps-dropzone:hover,
+.ps-dropzone.dragover {
+    background: #dbeafe;
+    border-color: var(--ps-primary);
+}
+
+.ps-dropzone i {
+    font-size: 28px;
+    color: var(--ps-primary);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.ps-dropzone-text {
+    font-size: 12.5px;
+    color: #1e3a8a;
+    line-height: 1.45;
+}
+
+.ps-dropzone-text span {
+    font-size: 11.5px;
+    color: #3b82f6;
+}
+
+.ps-help-tip {
+    margin: 10px 0;
+    font-size: 11.5px;
+    color: var(--ps-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 좌측 사진 아이템 리스트 */
+.ps-photo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ps-photo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid var(--ps-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.ps-photo-item.dragging {
+    opacity: 0.4;
+}
+
+.ps-photo-item.drag-over {
+    border-color: var(--ps-primary);
+    background: #eff6ff;
+}
+
+.ps-photo-drag {
+    cursor: grab;
+    color: #94a3b8;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.ps-photo-drag:active {
+    cursor: grabbing;
+}
+
+.ps-photo-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #1e293b;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ps-photo-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.ps-photo-caption-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.ps-photo-caption-input {
+    width: 100%;
+    padding: 6px 9px;
+    font-size: 12.5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    outline: none;
+}
+
+.ps-photo-caption-input:focus {
+    border-color: var(--ps-primary);
+}
+
+.ps-photo-remove-btn {
+    border: none;
+    background: #fee2e2;
+    color: #dc2626;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.ps-photo-remove-btn:hover {
+    background: #fecaca;
+}
+
+/* --------------------------------------------------------------------------
+   3. 우측 실시간 A4 미리보기 스테이지 & 실제 A4 시트
+   -------------------------------------------------------------------------- */
+.ps-preview-stage {
+    background: #475569;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 24px 40px 24px;
+    overflow: auto;
+    max-height: calc(100vh - 61px);
+}
+
+.ps-preview-Banner {
+    background: rgba(15, 23, 42, 0.75);
+    color: #f8fafc;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ps-sheet-scroll-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* 실제 A4 도화지 (화면 미리보기 & 인쇄 겸용) */
+.a4-sheet {
+    background: #ffffff;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    padding: 12mm;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transition: width 0.2s ease, height 0.2s ease;
+}
+
+/* A4 세로 (210mm x 297mm) */
+.a4-sheet.portrait {
+    width: 210mm;
+    height: 297mm;
+}
+
+/* A4 가로 (297mm x 210mm) */
+.a4-sheet.landscape {
+    width: 297mm;
+    height: 210mm;
+}
+
+/* 상단 문서 제목 영역 */
+.sheet-header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 3.5mm;
+    margin-bottom: 4.5mm;
+    gap: 10px;
+}
+
+.sheet-title {
+    margin: 0;
+    font-size: 21pt;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    flex: 1;
+    text-align: center;
+    word-break: keep-all;
+}
+
+.sheet-meta {
+    font-size: 9.5pt;
+    color: #334155;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* 하단 사진 자동 리사이즈 그리드 */
+.sheet-photo-grid {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr));
+    gap: 3.5mm;
+}
+
+/* 개별 사진 셀 */
+.sheet-photo-cell {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: #ffffff;
+    border-radius: 2px;
+    transition: outline 0.15s;
+}
+
+.a4-sheet.show-border .sheet-photo-cell {
+    border: 1px solid #475569;
+}
+
+.sheet-photo-cell.drag-over-cell {
+    outline: 3px dashed var(--ps-primary);
+    outline-offset: -3px;
+}
+
+/* 사진 프레임 (남은 세로 공간 100% 자동 점유) */
+.sheet-photo-frame {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    background: #ffffff;
+}
+
+.sheet-photo-frame img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.a4-sheet.fit-contain .sheet-photo-frame img {
+    object-fit: contain;
+}
+
+.a4-sheet.fit-cover .sheet-photo-frame img {
+    object-fit: cover;
+}
+
+/* 사진 번호 뱃지 (옵션) */
+.sheet-photo-index {
+    position: absolute;
+    top: 2.5mm;
+    left: 2.5mm;
+    background: rgba(15, 23, 42, 0.8);
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: 700;
+    width: 6mm;
+    height: 6mm;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.a4-sheet.show-index .sheet-photo-index {
+    display: flex;
+}
+
+/* 사진 하단 한 줄 메모(캡션) - 입력된 경우에만 표시 */
+.sheet-photo-caption {
+    flex-shrink: 0;
+    padding: 2mm 3mm;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+    background: #f8fafc;
+    border-top: 1px solid #cbd5e1;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.sheet-photo-caption.empty-caption {
+    display: none !important;
+}
+
+/* 사진이 아직 없을 때 안내 플레이스홀더 */
+.sheet-empty-placeholder {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    gap: 8px;
+    font-size: 15px;
+}
+
+.sheet-empty-placeholder i {
+    font-size: 42px;
+    color: #cbd5e1;
+}
+
+/* --------------------------------------------------------------------------
+   4. 버튼 및 공통 UI 컴포넌트
+   -------------------------------------------------------------------------- */
+.btn-ps-primary,
+.btn-ps-save,
+.btn-ps-print,
+.btn-ps-outline,
+.btn-ps-danger-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    font-family: inherit;
+}
+
+.btn-ps-primary {
+    background: var(--ps-primary);
+    color: #fff;
+}
+.btn-ps-primary:hover {
+    background: var(--ps-primary-hover);
+}
+
+.btn-ps-save {
+    background: var(--ps-success);
+    color: #fff;
+}
+.btn-ps-save:hover {
+    background: var(--ps-success-hover);
+}
+
+.btn-ps-print {
+    background: var(--ps-indigo);
+    color: #fff;
+}
+.btn-ps-print:hover {
+    background: var(--ps-indigo-hover);
+}
+
+.btn-ps-outline {
+    background: #fff;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+.btn-ps-outline:hover {
+    background: #f1f5f9;
+}
+
+.btn-ps-clear {
+    background: transparent;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-ps-clear:hover {
+    background: #fef2f2;
+}
+
+.btn-ps-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.btn-ps-danger-sm {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+.btn-ps-danger-sm:hover {
+    background: #fee2e2;
+}
+
+/* 로딩 & 토스트 */
+.ps-loading {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.ps-loading-box {
+    background: #fff;
+    padding: 20px 28px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ps-text);
+}
+
+.ps-loading-box i {
+    font-size: 24px;
+    color: var(--ps-primary);
+}
+
+.ps-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ps-toast {
+    background: #1e293b;
+    color: #fff;
+    padding: 11px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    animation: psFadeIn 0.2s ease;
+}
+
+@keyframes psFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   5. 실제 종이 인쇄 (@media print) — A4 단 1장 칼맞춤 보장
+   -------------------------------------------------------------------------- */
+@media print {
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .ps-editor-wrap,
+    .ps-workspace,
+    .ps-preview-stage,
+    .ps-sheet-scroll-wrap {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .a4-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 10mm !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+    }
+
+    .a4-sheet.portrait {
+        width: 210mm !important;
+        height: 297mm !important;
+    }
+
+    .a4-sheet.landscape {
+        width: 297mm !important;
+        height: 210mm !important;
+    }
+}
