@@ -1886,7 +1886,6 @@ function renderPreviewSheet() {
         sheetEl.innerHTML = `
             <div class="sheet-header">
                 <div class="sheet-header-main">
-                    <div class="sheet-doc-kicker">FIELD PHOTO REPORT</div>
                     <h1 class="sheet-title">${escapeHtml(displayTitleText)}</h1>
                     <div class="sheet-meta" style="${state.showDate ? '' : 'display: none;'}">
                         <span class="sheet-meta-pill">작성일</span>

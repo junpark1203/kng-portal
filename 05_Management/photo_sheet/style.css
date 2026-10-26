@@ -854,23 +854,13 @@ body {
     border-left: 3.5px solid #2563eb;
 }
 
-.sheet-doc-kicker {
-    font-size: 7pt;
-    font-weight: 800;
-    color: #2563eb;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    line-height: 1;
-    margin-bottom: 1.2mm;
-}
-
 .sheet-title {
     margin: 0;
-    font-size: 17.5pt;
+    font-size: 18.5pt;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.025em;
-    line-height: 1.2;
+    line-height: 1.22;
     text-align: left;
     word-break: keep-all;
     width: 100%;
