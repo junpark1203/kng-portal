@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style id="dynamicPageStyle">
         @media print {
@@ -298,7 +298,7 @@
                     </div>
 
                     <div class="ps-extracted-tray-header">
-                        <h4>추출된 장면 목록 (<span id="trayCountText">0</span> / 8장)</h4>
+                        <h4>추출된 장면 목록 (<span id="trayCountText">0</span> / 8장) <span class="ps-tray-hint">· 사진 클릭 시 크게 보기</span></h4>
                         <button type="button" class="btn-ps-clear" id="clearTrayBtn">목록 비우기</button>
                     </div>
 
@@ -330,6 +330,41 @@
         </div>
     </div>
 
+    <!-- 4. 추출된 장면 고화질 확대 보기 (Lightbox) 모달 -->
+    <div id="frameLightboxModal" class="ps-lightbox hidden no-print">
+        <div class="ps-lightbox-topbar">
+            <div class="ps-lightbox-info">
+                <span id="lightboxCounter" class="ps-lightbox-counter">장면 #1 / 4</span>
+                <span id="lightboxTimeBadge" class="ps-lightbox-time">영상 시점: 00:00</span>
+            </div>
+            <div class="ps-lightbox-actions">
+                <button type="button" class="btn-ps-outline btn-ps-sm" id="lightboxJumpToVideoBtn" title="이 장면이 찍힌 영상 시간으로 이동하여 미세 조정">
+                    <i class='bx bx-Time-five'></i> 이 시점으로 영상 이동
+                </button>
+                <button type="button" class="btn-ps-danger-sm" id="lightboxDeleteFrameBtn" title="이 장면을 목록에서 제외">
+                    <i class='bx bx-trash'></i> 이 장면 목록에서 제외
+                </button>
+                <button type="button" class="ps-lightbox-close" id="closeLightboxBtn" title="닫기 (ESC)">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="ps-lightbox-stage" id="lightboxStage">
+            <button type="button" class="ps-lightbox-nav prev" id="lightboxPrevBtn" title="이전 장면 (←)">
+                <i class='bx bx-chevron-left'></i>
+            </button>
+            <img id="lightboxImg" src="" alt="추출 장면 확대 보기">
+            <button type="button" class="ps-lightbox-nav next" id="lightboxNextBtn" title="다음 장면 (→)">
+                <i class='bx bx-chevron-right'></i>
+            </button>
+        </div>
+
+        <div class="ps-lightbox-footer">
+            <span>키보드 <b>← / →</b> 방향키로 장면을 넘겨보며 비교할 수 있습니다. (배경 클릭 또는 <b>ESC</b>로 닫기)</span>
+        </div>
+    </div>
+
     <!-- 전역 로딩 오버레이 -->
     <div id="globalLoading" class="ps-loading hidden no-print">
         <div class="ps-loading-box">
@@ -340,6 +375,6 @@
 
     <div id="toastContainer" class="ps-toast-container no-print"></div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

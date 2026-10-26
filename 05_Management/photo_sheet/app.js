@@ -496,6 +496,9 @@ function bindVideoExtractorEvents() {
     document.getElementById('applyExtractedFramesBtn').addEventListener('click', () => {
         applyExtractedFramesToSheet();
     });
+
+    // 추출된 장면 확대 보기 (Lightbox) 이벤트 바인딩
+    bindLightboxEvents();
 }
 
 function openVideoExtractorModal(videoFile) {
@@ -738,20 +741,131 @@ function renderExtractedTray() {
     extractedFrames.forEach((frame, idx) => {
         const card = document.createElement('div');
         card.className = 'ps-tray-item';
+        card.title = '클릭하여 크게 보기';
         card.innerHTML = `
             <img src="${frame.dataUrl}" alt="추출 장면 ${idx + 1}">
+            <span class="ps-tray-zoom-badge"><i class='bx bx-zoom-in'></i> 확대</span>
             <div class="ps-tray-meta">
                 <span>#${idx + 1}</span>
                 <span>${frame.timeLabel}</span>
             </div>
             <button type="button" class="ps-tray-del" title="이 장면 제외"><i class='bx bx-x'></i></button>
         `;
-        card.querySelector('.ps-tray-del').addEventListener('click', () => {
+        card.addEventListener('click', () => {
+            openFrameLightbox(idx);
+        });
+        card.querySelector('.ps-tray-del').addEventListener('click', (e) => {
+            e.stopPropagation();
             extractedFrames.splice(idx, 1);
             renderExtractedTray();
         });
         extractedFramesTray.appendChild(card);
     });
+}
+
+// --------------------------------------------------------------------------
+// 추출된 장면 고화질 크게 보기 (Lightbox) 컨트롤러
+// --------------------------------------------------------------------------
+let currentLightboxIndex = 0;
+
+function bindLightboxEvents() {
+    const modal = document.getElementById('frameLightboxModal');
+    const stage = document.getElementById('lightboxStage');
+    const closeBtn = document.getElementById('closeLightboxBtn');
+    const prevBtn = document.getElementById('lightboxPrevBtn');
+    const nextBtn = document.getElementById('lightboxNextBtn');
+    const jumpBtn = document.getElementById('lightboxJumpToVideoBtn');
+    const deleteBtn = document.getElementById('lightboxDeleteFrameBtn');
+
+    if (!modal) return;
+
+    closeBtn.addEventListener('click', closeFrameLightbox);
+    stage.addEventListener('click', (e) => {
+        if (e.target === stage) closeFrameLightbox();
+    });
+
+    prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stepLightbox(-1);
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stepLightbox(1);
+    });
+
+    jumpBtn.addEventListener('click', () => {
+        const frame = extractedFrames[currentLightboxIndex];
+        if (!frame) return;
+        closeFrameLightbox();
+        extractVideoPlayer.pause();
+        extractVideoPlayer.currentTime = frame.timeSec || 0;
+        showToast(`영상 [${frame.timeLabel}] 시점으로 이동했습니다.`);
+    });
+
+    deleteBtn.addEventListener('click', () => {
+        if (extractedFrames.length === 0) return;
+        extractedFrames.splice(currentLightboxIndex, 1);
+        renderExtractedTray();
+        if (extractedFrames.length === 0) {
+            closeFrameLightbox();
+            showToast('장면이 제외되었습니다.');
+            return;
+        }
+        if (currentLightboxIndex >= extractedFrames.length) {
+            currentLightboxIndex = extractedFrames.length - 1;
+        }
+        renderLightboxContent();
+        showToast('해당 장면이 목록에서 제외되었습니다.');
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (modal.classList.contains('hidden')) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeFrameLightbox();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            stepLightbox(-1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            stepLightbox(1);
+        } else if (e.key === 'Delete') {
+            e.preventDefault();
+            deleteBtn.click();
+        }
+    });
+}
+
+function openFrameLightbox(index) {
+    if (!extractedFrames.length) return;
+    currentLightboxIndex = Math.max(0, Math.min(extractedFrames.length - 1, index));
+    renderLightboxContent();
+    document.getElementById('frameLightboxModal').classList.remove('hidden');
+}
+
+function closeFrameLightbox() {
+    const modal = document.getElementById('frameLightboxModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function stepLightbox(delta) {
+    if (extractedFrames.length <= 1) return;
+    currentLightboxIndex = (currentLightboxIndex + delta + extractedFrames.length) % extractedFrames.length;
+    renderLightboxContent();
+}
+
+function renderLightboxContent() {
+    const frame = extractedFrames[currentLightboxIndex];
+    if (!frame) return;
+
+    document.getElementById('lightboxImg').src = frame.dataUrl;
+    document.getElementById('lightboxCounter').textContent = `장면 #${currentLightboxIndex + 1} / ${extractedFrames.length}`;
+    document.getElementById('lightboxTimeBadge').textContent = `영상 시점: ${frame.timeLabel}`;
+
+    const showNav = extractedFrames.length > 1 ? '' : 'none';
+    document.getElementById('lightboxPrevBtn').style.display = showNav;
+    document.getElementById('lightboxNextBtn').style.display = showNav;
 }
 
 async function applyExtractedFramesToSheet() {

@@ -1169,6 +1169,12 @@ body {
     color: #1e293b;
 }
 
+.ps-tray-hint {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ps-primary);
+}
+
 .ps-extracted-tray {
     border: 1px solid var(--ps-border);
     background: #f8fafc;
@@ -1203,6 +1209,14 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    cursor: zoom-in;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.ps-tray-item:hover {
+    border-color: var(--ps-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
 }
 
 .ps-tray-item img {
@@ -1210,6 +1224,27 @@ body {
     height: 72px;
     object-fit: cover;
     display: block;
+}
+
+.ps-tray-zoom-badge {
+    position: absolute;
+    bottom: 24px;
+    left: 4px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.ps-tray-item:hover .ps-tray-zoom-badge {
+    opacity: 1;
 }
 
 .ps-tray-meta {
@@ -1256,6 +1291,135 @@ body {
     gap: 10px;
     margin-top: auto;
     padding-top: 6px;
+}
+
+/* 추출된 장면 고화질 확대 보기 (Lightbox) */
+.ps-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(9, 13, 24, 0.92);
+    backdrop-filter: blur(6px);
+    z-index: 6500;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.ps-lightbox-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(15, 23, 42, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.ps-lightbox-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ps-lightbox-counter {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.ps-lightbox-time {
+    background: rgba(59, 130, 246, 0.25);
+    border: 1px solid rgba(96, 165, 250, 0.4);
+    color: #93c5fd;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.ps-lightbox-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ps-lightbox-close {
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.ps-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.ps-lightbox-stage {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 76px;
+}
+
+.ps-lightbox-stage img {
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    background: #000;
+}
+
+.ps-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
+    font-size: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.15s;
+}
+
+.ps-lightbox-nav:hover {
+    background: var(--ps-primary);
+    transform: translateY(-50%) scale(1.06);
+}
+
+.ps-lightbox-nav.prev {
+    left: 20px;
+}
+
+.ps-lightbox-nav.next {
+    right: 20px;
+}
+
+.ps-lightbox-footer {
+    padding: 12px 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 12.5px;
+    background: rgba(15, 23, 42, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* --------------------------------------------------------------------------
