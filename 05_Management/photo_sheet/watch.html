@@ -18,8 +18,8 @@
             flex-direction: column;
         }
         .watch-header {
-            padding: 16px 20px;
-            background: rgba(30, 41, 59, 0.9);
+            padding: 15px 18px;
+            background: rgba(30, 41, 59, 0.95);
             border-bottom: 1px solid #334155;
             display: flex;
             align-items: center;
@@ -32,14 +32,14 @@
         .watch-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-size: 11px;
+            gap: 5px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #60a5fa;
             background: rgba(37, 99, 235, 0.2);
-            padding: 3px 8px;
+            padding: 3px 9px;
             border-radius: 999px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .watch-title {
             margin: 0;
@@ -50,43 +50,157 @@
         }
         .watch-stage {
             flex: 1;
+            width: 100%;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
+            gap: 14px;
         }
         .video-box {
             width: 100%;
-            max-width: 960px;
             background: #000;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
             border: 1px solid #334155;
+            position: relative;
         }
         video {
             width: 100%;
-            max-height: 75vh;
+            max-height: 65vh;
             display: block;
             background: #000;
         }
-        .watch-actions {
-            margin-top: 16px;
+        .now-playing-bar {
             display: flex;
-            gap: 10px;
-        }
-        .btn-download {
-            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 10px 18px;
-            background: #2563eb;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 8px;
+            justify-content: space-between;
+            gap: 10px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 11px 14px;
+        }
+        .now-playing-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-size: 14px;
             font-weight: 600;
+            color: #e2e8f0;
+            min-width: 0;
+        }
+        .now-playing-pill {
+            background: #2563eb;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .now-playing-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .btn-nav, .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 13px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-nav {
+            background: #334155;
+            color: #f8fafc;
+        }
+        .btn-nav:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        .btn-download {
+            background: #2563eb;
+            color: #fff;
+        }
+        .playlist-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .playlist-header {
+            margin: 0 0 10px 0;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .playlist-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 11px 13px;
+            border-radius: 9px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .playlist-item.active {
+            background: rgba(37, 99, 235, 0.18);
+            border-color: #3b82f6;
+        }
+        .playlist-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .playlist-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #334155;
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .playlist-item.active .playlist-num {
+            background: #2563eb;
+            color: #fff;
+        }
+        .playlist-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f8fafc;
+            word-break: break-all;
+        }
+        .playlist-status {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #60a5fa;
+            flex-shrink: 0;
         }
         .error-msg {
             text-align: center;
@@ -98,62 +212,173 @@
 <body>
     <header class="watch-header">
         <div class="watch-title-group">
-            <div class="watch-badge"><i class='bx bx-video'></i> K&G 현장 사진 대지 연동 영상</div>
+            <div class="watch-badge" id="videoCountBadge"><i class='bx bx-video'></i> K&G 현장 사진 대지 연동 영상</div>
             <h1 class="watch-title" id="docTitle">현장 동영상</h1>
         </div>
     </header>
 
     <main class="watch-stage" id="stageArea">
-        <div class="video-box">
+        <div class="video-box" id="videoBox">
             <video id="player" controls playsinline autoplay preload="metadata"></video>
         </div>
-        <div class="watch-actions">
-            <a id="downloadLink" class="btn-download" href="#" download>
-                <i class='bx bx-download'></i> 동영상 저장
-            </a>
+
+        <div class="now-playing-bar">
+            <div class="now-playing-info">
+                <span class="now-playing-pill" id="nowPlayingIndexPill">1 / 1</span>
+                <span id="nowPlayingTitle">현장 동영상 1</span>
+            </div>
+            <div class="now-playing-actions">
+                <button type="button" class="btn-nav" id="prevVideoBtn" style="display: none;"><i class='bx bx-skip-previous'></i> 이전</button>
+                <button type="button" class="btn-nav" id="nextVideoBtn" style="display: none;">다음 <i class='bx bx-skip-next'></i></button>
+                <a id="downloadLink" class="btn-download" href="#" download>
+                    <i class='bx bx-download'></i> 저장
+                </a>
+            </div>
+        </div>
+
+        <div class="playlist-card" id="playlistCard" style="display: none;">
+            <div class="playlist-header">
+                <span><i class='bx bx-list-ul'></i> 연결된 현장 동영상 목록 (클릭하여 선택 재생)</span>
+                <span id="playlistTotalText">총 2건</span>
+            </div>
+            <div class="playlist-items" id="playlistContainer"></div>
         </div>
     </main>
 
     <script>
         (function () {
             const params = new URLSearchParams(window.location.search);
-            const file = params.get('f');
-            const rawUrl = params.get('u');
-            const title = params.get('t') || '현장 첨부 동영상';
+            const filesParam = params.get('f') || '';
+            const urlsParam = params.get('u') || '';
+            const namesParam = params.get('n') || '';
+            const docTitle = params.get('t') || '현장 첨부 동영상';
 
-            document.getElementById('docTitle').textContent = title;
-            document.title = title + ' - K&G 현장 동영상';
+            document.getElementById('docTitle').textContent = docTitle;
+            document.title = docTitle + ' - K&G 현장 동영상';
 
             const apiHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                 ? `http://${window.location.hostname}:3000`
                 : 'https://kng.junparks.com';
 
-            let videoSrc = '';
-            if (file) {
-                videoSrc = `${apiHost}/api/report-builder/uploads/${encodeURIComponent(file)}`;
-            } else if (rawUrl) {
-                if (rawUrl.startsWith('/api/')) {
-                    videoSrc = apiHost + rawUrl;
-                } else {
-                    videoSrc = rawUrl;
-                }
+            const customNames = namesParam ? namesParam.split('|').map(s => s.trim()) : [];
+            const playlist = [];
+
+            // 1. 서버 업로드 동영상 파일들 파싱 (?f=file1.mp4,file2.mp4)
+            if (filesParam) {
+                filesParam.split(',').map(s => s.trim()).filter(Boolean).forEach((fname) => {
+                    const idx = playlist.length;
+                    playlist.push({
+                        title: customNames[idx] || `현장 동영상 #${idx + 1}`,
+                        src: `${apiHost}/api/report-builder/uploads/${encodeURIComponent(fname)}`,
+                        isExternal: false
+                    });
+                });
             }
 
-            if (!videoSrc) {
-                document.getElementById('stageArea').innerHTML = '<div class="error-msg">재생할 동영상 경로가 올바르지 않습니다.</div>';
+            // 2. 외부 링크 동영상들 파싱 (?u=...)
+            if (urlsParam) {
+                urlsParam.split('|').map(s => s.trim()).filter(Boolean).forEach((rawU) => {
+                    const idx = playlist.length;
+                    const fullUrl = rawU.startsWith('/api/') ? (apiHost + rawU) : rawU;
+                    const isExt = /^https?:\/\//i.test(fullUrl) && !fullUrl.includes('/api/report-builder/uploads/');
+                    playlist.push({
+                        title: customNames[idx] || `외부 링크 영상 #${idx + 1}`,
+                        src: fullUrl,
+                        isExternal: isExt
+                    });
+                });
+            }
+
+            if (playlist.length === 0) {
+                document.getElementById('stageArea').innerHTML = '<div class="error-msg">재생할 동영상 경로가 없습니다.</div>';
                 return;
             }
 
-            // 외부 링크(유튜브 등)인 경우 바로 리다이렉트
-            if (!file && /^https?:\/\//i.test(videoSrc) && !videoSrc.includes('/api/report-builder/uploads/')) {
-                window.location.replace(videoSrc);
+            // 단일 외부 링크(유튜브 등)만 있는 경우 바로 해당 링크로 이동
+            if (playlist.length === 1 && playlist[0].isExternal) {
+                window.location.replace(playlist[0].src);
                 return;
             }
 
             const player = document.getElementById('player');
             const downloadLink = document.getElementById('downloadLink');
-            player.src = videoSrc;
-            downloadLink.href = videoSrc;
+            const nowPlayingIndexPill = document.getElementById('nowPlayingIndexPill');
+            const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+            const prevVideoBtn = document.getElementById('prevVideoBtn');
+            const nextVideoBtn = document.getElementById('nextVideoBtn');
+            const playlistCard = document.getElementById('playlistCard');
+            const playlistContainer = document.getElementById('playlistContainer');
+            const playlistTotalText = document.getElementById('playlistTotalText');
+            const videoCountBadge = document.getElementById('videoCountBadge');
+
+            let currentIdx = 0;
+
+            if (playlist.length > 1) {
+                videoCountBadge.innerHTML = `<i class='bx bx-video'></i> K&G 현장 동영상 (${playlist.length}건 연속 재생)`;
+                playlistCard.style.display = 'block';
+                prevVideoBtn.style.display = 'inline-flex';
+                nextVideoBtn.style.display = 'inline-flex';
+                playlistTotalText.textContent = `총 ${playlist.length}건`;
+            }
+
+            function loadVideoAtIndex(idx, autoPlay = true) {
+                currentIdx = Math.max(0, Math.min(playlist.length - 1, idx));
+                const item = playlist[currentIdx];
+
+                if (item.isExternal) {
+                    window.open(item.src, '_blank');
+                    return;
+                }
+
+                player.src = item.src;
+                downloadLink.href = item.src;
+                nowPlayingIndexPill.textContent = `${currentIdx + 1} / ${playlist.length}`;
+                nowPlayingTitle.textContent = item.title;
+
+                prevVideoBtn.disabled = currentIdx === 0;
+                nextVideoBtn.disabled = currentIdx === playlist.length - 1;
+
+                renderPlaylistUI();
+                if (autoPlay) {
+                    player.play().catch(() => {});
+                }
+            }
+
+            function renderPlaylistUI() {
+                if (playlist.length <= 1) return;
+                playlistContainer.innerHTML = '';
+                playlist.forEach((item, idx) => {
+                    const isActive = idx === currentIdx;
+                    const row = document.createElement('div');
+                    row.className = 'playlist-item' + (isActive ? ' active' : '');
+                    row.innerHTML = `
+                        <div class="playlist-item-left">
+                            <span class="playlist-num">${idx + 1}</span>
+                            <span class="playlist-name">${item.title}</span>
+                        </div>
+                        <span class="playlist-status">${isActive ? '<i class="bx bx-play"></i> 재생 중' : '터치하여 재생'}</span>
+                    `;
+                    row.addEventListener('click', () => loadVideoAtIndex(idx, true));
+                    playlistContainer.appendChild(row);
+                });
+            }
+
+            prevVideoBtn.addEventListener('click', () => {
+                if (currentIdx > 0) loadVideoAtIndex(currentIdx - 1, true);
+            });
+
+            nextVideoBtn.addEventListener('click', () => {
+                if (currentIdx < playlist.length - 1) loadVideoAtIndex(currentIdx + 1, true);
+            });
+
+            // 앞 영상 재생이 끝나면 다음 영상 자동 연속 재생
+            player.addEventListener('ended', () => {
+                if (currentIdx < playlist.length - 1) {
+                    loadVideoAtIndex(currentIdx + 1, true);
+                }
+            });
+
+            loadVideoAtIndex(0, true);
         })();
     </script>
 </body>

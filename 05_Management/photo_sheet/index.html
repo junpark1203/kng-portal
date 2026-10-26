@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style id="dynamicPageStyle">
         @media print {
@@ -157,23 +157,23 @@
                     </div>
 
                     <div id="videoServerStatusBox" class="ps-video-status-box hidden">
-                        <div class="ps-video-status-info">
-                            <i class='bx bxs-video'></i>
-                            <span>서버에 현장 동영상이 연결되었습니다.</span>
-                        </div>
-                        <div class="ps-video-status-actions">
+                        <div class="ps-video-status-head">
+                            <div class="ps-video-status-info">
+                                <i class='bx bxs-video'></i>
+                                <span id="connectedVideoCountText">연결된 현장 동영상 (1건)</span>
+                            </div>
                             <a id="previewServerVideoLink" href="#" target="_blank" class="btn-ps-outline btn-ps-sm">
-                                <i class='bx bx-play-circle'></i> 재생 확인
+                                <i class='bx bx-play-circle'></i> 통합 재생목록 열기
                             </a>
-                            <button type="button" id="removeServerVideoBtn" class="btn-ps-danger-sm">
-                                <i class='bx bx-trash'></i> 영상 삭제
-                            </button>
+                        </div>
+                        <div id="connectedVideoList" class="ps-connected-video-list">
+                            <!-- 동적 렌더링: 영상 1, 영상 2... -->
                         </div>
                     </div>
 
                     <div class="ps-form-group" style="margin-bottom: 8px;">
-                        <label for="externalVideoUrlInput">또는 외부 동영상 링크 직접 입력 (유튜브 / 드라이브 등)</label>
-                        <input type="url" id="externalVideoUrlInput" class="ps-input" placeholder="https://... (동영상 업로드 시 자동 생성됨)">
+                        <label for="externalVideoUrlInput">외부 동영상 링크 추가 연동 (유튜브 / 드라이브 등)</label>
+                        <input type="url" id="externalVideoUrlInput" class="ps-input" placeholder="https://... (동영상 업로드 시 QR에 함께 포함됨)">
                     </div>
 
                     <div class="ps-form-group" style="margin-bottom: 0;">
@@ -194,7 +194,7 @@
                     <!-- 업로드 드롭존 (사진 + 동영상 모두 지원) -->
                     <div id="uploadDropzone" class="ps-dropzone" tabindex="0">
                         <input type="file" id="fileInput" accept="image/*,video/*" multiple hidden>
-                        <input type="file" id="videoOnlyInput" accept="video/*" hidden>
+                        <input type="file" id="videoOnlyInput" accept="video/*" multiple hidden>
                         <i class='bx bx-cloud-upload'></i>
                         <div class="ps-dropzone-text">
                             <strong>클릭하여 사진·동영상 선택</strong> 또는 이곳으로 드래그<br>
@@ -371,6 +371,6 @@
 
     <div id="toastContainer" class="ps-toast-container no-print"></div>
 
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>

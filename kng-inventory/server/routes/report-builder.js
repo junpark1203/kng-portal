@@ -232,6 +232,13 @@ router.post('/copy', (req, res) => {
                 }
             });
         }
+        if (Array.isArray(content.videos) && content.rows && content.rows[0] && Array.isArray(content.rows[0].col_video)) {
+            content.rows[0].col_video.forEach((copiedVidUrl, idx) => {
+                if (content.videos[idx] && copiedVidUrl) {
+                    content.videos[idx].url = copiedVidUrl;
+                }
+            });
+        }
         if (content.videoServerUrl && content.rows && content.rows[0] && Array.isArray(content.rows[0].col_video) && content.rows[0].col_video[0]) {
             content.videoServerUrl = content.rows[0].col_video[0];
         }

@@ -29,7 +29,7 @@ let state = {
     showBorder: true,
     showIndex: false,
     showQr: true,
-    videoServerUrl: '',
+    videos: [],              // [{ id, url, title }] (다중 동영상 재생목록 지원)
     externalVideoUrl: '',
     qrLabel: '현장 영상 보기',
     photos: []               // [{ id, url, caption }] (장수 제한 없음)
@@ -38,7 +38,8 @@ let state = {
 let allSavedDocs = [];
 let draggedPhotoIndex = null;
 
-// 동영상 추출 모달 상태
+// 동영상 추출 모달 상태 (다중 동영상 연속 처리 큐 포함)
+let pendingVideoQueue = [];
 let currentVideoFile = null;
 let currentVideoObjectUrl = null;
 let extractedFrames = []; // [{ id, blob, dataUrl, timeSec, timeLabel }]
@@ -62,8 +63,9 @@ const showIndexCheck = document.getElementById('showIndexCheck');
 
 const showQrCheck = document.getElementById('showQrCheck');
 const videoServerStatusBox = document.getElementById('videoServerStatusBox');
+const connectedVideoCountText = document.getElementById('connectedVideoCountText');
+const connectedVideoList = document.getElementById('connectedVideoList');
 const previewServerVideoLink = document.getElementById('previewServerVideoLink');
-const removeServerVideoBtn = document.getElementById('removeServerVideoBtn');
 const externalVideoUrlInput = document.getElementById('externalVideoUrlInput');
 const qrLabelInput = document.getElementById('qrLabelInput');
 
@@ -439,20 +441,7 @@ function bindEvents() {
 
     qrLabelInput.addEventListener('input', (e) => {
         state.qrLabel = e.target.value;
-        pagesContainer.querySelectorAll('.sheet-qr-label').forEach(el => {
-            el.textContent = state.qrLabel.trim() || '현장 영상 보기';
-        });
-    });
-
-    removeServerVideoBtn.addEventListener('click', async () => {
-        if (!state.videoServerUrl) return;
-        if (!confirm('연결된 서버 동영상을 삭제하시겠습니까?')) return;
-        const oldUrl = state.videoServerUrl;
-        state.videoServerUrl = '';
-        renderControlsState();
         renderQrCodeOnSheet();
-        deleteServerFileSilent(oldUrl);
-        showToast('서버 동영상이 삭제되었습니다.');
     });
 
     // 전체 사진 삭제
@@ -479,8 +468,8 @@ function bindEvents() {
 
     openVideoExtractorBtn.addEventListener('click', () => videoOnlyInput.click());
     videoOnlyInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) {
-            openVideoExtractorModal(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            enqueueVideoFiles(Array.from(e.target.files));
             videoOnlyInput.value = '';
         }
     });
@@ -526,14 +515,25 @@ function bindEvents() {
 }
 
 async function handleIncomingFiles(files) {
-    const videoFile = files.find(f => isVideoFile(f));
+    const videoFiles = files.filter(f => isVideoFile(f));
     const imageFiles = files.filter(f => f.type && f.type.startsWith('image/'));
 
     if (imageFiles.length > 0) {
         await handleFilesUpload(imageFiles);
     }
-    if (videoFile) {
-        openVideoExtractorModal(videoFile);
+    if (videoFiles.length > 0) {
+        enqueueVideoFiles(videoFiles);
+    }
+}
+
+function enqueueVideoFiles(videoFiles) {
+    if (!videoFiles || videoFiles.length === 0) return;
+    pendingVideoQueue.push(...videoFiles);
+    if (videoExtractModal.classList.contains('hidden')) {
+        const nextVideo = pendingVideoQueue.shift();
+        if (nextVideo) openVideoExtractorModal(nextVideo);
+    } else {
+        showToast(`동영상 ${videoFiles.length}건이 대기열에 추가되었습니다.`);
     }
 }
 
@@ -968,10 +968,14 @@ async function applyExtractedFramesToSheet() {
         if (shouldUploadVideoQr) {
             const uploadedVideoUrl = await uploadVideoWithChunkFallback(currentVideoFile);
             if (uploadedVideoUrl) {
-                if (state.videoServerUrl) {
-                    deleteServerFileSilent(state.videoServerUrl);
-                }
-                state.videoServerUrl = uploadedVideoUrl;
+                const defaultVidTitle = (currentVideoFile.name || '')
+                    .replace(/\.[^/.]+$/, '')
+                    .trim() || `현장 동영상 ${state.videos.length + 1}`;
+                state.videos.push({
+                    id: generateId(),
+                    url: uploadedVideoUrl,
+                    title: defaultVidTitle
+                });
                 state.showQr = true;
             }
         }
@@ -980,6 +984,14 @@ async function applyExtractedFramesToSheet() {
         renderPhotoList();
         renderPreviewSheet();
         showToast('추출된 핵심 장면과 동영상 QR 코드가 반영되었습니다.');
+
+        // 대기 중인 다음 동영상이 있으면 연속으로 추출 모달 오픈
+        if (pendingVideoQueue.length > 0) {
+            const nextVideo = pendingVideoQueue.shift();
+            if (nextVideo) {
+                setTimeout(() => openVideoExtractorModal(nextVideo), 250);
+            }
+        }
     } catch (err) {
         console.error(err);
         alert(`반영 중 오류가 발생했습니다.\n${err.message}`);
@@ -1053,23 +1065,52 @@ async function uploadVideoWithChunkFallback(videoFile) {
 }
 
 // --------------------------------------------------------------------------
-// A4 우측 상단 QR 코드 생성 및 렌더링
+// A4 우측 상단 QR 코드 생성 및 렌더링 (다중 동영상 통합 재생목록 URL)
 // --------------------------------------------------------------------------
-function getActiveQrTargetUrl() {
-    if (state.externalVideoUrl && state.externalVideoUrl.trim()) {
-        return state.externalVideoUrl.trim();
+function getActiveQrTargetUrl(includeNamesForPreview = false) {
+    const serverFiles = (state.videos || [])
+        .map(v => (v.url || '').split('/').pop())
+        .filter(Boolean);
+    const extUrl = (state.externalVideoUrl || '').trim();
+
+    if (serverFiles.length === 0 && !extUrl) {
+        return '';
     }
-    if (state.videoServerUrl && state.videoServerUrl.trim()) {
-        const filename = state.videoServerUrl.split('/').pop();
-        const origin = window.location.origin;
-        return `${origin}/05_Management/photo_sheet/watch.html?f=${encodeURIComponent(filename)}`;
+
+    // 서버 영상 없이 외부 링크 1개만 있는 경우 외부 링크로 직접 연결
+    if (serverFiles.length === 0 && extUrl) {
+        return extUrl;
     }
-    return '';
+
+    const origin = window.location.origin;
+    const params = new URLSearchParams();
+    if (serverFiles.length > 0) {
+        params.set('f', serverFiles.join(','));
+    }
+    if (extUrl) {
+        params.set('u', extUrl);
+    }
+    if (includeNamesForPreview) {
+        const names = (state.videos || []).map((v, i) => v.title || `현장 영상 ${i + 1}`);
+        if (extUrl) names.push('외부 링크 영상');
+        params.set('n', names.join('|'));
+        if (state.title) params.set('t', state.title);
+    }
+    return `${origin}/05_Management/photo_sheet/watch.html?${params.toString()}`;
+}
+
+function getEffectiveQrLabelText() {
+    const rawLabel = (state.qrLabel || '').trim() || '현장 영상 보기';
+    const totalVideos = (state.videos ? state.videos.length : 0) + ((state.externalVideoUrl && state.externalVideoUrl.trim()) ? 1 : 0);
+    if (totalVideos > 1 && rawLabel === '현장 영상 보기') {
+        return `현장 영상 (${totalVideos}건)`;
+    }
+    return rawLabel;
 }
 
 function renderQrCodeOnSheet() {
-    const targetUrl = getActiveQrTargetUrl();
-    const labelText = (state.qrLabel || '').trim() || '현장 영상 보기';
+    const targetUrl = getActiveQrTargetUrl(false);
+    const labelText = getEffectiveQrLabelText();
 
     const qrBoxes = pagesContainer.querySelectorAll('.sheet-qr-box');
     qrBoxes.forEach(box => {
@@ -1166,10 +1207,12 @@ function renderSheetList(docs) {
 
         const parsed = item.parsed || {};
         const photos = parsed.photos || [];
+        const videos = parsed.videos || [];
         const orientation = parsed.orientation === 'landscape' ? 'landscape' : 'portrait';
         const pages = buildPaginatedPages(photos, orientation, parsed.layoutMode || 'auto', parsed.lastPageMode || 'expand');
         const orientLabel = orientation === 'landscape' ? 'A4 가로' : 'A4 세로';
-        const hasVideoQr = Boolean(parsed.showQr && (parsed.videoServerUrl || parsed.externalVideoUrl));
+        const videoCount = videos.length + (parsed.externalVideoUrl ? 1 : 0);
+        const hasVideoQr = Boolean(parsed.showQr && videoCount > 0);
 
         const previewPhotos = photos.slice(0, 4);
         const thumbClass = `thumbs-${Math.max(1, previewPhotos.length)}`;
@@ -1189,7 +1232,7 @@ function renderSheetList(docs) {
             <div class="ps-doc-thumb-grid ${thumbClass}">
                 ${thumbHtml}
                 <div class="ps-doc-badges">
-                    ${hasVideoQr ? `<span class="ps-mini-badge qr-badge"><i class='bx bx-qr'></i> 영상QR</span>` : ''}
+                    ${hasVideoQr ? `<span class="ps-mini-badge qr-badge"><i class='bx bx-qr'></i> 영상QR${videoCount > 1 ? ` (${videoCount})` : ''}</span>` : ''}
                     <span class="ps-mini-badge">${orientLabel} · ${pages.length}쪽</span>
                     <span class="ps-mini-badge">총 ${photos.length}장</span>
                 </div>
@@ -1235,9 +1278,30 @@ function parseContentJson(rawJson) {
                 }
             });
         }
-        let videoServerUrl = data.videoServerUrl || '';
-        if (data.rows && data.rows[0] && Array.isArray(data.rows[0].col_video) && data.rows[0].col_video[0]) {
-            videoServerUrl = data.rows[0].col_video[0];
+
+        // 다중 동영상 배열 복원 (구버전 단일 videoServerUrl 호환 포함)
+        let videos = Array.isArray(data.videos)
+            ? data.videos.map((v, idx) => ({
+                id: v.id || generateId(),
+                url: v.url || '',
+                title: v.title || `현장 동영상 ${idx + 1}`
+            })).filter(v => v.url)
+            : [];
+
+        if (videos.length === 0 && data.videoServerUrl) {
+            videos.push({
+                id: generateId(),
+                url: data.videoServerUrl,
+                title: '현장 동영상 1'
+            });
+        }
+
+        if (data.rows && data.rows[0] && Array.isArray(data.rows[0].col_video)) {
+            data.rows[0].col_video.forEach((copiedVidUrl, idx) => {
+                if (videos[idx] && copiedVidUrl) {
+                    videos[idx].url = copiedVidUrl;
+                }
+            });
         }
 
         return {
@@ -1250,7 +1314,7 @@ function parseContentJson(rawJson) {
             showBorder: data.showBorder !== undefined ? Boolean(data.showBorder) : true,
             showIndex: Boolean(data.showIndex),
             showQr: data.showQr !== undefined ? Boolean(data.showQr) : true,
-            videoServerUrl,
+            videos,
             externalVideoUrl: data.externalVideoUrl || '',
             qrLabel: data.qrLabel !== undefined ? data.qrLabel : '현장 영상 보기',
             photos: photos.map(p => ({
@@ -1270,7 +1334,7 @@ function parseContentJson(rawJson) {
             showBorder: true,
             showIndex: false,
             showQr: true,
-            videoServerUrl: '',
+            videos: [],
             externalVideoUrl: '',
             qrLabel: '현장 영상 보기',
             photos: []
@@ -1290,7 +1354,7 @@ function serializeContentJson() {
         showBorder: state.showBorder,
         showIndex: state.showIndex,
         showQr: state.showQr,
-        videoServerUrl: state.videoServerUrl,
+        videos: state.videos,
         externalVideoUrl: state.externalVideoUrl,
         qrLabel: state.qrLabel,
         photos: state.photos,
@@ -1301,7 +1365,7 @@ function serializeContentJson() {
         rows: [{
             id: 'row_photos',
             col_photos: state.photos.map(p => p.url),
-            col_video: state.videoServerUrl ? [state.videoServerUrl] : []
+            col_video: (state.videos || []).map(v => v.url)
         }]
     });
 }
@@ -1319,7 +1383,7 @@ function createNewSheet() {
         showBorder: true,
         showIndex: false,
         showQr: true,
-        videoServerUrl: '',
+        videos: [],
         externalVideoUrl: '',
         qrLabel: '현장 영상 보기',
         photos: []
@@ -1422,7 +1486,7 @@ async function saveAsCopy() {
                 const copiedDoc = await copiedRes.json();
                 const copiedParsed = parseContentJson(copiedDoc.content_json);
                 state.photos = copiedParsed.photos;
-                state.videoServerUrl = copiedParsed.videoServerUrl;
+                state.videos = copiedParsed.videos;
                 syncedContentJson = serializeContentJson();
             }
             await authFetch(`${API_BASE}/${data.id}`, {
@@ -1456,8 +1520,8 @@ async function deleteSheet(id, titleText) {
                 for (const p of (parsed.photos || [])) {
                     deleteServerFileSilent(p.url);
                 }
-                if (parsed.videoServerUrl) {
-                    deleteServerFileSilent(parsed.videoServerUrl);
+                for (const v of (parsed.videos || [])) {
+                    deleteServerFileSilent(v.url);
                 }
             }
         } catch (e) {}
@@ -1581,14 +1645,15 @@ function renderControlsState() {
     externalVideoUrlInput.value = state.externalVideoUrl || '';
     qrLabelInput.value = state.qrLabel || '현장 영상 보기';
 
-    if (state.videoServerUrl) {
+    if (state.videos && state.videos.length > 0) {
         videoServerStatusBox.classList.remove('hidden');
-        const filename = state.videoServerUrl.split('/').pop();
-        previewServerVideoLink.href = `watch.html?f=${encodeURIComponent(filename)}&t=${encodeURIComponent(state.title || '현장 동영상')}`;
+        connectedVideoCountText.textContent = `연결된 현장 동영상 (${state.videos.length}건)`;
+        previewServerVideoLink.href = getActiveQrTargetUrl(true);
+        renderConnectedVideoList();
     } else {
-        videoServerStatusBox.classList.remove('hidden');
         videoServerStatusBox.classList.add('hidden');
         previewServerVideoLink.href = '#';
+        connectedVideoList.innerHTML = '';
     }
 
     orientationGroup.querySelectorAll('.ps-seg-btn').forEach(btn => {
@@ -1604,6 +1669,67 @@ function renderControlsState() {
     });
 
     gridLayoutSelect.value = state.layoutMode;
+}
+
+function renderConnectedVideoList() {
+    if (!connectedVideoList) return;
+    connectedVideoList.innerHTML = '';
+
+    state.videos.forEach((vid, idx) => {
+        const item = document.createElement('div');
+        item.className = 'ps-connected-video-item';
+
+        const singleWatchUrl = (() => {
+            const fileName = String(vid.url || '').split('/').pop();
+            const watchBase = new URL('watch.html', window.location.href).href;
+            if (fileName) {
+                const p = new URLSearchParams();
+                p.set('f', fileName);
+                if (vid.title) p.set('n', vid.title);
+                return `${watchBase}?${p.toString()}`;
+            }
+            return getImgSrc(vid.url);
+        })();
+
+        item.innerHTML = `
+            <span class="ps-connected-video-idx">${idx + 1}</span>
+            <input type="text" class="ps-connected-video-title-input" value="${escapeHtml(vid.title || `현장 영상 ${idx + 1}`)}" placeholder="영상 ${idx + 1} 제목">
+            <div class="ps-connected-video-actions">
+                <a class="ps-connected-video-action-btn preview-single-video-btn" href="${singleWatchUrl}" target="_blank" title="이 영상만 재생"><i class='bx bx-play'></i></a>
+                <button type="button" class="ps-connected-video-action-btn danger remove-single-video-btn" title="이 동영상 삭제"><i class='bx bx-trash'></i></button>
+            </div>
+        `;
+
+        const titleInput = item.querySelector('.ps-connected-video-title-input');
+        const singleLink = item.querySelector('.preview-single-video-btn');
+        titleInput.addEventListener('input', (e) => {
+            vid.title = e.target.value;
+            previewServerVideoLink.href = getActiveQrTargetUrl(true);
+            const fileName = String(vid.url || '').split('/').pop();
+            if (fileName) {
+                const watchBase = new URL('watch.html', window.location.href).href;
+                const p = new URLSearchParams();
+                p.set('f', fileName);
+                if (vid.title) p.set('n', vid.title);
+                singleLink.href = `${watchBase}?${p.toString()}`;
+            }
+        });
+
+        item.querySelector('.remove-single-video-btn').addEventListener('click', async () => {
+            const removed = state.videos.splice(idx, 1)[0];
+            if (removed && removed.url && removed.url.startsWith('/api/report-builder/uploads/')) {
+                deleteServerFileQuietly(removed.url);
+            }
+            if (state.videos.length === 0 && !state.externalVideoUrl.trim()) {
+                state.showQr = false;
+            }
+            renderControlsState();
+            renderPreviewSheet();
+            showToast(`동영상 ${idx + 1}번이 목록에서 제거되었습니다.`);
+        });
+
+        connectedVideoList.appendChild(item);
+    });
 }
 
 function renderPhotoList() {
