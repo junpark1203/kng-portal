@@ -3837,9 +3837,10 @@ const app = {
                     <td class="text-end pe-2 py-1">${sellHtml}</td>
                     <td class="text-start ps-2 py-1">
                         <input type="text" class="form-control form-control-sm summary-note-input quote-item-note-input-${it.id}" 
-                               style="font-size: 11.5px; height: 26px; padding: 2px 6px; background-color: #fff;" 
+                               style="font-size: 11.5px; height: 26px; padding: 2px 8px; min-width: 230px; background-color: #fff;" 
                                value="${escapeHtml(it.note || '')}" 
                                placeholder="선정사유/비고 입력..." 
+                               title="${escapeHtml(it.note || '선정사유 및 비고 입력 (실시간 저장)')}"
                                onchange="app.updateQuoteItemNote(${it.id}, this.value)">
                     </td>
                 </tr>
@@ -3869,16 +3870,16 @@ const app = {
                     <table class="quote-compare-table w-100 mb-0" style="font-size: 11.5px;">
                         <thead>
                             <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                                <th style="width: 45px;" class="text-center">순번</th>
-                                <th style="min-width: 140px;" class="text-start ps-2">비교 품목군 (섹션)</th>
-                                <th style="width: 130px;" class="text-start ps-2">추천 공급업체</th>
-                                <th style="min-width: 160px;" class="text-start ps-2">추천 선정 품목</th>
-                                <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                <th style="width: 95px;" class="text-center">운임조건</th>
-                                <th style="width: 130px;" class="text-end pe-2">매입단가 (환율)</th>
-                                <th style="width: 125px;" class="text-end pe-2">환산단가 (최저)</th>
-                                <th style="width: 120px;" class="text-end pe-2">기준 매출단가</th>
-                                <th style="min-width: 180px;" class="text-start ps-2">선정사유 및 비고 (실시간 저장)</th>
+                                <th style="width: 42px;" class="text-center">순번</th>
+                                <th style="min-width: 120px;" class="text-start ps-2">비교 품목군 (섹션)</th>
+                                <th style="width: 110px;" class="text-start ps-2">추천 공급업체</th>
+                                <th style="min-width: 140px;" class="text-start ps-2">추천 선정 품목</th>
+                                <th style="width: 80px;" class="text-start ps-2">규격</th>
+                                <th style="width: 88px;" class="text-center">운임조건</th>
+                                <th style="width: 120px;" class="text-end pe-2">매입단가 (환율)</th>
+                                <th style="width: 115px;" class="text-end pe-2">환산단가 (최저)</th>
+                                <th style="width: 115px;" class="text-end pe-2">기준 매출단가</th>
+                                <th style="min-width: 250px; width: 26%;" class="text-start ps-2">선정사유 및 비고 (실시간 저장)</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHtml}</tbody>
@@ -4055,9 +4056,10 @@ const app = {
                             </td>
                             <td class="text-start ps-2 py-1">
                                 <input type="text" class="form-control form-control-sm quote-item-note-input-${it.id}" 
-                                       style="font-size: 11px; height: 25px; padding: 2px 6px;" 
+                                       style="font-size: 11.5px; height: 25px; padding: 2px 8px; min-width: 200px;" 
                                        value="${escapeHtml(it.note || '')}" 
                                        placeholder="비고 입력..." 
+                                       title="${escapeHtml(it.note || '비고 입력 (자동 저장)')}"
                                        onchange="app.updateQuoteItemNote(${it.id}, this.value)">
                             </td>
                             <td class="text-center">
@@ -4107,18 +4109,18 @@ const app = {
                             <table class="quote-compare-table w-100">
                                 <thead>
                                     <tr>
-                                        <th style="width: 90px;">후보 (순서)</th>
-                                        <th style="width: 70px;">단가구분</th>
-                                        <th style="width: 130px;" class="text-start ps-2">공급업체</th>
-                                        <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
-                                        <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                        <th style="width: 110px;">운임조건</th>
-                                        <th style="width: 135px;" class="text-end pe-2">기준 매입단가(환율)</th>
-                                        <th style="width: 140px;" class="text-end pe-2">환산단가(가성비)</th>
-                                        <th style="width: 120px;" class="text-end pe-2">기준 매출단가</th>
-                                        <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
-                                        <th class="text-start ps-2">비고</th>
-                                        <th style="width: 45px;">제외</th>
+                                        <th style="width: 82px;">후보 (순서)</th>
+                                        <th style="width: 60px;">단가구분</th>
+                                        <th style="width: 105px;" class="text-start ps-2">공급업체</th>
+                                        <th style="min-width: 140px;" class="text-start ps-2">품목명</th>
+                                        <th style="width: 75px;" class="text-start ps-2">규격</th>
+                                        <th style="width: 95px;">운임조건</th>
+                                        <th style="width: 125px;" class="text-end pe-2">기준 매입단가(환율)</th>
+                                        <th style="width: 125px;" class="text-end pe-2">환산단가(가성비)</th>
+                                        <th style="width: 115px;" class="text-end pe-2">기준 매출단가</th>
+                                        <th style="width: 105px;" class="text-end pe-2">마진액(마진율)</th>
+                                        <th style="min-width: 220px; width: 20%;" class="text-start ps-2">비고</th>
+                                        <th style="width: 38px;">제외</th>
                                     </tr>
                                 </thead>
                                 <tbody>${rowsHtml}</tbody>
@@ -5102,11 +5104,11 @@ const app = {
                     </td>
                     <td class="text-start ps-2 py-1">
                         <input type="text" class="form-control form-control-sm summary-note-input quote-item-note-input-${it.id}" 
-                               style="font-size: 11.5px; height: 26px; padding: 2px 6px; background-color: #fff;" 
+                               style="font-size: 11.5px; height: 26px; padding: 2px 8px; min-width: 230px; background-color: #fff;" 
                                value="${escapeHtml(it.note || '')}" 
                                placeholder="선정사유/비고 입력..." 
                                onchange="app.updateQuoteItemNote(${it.id}, this.value)"
-                               title="입력 시 즉시 자동 저장되며 인쇄 보고서에 반영됩니다">
+                               title="${escapeHtml(it.note || '입력 시 즉시 자동 저장되며 인쇄 보고서에 반영됩니다')}">
                     </td>
                 </tr>
             `;
@@ -5138,16 +5140,16 @@ const app = {
                         <table class="quote-compare-table w-100 mb-0" style="font-size: 11.5px;">
                             <thead>
                                 <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                                    <th style="width: 45px;" class="text-center">순번</th>
-                                    <th style="min-width: 140px;" class="text-start ps-2">비교 품목군 (섹션)</th>
-                                    <th style="width: 130px;" class="text-start ps-2">추천 공급업체</th>
-                                    <th style="min-width: 160px;" class="text-start ps-2">추천 선정 품목</th>
-                                    <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                    <th style="width: 95px;" class="text-center">운임조건</th>
-                                    <th style="width: 130px;" class="text-end pe-2">매입단가 (환율)</th>
-                                    <th style="width: 125px;" class="text-end pe-2">환산단가 (최저)</th>
-                                    <th style="width: 120px;" class="text-end pe-2">기준 매출단가</th>
-                                    <th style="min-width: 180px;" class="text-start ps-2">선정사유 및 비고 (실시간 입력)</th>
+                                    <th style="width: 42px;" class="text-center">순번</th>
+                                    <th style="min-width: 120px;" class="text-start ps-2">비교 품목군 (섹션)</th>
+                                    <th style="width: 110px;" class="text-start ps-2">추천 공급업체</th>
+                                    <th style="min-width: 140px;" class="text-start ps-2">추천 선정 품목</th>
+                                    <th style="width: 80px;" class="text-start ps-2">규격</th>
+                                    <th style="width: 88px;" class="text-center">운임조건</th>
+                                    <th style="width: 120px;" class="text-end pe-2">매입단가 (환율)</th>
+                                    <th style="width: 115px;" class="text-end pe-2">환산단가 (최저)</th>
+                                    <th style="width: 115px;" class="text-end pe-2">기준 매출단가</th>
+                                    <th style="min-width: 250px; width: 26%;" class="text-start ps-2">선정사유 및 비고 (실시간 입력)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -5189,6 +5191,7 @@ const app = {
             const inputs = document.querySelectorAll(`.quote-item-note-input-${itemId}`);
             inputs.forEach(inp => {
                 if (inp.value !== finalNote) inp.value = finalNote;
+                inp.title = finalNote || '비고 입력 (자동 저장)';
             });
         } catch (err) {
             console.warn('updateQuoteItemNote error:', err);
@@ -5509,11 +5512,11 @@ const app = {
                             </td>
                             <td class="text-start ps-2 py-1">
                                 <input type="text" class="form-control form-control-sm quote-item-note-input-${it.id}" 
-                                       style="font-size: 11px; height: 25px; padding: 2px 6px;" 
+                                       style="font-size: 11.5px; height: 25px; padding: 2px 8px; min-width: 200px;" 
                                        value="${escapeHtml(it.note || '')}" 
                                        placeholder="비고 입력..." 
                                        onchange="app.updateQuoteItemNote(${it.id}, this.value)"
-                                       title="비고 입력 (자동 저장 및 상단 요약표 동기화)">
+                                       title="${escapeHtml(it.note || '비고 입력 (자동 저장 및 상단 요약표 동기화)')}">
                             </td>
                             <td class="text-center">
                                 <button type="button" class="btn-table-action btn-del" onclick="app.deleteQuoteItem(${it.id})" title="이 섹션에서 제외">
@@ -5589,18 +5592,18 @@ const app = {
                                         <th style="width: 32px;" class="text-center" title="섹션 전체 선택/해제">
                                             <input type="checkbox" class="form-check-input" onchange="app.toggleAllInSection(${sec.id}, this.checked)" ${allSecChecked ? 'checked' : ''}>
                                         </th>
-                                        <th style="width: 92px;">후보 (순서)</th>
-                                        <th style="width: 70px;">단가구분</th>
-                                        <th style="width: 130px;" class="text-start ps-2">공급업체</th>
-                                        <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
-                                        <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                        <th style="width: 120px;">운임조건</th>
-                                        <th style="width: 135px;" class="text-end pe-2">기준 매입단가(환율)</th>
-                                        <th style="width: 140px;" class="text-end pe-2" title="포장단위별(kg, L) 동일 환산 기준단가">환산단가(가성비)</th>
-                                        <th style="width: 120px;" class="text-end pe-2">기준 매출단가</th>
-                                        <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
-                                        <th class="text-start ps-2">비고</th>
-                                        <th style="width: 45px;">제외</th>
+                                        <th style="width: 82px;">후보 (순서)</th>
+                                        <th style="width: 60px;">단가구분</th>
+                                        <th style="width: 105px;" class="text-start ps-2">공급업체</th>
+                                        <th style="min-width: 140px;" class="text-start ps-2">품목명</th>
+                                        <th style="width: 75px;" class="text-start ps-2">규격</th>
+                                        <th style="width: 95px;">운임조건</th>
+                                        <th style="width: 125px;" class="text-end pe-2">기준 매입단가(환율)</th>
+                                        <th style="width: 125px;" class="text-end pe-2" title="포장단위별(kg, L) 동일 환산 기준단가">환산단가(가성비)</th>
+                                        <th style="width: 115px;" class="text-end pe-2">기준 매출단가</th>
+                                        <th style="width: 105px;" class="text-end pe-2">마진액(마진율)</th>
+                                        <th style="min-width: 220px; width: 20%;" class="text-start ps-2">비고</th>
+                                        <th style="width: 38px;">제외</th>
                                     </tr>
                                 </thead>
                                 <tbody>
