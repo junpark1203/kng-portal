@@ -25,7 +25,7 @@ let state = {
     orientation: 'portrait', // 'portrait' (세로 최대 2x4) | 'landscape' (가로 최대 4x2)
     layoutMode: 'auto',      // 'auto' (페이지당 최대 8장) 또는 '1x2', '2x2', '2x4' 등 페이지당 격자 지정
     lastPageMode: 'expand',  // 'expand' (남은 장수에 맞춰 크게 채우기) | 'same_size' (앞 페이지와 동일 크기 유지)
-    fitMode: 'contain',      // 'contain' (원본 비율) | 'cover' (꽉 채우기)
+    fitMode: 'blur',         // 'blur' (블러 여백) | 'contain' (스튜디오 여백) | 'cover' (꽉 채우기)
     showBorder: true,
     showIndex: false,
     showQr: true,
@@ -1304,11 +1304,20 @@ function parseContentJson(rawJson) {
             });
         }
 
+        let resolvedFitMode = 'blur';
+        if (data.fitMode === 'cover') {
+            resolvedFitMode = 'cover';
+        } else if (data.fitMode === 'blur') {
+            resolvedFitMode = 'blur';
+        } else if (data.fitMode === 'contain' && data.fitModeVersion === 2) {
+            resolvedFitMode = 'contain';
+        }
+
         return {
             orientation: data.orientation === 'landscape' ? 'landscape' : 'portrait',
             layoutMode: data.layoutMode || 'auto',
             lastPageMode: data.lastPageMode === 'same_size' ? 'same_size' : 'expand',
-            fitMode: data.fitMode === 'cover' ? 'cover' : 'contain',
+            fitMode: resolvedFitMode,
             showDate: data.showDate !== undefined ? Boolean(data.showDate) : true,
             docDate: data.docDate || getTodayString(),
             showBorder: data.showBorder !== undefined ? Boolean(data.showBorder) : true,
@@ -1328,7 +1337,7 @@ function parseContentJson(rawJson) {
             orientation: 'portrait',
             layoutMode: 'auto',
             lastPageMode: 'expand',
-            fitMode: 'contain',
+            fitMode: 'blur',
             showDate: true,
             docDate: getTodayString(),
             showBorder: true,
@@ -1349,6 +1358,7 @@ function serializeContentJson() {
         layoutMode: state.layoutMode,
         lastPageMode: state.lastPageMode,
         fitMode: state.fitMode,
+        fitModeVersion: 2,
         showDate: state.showDate,
         docDate: state.docDate,
         showBorder: state.showBorder,
@@ -1379,7 +1389,7 @@ function createNewSheet() {
         orientation: 'portrait',
         layoutMode: 'auto',
         lastPageMode: 'expand',
-        fitMode: 'contain',
+        fitMode: 'blur',
         showBorder: true,
         showIndex: false,
         showQr: true,
@@ -1847,20 +1857,28 @@ function renderPreviewSheet() {
     const displayDateText = state.docDate || getTodayString();
 
     pages.forEach((pageObj, pIdx) => {
+        const fitClass = state.fitMode === 'cover'
+            ? 'fit-cover'
+            : (state.fitMode === 'contain' ? 'fit-contain' : 'fit-blur');
+
         const sheetEl = document.createElement('div');
         sheetEl.className = [
             'a4-sheet',
             state.orientation === 'landscape' ? 'landscape' : 'portrait',
             state.showBorder ? 'show-border' : '',
             state.showIndex ? 'show-index' : '',
-            state.fitMode === 'cover' ? 'fit-cover' : 'fit-contain'
+            fitClass
         ].filter(Boolean).join(' ');
 
         const qrBoxHtml = pIdx === 0
             ? `
                 <div class="sheet-qr-box hidden">
+                    <div class="sheet-qr-info">
+                        <span class="sheet-qr-tag">VIDEO QR</span>
+                        <div class="sheet-qr-label">${escapeHtml((state.qrLabel || '').trim() || '현장 영상 보기')}</div>
+                        <div class="sheet-qr-sub">스마트폰 카메라 스캔</div>
+                    </div>
                     <div class="sheet-qr-code"></div>
-                    <div class="sheet-qr-label">${escapeHtml((state.qrLabel || '').trim() || '현장 영상 보기')}</div>
                 </div>
             `
             : '';
@@ -1868,15 +1886,17 @@ function renderPreviewSheet() {
         sheetEl.innerHTML = `
             <div class="sheet-header">
                 <div class="sheet-header-main">
+                    <div class="sheet-doc-kicker">FIELD PHOTO REPORT</div>
                     <h1 class="sheet-title">${escapeHtml(displayTitleText)}</h1>
                     <div class="sheet-meta" style="${state.showDate ? '' : 'display: none;'}">
-                        <span>작성일: <strong class="sheet-date-val">${escapeHtml(displayDateText)}</strong></span>
+                        <span class="sheet-meta-pill">작성일</span>
+                        <strong class="sheet-date-val">${escapeHtml(displayDateText)}</strong>
                     </div>
                 </div>
                 ${qrBoxHtml}
             </div>
             <div class="sheet-photo-grid" style="--cols: ${pageObj.cols}; --rows: ${pageObj.rows};" data-cols="${pageObj.cols}" data-rows="${pageObj.rows}"></div>
-            ${totalPages > 1 ? `<div class="sheet-footer-page-num">- ${pIdx + 1} / ${totalPages} -</div>` : ''}
+            ${totalPages > 1 ? `<div class="sheet-footer-page-num">PAGE ${pIdx + 1} / ${totalPages}</div>` : ''}
         `;
 
         const gridEl = sheetEl.querySelector('.sheet-photo-grid');
@@ -1897,10 +1917,12 @@ function renderPreviewSheet() {
                 cell.draggable = true;
 
                 const trimmedCap = (photo.caption || '').trim();
+                const imgSrc = getImgSrc(photo.url);
                 cell.innerHTML = `
                     <div class="sheet-photo-frame">
+                        <img class="sheet-photo-bg" src="${imgSrc}" alt="" aria-hidden="true">
                         <span class="sheet-photo-index">${globalIdx + 1}</span>
-                        <img src="${getImgSrc(photo.url)}" alt="사진 ${globalIdx + 1}">
+                        <img class="sheet-photo-main" src="${imgSrc}" alt="사진 ${globalIdx + 1}">
                     </div>
                     <div class="sheet-photo-caption ${trimmedCap ? '' : 'empty-caption'}">${escapeHtml(trimmedCap)}</div>
                 `;

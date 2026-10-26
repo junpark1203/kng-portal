@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style id="dynamicPageStyle">
         @media print {
@@ -102,23 +102,25 @@
                         </div>
                     </div>
 
-                    <div class="ps-form-row">
-                        <div class="ps-form-group" style="flex: 1.2;">
-                            <label for="gridLayoutSelect">페이지당 배치 구성 (열 × 행)</label>
-                            <select id="gridLayoutSelect" class="ps-input">
-                                <option value="auto">자동 맞춤 (페이지당 최대 8장)</option>
-                            </select>
-                        </div>
-                        <div class="ps-form-group" style="flex: 0.8;">
-                            <label>사진 리사이즈 방식</label>
-                            <div class="ps-segment-group ps-seg-sm" id="fitModeGroup">
-                                <button type="button" class="ps-seg-btn active" data-fit="contain" title="사진이 잘리지 않게 원본 비율 그대로 칸 안에 맞춤">
-                                    원본 비율
-                                </button>
-                                <button type="button" class="ps-seg-btn" data-fit="cover" title="여백 없이 사진 칸에 꽉 차게 맞춤">
-                                    꽉 채우기
-                                </button>
-                            </div>
+                    <div class="ps-form-group">
+                        <label for="gridLayoutSelect">페이지당 배치 구성 (열 × 행)</label>
+                        <select id="gridLayoutSelect" class="ps-input">
+                            <option value="auto">자동 맞춤 (페이지당 최대 8장)</option>
+                        </select>
+                    </div>
+
+                    <div class="ps-form-group">
+                        <label>사진 비율 및 여백 스타일</label>
+                        <div class="ps-segment-group ps-seg-3" id="fitModeGroup">
+                            <button type="button" class="ps-seg-btn active" data-fit="blur" title="사진이 잘리지 않으면서 세로 사진 양옆의 빈 여백을 은은한 블러 배경으로 고급스럽게 채움">
+                                블러 여백 (추천)
+                            </button>
+                            <button type="button" class="ps-seg-btn" data-fit="contain" title="사진이 잘리지 않게 원본 비율 그대로 은은한 스튜디오 배경 위에 맞춤">
+                                스튜디오 여백
+                            </button>
+                            <button type="button" class="ps-seg-btn" data-fit="cover" title="여백 없이 사진 칸 전체에 꽉 차게 맞춤 (일부 영역 크롭)">
+                                꽉 채우기
+                            </button>
                         </div>
                     </div>
 
@@ -371,6 +373,6 @@
 
     <div id="toastContainer" class="ps-toast-container no-print"></div>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>
