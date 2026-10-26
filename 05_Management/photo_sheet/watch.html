@@ -212,8 +212,8 @@
 <body>
     <header class="watch-header">
         <div class="watch-title-group">
-            <div class="watch-badge" id="videoCountBadge"><i class='bx bx-video'></i> K&G 현장 사진 대지 연동 영상</div>
-            <h1 class="watch-title" id="docTitle">현장 동영상</h1>
+            <div class="watch-badge" id="videoCountBadge"><i class='bx bx-video'></i> K&G 사진 대지 연동 영상</div>
+            <h1 class="watch-title" id="docTitle">영상</h1>
         </div>
     </header>
 
@@ -225,7 +225,7 @@
         <div class="now-playing-bar">
             <div class="now-playing-info">
                 <span class="now-playing-pill" id="nowPlayingIndexPill">1 / 1</span>
-                <span id="nowPlayingTitle">현장 동영상 1</span>
+                <span id="nowPlayingTitle">영상 1</span>
             </div>
             <div class="now-playing-actions">
                 <button type="button" class="btn-nav" id="prevVideoBtn" style="display: none;"><i class='bx bx-skip-previous'></i> 이전</button>
@@ -238,7 +238,7 @@
 
         <div class="playlist-card" id="playlistCard" style="display: none;">
             <div class="playlist-header">
-                <span><i class='bx bx-list-ul'></i> 연결된 현장 동영상 목록 (클릭하여 선택 재생)</span>
+                <span><i class='bx bx-list-ul'></i> 연결된 영상 목록 (클릭하여 선택 재생)</span>
                 <span id="playlistTotalText">총 2건</span>
             </div>
             <div class="playlist-items" id="playlistContainer"></div>
@@ -251,10 +251,10 @@
             const filesParam = params.get('f') || '';
             const urlsParam = params.get('u') || '';
             const namesParam = params.get('n') || '';
-            const docTitle = params.get('t') || '현장 첨부 동영상';
+            const docTitle = params.get('t') || '첨부 영상';
 
             document.getElementById('docTitle').textContent = docTitle;
-            document.title = docTitle + ' - K&G 현장 동영상';
+            document.title = docTitle + ' - K&G 영상';
 
             const apiHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                 ? `http://${window.location.hostname}:3000`
@@ -268,7 +268,7 @@
                 filesParam.split(',').map(s => s.trim()).filter(Boolean).forEach((fname) => {
                     const idx = playlist.length;
                     playlist.push({
-                        title: customNames[idx] || `현장 동영상 #${idx + 1}`,
+                        title: customNames[idx] || `영상 #${idx + 1}`,
                         src: `${apiHost}/api/report-builder/uploads/${encodeURIComponent(fname)}`,
                         isExternal: false
                     });
@@ -314,7 +314,7 @@
             let currentIdx = 0;
 
             if (playlist.length > 1) {
-                videoCountBadge.innerHTML = `<i class='bx bx-video'></i> K&G 현장 동영상 (${playlist.length}건 연속 재생)`;
+                videoCountBadge.innerHTML = `<i class='bx bx-video'></i> K&G 영상 (${playlist.length}건 연속 재생)`;
                 playlistCard.style.display = 'block';
                 prevVideoBtn.style.display = 'inline-flex';
                 nextVideoBtn.style.display = 'inline-flex';

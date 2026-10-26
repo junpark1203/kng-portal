@@ -31,7 +31,7 @@ let state = {
     showQr: true,
     videos: [],              // [{ id, url, title }] (다중 동영상 재생목록 지원)
     externalVideoUrl: '',
-    qrLabel: '현장 영상 보기',
+    qrLabel: '영상 보기',
     photos: []               // [{ id, url, caption }] (장수 제한 없음)
 };
 
@@ -970,7 +970,7 @@ async function applyExtractedFramesToSheet() {
             if (uploadedVideoUrl) {
                 const defaultVidTitle = (currentVideoFile.name || '')
                     .replace(/\.[^/.]+$/, '')
-                    .trim() || `현장 동영상 ${state.videos.length + 1}`;
+                    .trim() || `영상 ${state.videos.length + 1}`;
                 state.videos.push({
                     id: generateId(),
                     url: uploadedVideoUrl,
@@ -1091,7 +1091,7 @@ function getActiveQrTargetUrl(includeNamesForPreview = false) {
         params.set('u', extUrl);
     }
     if (includeNamesForPreview) {
-        const names = (state.videos || []).map((v, i) => v.title || `현장 영상 ${i + 1}`);
+        const names = (state.videos || []).map((v, i) => v.title || `영상 ${i + 1}`);
         if (extUrl) names.push('외부 링크 영상');
         params.set('n', names.join('|'));
         if (state.title) params.set('t', state.title);
@@ -1100,10 +1100,11 @@ function getActiveQrTargetUrl(includeNamesForPreview = false) {
 }
 
 function getEffectiveQrLabelText() {
-    const rawLabel = (state.qrLabel || '').trim() || '현장 영상 보기';
+    let rawLabel = (state.qrLabel || '').trim() || '영상 보기';
+    if (rawLabel === '현장 영상 보기') rawLabel = '영상 보기';
     const totalVideos = (state.videos ? state.videos.length : 0) + ((state.externalVideoUrl && state.externalVideoUrl.trim()) ? 1 : 0);
-    if (totalVideos > 1 && rawLabel === '현장 영상 보기') {
-        return `현장 영상 (${totalVideos}건)`;
+    if (totalVideos > 1 && rawLabel === '영상 보기') {
+        return `영상 (${totalVideos}건)`;
     }
     return rawLabel;
 }
@@ -1284,7 +1285,7 @@ function parseContentJson(rawJson) {
             ? data.videos.map((v, idx) => ({
                 id: v.id || generateId(),
                 url: v.url || '',
-                title: v.title || `현장 동영상 ${idx + 1}`
+                title: (v.title || `영상 ${idx + 1}`).replace(/^현장\s*(동영상|영상)/, '영상')
             })).filter(v => v.url)
             : [];
 
@@ -1292,7 +1293,7 @@ function parseContentJson(rawJson) {
             videos.push({
                 id: generateId(),
                 url: data.videoServerUrl,
-                title: '현장 동영상 1'
+                title: '영상 1'
             });
         }
 
@@ -1313,6 +1314,10 @@ function parseContentJson(rawJson) {
             resolvedFitMode = 'contain';
         }
 
+        const resolvedQrLabel = (!data.qrLabel || data.qrLabel === '현장 영상 보기')
+            ? '영상 보기'
+            : data.qrLabel.replace(/^현장\s*영상/, '영상');
+
         return {
             orientation: data.orientation === 'landscape' ? 'landscape' : 'portrait',
             layoutMode: data.layoutMode || 'auto',
@@ -1325,7 +1330,7 @@ function parseContentJson(rawJson) {
             showQr: data.showQr !== undefined ? Boolean(data.showQr) : true,
             videos,
             externalVideoUrl: data.externalVideoUrl || '',
-            qrLabel: data.qrLabel !== undefined ? data.qrLabel : '현장 영상 보기',
+            qrLabel: resolvedQrLabel,
             photos: photos.map(p => ({
                 id: p.id || generateId(),
                 url: p.url || '',
@@ -1345,7 +1350,7 @@ function parseContentJson(rawJson) {
             showQr: true,
             videos: [],
             externalVideoUrl: '',
-            qrLabel: '현장 영상 보기',
+            qrLabel: '영상 보기',
             photos: []
         };
     }
@@ -1395,7 +1400,7 @@ function createNewSheet() {
         showQr: true,
         videos: [],
         externalVideoUrl: '',
-        qrLabel: '현장 영상 보기',
+        qrLabel: '영상 보기',
         photos: []
     };
 
@@ -1653,11 +1658,11 @@ function renderControlsState() {
     showIndexCheck.checked = state.showIndex;
     showQrCheck.checked = state.showQr;
     externalVideoUrlInput.value = state.externalVideoUrl || '';
-    qrLabelInput.value = state.qrLabel || '현장 영상 보기';
+    qrLabelInput.value = state.qrLabel || '영상 보기';
 
     if (state.videos && state.videos.length > 0) {
         videoServerStatusBox.classList.remove('hidden');
-        connectedVideoCountText.textContent = `연결된 현장 동영상 (${state.videos.length}건)`;
+        connectedVideoCountText.textContent = `연결된 영상 (${state.videos.length}건)`;
         previewServerVideoLink.href = getActiveQrTargetUrl(true);
         renderConnectedVideoList();
     } else {
@@ -1703,7 +1708,7 @@ function renderConnectedVideoList() {
 
         item.innerHTML = `
             <span class="ps-connected-video-idx">${idx + 1}</span>
-            <input type="text" class="ps-connected-video-title-input" value="${escapeHtml(vid.title || `현장 영상 ${idx + 1}`)}" placeholder="영상 ${idx + 1} 제목">
+            <input type="text" class="ps-connected-video-title-input" value="${escapeHtml(vid.title || `영상 ${idx + 1}`)}" placeholder="영상 ${idx + 1} 제목">
             <div class="ps-connected-video-actions">
                 <a class="ps-connected-video-action-btn preview-single-video-btn" href="${singleWatchUrl}" target="_blank" title="이 영상만 재생"><i class='bx bx-play'></i></a>
                 <button type="button" class="ps-connected-video-action-btn danger remove-single-video-btn" title="이 동영상 삭제"><i class='bx bx-trash'></i></button>
@@ -1875,7 +1880,7 @@ function renderPreviewSheet() {
                 <div class="sheet-qr-box hidden">
                     <div class="sheet-qr-info">
                         <span class="sheet-qr-tag">VIDEO QR</span>
-                        <div class="sheet-qr-label">${escapeHtml((state.qrLabel || '').trim() || '현장 영상 보기')}</div>
+                        <div class="sheet-qr-label">${escapeHtml(getEffectiveQrLabelText())}</div>
                         <div class="sheet-qr-sub">스마트폰 카메라 스캔</div>
                     </div>
                     <div class="sheet-qr-code"></div>
