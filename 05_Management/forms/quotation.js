@@ -820,23 +820,24 @@ const app = {
                     </td>
                     <!-- 품목명 -->
                     <td>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-semibold" value="${escHtml(it.product_name)}" placeholder="품목명 입력" oninput="app.updateItemField(${idx}, 'product_name', this.value)">
+                        <input type="text" data-col-field="product_name" class="form-control form-control-sm border-0 bg-transparent fw-semibold" value="${escHtml(it.product_name)}" placeholder="품목명 입력" oninput="app.updateItemField(${idx}, 'product_name', this.value)">
                     </td>
                     <!-- 규격 -->
                     <td>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center" value="${escHtml(it.spec)}" placeholder="규격/사양" oninput="app.updateItemField(${idx}, 'spec', this.value)">
+                        <input type="text" data-col-field="spec" class="form-control form-control-sm border-0 bg-transparent text-center" value="${escHtml(it.spec)}" placeholder="규격/사양" onfocus="this.select()" oninput="app.updateItemField(${idx}, 'spec', this.value)">
                     </td>
                     <!-- 수량 -->
                     <td class="px-1">
-                        <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold qty-input px-0" min="1" value="${it.qty || 1}" onfocus="this.select()" oninput="app.updateItemField(${idx}, 'qty', this.value)">
+                        <input type="number" data-col-field="qty" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold qty-input px-0" min="1" value="${it.qty || 1}" onfocus="this.select()" oninput="app.updateItemField(${idx}, 'qty', this.value)">
                     </td>
                     <!-- 단위 -->
                     <td class="px-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" value="${escHtml(it.unit || 'EA')}" style="width:45px; margin:0 auto;" oninput="app.updateItemField(${idx}, 'unit', this.value)">
+                        <input type="text" data-col-field="unit" class="form-control form-control-sm border-0 bg-transparent text-center px-0" value="${escHtml(it.unit || 'EA')}" style="width:45px; margin:0 auto;" onfocus="this.select()" oninput="app.updateItemField(${idx}, 'unit', this.value)">
                     </td>
                     <!-- 매입가 (수정 가능 - 원가) -->
                     <td class="col-cost">
                         <input type="text"
+                               data-col-field="cost_price"
                                inputmode="numeric"
                                class="form-control form-control-sm border-0 bg-transparent text-end pe-2 cost-price-input"
                                value="${fmtWon(it.cost_price || 0)}"
@@ -844,20 +845,19 @@ const app = {
                                title="실제 매입단가(원가) - 마진 계산의 기준값"
                                oninput="app.formatCostInput(this, ${idx})"
                                onfocus="this.select()"
-                               onblur="app.formatCostBlur(this, ${idx})"
-                               onkeydown="if(event.key==='Enter'){this.blur();}">
+                               onblur="app.formatCostBlur(this, ${idx})">
                     </td>
                     <!-- 제안단가 (원화기호 ₩ 및 3자리 콤마 포맷팅) -->
                     <td>
                         <input type="text"
+                               data-col-field="unit_price"
                                inputmode="numeric"
                                class="form-control form-control-sm border-0 bg-transparent text-end fw-bold text-primary pe-2"
                                value="${fmtWon(it.unit_price || 0)}"
                                data-idx="${idx}"
                                oninput="app.formatPriceInput(this, ${idx})"
                                onfocus="this.select()"
-                               onblur="app.formatPriceBlur(this, ${idx})"
-                               onkeydown="if(event.key==='Enter'){this.blur();}">
+                               onblur="app.formatPriceBlur(this, ${idx})">
                     </td>
                     <!-- 공급가액 -->
                     <td class="text-end pe-2 fw-semibold" id="cellSupply_${idx}">${fmtWon(it.supply_price || 0)}</td>
@@ -870,11 +870,13 @@ const app = {
                         <div class="margin-compact-cell">
                             <div class="margin-rate-input-wrap">
                                 <input type="number"
+                                       data-col-field="margin_rate"
                                        step="0.1"
                                        class="margin-rate-input"
                                        id="inputMarginRate_${idx}"
                                        value="${margin.rate}"
                                        title="마진율(%) 입력 시 제안단가가 자동 역산됩니다 (매출총이익률 기준)"
+                                       onfocus="this.select()"
                                        oninput="app.updateItemMarginRate(${idx}, this.value)">
                                 <span class="margin-rate-unit">%</span>
                             </div>
@@ -887,6 +889,7 @@ const app = {
                     <td class="p-1">
                         <div class="remarks-compact-cell">
                             <input type="text"
+                                   data-col-field="remarks"
                                    class="form-control form-control-sm ext-remarks-input"
                                    value="${escHtml(it.remarks || '')}"
                                    placeholder="외부 비고"
@@ -895,6 +898,7 @@ const app = {
                             <div class="internal-remarks-wrap" title="사내 검토용 전용 비고 (외부 발송 견적서에는 절대 비공개)">
                                 <i class='bx bx-lock-alt' title="사내 전용"></i>
                                 <input type="text"
+                                       data-col-field="internal_remarks"
                                        class="int-remarks-input"
                                        value="${escHtml(it.internal_remarks || '')}"
                                        placeholder="사내 비고 (내부 전용)"
@@ -3070,7 +3074,7 @@ const app = {
         showToast('공급자 정보가 저장되었습니다.', 'success');
     },
 
-    // ── 단축키 바인딩 (F2 신규, F8 저장, ESC 닫기) ──
+    // ── 단축키 바인딩 (F2 신규, F8 저장, ESC 닫기, 품목표 Tab/Enter 세로 이동) ──
     setupKeyboardShortcuts: function() {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'F2') {
@@ -3087,6 +3091,58 @@ const app = {
                 this.closePrintOptionsModal();
                 this.closeItemImportModal();
                 this.closeSupplierSettingsModal();
+            } else if ((e.key === 'Tab' || e.key === 'Enter') && !e.isComposing) {
+                const inputEl = e.target?.closest?.('#quoteItemsTbody input[data-col-field]');
+                if (!inputEl) return;
+                const tr = inputEl.closest('tr[data-index]');
+                if (!tr) return;
+
+                const rowIdx = parseInt(tr.dataset.index, 10);
+                const colField = inputEl.dataset.colField;
+                const allRows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
+                const totalRows = allRows.length;
+                if (isNaN(rowIdx) || totalRows === 0) return;
+
+                const colOrder = ['product_name', 'spec', 'qty', 'unit', 'cost_price', 'unit_price', 'margin_rate', 'remarks', 'internal_remarks'];
+                const colIdx = colOrder.indexOf(colField);
+
+                const focusTarget = (targetInp) => {
+                    if (!targetInp) return false;
+                    e.preventDefault();
+                    targetInp.focus();
+                    try { targetInp.select(); } catch (err) {}
+                    return true;
+                };
+
+                if (e.key === 'Enter') {
+                    if (rowIdx + 1 < totalRows) {
+                        const nextRowInp = allRows[rowIdx + 1].querySelector(`input[data-col-field="${colField}"]`);
+                        focusTarget(nextRowInp);
+                    } else {
+                        e.preventDefault();
+                        inputEl.blur();
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    // Tab: 같은 열의 다음 행(아래 칸)으로 이동 -> 마지막 행이면 오른쪽 다음 열의 첫 번째 행으로 이동
+                    if (rowIdx + 1 < totalRows) {
+                        const nextRowInp = allRows[rowIdx + 1].querySelector(`input[data-col-field="${colField}"]`);
+                        if (focusTarget(nextRowInp)) return;
+                    } else if (colIdx >= 0 && colIdx + 1 < colOrder.length) {
+                        const nextColField = colOrder[colIdx + 1];
+                        const firstRowNextColInp = allRows[0]?.querySelector(`input[data-col-field="${nextColField}"]`);
+                        if (focusTarget(firstRowNextColInp)) return;
+                    }
+                } else if (e.key === 'Tab' && e.shiftKey) {
+                    // Shift + Tab: 같은 열의 이전 행(위 칸)으로 이동 -> 첫 번째 행이면 왼쪽 이전 열의 마지막 행으로 이동
+                    if (rowIdx - 1 >= 0) {
+                        const prevRowInp = allRows[rowIdx - 1].querySelector(`input[data-col-field="${colField}"]`);
+                        if (focusTarget(prevRowInp)) return;
+                    } else if (colIdx > 0) {
+                        const prevColField = colOrder[colIdx - 1];
+                        const lastRowPrevColInp = allRows[totalRows - 1]?.querySelector(`input[data-col-field="${prevColField}"]`);
+                        if (focusTarget(lastRowPrevColInp)) return;
+                    }
+                }
             }
         });
     },
