@@ -343,15 +343,42 @@ const app = {
         return true;
     },
 
-    // ── 공급자 설정 로드 & 반영 ──
+    // ── 공급자 설정 로드 & 서버 동기화 (모든 PC 공통 유지) ──
+    sanitizeLegacySupplier: function(obj) {
+        if (!obj) return obj;
+        if (obj.bizNum === '687-87-03314' || obj.ceo === '박 준' || obj.ceo === '박준') {
+            obj.bizNum = '845-88-00551';
+            obj.ceo = '윤종';
+            obj.address = '서울시 강동구 구천면로 159, 1층 2호, 3호';
+        }
+        return obj;
+    },
+
     loadSupplierSettings: function() {
         try {
             const saved = localStorage.getItem('kng_quote_supplier_settings');
             if (saved) {
-                this.supplierSettings = Object.assign({}, this.supplierSettings, JSON.parse(saved));
+                const parsed = this.sanitizeLegacySupplier(JSON.parse(saved));
+                this.supplierSettings = Object.assign({}, this.supplierSettings, parsed);
+                localStorage.setItem('kng_quote_supplier_settings', JSON.stringify(this.supplierSettings));
             }
         } catch(e) {}
         this.applySupplierDisplay();
+
+        // 서버 중앙 공급자 설정 조회하여 모든 PC 간 자동 동기화
+        authFetch(`${API_BASE}/settings/supplier`)
+            .then(res => res.ok ? res.json() : null)
+            .then(serverSettings => {
+                if (serverSettings && serverSettings.name) {
+                    const clean = this.sanitizeLegacySupplier(serverSettings);
+                    this.supplierSettings = Object.assign({}, this.supplierSettings, clean);
+                    try {
+                        localStorage.setItem('kng_quote_supplier_settings', JSON.stringify(this.supplierSettings));
+                    } catch (e) {}
+                    this.applySupplierDisplay();
+                }
+            })
+            .catch(() => {});
     },
 
     applySupplierDisplay: function() {
@@ -533,6 +560,20 @@ const app = {
         if (document.getElementById('optShowImages')) document.getElementById('optShowImages').checked = (q.show_images !== 0);
         if (document.getElementById('optIncludeSeal')) document.getElementById('optIncludeSeal').checked = (q.include_seal !== 0);
         this.toggleImageColumn(q.show_images !== 0);
+
+        // 서버에 저장된 견적서의 공급자 정보가 있으면 우선 반영
+        if (q.supplier_name && q.supplier_biz_num && q.supplier_biz_num !== '687-87-03314') {
+            this.supplierSettings = Object.assign({}, this.supplierSettings, {
+                name: q.supplier_name,
+                bizNum: q.supplier_biz_num,
+                ceo: q.supplier_ceo || this.supplierSettings.ceo,
+                address: q.supplier_address || this.supplierSettings.address,
+                tel: q.supplier_tel || this.supplierSettings.tel,
+                email: q.supplier_email || this.supplierSettings.email,
+                bank: q.supplier_bank || this.supplierSettings.bank
+            });
+            this.applySupplierDisplay();
+        }
     },
 
     // ── 견적서 보관함 목록 조회 (API 및 로컬 보관함 동기화) ──
@@ -569,6 +610,23 @@ const app = {
             })
             .then(data => {
                 this.quotations = Array.isArray(data) ? data : [];
+                // 가장 최근 저장된 서버 견적서의 공급자 정보로 다른 PC 간 동기화 보조
+                const latestWithSupplier = this.quotations.find(q => q.supplier_name && q.supplier_biz_num && q.supplier_biz_num !== '687-87-03314');
+                if (latestWithSupplier) {
+                    this.supplierSettings = Object.assign({}, this.supplierSettings, {
+                        name: latestWithSupplier.supplier_name,
+                        bizNum: latestWithSupplier.supplier_biz_num,
+                        ceo: latestWithSupplier.supplier_ceo || this.supplierSettings.ceo,
+                        address: latestWithSupplier.supplier_address || this.supplierSettings.address,
+                        tel: latestWithSupplier.supplier_tel || this.supplierSettings.tel,
+                        email: latestWithSupplier.supplier_email || this.supplierSettings.email,
+                        bank: latestWithSupplier.supplier_bank || this.supplierSettings.bank
+                    });
+                    try {
+                        localStorage.setItem('kng_quote_supplier_settings', JSON.stringify(this.supplierSettings));
+                    } catch (e) {}
+                    this.applySupplierDisplay();
+                }
                 // 서버 정상 응답 시 로컬 캐시 갱신
                 try {
                     localStorage.setItem('kng_quotations_cache', JSON.stringify(this.quotations));
@@ -3071,7 +3129,15 @@ const app = {
         localStorage.setItem('kng_quote_supplier_settings', JSON.stringify(this.supplierSettings));
         this.applySupplierDisplay();
         this.closeSupplierSettingsModal();
-        showToast('공급자 정보가 저장되었습니다.', 'success');
+
+        // 서버에도 동기화 저장하여 다른 PC로 로그인해도 동일한 공급자 정보 유지
+        authFetch(`${API_BASE}/settings/supplier`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.supplierSettings)
+        }).catch(() => {});
+
+        showToast('공급자 정보가 서버 및 브라우저에 저장되었습니다.', 'success');
     },
 
     // ── 단축키 바인딩 (F2 신규, F8 저장, ESC 닫기, 품목표 Tab/Enter 세로 이동) ──

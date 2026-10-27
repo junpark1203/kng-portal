@@ -56,9 +56,9 @@ const initQuotationTables = (dbInstance) => {
                 delivery_place TEXT,
                 payment_terms TEXT,
                 supplier_name TEXT DEFAULT '주식회사 케이엔지',
-                supplier_biz_num TEXT DEFAULT '687-87-03314',
-                supplier_ceo TEXT DEFAULT '박 준',
-                supplier_address TEXT DEFAULT '경기도 김포시 통진읍 율마로 402-14',
+                supplier_biz_num TEXT DEFAULT '845-88-00551',
+                supplier_ceo TEXT DEFAULT '윤종',
+                supplier_address TEXT DEFAULT '서울시 강동구 구천면로 159, 1층 2호, 3호',
                 supplier_tel TEXT DEFAULT '031-987-1203',
                 supplier_email TEXT DEFAULT 'contact@junparks.com',
                 supplier_bank TEXT DEFAULT '기업은행 123-456789-01-012 (예금주: 주식회사 케이엔지)',
@@ -121,7 +121,15 @@ const initQuotationTables = (dbInstance) => {
                 dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN thumbnail_images TEXT`, () => {});
                 dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN detail_images TEXT`, () => {});
                 dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN internal_remarks TEXT`, () => {});
-                resolve();
+                dbInstance.run(`
+                    CREATE TABLE IF NOT EXISTS quotation_settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT,
+                        updated_at TEXT
+                    )
+                `, () => {
+                    resolve();
+                });
             });
         });
     });
@@ -279,6 +287,46 @@ const getPublicCatalog = (req, res) => {
         });
     });
 };
+
+// ── 공급자 설정 조회 / 저장 API (모든 PC 공통 동기화) ──
+router.get('/settings/supplier', (req, res) => {
+    db.get(`SELECT value FROM quotation_settings WHERE key = 'supplier'`, [], (err, row) => {
+        if (!err && row && row.value) {
+            try {
+                return res.json(JSON.parse(row.value));
+            } catch (e) {}
+        }
+        // 설정 테이블에 아직 없으면 가장 최근 저장된 견적서의 공급자 정보를 반환
+        db.get(`SELECT supplier_name, supplier_biz_num, supplier_ceo, supplier_address, supplier_tel, supplier_email, supplier_bank FROM quotations ORDER BY updated_at DESC, created_at DESC LIMIT 1`, [], (qErr, qRow) => {
+            if (!qErr && qRow && qRow.supplier_name) {
+                return res.json({
+                    name: qRow.supplier_name,
+                    bizNum: qRow.supplier_biz_num,
+                    ceo: qRow.supplier_ceo,
+                    address: qRow.supplier_address,
+                    tel: qRow.supplier_tel,
+                    email: qRow.supplier_email,
+                    bank: qRow.supplier_bank
+                });
+            }
+            res.json(null);
+        });
+    });
+});
+
+router.put('/settings/supplier', (req, res) => {
+    const valStr = JSON.stringify(req.body || {});
+    const now = new Date().toISOString();
+    db.run(
+        `INSERT INTO quotation_settings (key, value, updated_at) VALUES ('supplier', ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [valStr, now],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: '공급자 설정이 서버에 저장되었습니다.', settings: req.body });
+        }
+    );
+});
 
 // ── 3. 견적서 단건 상세 조회 (마스터 + 품목 목록) ──
 router.get('/:id', (req, res) => {
