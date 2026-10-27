@@ -134,6 +134,70 @@ function calcUnitFromGrossMargin(costPrice, marginRate) {
     return Math.round(cost / factor);
 }
 
+// ── 품목 이미지 / 다중 썸네일 / 상세페이지 헬퍼 ──
+function cleanImgUrl(url) {
+    if (!url) return '';
+    return String(url).split('#kng_media=')[0];
+}
+
+function extractItemMedia(it) {
+    if (!it) return { thumbs: [], details: [], catalogFile: '' };
+    let thumbs = Array.isArray(it.thumbnail_images) ? it.thumbnail_images.slice() : [];
+    let details = Array.isArray(it.detail_images) ? it.detail_images.slice() : [];
+    let catalogFile = '';
+
+    if (typeof it.thumbnail_images === 'string' && it.thumbnail_images.trim().startsWith('[')) {
+        try { thumbs = JSON.parse(it.thumbnail_images); } catch (e) {}
+    }
+    if (typeof it.detail_images === 'string' && it.detail_images.trim().startsWith('[')) {
+        try { details = JSON.parse(it.detail_images); } catch (e) {}
+    }
+
+    if (it.image_url && String(it.image_url).includes('#kng_media=')) {
+        try {
+            const hashPart = String(it.image_url).split('#kng_media=')[1];
+            const decoded = JSON.parse(decodeURIComponent(hashPart));
+            if (thumbs.length === 0 && Array.isArray(decoded.t)) thumbs = decoded.t;
+            if (details.length === 0 && Array.isArray(decoded.d)) details = decoded.d;
+            if (decoded.c) catalogFile = decoded.c;
+        } catch (e) {}
+    }
+
+    const baseImg = cleanImgUrl(it.image_url);
+    thumbs = thumbs.map(cleanImgUrl).filter(Boolean);
+    details = details.map(cleanImgUrl).filter(Boolean);
+
+    if (thumbs.length === 0 && baseImg) {
+        thumbs = [baseImg];
+    }
+
+    return { thumbs, details, catalogFile };
+}
+
+function syncItemMediaFields(it, catalogFile = '') {
+    if (!it) return;
+    const media = extractItemMedia(it);
+    it.thumbnail_images = media.thumbs;
+    it.detail_images = media.details;
+    const mainImg = media.thumbs[0] || '';
+
+    // Base64가 아닌 서버 URL 위주일 때는 image_url 뒤에 #kng_media 해시를 붙여 구버전 DB에서도 다중 사진이 100% 보존되게 처리
+    const hasHeavyDataUri = media.thumbs.some(u => u.startsWith('data:')) || media.details.some(u => u.startsWith('data:'));
+    if (!hasHeavyDataUri && (media.thumbs.length > 1 || media.details.length > 0 || catalogFile || media.catalogFile)) {
+        const metaPayload = {
+            t: media.thumbs,
+            d: media.details
+        };
+        if (catalogFile || media.catalogFile) {
+            metaPayload.c = catalogFile || media.catalogFile;
+        }
+        const baseForHash = mainImg || (media.details[0] || '');
+        it.image_url = baseForHash ? `${baseForHash}#kng_media=${encodeURIComponent(JSON.stringify(metaPayload))}` : '';
+    } else {
+        it.image_url = mainImg;
+    }
+}
+
 // ==========================================
 // 애플리케이션 메인 엔진
 // ==========================================
@@ -142,6 +206,11 @@ const app = {
     quotations: [],
     currentQuote: null,
     editingItemIndexForImage: null,
+    pasteTargetMode: 'thumb', // 'thumb' | 'detail'
+    modalMediaState: {
+        thumbs: [],
+        details: []
+    },
     savedSnapshot: null,
     isDirty: false,
 
@@ -208,7 +277,10 @@ const app = {
             cost: Number(it.cost_price) || 0,
             price: Number(it.unit_price) || 0,
             remarks: it.remarks || '',
-            img: it.image_url || ''
+            internal_remarks: it.internal_remarks || '',
+            img: it.image_url || '',
+            thumbs: it.thumbnail_images || [],
+            details: it.detail_images || []
         }));
 
         const rows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
@@ -571,6 +643,9 @@ const app = {
                             <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.duplicateQuotation('${escHtml(q.id)}')" title="복사하여 재견적 작성">
                                 <i class='bx bx-copy'></i> 복사
                             </button>
+                            <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.openQrPreviewById('${escHtml(q.id)}')" title="QR 코드 및 모바일 제품 상세페이지 보기">
+                                <i class='bx bx-qr-scan text-primary'></i> QR
+                            </button>
                             <button type="button" class="btn-erp" style="height:20px; font-size:10px; padding:0 5px;" onclick="app.printQuotationById('${escHtml(q.id)}')" title="A4 인쇄 / PDF">
                                 <i class='bx bx-printer'></i> 인쇄
                             </button>
@@ -716,10 +791,18 @@ const app = {
         }
 
         const rows = items.map((it, idx) => {
-            const hasImg = !!it.image_url;
+            const media = extractItemMedia(it);
+            const mainThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
+            const hasImg = !!mainThumb;
+            let badgeHtml = '';
+            if (media.details.length > 0) {
+                badgeHtml = `<span class="quote-item-thumb-badge has-detail">상세 ${media.details.length}</span>`;
+            } else if (media.thumbs.length > 1) {
+                badgeHtml = `<span class="quote-item-thumb-badge">+${media.thumbs.length - 1}장</span>`;
+            }
             const thumbHtml = hasImg
-                ? `<img src="${escHtml(it.image_url)}" class="quote-item-thumb-img" alt="사진">`
-                : `<div class="quote-item-thumb-empty"><i class='bx bx-camera'></i><span>사진</span></div>`;
+                ? `<img src="${escHtml(mainThumb)}" class="quote-item-thumb-img" alt="사진">${badgeHtml}`
+                : `<div class="quote-item-thumb-empty"><i class='bx bx-camera'></i><span>사진/상세</span></div>${badgeHtml}`;
 
             // 방식 A: 매출총이익률 마진 계산
             const margin = calcGrossMargin(it.cost_price, it.unit_price);
@@ -731,7 +814,7 @@ const app = {
                     <td class="text-center text-muted" style="font-size:10.5px;">${idx + 1}</td>
                     <!-- 사진 썸네일 [클릭 시 업로드/변경] -->
                     <td class="col-item-img text-center p-1">
-                        <div class="quote-item-thumb-box" onclick="app.openImageModal(${idx})" title="클릭: 사진 추가/변경 또는 클립보드 붙여넣기">
+                        <div class="quote-item-thumb-box" onclick="app.openImageModal(${idx})" title="클릭: 제품 사진(슬라이드) 및 상세페이지(스크롤) 이미지 등록 (사진 ${media.thumbs.length}장 / 상세 ${media.details.length}장)">
                             ${thumbHtml}
                         </div>
                     </td>
@@ -1240,28 +1323,31 @@ const app = {
     },
 
     // ═══════════════════════════════════════════════════════════════
-    // 품목별 사진 첨부 & 클립보드 붙여넣기 (Ctrl + V)
+    // 품목별 다중 사진(슬라이드) & 상세페이지(스크롤) 첨부 및 클립보드 붙여넣기
     // ═══════════════════════════════════════════════════════════════
     openImageModal: function(idx) {
         this.editingItemIndexForImage = idx;
+        this.syncRowFromDOM(idx);
         const it = this.currentQuote.items[idx];
         const modal = document.getElementById('imageUploadModal');
-        const preview = document.getElementById('modalPreviewImg');
-        const previewWrap = document.getElementById('imagePreviewContainer');
-        const emptyPrompt = document.getElementById('imageEmptyPrompt');
-        const urlInput = document.getElementById('modalImageUrlInput');
+        const media = extractItemMedia(it);
 
-        urlInput.value = it.image_url || '';
-        if (it.image_url) {
-            preview.src = it.image_url;
-            previewWrap.classList.remove('d-none');
-            emptyPrompt.classList.add('d-none');
-        } else {
-            preview.src = '';
-            previewWrap.classList.add('d-none');
-            emptyPrompt.classList.remove('d-none');
+        this.modalMediaState = {
+            thumbs: media.thumbs.slice(),
+            details: media.details.slice()
+        };
+
+        const titleBadge = document.getElementById('imageModalItemTitle');
+        if (titleBadge) {
+            titleBadge.textContent = `품목 #${idx + 1}: ${it.product_name || '미입력 품목'}`;
         }
 
+        const thumbUrlInp = document.getElementById('modalImageUrlInput');
+        const detailUrlInp = document.getElementById('modalDetailUrlInput');
+        if (thumbUrlInp) thumbUrlInp.value = '';
+        if (detailUrlInp) detailUrlInp.value = '';
+
+        this.renderModalMediaLists();
         modal.style.display = 'block';
     },
 
@@ -1271,115 +1357,228 @@ const app = {
         this.editingItemIndexForImage = null;
     },
 
-    setupImageDropzone: function() {
-        const dropzone = document.getElementById('imageDropzone');
-        if (!dropzone) return;
+    renderModalMediaLists: function() {
+        const thumbs = this.modalMediaState.thumbs || [];
+        const details = this.modalMediaState.details || [];
 
-        dropzone.addEventListener('click', () => {
-            document.getElementById('modalFileInput').click();
-        });
+        const thumbBadge = document.getElementById('badgeThumbCount');
+        const detailBadge = document.getElementById('badgeDetailCount');
+        if (thumbBadge) thumbBadge.textContent = `${thumbs.length}장`;
+        if (detailBadge) detailBadge.textContent = `${details.length}장`;
 
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('dragover');
-        });
-
-        dropzone.addEventListener('dragleave', () => {
-            dropzone.classList.remove('dragover');
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                this.uploadImageFile(e.dataTransfer.files[0]);
+        const thumbListEl = document.getElementById('modalThumbList');
+        if (thumbListEl) {
+            if (thumbs.length === 0) {
+                thumbListEl.innerHTML = `<div class="text-center text-muted py-4" style="grid-column: 1 / -1; font-size: 11px;">등록된 제품 사진이 없습니다.<br>위 영역을 클릭하거나 파일을 드래그하세요.</div>`;
+            } else {
+                thumbListEl.innerHTML = thumbs.map((url, i) => `
+                    <div class="media-thumb-card ${i === 0 ? 'is-main' : ''}">
+                        ${i === 0 ? `<span class="media-thumb-badge">대표</span>` : `<span class="media-thumb-badge" style="background:#64748b;">#${i + 1}</span>`}
+                        <img src="${escHtml(url)}" alt="썸네일 ${i + 1}">
+                        <div class="media-card-actions">
+                            <div class="d-flex gap-1">
+                                <button type="button" class="media-ctrl-btn" onclick="app.moveModalMedia('thumb', ${i}, -1)" ${i === 0 ? 'disabled' : ''} title="앞으로 이동">◀</button>
+                                <button type="button" class="media-ctrl-btn" onclick="app.moveModalMedia('thumb', ${i}, 1)" ${i === thumbs.length - 1 ? 'disabled' : ''} title="뒤로 이동">▶</button>
+                            </div>
+                            <button type="button" class="media-ctrl-btn danger" onclick="app.removeModalMedia('thumb', ${i})" title="삭제">✕</button>
+                        </div>
+                    </div>
+                `).join('');
             }
-        });
+        }
+
+        const detailListEl = document.getElementById('modalDetailList');
+        if (detailListEl) {
+            if (details.length === 0) {
+                detailListEl.innerHTML = `<div class="text-center text-muted py-4" style="font-size: 11px;">등록된 상세페이지 이미지가 없습니다.<br>위 영역을 클릭하거나 상세 이미지를 드래그하세요.</div>`;
+            } else {
+                detailListEl.innerHTML = details.map((url, i) => {
+                    const shortName = url.startsWith('data:') ? '로컬 이미지 데이터' : (url.split('/').pop() || url);
+                    return `
+                        <div class="media-detail-row">
+                            <span class="media-detail-seq">#${i + 1}</span>
+                            <img src="${escHtml(url)}" alt="상세 ${i + 1}">
+                            <div class="media-detail-info" title="${escHtml(shortName)}">${escHtml(shortName)}</div>
+                            <div class="d-flex gap-1">
+                                <button type="button" class="media-ctrl-btn" onclick="app.moveModalMedia('detail', ${i}, -1)" ${i === 0 ? 'disabled' : ''} title="위로 이동">▲</button>
+                                <button type="button" class="media-ctrl-btn" onclick="app.moveModalMedia('detail', ${i}, 1)" ${i === details.length - 1 ? 'disabled' : ''} title="아래로 이동">▼</button>
+                                <button type="button" class="media-ctrl-btn danger" onclick="app.removeModalMedia('detail', ${i})" title="삭제">✕</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    },
+
+    moveModalMedia: function(target, idx, dir) {
+        const arr = target === 'detail' ? this.modalMediaState.details : this.modalMediaState.thumbs;
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= arr.length) return;
+        const temp = arr[idx];
+        arr[idx] = arr[newIdx];
+        arr[newIdx] = temp;
+        this.renderModalMediaLists();
+    },
+
+    removeModalMedia: function(target, idx) {
+        const arr = target === 'detail' ? this.modalMediaState.details : this.modalMediaState.thumbs;
+        arr.splice(idx, 1);
+        this.renderModalMediaLists();
+    },
+
+    addUrlToModalMedia: function(target) {
+        const inpId = target === 'detail' ? 'modalDetailUrlInput' : 'modalImageUrlInput';
+        const inp = document.getElementById(inpId);
+        if (!inp || !inp.value.trim()) return;
+        const url = inp.value.trim();
+        if (target === 'detail') {
+            this.modalMediaState.details.push(url);
+        } else {
+            this.modalMediaState.thumbs.push(url);
+        }
+        inp.value = '';
+        this.renderModalMediaLists();
+    },
+
+    setupImageDropzone: function() {
+        const bindZone = (zoneId, targetType) => {
+            const dz = document.getElementById(zoneId);
+            if (!dz) return;
+            dz.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dz.classList.add('dragover');
+            });
+            dz.addEventListener('dragleave', () => {
+                dz.classList.remove('dragover');
+            });
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('dragover');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    this.uploadMultipleFiles(Array.from(e.dataTransfer.files), targetType);
+                }
+            });
+        };
+
+        bindZone('thumbDropzone', 'thumb');
+        bindZone('detailDropzone', 'detail');
 
         // 클립보드 붙여넣기 (Ctrl + V) 이벤트
         window.addEventListener('paste', (e) => {
             const modal = document.getElementById('imageUploadModal');
             if (modal && modal.style.display === 'block') {
                 if (e.clipboardData && e.clipboardData.items) {
+                    const files = [];
                     for (let i = 0; i < e.clipboardData.items.length; i++) {
                         const item = e.clipboardData.items[i];
                         if (item.type.indexOf('image') !== -1) {
                             const blob = item.getAsFile();
-                            this.uploadImageFile(blob);
-                            break;
+                            if (blob) files.push(blob);
                         }
+                    }
+                    if (files.length > 0) {
+                        this.uploadMultipleFiles(files, this.pasteTargetMode || 'thumb');
                     }
                 }
             }
         });
     },
 
-    handleModalFileSelect: function(e) {
-        if (e.target.files && e.target.files[0]) {
-            this.uploadImageFile(e.target.files[0]);
+    handleMultiImageSelect: function(e, targetType = 'thumb') {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            this.uploadMultipleFiles(files, targetType);
+            e.target.value = '';
         }
     },
 
-    uploadImageFile: function(file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        showToast('사진을 등록하는 중입니다...', 'info');
+    uploadSingleFilePromise: function(file) {
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append('image', file);
 
-        authFetch(`${API_BASE}/upload`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(result => {
-            if (result.url) {
-                let fullUrl = result.url;
-                if (!fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
-                    const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
-                        ? 'http://localhost:3000'
-                        : 'https://kng.junparks.com';
-                    fullUrl = host + fullUrl;
+            authFetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(result => {
+                if (result.url) {
+                    let fullUrl = result.url;
+                    if (!fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
+                        const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:')
+                            ? 'http://localhost:3000'
+                            : 'https://kng.junparks.com';
+                        fullUrl = host + fullUrl;
+                    }
+                    resolve(fullUrl);
+                } else {
+                    throw new Error('업로드 실패');
                 }
-                document.getElementById('modalImageUrlInput').value = fullUrl;
-                document.getElementById('modalPreviewImg').src = fullUrl;
-                document.getElementById('imagePreviewContainer').classList.remove('d-none');
-                document.getElementById('imageEmptyPrompt').classList.add('d-none');
-                showToast('사진이 등록되었습니다!', 'success');
-            } else {
-                throw new Error(result.error || '업로드 실패');
-            }
-        })
-        .catch(err => {
-            console.warn('서버 업로드 실패, 로컬 이미지(Base64)로 대체:', err);
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const base64 = e.target.result;
-                document.getElementById('modalImageUrlInput').value = base64;
-                document.getElementById('modalPreviewImg').src = base64;
-                document.getElementById('imagePreviewContainer').classList.remove('d-none');
-                document.getElementById('imageEmptyPrompt').classList.add('d-none');
-                showToast('로컬 사진으로 등록되었습니다.', 'success');
-            };
-            reader.readAsDataURL(file);
+            })
+            .catch(() => {
+                const reader = new FileReader();
+                reader.onload = (ev) => resolve(ev.target.result);
+                reader.onerror = () => resolve('');
+                reader.readAsDataURL(file);
+            });
         });
+    },
+
+    uploadMultipleFiles: async function(files, targetType = 'thumb') {
+        if (!files || files.length === 0) return;
+        showToast(`${files.length}장의 이미지를 업로드하는 중입니다...`, 'info');
+        for (const file of files) {
+            const uploadedUrl = await this.uploadSingleFilePromise(file);
+            if (uploadedUrl) {
+                if (targetType === 'detail') {
+                    this.modalMediaState.details.push(uploadedUrl);
+                } else {
+                    this.modalMediaState.thumbs.push(uploadedUrl);
+                }
+                this.renderModalMediaLists();
+            }
+        }
+        showToast(`${files.length}장의 이미지가 추가되었습니다!`, 'success');
     },
 
     applyModalImage: function() {
         if (this.editingItemIndexForImage === null) return;
-        const url = document.getElementById('modalImageUrlInput').value.trim();
-        this.currentQuote.items[this.editingItemIndexForImage].image_url = url;
+        // URL 입력창에 미추가 상태로 남아있는 텍스트가 있으면 함께 반영
+        this.addUrlToModalMedia('thumb');
+        this.addUrlToModalMedia('detail');
+
+        const it = this.currentQuote.items[this.editingItemIndexForImage];
+        if (it) {
+            it.thumbnail_images = this.modalMediaState.thumbs.slice();
+            it.detail_images = this.modalMediaState.details.slice();
+            syncItemMediaFields(it, this.currentQuote.catalog_url || '');
+            this.isDirty = true;
+        }
         this.renderEditorItems();
         this.closeImageModal();
+        showToast('품목 사진 및 상세페이지가 적용되었습니다.', 'success');
     },
 
     removeCurrentImage: function() {
         if (this.editingItemIndexForImage === null) return;
-        this.currentQuote.items[this.editingItemIndexForImage].image_url = '';
+        this.modalMediaState.thumbs = [];
+        this.modalMediaState.details = [];
+        this.renderModalMediaLists();
+        const it = this.currentQuote.items[this.editingItemIndexForImage];
+        if (it) {
+            it.image_url = '';
+            it.thumbnail_images = [];
+            it.detail_images = [];
+            this.isDirty = true;
+        }
         this.renderEditorItems();
         this.closeImageModal();
-        showToast('사진이 삭제되었습니다.', 'info');
+        showToast('해당 품목의 사진 및 상세 이미지가 초기화되었습니다.', 'info');
     },
 
     // ═══════════════════════════════════════════════════════════════
@@ -1583,9 +1782,235 @@ const app = {
     },
 
     // ═══════════════════════════════════════════════════════════════
+    // 공개용 QR 카탈로그 스냅샷 업로드 & QR 코드 생성 엔진
+    // ═══════════════════════════════════════════════════════════════
+    extractCatalogFileFromQuote: function(q) {
+        if (!q) return '';
+        if (q.catalog_url) return q.catalog_url.replace(/^\/api\/quotations\/uploads\//, '');
+        if (Array.isArray(q.items)) {
+            for (const it of q.items) {
+                const m = extractItemMedia(it);
+                if (m.catalogFile) return m.catalogFile;
+            }
+        }
+        return '';
+    },
+
+    buildPublicCatalogObject: function(q) {
+        const s = this.supplierSettings;
+        return {
+            id: q.id || '',
+            quote_number: q.quote_number || '',
+            issue_date: q.issue_date || '',
+            valid_until: q.valid_until || '',
+            customer_name: q.customer_name || '',
+            project_name: q.project_name || '',
+            delivery_date: q.delivery_date || '',
+            delivery_place: q.delivery_place || '',
+            supplier_name: q.supplier_name || s.name || '주식회사 케이엔지',
+            supplier_tel: q.supplier_tel || s.tel || '031-987-1203',
+            supplier_email: q.supplier_email || s.email || 'contact@junparks.com',
+            items: (q.items || []).map((it, idx) => {
+                const media = extractItemMedia(it);
+                return {
+                    seq: idx + 1,
+                    product_name: it.product_name || '',
+                    spec: it.spec || '',
+                    color: it.color || '',
+                    unit: it.unit || 'EA',
+                    qty: Number(it.qty) || 1,
+                    image_url: media.thumbs[0] || cleanImgUrl(it.image_url) || '',
+                    thumbnail_images: media.thumbs,
+                    detail_images: media.details,
+                    remarks: it.remarks || ''
+                };
+            })
+        };
+    },
+
+    uploadPublicCatalogSnapshot: async function(q) {
+        try {
+            const publicObj = this.buildPublicCatalogObject(q);
+            const blob = new Blob([JSON.stringify(publicObj)], { type: 'application/json' });
+            const formData = new FormData();
+            formData.append('image', blob, 'catalog.json');
+
+            const res = await authFetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            if (!res.ok) return '';
+            const data = await res.json();
+            if (data && data.filename) {
+                q.catalog_url = data.filename;
+                if (Array.isArray(q.items) && q.items.length > 0) {
+                    syncItemMediaFields(q.items[0], data.filename);
+                }
+                return data.filename;
+            }
+        } catch (e) {
+            console.warn('카탈로그 스냅샷 업로드 생략:', e);
+        }
+        return '';
+    },
+
+    getQuoteCatalogUrl: function(q, forLocalPreview = false) {
+        const docNo = (q && (q.quote_number || q.id)) ? (q.quote_number || q.id) : this.generateStandardQuoteNumber();
+        const catFile = this.extractCatalogFileFromQuote(q);
+        const query = `q=${encodeURIComponent(docNo)}${catFile ? `&c=${encodeURIComponent(catFile)}` : ''}${forLocalPreview ? '&preview=1' : ''}`;
+
+        if (forLocalPreview) {
+            return `./quote-catalog.html?${query}`;
+        }
+
+        const isLocalHost = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:');
+        if (isLocalHost) {
+            try {
+                return new URL(`./quote-catalog.html?${query}`, location.href).href;
+            } catch (e) {
+                return `https://kng-portal.junparks.com/05_Management/forms/quote-catalog.html?${query}`;
+            }
+        }
+        return new URL(`./quote-catalog.html?${query}`, location.href).href;
+    },
+
+    generateQrSvgTag: function(url) {
+        if (!url) return '';
+        try {
+            if (typeof window.qrcode === 'function') {
+                const qr = window.qrcode(0, 'M');
+                qr.addData(url);
+                qr.make();
+                return qr.createSvgTag({ cellSize: 2, margin: 1, scalable: true });
+            }
+        } catch (e) {
+            console.warn('QR SVG 생성 오류:', e);
+        }
+        return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=2&data=${encodeURIComponent(url)}" alt="QR">`;
+    },
+
+    syncCurrentEditorToQuoteObj: function() {
+        if (!this.currentQuote) return null;
+        const itemRows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
+        if (itemRows.length > 0 && Array.isArray(this.currentQuote.items)) {
+            itemRows.forEach(tr => {
+                const idx = parseInt(tr.dataset.index, 10);
+                this.syncRowFromDOM(idx);
+            });
+            this.recalcTotals();
+        }
+        this.currentQuote.customer_name = document.getElementById('custName')?.value.trim() || this.currentQuote.customer_name || '';
+        this.currentQuote.project_name = document.getElementById('projectName')?.value.trim() || this.currentQuote.project_name || '';
+        this.currentQuote.issue_date = document.getElementById('issueDate')?.value || this.currentQuote.issue_date || '';
+        this.currentQuote.valid_until = document.getElementById('validUntil')?.value || this.currentQuote.valid_until || '';
+        return this.currentQuote;
+    },
+
+    targetQuoteForQr: null,
+
+    openQrPreviewModal: async function(quoteObj = null) {
+        const q = quoteObj || this.syncCurrentEditorToQuoteObj();
+        if (!q || !Array.isArray(q.items) || q.items.length === 0) {
+            showToast('먼저 견적 품목을 1개 이상 추가해주세요.', 'warning');
+            return;
+        }
+        if (!q.quote_number) {
+            q.quote_number = this.generateStandardQuoteNumber();
+        }
+        this.targetQuoteForQr = q;
+
+        // 로컬 미리보기 세션 저장
+        try {
+            localStorage.setItem('kng_qr_preview_quote', JSON.stringify(this.buildPublicCatalogObject(q)));
+        } catch (e) {}
+
+        // 서버 스냅샷이 아직 없으면 백그라운드 업로드하여 외부 스마트폰 스캔 즉시 지원
+        if (!this.extractCatalogFileFromQuote(q)) {
+            await this.uploadPublicCatalogSnapshot(q);
+        }
+
+        const qrUrl = this.getQuoteCatalogUrl(q, false);
+        const svgContainer = document.getElementById('qrModalSvgContainer');
+        if (svgContainer) {
+            svgContainer.innerHTML = this.generateQrSvgTag(qrUrl);
+        }
+
+        const titleEl = document.getElementById('qrModalQuoteTitle');
+        if (titleEl) {
+            titleEl.textContent = `${q.customer_name || '고객사'} 귀중 (${q.quote_number})`;
+        }
+
+        let withPhotoCount = 0;
+        let withDetailCount = 0;
+        (q.items || []).forEach(it => {
+            const m = extractItemMedia(it);
+            if (m.thumbs.length > 0) withPhotoCount++;
+            if (m.details.length > 0) withDetailCount++;
+        });
+
+        const summaryEl = document.getElementById('qrModalMediaSummary');
+        if (summaryEl) {
+            summaryEl.textContent = `총 ${q.items.length}개 품목 (제품사진 ${withPhotoCount}건 / 상세페이지 ${withDetailCount}건 등록됨)`;
+        }
+
+        const linkInp = document.getElementById('qrModalLinkInput');
+        if (linkInp) linkInp.value = qrUrl;
+
+        const modal = document.getElementById('qrPreviewModal');
+        if (modal) modal.style.display = 'block';
+    },
+
+    openQrPreviewById: function(id) {
+        authFetch(`${API_BASE}/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(quote => {
+                this.openQrPreviewModal(quote);
+            })
+            .catch(() => {
+                let localQuotes = [];
+                try {
+                    localQuotes = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                } catch(e) {}
+                const found = localQuotes.find(q => String(q.id) === String(id));
+                if (found) this.openQrPreviewModal(found);
+                else showToast('견적서 정보를 찾을 수 없습니다.', 'error');
+            });
+    },
+
+    closeQrPreviewModal: function() {
+        const modal = document.getElementById('qrPreviewModal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    copyQrCatalogLink: function() {
+        const inp = document.getElementById('qrModalLinkInput');
+        if (!inp || !inp.value) return;
+        navigator.clipboard.writeText(inp.value)
+            .then(() => showToast('QR 제품 상세 카탈로그 링크가 복사되었습니다!', 'success'))
+            .catch(() => {
+                inp.select();
+                document.execCommand('copy');
+                showToast('링크가 복사되었습니다!', 'success');
+            });
+    },
+
+    openMobileCatalogPreview: function() {
+        const q = this.targetQuoteForQr || this.syncCurrentEditorToQuoteObj();
+        if (!q) return;
+        try {
+            localStorage.setItem('kng_qr_preview_quote', JSON.stringify(this.buildPublicCatalogObject(q)));
+        } catch (e) {}
+        const previewUrl = this.getQuoteCatalogUrl(q, true);
+        window.open(previewUrl, '_blank', 'width=480,height=860,scrollbars=yes,resizable=yes');
+    },
+
+    // ═══════════════════════════════════════════════════════════════
     // 견적서 저장 (API 호출)
     // ═══════════════════════════════════════════════════════════════
-    saveQuotation: function() {
+    saveQuotation: async function() {
         const custName = document.getElementById('custName').value.trim();
         // 0. 테이블 DOM의 최신 입력값 동기화
         const itemRows = document.querySelectorAll('#quoteItemsTbody tr[data-index]');
@@ -1637,8 +2062,13 @@ const app = {
         const existingId = document.getElementById('quoteId')?.value.trim() || this.currentQuote.id;
         const isUpdate = Boolean(existingId);
 
+        // 로컬 보관용 임시 ID 및 정규 표준 견적번호 채번 (QT-YYYYMMDD-001)
+        const localBackupId = existingId || ('qt_' + Date.now());
+        const localBackupQuoteNumber = this.currentQuote.quote_number || this.generateStandardQuoteNumber();
+
         const payload = Object.assign({}, this.currentQuote, {
             id: existingId || '',
+            quote_number: localBackupQuoteNumber,
             customer_name: custName,
             customer_attn: document.getElementById('custAttn').value.trim(),
             customer_tel: document.getElementById('custTel').value.trim(),
@@ -1663,9 +2093,13 @@ const app = {
             supplier_bank: this.supplierSettings.bank
         });
 
-        // 로컬 보관용 임시 ID 및 정규 표준 견적번호 채번 (QT-YYYYMMDD-001)
-        const localBackupId = existingId || ('qt_' + Date.now());
-        const localBackupQuoteNumber = payload.quote_number || this.generateStandardQuoteNumber();
+        showToast('견적서 및 QR 상세 카탈로그를 서버에 저장하는 중입니다...', 'info');
+
+        // QR 모바일 카탈로그 정적 스냅샷 파일 서버 업로드 및 품목 미디어 해시 동기화
+        const uploadedCatalogFile = await this.uploadPublicCatalogSnapshot(payload);
+        payload.items.forEach((it, idx) => {
+            syncItemMediaFields(it, idx === 0 ? uploadedCatalogFile : '');
+        });
 
         // 1. 로컬스토리지 즉시 백업 저장 (무중단 보존)
         try {
@@ -1809,6 +2243,9 @@ const app = {
             document.getElementById('printOptIncludeSupplier').checked = (lastOpt.includeSupplier !== false);
             this.togglePrintSupplierOption(lastOpt.includeSupplier !== false);
         }
+        if (document.getElementById('printOptShowQr')) {
+            document.getElementById('printOptShowQr').checked = (lastOpt.showQr !== false);
+        }
         if (document.getElementById('printOptShowImages')) {
             document.getElementById('printOptShowImages').checked = (lastOpt.showImages !== false);
         }
@@ -1883,7 +2320,7 @@ const app = {
             : '하단 [특기사항] 영역 포함 (납품조건 메타 제외)';
     },
 
-    executePrintWithOptions: function() {
+    executePrintWithOptions: async function() {
         const q = this.targetQuoteForPrint || this.currentQuote;
         if (!q) return;
 
@@ -1893,6 +2330,7 @@ const app = {
         const includeWatermark = document.getElementById('printOptWatermark')?.checked !== false;
         const includeRecipient = document.getElementById('printOptIncludeRecipient')?.checked !== false;
         const includeSupplier = document.getElementById('printOptIncludeSupplier')?.checked !== false;
+        const showQr = document.getElementById('printOptShowQr')?.checked !== false;
         const showImages = document.getElementById('printOptShowImages')?.checked !== false;
         const includeSeal = includeSupplier && (document.getElementById('printOptIncludeSeal')?.checked !== false);
         const includeNotes = document.getElementById('printOptIncludeNotes')?.checked !== false;
@@ -1904,6 +2342,7 @@ const app = {
             includeWatermark: includeWatermark,
             includeRecipient: includeRecipient,
             includeSupplier: includeSupplier,
+            showQr: showQr,
             showImages: showImages,
             includeSeal: includeSeal,
             includeNotes: includeNotes
@@ -1915,6 +2354,10 @@ const app = {
 
         this.closePrintOptionsModal();
 
+        if (showQr && !this.extractCatalogFileFromQuote(q)) {
+            await this.uploadPublicCatalogSnapshot(q);
+        }
+
         this.renderPrintArea(q, options);
         setTimeout(() => {
             window.print();
@@ -1923,6 +2366,7 @@ const app = {
 
     printCurrentQuotation: function() {
         if (!this.currentQuote) return;
+        this.syncCurrentEditorToQuoteObj();
         this.openPrintOptionsModal(this.currentQuote);
     },
 
@@ -1950,12 +2394,27 @@ const app = {
             });
     },
 
+    // ── A4 우측 상단 QR 코드 박스 HTML 생성 헬퍼 ──
+    buildA4QrBoxHtml: function(q, showQr, isFloating = false) {
+        if (!showQr) return '';
+        const qrUrl = this.getQuoteCatalogUrl(q, false);
+        const svgTag = this.generateQrSvgTag(qrUrl);
+        if (!svgTag) return '';
+        return `
+            <div class="a4-qr-box ${isFloating ? 'a4-qr-box-floating' : ''}" title="스마트폰 카메라로 스캔하여 제품 사진 및 상세페이지 확인">
+                <div class="a4-qr-svg-wrap">${svgTag}</div>
+                <div class="a4-qr-caption">스마트폰 스캔<br>제품 상세보기</div>
+            </div>
+        `;
+    },
+
     // ── 외부 발송용 정규 견적서 페이지 생성기 (원가/마진 비공개) ──
     generateExternalQuotePage: function(q, options, s) {
         const title = options.title || '견  적  서';
         const priceMode = options.priceMode || 'all';
         const includeRecipient = (typeof options.includeRecipient === 'boolean') ? options.includeRecipient : true;
         const includeSupplier = (typeof options.includeSupplier === 'boolean') ? options.includeSupplier : true;
+        const showQr = (typeof options.showQr === 'boolean') ? options.showQr : (q.show_qr !== 0);
         const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
         const includeSeal = includeSupplier && ((typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0));
         const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
@@ -1979,9 +2438,11 @@ const app = {
         }
 
         const itemRowsHtml = items.map((it, idx) => {
+            const media = extractItemMedia(it);
+            const mainThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
                 ? `<td class="text-center p-1" style="width: 50px;">
-                     ${it.image_url ? `<img src="${escHtml(it.image_url)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
+                     ${mainThumb ? `<img src="${escHtml(mainThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
 
@@ -2075,6 +2536,9 @@ const app = {
             </div>
         `;
 
+        const docNo = q.quote_number || this.generateStandardQuoteNumber();
+        q.quote_number = docNo;
+
         let headerContainerHtml = '';
         if (includeSupplier) {
             headerContainerHtml = `
@@ -2087,6 +2551,7 @@ const app = {
                         ${dateInfoHtml}
                     </div>
                     <div class="header-right">
+                        ${this.buildA4QrBoxHtml(q, showQr, false)}
                         <table class="supplier-table">
                             <tr>
                                 <th rowspan="4" class="vertical-th">공<br>급<br>자</th>
@@ -2124,11 +2589,10 @@ const app = {
                     </div>
                     ${recipientHtml}
                     ${dateInfoHtml}
+                    ${this.buildA4QrBoxHtml(q, showQr, true)}
                 </div>
             `;
         }
-
-        const docNo = q.quote_number || this.generateStandardQuoteNumber();
 
         return `
             <div class="a4-quote-page external-quote-page">
@@ -2222,6 +2686,7 @@ const app = {
         const includeRecipient = (typeof options.includeRecipient === 'boolean') ? options.includeRecipient : true;
         const includeSupplier = (typeof options.includeSupplier === 'boolean') ? options.includeSupplier : true;
         const showImg = (typeof options.showImages === 'boolean') ? options.showImages : (q.show_images !== 0);
+        const showQr = (typeof options.showQr === 'boolean') ? options.showQr : (q.show_qr !== 0);
         const includeSeal = includeSupplier && ((typeof options.includeSeal === 'boolean') ? options.includeSeal : (q.include_seal !== 0));
         const includeWatermark = (typeof options.includeWatermark === 'boolean') ? options.includeWatermark : true;
         const includeNotes = (typeof options.includeNotes === 'boolean') ? options.includeNotes : true;
@@ -2267,6 +2732,7 @@ const app = {
                         ${dateInfoHtml}
                     </div>
                     <div class="header-right">
+                        ${this.buildA4QrBoxHtml(q, showQr, false)}
                         <table class="supplier-table">
                             <tr>
                                 <th rowspan="4" class="vertical-th">공<br>급<br>자</th>
@@ -2298,7 +2764,8 @@ const app = {
             `;
         } else {
             headerContainerHtml = `
-                <div class="header-container no-supplier">
+                <div class="header-container no-supplier position-relative">
+                    ${this.buildA4QrBoxHtml(q, showQr, true)}
                     <div class="title-box">
                         <h1 id="printTitle">${escHtml(title)}</h1>
                     </div>
@@ -2326,9 +2793,11 @@ const app = {
             sumSupply += supply;
             sumMargin += totalMargin;
 
+            const media = extractItemMedia(it);
+            const cleanThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
                 ? `<td class="text-center p-1" style="width: 38px;">
-                     ${it.image_url ? `<img src="${escHtml(it.image_url)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
+                     ${cleanThumb ? `<img src="${escHtml(cleanThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
 
@@ -2614,6 +3083,8 @@ const app = {
                 }
             } else if (e.key === 'Escape') {
                 this.closeImageModal();
+                this.closeQrPreviewModal();
+                this.closePrintOptionsModal();
                 this.closeItemImportModal();
                 this.closeSupplierSettingsModal();
             }

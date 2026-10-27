@@ -245,6 +245,10 @@ const QUOTE_UPLOAD_DIR = path.join(UPLOAD_DIR, 'quotations');
 if (!fs.existsSync(QUOTE_UPLOAD_DIR)) fs.mkdirSync(QUOTE_UPLOAD_DIR, { recursive: true });
 app.use('/api/quotations/uploads', express.static(QUOTE_UPLOAD_DIR, { fallthrough: false }));
 
+// 견적서 QR 모바일 제품 상세 카탈로그 공개 조회 API — 인증 불필요 (단가/원가/마진 비공개)
+app.get('/api/quotations/public/:id', (req, res) => quotationsRoutes.getPublicCatalog(req, res));
+app.get('/api/public/quotations/:id', (req, res) => quotationsRoutes.getPublicCatalog(req, res));
+
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {

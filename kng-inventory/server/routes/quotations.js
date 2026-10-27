@@ -64,6 +64,8 @@ const initQuotationTables = (dbInstance) => {
                 supplier_bank TEXT DEFAULT '기업은행 123-456789-01-012 (예금주: 주식회사 케이엔지)',
                 include_seal INTEGER DEFAULT 1,
                 show_images INTEGER DEFAULT 1,
+                show_qr INTEGER DEFAULT 1,
+                catalog_url TEXT,
                 vat_type TEXT DEFAULT 'inclusive',
                 total_supply_price REAL DEFAULT 0,
                 total_vat REAL DEFAULT 0,
@@ -81,7 +83,11 @@ const initQuotationTables = (dbInstance) => {
                 return;
             }
 
-            // 2. 견적서 품목 상세 테이블 (사진 image_url 포함)
+            // 기존 DB 마이그레이션 (컬럼 없을 경우 자동 추가)
+            dbInstance.run(`ALTER TABLE quotations ADD COLUMN show_qr INTEGER DEFAULT 1`, () => {});
+            dbInstance.run(`ALTER TABLE quotations ADD COLUMN catalog_url TEXT`, () => {});
+
+            // 2. 견적서 품목 상세 테이블 (사진 image_url, 다중 썸네일 thumbnail_images, 상세페이지 detail_images 포함)
             dbInstance.run(`
                 CREATE TABLE IF NOT EXISTS quotation_items (
                     id TEXT PRIMARY KEY,
@@ -100,7 +106,10 @@ const initQuotationTables = (dbInstance) => {
                     vat REAL DEFAULT 0,
                     total_price REAL DEFAULT 0,
                     image_url TEXT,
+                    thumbnail_images TEXT,
+                    detail_images TEXT,
                     remarks TEXT,
+                    internal_remarks TEXT,
                     FOREIGN KEY (quote_id) REFERENCES quotations (id) ON DELETE CASCADE
                 )
             `, (itemErr) => {
@@ -109,6 +118,9 @@ const initQuotationTables = (dbInstance) => {
                     reject(itemErr);
                     return;
                 }
+                dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN thumbnail_images TEXT`, () => {});
+                dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN detail_images TEXT`, () => {});
+                dbInstance.run(`ALTER TABLE quotation_items ADD COLUMN internal_remarks TEXT`, () => {});
                 resolve();
             });
         });
@@ -193,6 +205,81 @@ router.get('/', (req, res) => {
     });
 });
 
+// JSON 배열 안전 파싱 헬퍼
+const safeParseArray = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+// 품목 행 정규화 헬퍼 (thumbnail_images / detail_images 복원)
+const normalizeItemRow = (it) => {
+    if (!it) return it;
+    let thumbs = safeParseArray(it.thumbnail_images);
+    let details = safeParseArray(it.detail_images);
+    if (thumbs.length === 0 && it.image_url) {
+        const cleanUrl = String(it.image_url).split('#kng_media=')[0];
+        if (cleanUrl) thumbs = [cleanUrl];
+    }
+    return Object.assign({}, it, {
+        thumbnail_images: thumbs,
+        detail_images: details
+    });
+};
+
+// ── 공개용 QR 모바일 카탈로그 조회 핸들러 (인증 불필요 / 단가·원가·마진·사내비고 완전 제거) ──
+const getPublicCatalog = (req, res) => {
+    if (!db) return res.status(503).json({ error: '데이터베이스 초기화 중입니다.' });
+    const { id } = req.params;
+
+    db.get(`SELECT * FROM quotations WHERE id = ? OR quote_number = ?`, [id, id], (err, quote) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!quote) return res.status(404).json({ error: '견적서 카탈로그를 찾을 수 없습니다.' });
+
+        db.all(`SELECT * FROM quotation_items WHERE quote_id = ? ORDER BY seq ASC`, [quote.id], (itemErr, items) => {
+            if (itemErr) return res.status(500).json({ error: itemErr.message });
+
+            const sanitizedItems = (items || []).map((it, idx) => {
+                const norm = normalizeItemRow(it);
+                return {
+                    seq: norm.seq || (idx + 1),
+                    product_name: norm.product_name || '',
+                    spec: norm.spec || '',
+                    color: norm.color || '',
+                    unit: norm.unit || 'EA',
+                    qty: Number(norm.qty) || 1,
+                    image_url: norm.image_url || (norm.thumbnail_images[0] || ''),
+                    thumbnail_images: norm.thumbnail_images || [],
+                    detail_images: norm.detail_images || [],
+                    remarks: norm.remarks || ''
+                };
+            });
+
+            res.json({
+                id: quote.id,
+                quote_number: quote.quote_number,
+                issue_date: quote.issue_date || '',
+                valid_until: quote.valid_until || '',
+                customer_name: quote.customer_name || '',
+                project_name: quote.project_name || '',
+                delivery_date: quote.delivery_date || '',
+                delivery_place: quote.delivery_place || '',
+                supplier_name: quote.supplier_name || '주식회사 케이엔지',
+                supplier_ceo: quote.supplier_ceo || '윤종',
+                supplier_address: quote.supplier_address || '',
+                supplier_tel: quote.supplier_tel || '',
+                supplier_email: quote.supplier_email || '',
+                items: sanitizedItems
+            });
+        });
+    });
+};
+
 // ── 3. 견적서 단건 상세 조회 (마스터 + 품목 목록) ──
 router.get('/:id', (req, res) => {
     const { id } = req.params;
@@ -203,7 +290,7 @@ router.get('/:id', (req, res) => {
 
         db.all(`SELECT * FROM quotation_items WHERE quote_id = ? ORDER BY seq ASC`, [quote.id], (itemErr, items) => {
             if (itemErr) return res.status(500).json({ error: itemErr.message });
-            quote.items = items || [];
+            quote.items = (items || []).map(normalizeItemRow);
             res.json(quote);
         });
     });
@@ -222,9 +309,9 @@ router.post('/', async (req, res) => {
                 id, quote_number, issue_date, valid_until, customer_name, customer_attn, customer_tel, customer_email,
                 project_name, delivery_date, delivery_place, payment_terms,
                 supplier_name, supplier_biz_num, supplier_ceo, supplier_address, supplier_tel, supplier_email, supplier_bank,
-                include_seal, show_images, vat_type, total_supply_price, total_vat, total_amount, notes_instructions,
+                include_seal, show_images, show_qr, catalog_url, vat_type, total_supply_price, total_vat, total_amount, notes_instructions,
                 status, created_at, updated_at, author
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const masterParams = [
@@ -249,6 +336,8 @@ router.post('/', async (req, res) => {
             body.supplier_bank || '기업은행 123-456789-01-012 (예금주: 주식회사 케이엔지)',
             body.include_seal !== undefined ? (body.include_seal ? 1 : 0) : 1,
             body.show_images !== undefined ? (body.show_images ? 1 : 0) : 1,
+            body.show_qr !== undefined ? (body.show_qr ? 1 : 0) : 1,
+            body.catalog_url || '',
             body.vat_type || 'inclusive',
             Number(body.total_supply_price) || 0,
             Number(body.total_vat) || 0,
@@ -281,13 +370,15 @@ router.post('/', async (req, res) => {
                 const insertItemSql = `
                     INSERT INTO quotation_items (
                         id, quote_id, seq, source_module, source_id, product_name, spec, color, unit, qty,
-                        cost_price, unit_price, supply_price, vat, total_price, image_url, remarks
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cost_price, unit_price, supply_price, vat, total_price, image_url, thumbnail_images, detail_images, remarks, internal_remarks
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 const stmt = db.prepare(insertItemSql);
 
                 items.forEach((item, index) => {
                     const itemId = item.id || ('qi_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 6));
+                    const thumbs = Array.isArray(item.thumbnail_images) ? JSON.stringify(item.thumbnail_images) : (item.thumbnail_images || '[]');
+                    const details = Array.isArray(item.detail_images) ? JSON.stringify(item.detail_images) : (item.detail_images || '[]');
                     stmt.run([
                         itemId,
                         quoteId,
@@ -305,7 +396,10 @@ router.post('/', async (req, res) => {
                         Number(item.vat) || 0,
                         Number(item.total_price) || 0,
                         item.image_url || '',
-                        item.remarks || ''
+                        thumbs,
+                        details,
+                        item.remarks || '',
+                        item.internal_remarks || ''
                     ]);
                 });
 
@@ -342,7 +436,7 @@ router.put('/:id', (req, res) => {
             issue_date = ?, valid_until = ?, customer_name = ?, customer_attn = ?, customer_tel = ?, customer_email = ?,
             project_name = ?, delivery_date = ?, delivery_place = ?, payment_terms = ?,
             supplier_name = ?, supplier_biz_num = ?, supplier_ceo = ?, supplier_address = ?, supplier_tel = ?, supplier_email = ?, supplier_bank = ?,
-            include_seal = ?, show_images = ?, vat_type = ?, total_supply_price = ?, total_vat = ?, total_amount = ?, notes_instructions = ?,
+            include_seal = ?, show_images = ?, show_qr = ?, catalog_url = ?, vat_type = ?, total_supply_price = ?, total_vat = ?, total_amount = ?, notes_instructions = ?,
             status = ?, updated_at = ?, author = ?
         WHERE id = ?
     `;
@@ -367,6 +461,8 @@ router.put('/:id', (req, res) => {
         body.supplier_bank || '',
         body.include_seal !== undefined ? (body.include_seal ? 1 : 0) : 1,
         body.show_images !== undefined ? (body.show_images ? 1 : 0) : 1,
+        body.show_qr !== undefined ? (body.show_qr ? 1 : 0) : 1,
+        body.catalog_url || '',
         body.vat_type || 'inclusive',
         Number(body.total_supply_price) || 0,
         Number(body.total_vat) || 0,
@@ -406,13 +502,15 @@ router.put('/:id', (req, res) => {
                 const insertItemSql = `
                     INSERT INTO quotation_items (
                         id, quote_id, seq, source_module, source_id, product_name, spec, color, unit, qty,
-                        cost_price, unit_price, supply_price, vat, total_price, image_url, remarks
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cost_price, unit_price, supply_price, vat, total_price, image_url, thumbnail_images, detail_images, remarks, internal_remarks
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
                 const stmt = db.prepare(insertItemSql);
 
                 items.forEach((item, index) => {
                     const itemId = item.id || ('qi_' + Date.now() + '_' + index + '_' + Math.random().toString(36).substring(2, 6));
+                    const thumbs = Array.isArray(item.thumbnail_images) ? JSON.stringify(item.thumbnail_images) : (item.thumbnail_images || '[]');
+                    const details = Array.isArray(item.detail_images) ? JSON.stringify(item.detail_images) : (item.detail_images || '[]');
                     stmt.run([
                         itemId,
                         id,
@@ -430,7 +528,10 @@ router.put('/:id', (req, res) => {
                         Number(item.vat) || 0,
                         Number(item.total_price) || 0,
                         item.image_url || '',
-                        item.remarks || ''
+                        thumbs,
+                        details,
+                        item.remarks || '',
+                        item.internal_remarks || ''
                     ]);
                 });
 
@@ -470,5 +571,6 @@ router.delete('/:id', (req, res) => {
 module.exports = {
     router,
     setDb,
-    initQuotationTables
+    initQuotationTables,
+    getPublicCatalog
 };
