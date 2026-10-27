@@ -886,15 +886,7 @@
                 const items = q.items || [];
                 const activeItem = items[this.currentItemIdx] || null;
 
-                // 1. 상단 고정 품목 네비게이션 탭
-                const navPillsHtml = items.map((it, idx) => `
-                    <button type="button" class="nav-pill-btn ${idx === this.currentItemIdx ? 'active' : ''}" onclick="catalogViewer.selectItem(${idx}, true)">
-                        <span>#${idx + 1}</span>
-                        <span>${escHtml(it.product_name)}</span>
-                    </button>
-                `).join('');
-
-                // 2. 견적 포함 전체 품목 요약 리스트
+                // 1. 견적 포함 전체 품목 요약 리스트
                 const summaryCardsHtml = items.map((it, idx) => {
                     const mainThumb = it.thumbnails[0] || '';
                     const thumbCount = it.thumbnails.length;
@@ -1054,15 +1046,6 @@
                             <span class="quote-meta-chip"><i class='bx bx-box'></i> 총 ${items.length}개 품목</span>
                         </div>
                     </header>
-
-                    <!-- 상단 고정 품목 빠른 전환 바 -->
-                    ${items.length > 1 ? `
-                    <div class="sticky-nav-bar">
-                        <div class="nav-tabs-scroll">
-                            ${navPillsHtml}
-                        </div>
-                    </div>
-                    ` : ''}
 
                     <!-- 전체 품목 요약 리스트 -->
                     <section class="section-block" id="allItemsListSection">
