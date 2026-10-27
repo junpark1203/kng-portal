@@ -1471,6 +1471,25 @@ body {
     text-align: center;
     box-sizing: border-box;
     flex-shrink: 0;
+    position: relative;
+    text-decoration: none !important;
+    color: #000000 !important;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.a4-qr-pdf-hitarea {
+    position: absolute;
+    inset: 0;
+    font-size: 64px;
+    line-height: 82px;
+    color: transparent !important;
+    opacity: 0.001;
+    z-index: 5;
+    pointer-events: auto;
+    user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .a4-qr-svg-wrap {
@@ -1479,6 +1498,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 1;
 }
 
 .a4-qr-svg-wrap svg,
@@ -1489,13 +1510,20 @@ body {
 }
 
 .a4-qr-caption {
-    font-size: 6.5pt;
+    font-size: 6.3pt;
     font-weight: 800;
-    color: #000000;
-    line-height: 1.15;
+    color: #000000 !important;
+    line-height: 1.2;
     margin-top: 3px;
     letter-spacing: -0.3px;
     word-break: keep-all;
+    position: relative;
+    z-index: 2;
+}
+
+.a4-qr-link-label {
+    text-decoration: underline;
+    text-underline-offset: 1.5px;
 }
 
 .a4-qr-sub {

@@ -2458,7 +2458,8 @@ const app = {
 
         this.closePrintOptionsModal();
 
-        if (showQr && !this.extractCatalogFileFromQuote(q)) {
+        const existingCatFile = this.extractCatalogFileFromQuote(q);
+        if (showQr && (!existingCatFile || !existingCatFile.toLowerCase().endsWith('.html') || this.currentView === 'editor')) {
             await this.uploadPublicCatalogSnapshot(q);
         }
 
@@ -2498,17 +2499,18 @@ const app = {
             });
     },
 
-    // ── A4 우측 상단 QR 코드 박스 HTML 생성 헬퍼 ──
+    // ── A4 우측 상단 QR 코드 박스 HTML 생성 헬퍼 (PDF 클릭 이동 & 스마트폰 QR 스캔 겸용) ──
     buildA4QrBoxHtml: function(q, showQr, isFloating = false) {
         if (!showQr) return '';
         const qrUrl = this.getQuoteCatalogUrl(q, false);
         const svgTag = this.generateQrSvgTag(qrUrl);
         if (!svgTag) return '';
         return `
-            <div class="a4-qr-box ${isFloating ? 'a4-qr-box-floating' : ''}" title="스마트폰 카메라로 스캔하여 제품 사진 및 상세페이지 확인">
+            <a href="${escHtml(qrUrl)}" target="_blank" rel="noopener noreferrer" class="a4-qr-box ${isFloating ? 'a4-qr-box-floating' : ''}" title="클릭하거나 스마트폰으로 QR 스캔 시 제품 상세페이지로 이동합니다">
+                <span class="a4-qr-pdf-hitarea">████████</span>
                 <div class="a4-qr-svg-wrap">${svgTag}</div>
-                <div class="a4-qr-caption">스마트폰 스캔<br>제품 상세보기</div>
-            </div>
+                <div class="a4-qr-caption">QR 스캔 / 클릭<br><span class="a4-qr-link-label">제품 상세보기</span></div>
+            </a>
         `;
     },
 
