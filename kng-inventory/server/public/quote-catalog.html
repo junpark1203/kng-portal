@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>견적 품목 상세 카탈로그 - K&G</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f5f9;
+            color: var(--slate-900);
+            line-height: 1.5;
+            padding-bottom: 84px;
+        }
+
+        .catalog-shell {
+            max-width: 640px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+            box-shadow: 0 0 24px rgba(15, 23, 42, 0.08);
+        }
+
+        /* ── 상단 브랜드 & 견적 정보 헤더 (K&G 시그니처 옐로우 그라데이션) ── */
+        .catalog-header {
+            background: linear-gradient(135deg, #ffe140 0%, #ffd400 55%, #f5b400 100%);
+            color: #0f172a;
+            padding: 18px 16px 16px;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .supplier-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .supplier-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            padding: 4px 12px;
+            border-radius: 999px;
+            color: #0f172a;
+        }
+
+        .btn-call-supplier {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffd400;
+            background: #0f172a;
+            border: 1px solid #0f172a;
+            padding: 5px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+        }
+
+        .quote-recipient {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            margin-bottom: 4px;
+            color: #0f172a;
+        }
+
+        .quote-recipient span {
+            font-size: 14px;
+            font-weight: 700;
+            color: #334155;
+            margin-left: 4px;
+        }
+
+        .quote-project-title {
+            font-size: 14px;
+            color: #1e293b;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .quote-meta-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 11.5px;
+            color: #0f172a;
+        }
+
+        .quote-meta-chip {
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            padding: 3px 9px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* ── 상단 고정 품목 네비게이션 바 ── */
+        .sticky-nav-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--slate-200);
+            padding: 10px 12px;
+        }
+
+        .nav-tabs-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 2px;
+        }
+
+        .nav-tabs-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill-btn {
+            flex: 0 0 auto;
+            border: 1px solid var(--slate-200);
+            background: var(--slate-50);
+            color: var(--slate-700);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-pill-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+        }
+
+        /* ── 견적 품목 전체 요약 리스트 뷰 ── */
+        .section-block {
+            padding: 16px;
+            border-bottom: 8px solid var(--slate-100);
+        }
+
+        .section-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--slate-900);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .item-summary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .item-summary-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border: 1px solid var(--slate-200);
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .item-summary-card:hover,
+        .item-summary-card.active-card {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .item-summary-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            border: 1px solid var(--slate-200);
+            background: var(--slate-50);
+            flex-shrink: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .item-summary-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #fff;
+        }
+
+        .item-summary-thumb .no-img {
+            font-size: 22px;
+            color: var(--slate-400);
+        }
+
+        .item-summary-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-summary-seq {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary);
+            background: #dbeafe;
+            padding: 1px 7px;
+            border-radius: 4px;
+            margin-bottom: 3px;
+        }
+
+        .item-summary-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--slate-900);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-summary-meta {
+            font-size: 12px;
+            color: var(--slate-600);
+            margin-top: 2px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .item-summary-badges {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+
+        .media-badge {
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--slate-100);
+            color: var(--slate-700);
+        }
+
+        .media-badge.has-detail {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        /* ── 선택 품목 상세 뷰 (썸네일 슬라이더 + 스펙 + 상세페이지 스크롤) ── */
+        .product-detail-container {
+            padding: 0;
+        }
+
+        .product-header-banner {
+            padding: 16px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .product-seq-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+
+        .product-main-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--slate-900);
+            line-height: 1.35;
+            margin-bottom: 10px;
+        }
+
+        .product-spec-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            border-top: 1px solid var(--slate-200);
+        }
+
+        .product-spec-table th,
+        .product-spec-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--slate-200);
+            text-align: left;
+        }
+
+        .product-spec-table th {
+            width: 90px;
+            color: var(--slate-600);
+            font-weight: 600;
+            background: var(--slate-50);
+        }
+
+        .product-spec-table td {
+            color: var(--slate-900);
+            font-weight: 600;
+        }
+
+        /* ── 썸네일 좌우 슬라이드 갤러리 (Carousel) ── */
+        .carousel-section {
+            background: #ffffff;
+            border-bottom: 8px solid var(--slate-100);
+        }
+
+        .carousel-stage {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            max-height: 440px;
+            background: #f8fafc;
+            overflow: hidden;
+            touch-action: pan-y;
+            user-select: none;
+        }
+
+        .carousel-track {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .carousel-slide {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            position: relative;
+        }
+
+        .carousel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            cursor: zoom-in;
+        }
+
+        .carousel-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.55);
+            color: #ffffff;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.15s;
+        }
+
+        .carousel-nav-btn:hover {
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .carousel-nav-btn.prev { left: 10px; }
+        .carousel-nav-btn.next { right: 10px; }
+
+        .carousel-counter-badge {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(15, 23, 42, 0.72);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            z-index: 10;
+            letter-spacing: 0.5px;
+        }
+
+        .carousel-swipe-hint {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(255, 255, 255, 0.88);
+            color: var(--slate-700);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--slate-200);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        /* 하단 작은 썸네일 스트립 */
+        .thumb-strip {
+            display: flex;
+            gap: 8px;
+            padding: 10px 14px;
+            overflow-x: auto;
+            background: #ffffff;
+            border-top: 1px solid var(--slate-100);
+        }
+
+        .thumb-strip-item {
+            width: 56px;
+            height: 56px;
+            border-radius: 6px;
+            border: 2px solid var(--slate-200);
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: pointer;
+            opacity: 0.65;
+            transition: all 0.15s ease;
+            background: #fff;
+        }
+
+        .thumb-strip-item.active {
+            border-color: var(--primary);
+            opacity: 1;
+            transform: scale(1.03);
+        }
+
+        .thumb-strip-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* ── 상세페이지 세로 스크롤 이미지 영역 ── */
+        .detail-images-section {
+            background: #ffffff;
+            padding: 16px 0 24px;
+        }
+
+        .detail-section-header {
+            padding: 0 16px 12px;
+            border-bottom: 1px solid var(--slate-200);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .detail-images-stack {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .detail-images-stack img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0;
+            cursor: zoom-in;
+        }
+
+        .empty-media-box {
+            padding: 44px 20px;
+            text-align: center;
+            color: var(--slate-500);
+            font-size: 13.5px;
+        }
+
+        .empty-media-box i {
+            font-size: 38px;
+            color: var(--slate-400);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* ── 하단 고정 품목 이전/다음 바 ── */
+        .bottom-item-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 640px;
+            background: rgba(255, 255, 255, 0.98);
+            border-top: 1px solid var(--slate-200);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            z-index: 200;
+            box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+        }
+
+        .btn-bottom-nav {
+            flex: 1;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--slate-200);
+            background: var(--slate-50);
+            color: var(--slate-800);
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .btn-bottom-nav.primary {
+            background: linear-gradient(135deg, #ffe140 0%, #ffd400 60%, #f5b400 100%);
+            border-color: #eab308;
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        .btn-bottom-nav:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ── 이미지 전체화면 확대 Lightbox ── */
+        .lightbox-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .lightbox-overlay.open {
+            display: flex;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border: none;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .lightbox-img {
+            max-width: 96vw;
+            max-height: 88vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div class="catalog-shell" id="catalogApp">
+        <div style="padding: 80px 20px; text-align: center; color: #64748b;">
+            <i class='bx bx-loader-alt bx-spin' style="font-size: 36px; color: #2563eb;"></i>
+            <div style="margin-top: 12px; font-weight: 600;">견적 품목 상세 카탈로그를 불러오는 중입니다...</div>
+        </div>
+    </div>
+
+    <!-- 이미지 확대 모달 -->
+    <div class="lightbox-overlay" id="lightboxOverlay" onclick="catalogViewer.closeLightbox()">
+        <button type="button" class="lightbox-close" aria-label="닫기"><i class='bx bx-x'></i></button>
+        <img src="" alt="확대 이미지" class="lightbox-img" id="lightboxImg" onclick="event.stopPropagation()">
+    </div>
+
+    <script>
+        const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? 'http://localhost:3000'
+            : 'https://kng.junparks.com';
+
+        function escHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function fmtNum(n) {
+            return new Intl.NumberFormat('ko-KR').format(n || 0);
+        }
+
+        function resolveImgUrl(url) {
+            if (!url) return '';
+            const clean = String(url).split('#kng_media=')[0];
+            if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:') || clean.startsWith('blob:')) {
+                return clean;
+            }
+            if (clean.startsWith('/api/')) {
+                return `${SERVER_URL}${clean}`;
+            }
+            return clean;
+        }
+
+        // image_url 내 #kng_media= 해시 또는 배열 필드에서 썸네일/상세 이미지 추출
+        function extractItemMedia(item) {
+            let thumbs = Array.isArray(item.thumbnail_images) ? item.thumbnail_images.slice() : [];
+            let details = Array.isArray(item.detail_images) ? item.detail_images.slice() : [];
+
+            if (typeof item.thumbnail_images === 'string' && item.thumbnail_images.trim().startsWith('[')) {
+                try { thumbs = JSON.parse(item.thumbnail_images); } catch (e) {}
+            }
+            if (typeof item.detail_images === 'string' && item.detail_images.trim().startsWith('[')) {
+                try { details = JSON.parse(item.detail_images); } catch (e) {}
+            }
+
+            if (item.image_url && String(item.image_url).includes('#kng_media=')) {
+                try {
+                    const hashPart = String(item.image_url).split('#kng_media=')[1];
+                    const decoded = JSON.parse(decodeURIComponent(hashPart));
+                    if (thumbs.length === 0 && Array.isArray(decoded.t)) thumbs = decoded.t;
+                    if (details.length === 0 && Array.isArray(decoded.d)) details = decoded.d;
+                } catch (e) {}
+            }
+
+            const baseImg = item.image_url ? String(item.image_url).split('#kng_media=')[0] : '';
+            if (thumbs.length === 0 && baseImg) {
+                thumbs = [baseImg];
+            }
+
+            return {
+                thumbnails: thumbs.map(resolveImgUrl).filter(Boolean),
+                details: details.map(resolveImgUrl).filter(Boolean)
+            };
+        }
+
+        const catalogViewer = {
+            quote: null,
+            currentItemIdx: 0,
+            currentSlideIdx: 0,
+            touchStartX: 0,
+            touchDeltaX: 0,
+
+            init: async function() {
+                // 정적 업로드 경로로 진입한 경우 주소창을 깔끔한 단축 주소(/q/코드)로 즉시 변환
+                try {
+                    const uploadMatch = location.pathname.match(/item-([0-9-]+)\.(html|json)/i);
+                    if (uploadMatch && uploadMatch[1] && location.protocol.startsWith('http')) {
+                        window.history.replaceState(null, '', `/q/${uploadMatch[1]}`);
+                    }
+                } catch (e) {}
+
+                const params = new URLSearchParams(location.search);
+                let qKey = params.get('q') || params.get('id') || '';
+                let catalogFile = params.get('c') || '';
+
+                // /q/:code 단축 경로에서 코드 추출
+                if (location.pathname.startsWith('/q/')) {
+                    const pathCode = decodeURIComponent(location.pathname.slice(3).split('/')[0] || '').trim();
+                    if (pathCode) {
+                        if (/^\d+-\d+$/.test(pathCode)) {
+                            if (!catalogFile) catalogFile = `item-${pathCode}.json`;
+                        } else if (pathCode.startsWith('item-')) {
+                            if (!catalogFile) catalogFile = pathCode.endsWith('.json') ? pathCode : `${pathCode}.json`;
+                        } else if (!qKey) {
+                            qKey = pathCode;
+                        }
+                    }
+                }
+
+                let loadedQuote = null;
+
+                // 0순위: 서버 자체 내장 카탈로그 데이터 (단독 HTML 스냅샷 즉시 렌더링)
+                if (window.__EMBEDDED_QUOTE__ && typeof window.__EMBEDDED_QUOTE__ === 'object') {
+                    loadedQuote = window.__EMBEDDED_QUOTE__;
+                }
+
+                // 1순위: 로컬 미리보기 세션 데이터 (작성기에서 바로 미리보기 클릭 시)
+                if (!loadedQuote && params.get('preview') === '1') {
+                    try {
+                        const previewRaw = localStorage.getItem('kng_qr_preview_quote');
+                        if (previewRaw) {
+                            const parsed = JSON.parse(previewRaw);
+                            if (!qKey || String(parsed.id) === String(qKey) || String(parsed.quote_number) === String(qKey)) {
+                                loadedQuote = parsed;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // 2순위: 클라우드 정적 카탈로그 스냅샷 파일 (/api/quotations/uploads/item-xxx.json)
+                if (!loadedQuote && catalogFile) {
+                    try {
+                        const snapUrl = catalogFile.startsWith('http')
+                            ? catalogFile
+                            : `${SERVER_URL}/api/quotations/uploads/${encodeURIComponent(catalogFile.replace(/^\/api\/quotations\/uploads\//, ''))}`;
+                        const res = await fetch(snapUrl);
+                        if (res.ok) {
+                            loadedQuote = await res.json();
+                        }
+                    } catch (e) {}
+                }
+
+                // 3순위: 공개 카탈로그 API (/api/quotations/public/:id)
+                if (!loadedQuote && qKey) {
+                    try {
+                        const res = await fetch(`${SERVER_URL}/api/quotations/public/${encodeURIComponent(qKey)}`);
+                        if (res.ok) {
+                            loadedQuote = await res.json();
+                        }
+                    } catch (e) {}
+                }
+
+                // 4순위: 브라우저 로컬스토리지 캐시 폴백
+                if (!loadedQuote && qKey) {
+                    try {
+                        const localList = JSON.parse(localStorage.getItem('kng_quotations_cache') || localStorage.getItem('kng_quotations_local') || '[]');
+                        loadedQuote = localList.find(q => String(q.id) === String(qKey) || String(q.quote_number) === String(qKey)) || null;
+                    } catch (e) {}
+                }
+
+                if (!loadedQuote) {
+                    this.renderError(qKey);
+                    return;
+                }
+
+                // 데이터 정규화 (단가/금액/원가/마진은 철저히 제외)
+                this.quote = {
+                    quote_number: loadedQuote.quote_number || '',
+                    issue_date: loadedQuote.issue_date || '',
+                    valid_until: loadedQuote.valid_until || '',
+                    customer_name: loadedQuote.customer_name || '고객사',
+                    project_name: loadedQuote.project_name || '견적 품목 상세 안내',
+                    supplier_name: loadedQuote.supplier_name || '주식회사 케이엔지',
+                    supplier_tel: loadedQuote.supplier_tel || '031-987-1203',
+                    supplier_email: loadedQuote.supplier_email || 'contact@junparks.com',
+                    items: (loadedQuote.items || []).map((it, idx) => {
+                        const media = extractItemMedia(it);
+                        return {
+                            seq: idx + 1,
+                            product_name: it.product_name || `품목 #${idx + 1}`,
+                            spec: it.spec || '-',
+                            unit: it.unit || 'EA',
+                            qty: Number(it.qty) || 1,
+                            remarks: it.remarks || '',
+                            thumbnails: media.thumbnails,
+                            details: media.details
+                        };
+                    })
+                };
+
+                document.title = `${this.quote.customer_name} - 제품 상세 카탈로그 (${this.quote.quote_number || 'K&G'})`;
+                this.render();
+            },
+
+            renderError: function(qKey) {
+                const container = document.getElementById('catalogApp');
+                container.innerHTML = `
+                    <div style="padding: 80px 24px; text-align: center;">
+                        <i class='bx bx-error-circle' style="font-size: 48px; color: #ef4444;"></i>
+                        <h2 style="font-size: 18px; font-weight: 800; margin-top: 12px; color: #0f172a;">견적 품목 정보를 찾을 수 없습니다</h2>
+                        <p style="font-size: 13.5px; color: #64748b; margin-top: 8px;">
+                            견적서가 아직 서버에 저장되지 않았거나 유효하지 않은 QR 링크입니다.<br>
+                            ${qKey ? `<span style="font-family: monospace; font-size: 12px; color: #94a3b8;">(조회 번호: ${escHtml(qKey)})</span>` : ''}
+                        </p>
+                    </div>
+                `;
+            },
+
+            selectItem: function(idx, scrollToDetail = true) {
+                if (!this.quote || !this.quote.items[idx]) return;
+                this.currentItemIdx = idx;
+                this.currentSlideIdx = 0;
+                this.render();
+                if (scrollToDetail) {
+                    const detailEl = document.getElementById('activeProductSection');
+                    if (detailEl) {
+                        detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            },
+
+            goSlide: function(slideIdx) {
+                const item = this.quote.items[this.currentItemIdx];
+                if (!item || item.thumbnails.length === 0) return;
+                const max = item.thumbnails.length - 1;
+                if (slideIdx < 0) slideIdx = max;
+                if (slideIdx > max) slideIdx = 0;
+                this.currentSlideIdx = slideIdx;
+
+                const track = document.getElementById('carouselTrack');
+                if (track) {
+                    track.style.transform = `translateX(-${slideIdx * 100}%)`;
+                }
+                const counter = document.getElementById('carouselCounter');
+                if (counter) {
+                    counter.textContent = `${slideIdx + 1} / ${item.thumbnails.length}`;
+                }
+                document.querySelectorAll('.thumb-strip-item').forEach((el, i) => {
+                    el.classList.toggle('active', i === slideIdx);
+                });
+            },
+
+            openLightbox: function(src) {
+                if (!src) return;
+                const overlay = document.getElementById('lightboxOverlay');
+                const img = document.getElementById('lightboxImg');
+                img.src = src;
+                overlay.classList.add('open');
+            },
+
+            closeLightbox: function() {
+                document.getElementById('lightboxOverlay').classList.remove('open');
+            },
+
+            setupTouchSwipe: function() {
+                const stage = document.getElementById('carouselStage');
+                if (!stage) return;
+
+                stage.addEventListener('touchstart', (e) => {
+                    if (!e.touches || e.touches.length !== 1) return;
+                    this.touchStartX = e.touches[0].clientX;
+                    this.touchDeltaX = 0;
+                }, { passive: true });
+
+                stage.addEventListener('touchmove', (e) => {
+                    if (!e.touches || e.touches.length !== 1) return;
+                    this.touchDeltaX = e.touches[0].clientX - this.touchStartX;
+                }, { passive: true });
+
+                stage.addEventListener('touchend', () => {
+                    if (Math.abs(this.touchDeltaX) > 42) {
+                        if (this.touchDeltaX < 0) {
+                            this.goSlide(this.currentSlideIdx + 1);
+                        } else {
+                            this.goSlide(this.currentSlideIdx - 1);
+                        }
+                    }
+                    this.touchDeltaX = 0;
+                });
+            },
+
+            render: function() {
+                const q = this.quote;
+                const items = q.items || [];
+                const activeItem = items[this.currentItemIdx] || null;
+
+                // 1. 견적 포함 전체 품목 요약 리스트
+                const summaryCardsHtml = items.map((it, idx) => {
+                    const mainThumb = it.thumbnails[0] || '';
+                    const thumbCount = it.thumbnails.length;
+                    const detailCount = it.details.length;
+
+                    return `
+                        <div class="item-summary-card ${idx === this.currentItemIdx ? 'active-card' : ''}" onclick="catalogViewer.selectItem(${idx}, true)">
+                            <div class="item-summary-thumb">
+                                ${mainThumb
+                                    ? `<img src="${escHtml(mainThumb)}" alt="${escHtml(it.product_name)}">`
+                                    : `<i class='bx bx-package no-img'></i>`}
+                            </div>
+                            <div class="item-summary-info">
+                                <span class="item-summary-seq">품목 #${idx + 1}</span>
+                                <div class="item-summary-name">${escHtml(it.product_name)}</div>
+                                <div class="item-summary-meta">
+                                    <span>규격: <b>${escHtml(it.spec || '-')}</b></span>
+                                    <span>수량: <b>${fmtNum(it.qty)} ${escHtml(it.unit)}</b></span>
+                                </div>
+                                <div class="item-summary-badges">
+                                    <span class="media-badge"><i class='bx bx-images'></i> 제품사진 ${thumbCount}장</span>
+                                    ${detailCount > 0
+                                        ? `<span class="media-badge has-detail"><i class='bx bx-detail'></i> 상세페이지 ${detailCount}장</span>`
+                                        : `<span class="media-badge" style="color:#94a3b8;">상세페이지 없음</span>`}
+                                </div>
+                            </div>
+                            <i class='bx bx-chevron-right' style="font-size: 20px; color: #64748b;"></i>
+                        </div>
+                    `;
+                }).join('');
+
+                // 3. 현재 선택된 품목의 썸네일 슬라이더 + 상세페이지 세로 스크롤
+                let activeDetailHtml = '';
+                if (activeItem) {
+                    const thumbs = activeItem.thumbnails;
+                    const details = activeItem.details;
+
+                    let carouselHtml = '';
+                    if (thumbs.length > 0) {
+                        const slidesHtml = thumbs.map((url, sIdx) => `
+                            <div class="carousel-slide">
+                                <img src="${escHtml(url)}" alt="${escHtml(activeItem.product_name)} 사진 ${sIdx + 1}" onclick="catalogViewer.openLightbox('${escHtml(url)}')">
+                            </div>
+                        `).join('');
+
+                        const stripHtml = thumbs.length > 1 ? `
+                            <div class="thumb-strip">
+                                ${thumbs.map((url, sIdx) => `
+                                    <div class="thumb-strip-item ${sIdx === this.currentSlideIdx ? 'active' : ''}" onclick="catalogViewer.goSlide(${sIdx})">
+                                        <img src="${escHtml(url)}" alt="썸네일 ${sIdx + 1}">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '';
+
+                        carouselHtml = `
+                            <div class="carousel-section">
+                                <div class="carousel-stage" id="carouselStage">
+                                    <div class="carousel-track" id="carouselTrack" style="transform: translateX(-${this.currentSlideIdx * 100}%);">
+                                        ${slidesHtml}
+                                    </div>
+                                    ${thumbs.length > 1 ? `
+                                        <button type="button" class="carousel-nav-btn prev" onclick="catalogViewer.goSlide(catalogViewer.currentSlideIdx - 1)" aria-label="이전 사진"><i class='bx bx-chevron-left'></i></button>
+                                        <button type="button" class="carousel-nav-btn next" onclick="catalogViewer.goSlide(catalogViewer.currentSlideIdx + 1)" aria-label="다음 사진"><i class='bx bx-chevron-right'></i></button>
+                                        <div class="carousel-swipe-hint"><i class='bx bx-transfer-alt'></i> 좌우로 넘겨보세요</div>
+                                    ` : ''}
+                                    <div class="carousel-counter-badge" id="carouselCounter">${this.currentSlideIdx + 1} / ${thumbs.length}</div>
+                                </div>
+                                ${stripHtml}
+                            </div>
+                        `;
+                    } else {
+                        carouselHtml = `
+                            <div class="carousel-section">
+                                <div class="empty-media-box">
+                                    <i class='bx bx-image-alt'></i>
+                                    등록된 제품 대표 사진이 없습니다.
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    const detailsStackHtml = details.length > 0
+                        ? `
+                            <div class="detail-images-stack">
+                                ${details.map((url, dIdx) => `
+                                    <img src="${escHtml(url)}" alt="${escHtml(activeItem.product_name)} 상세페이지 ${dIdx + 1}" loading="lazy" onclick="catalogViewer.openLightbox('${escHtml(url)}')">
+                                `).join('')}
+                            </div>
+                        `
+                        : `
+                            <div class="empty-media-box">
+                                <i class='bx bx-file-blank'></i>
+                                이 품목에 등록된 추가 상세페이지 이미지가 없습니다.
+                            </div>
+                        `;
+
+                    activeDetailHtml = `
+                        <div id="activeProductSection" class="product-detail-container">
+                            <div class="product-header-banner">
+                                <div class="product-seq-chip">
+                                    <i class='bx bx-purchase-tag-alt'></i>
+                                    <span>견적 품목 #${activeItem.seq} / 총 ${items.length}개 품목</span>
+                                </div>
+                                <h1 class="product-main-title">${escHtml(activeItem.product_name)}</h1>
+                                <table class="product-spec-table">
+                                    <tbody>
+                                        <tr>
+                                            <th>규격 / 사양</th>
+                                            <td>${escHtml(activeItem.spec || '-')}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>견적 수량</th>
+                                            <td>${fmtNum(activeItem.qty)} ${escHtml(activeItem.unit)}</td>
+                                        </tr>
+                                        ${activeItem.remarks ? `
+                                        <tr>
+                                            <th>비고 / 안내</th>
+                                            <td>${escHtml(activeItem.remarks)}</td>
+                                        </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- 상단: 제품 사진 갤러리 (좌우 슬라이드) -->
+                            ${carouselHtml}
+
+                            <!-- 하단: 상세페이지 이미지 (위에서 아래로 순서대로 스크롤) -->
+                            <div class="detail-images-section">
+                                <div class="detail-section-header">
+                                    <div class="section-title">
+                                        <i class='bx bx-detail text-primary' style="color: #2563eb;"></i>
+                                        <span>제품 상세페이지</span>
+                                    </div>
+                                    <span style="font-size: 12px; color: #64748b;">아래로 스크롤하여 확인하세요 (${details.length}장)</span>
+                                </div>
+                                ${detailsStackHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const container = document.getElementById('catalogApp');
+                container.innerHTML = `
+                    <!-- 상단 견적서 헤더 -->
+                    <header class="catalog-header">
+                        <div class="supplier-top-row">
+                            <span class="supplier-badge">${escHtml(q.supplier_name)}</span>
+                            ${q.supplier_tel ? `<a href="tel:${escHtml(q.supplier_tel)}" class="btn-call-supplier"><i class='bx bxs-phone-call'></i> 담당자 문의</a>` : ''}
+                        </div>
+                        <div class="quote-recipient">${escHtml(q.customer_name)} <span>貴中</span></div>
+                        <div class="quote-project-title">${escHtml(q.project_name || '견적 품목 상세 카탈로그')}</div>
+                        <div class="quote-meta-chips">
+                            ${q.quote_number ? `<span class="quote-meta-chip"><i class='bx bx-hash'></i> ${escHtml(q.quote_number)}</span>` : ''}
+                            ${q.issue_date ? `<span class="quote-meta-chip"><i class='bx bx-calendar'></i> 견적일: ${escHtml(q.issue_date)}</span>` : ''}
+                            <span class="quote-meta-chip"><i class='bx bx-box'></i> 총 ${items.length}개 품목</span>
+                        </div>
+                    </header>
+
+                    <!-- 전체 품목 요약 리스트 -->
+                    <section class="section-block" id="allItemsListSection">
+                        <div class="section-title-row">
+                            <div class="section-title">
+                                <i class='bx bx-list-ul' style="color: #2563eb;"></i>
+                                <span>견적 품목 목록 (${items.length}건)</span>
+                            </div>
+                            <span style="font-size: 11.5px; color: #64748b;">품목을 터치하면 아래 상세화면이 전환됩니다</span>
+                        </div>
+                        <div class="item-summary-list">
+                            ${summaryCardsHtml}
+                        </div>
+                    </section>
+
+                    <!-- 선택된 품목 상세 뷰 -->
+                    ${activeDetailHtml}
+
+                    <!-- 하단 고정 이전/다음 품목 네비게이션 -->
+                    ${items.length > 1 ? `
+                    <div class="bottom-item-nav">
+                        <button type="button" class="btn-bottom-nav" ${this.currentItemIdx <= 0 ? 'disabled' : ''} onclick="catalogViewer.selectItem(${this.currentItemIdx - 1}, true)">
+                            <i class='bx bx-chevron-left'></i> 이전 품목
+                        </button>
+                        <button type="button" class="btn-bottom-nav" onclick="document.getElementById('allItemsListSection').scrollIntoView({behavior:'smooth'})">
+                            <i class='bx bx-grid-alt'></i> 목록 (${this.currentItemIdx + 1}/${items.length})
+                        </button>
+                        <button type="button" class="btn-bottom-nav primary" ${this.currentItemIdx >= items.length - 1 ? 'disabled' : ''} onclick="catalogViewer.selectItem(${this.currentItemIdx + 1}, true)">
+                            다음 품목 <i class='bx bx-chevron-right'></i>
+                        </button>
+                    </div>
+                    ` : ''}
+                `;
+
+                this.setupTouchSwipe();
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => catalogViewer.init());
+    </script>
+</body>
+</html>

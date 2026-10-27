@@ -616,9 +616,41 @@ router.delete('/:id', (req, res) => {
     });
 });
 
+// ── 공개용 QR 단축 주소 (/q/:code) 카탈로그 뷰어 서빙 핸들러 (포털 주소 완전 은폐) ──
+const servePublicCatalogPage = (req, res) => {
+    const rawCode = String(req.params.code || '').replace(/[^a-zA-Z0-9._-]/g, '');
+    const uploadDir = getUploadDir();
+
+    if (rawCode) {
+        const candidates = [
+            path.join(uploadDir, `item-${rawCode}.html`),
+            path.join(uploadDir, rawCode.endsWith('.html') ? rawCode : `${rawCode}.html`)
+        ];
+        for (const p of candidates) {
+            if (fs.existsSync(p)) {
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                return res.sendFile(p);
+            }
+        }
+    }
+
+    const publicTemplate = path.join(__dirname, '..', 'public', 'quote-catalog.html');
+    const repoTemplate = path.join(__dirname, '..', '..', '..', '05_Management', 'forms', 'quote-catalog.html');
+    if (fs.existsSync(publicTemplate)) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.sendFile(publicTemplate);
+    }
+    if (fs.existsSync(repoTemplate)) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.sendFile(repoTemplate);
+    }
+    res.status(404).send('카탈로그 페이지를 찾을 수 없습니다.');
+};
+
 module.exports = {
     router,
     setDb,
     initQuotationTables,
-    getPublicCatalog
+    getPublicCatalog,
+    servePublicCatalogPage
 };

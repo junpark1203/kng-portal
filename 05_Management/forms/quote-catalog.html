@@ -716,14 +716,41 @@
             touchDeltaX: 0,
 
             init: async function() {
+                // 정적 업로드 경로로 진입한 경우 주소창을 깔끔한 단축 주소(/q/코드)로 즉시 변환
+                try {
+                    const uploadMatch = location.pathname.match(/item-([0-9-]+)\.(html|json)/i);
+                    if (uploadMatch && uploadMatch[1] && location.protocol.startsWith('http')) {
+                        window.history.replaceState(null, '', `/q/${uploadMatch[1]}`);
+                    }
+                } catch (e) {}
+
                 const params = new URLSearchParams(location.search);
-                const qKey = params.get('q') || params.get('id') || '';
-                const catalogFile = params.get('c') || '';
+                let qKey = params.get('q') || params.get('id') || '';
+                let catalogFile = params.get('c') || '';
+
+                // /q/:code 단축 경로에서 코드 추출
+                if (location.pathname.startsWith('/q/')) {
+                    const pathCode = decodeURIComponent(location.pathname.slice(3).split('/')[0] || '').trim();
+                    if (pathCode) {
+                        if (/^\d+-\d+$/.test(pathCode)) {
+                            if (!catalogFile) catalogFile = `item-${pathCode}.json`;
+                        } else if (pathCode.startsWith('item-')) {
+                            if (!catalogFile) catalogFile = pathCode.endsWith('.json') ? pathCode : `${pathCode}.json`;
+                        } else if (!qKey) {
+                            qKey = pathCode;
+                        }
+                    }
+                }
 
                 let loadedQuote = null;
 
+                // 0순위: 서버 자체 내장 카탈로그 데이터 (단독 HTML 스냅샷 즉시 렌더링)
+                if (window.__EMBEDDED_QUOTE__ && typeof window.__EMBEDDED_QUOTE__ === 'object') {
+                    loadedQuote = window.__EMBEDDED_QUOTE__;
+                }
+
                 // 1순위: 로컬 미리보기 세션 데이터 (작성기에서 바로 미리보기 클릭 시)
-                if (params.get('preview') === '1') {
+                if (!loadedQuote && params.get('preview') === '1') {
                     try {
                         const previewRaw = localStorage.getItem('kng_qr_preview_quote');
                         if (previewRaw) {

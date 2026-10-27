@@ -241,6 +241,8 @@ const app = {
         this.setupKeyboardShortcuts();
         this.setupImageDropzone();
         this.setupUnsavedChangesProtection();
+        this.checkShortUrlRoute();
+        this.getCatalogHtmlTemplate();
 
         // 윈도우 포커스 시 견적 바구니 갱신 체크
         window.addEventListener('focus', () => {
@@ -1890,12 +1892,49 @@ const app = {
         };
     },
 
+    _catalogHtmlTemplate: null,
+    shortUrlRouteReady: false,
+
+    getCatalogHtmlTemplate: async function() {
+        if (this._catalogHtmlTemplate) return this._catalogHtmlTemplate;
+        try {
+            const res = await fetch('./quote-catalog.html?v=' + Date.now());
+            if (res.ok) {
+                this._catalogHtmlTemplate = await res.text();
+                return this._catalogHtmlTemplate;
+            }
+        } catch (e) {}
+        return null;
+    },
+
+    checkShortUrlRoute: function() {
+        fetch(`${SERVER_URL}/q/_ping`, { method: 'HEAD' })
+            .then(res => { this.shortUrlRouteReady = res.ok; })
+            .catch(() => { this.shortUrlRouteReady = false; });
+    },
+
     uploadPublicCatalogSnapshot: async function(q) {
         try {
             const publicObj = this.buildPublicCatalogObject(q);
-            const blob = new Blob([JSON.stringify(publicObj)], { type: 'application/json' });
+            const safeJson = JSON.stringify(publicObj).replace(/<\//g, '<\\/');
+            const tpl = await this.getCatalogHtmlTemplate();
+
+            let blob;
+            let uploadName;
+            if (tpl && tpl.includes('</head>')) {
+                const injectedHtml = tpl.replace(
+                    '</head>',
+                    `<script>window.__EMBEDDED_QUOTE__ = ${safeJson};</script>\n</head>`
+                );
+                blob = new Blob([injectedHtml], { type: 'text/html;charset=utf-8' });
+                uploadName = 'catalog.html';
+            } else {
+                blob = new Blob([safeJson], { type: 'application/json' });
+                uploadName = 'catalog.json';
+            }
+
             const formData = new FormData();
-            formData.append('image', blob, 'catalog.json');
+            formData.append('image', blob, uploadName);
 
             const res = await authFetch(`${API_BASE}/upload`, {
                 method: 'POST',
@@ -1919,21 +1958,20 @@ const app = {
     getQuoteCatalogUrl: function(q, forLocalPreview = false) {
         const docNo = (q && (q.quote_number || q.id)) ? (q.quote_number || q.id) : this.generateStandardQuoteNumber();
         const catFile = this.extractCatalogFileFromQuote(q);
-        const query = `q=${encodeURIComponent(docNo)}${catFile ? `&c=${encodeURIComponent(catFile)}` : ''}${forLocalPreview ? '&preview=1' : ''}`;
 
-        if (forLocalPreview) {
-            return `./quote-catalog.html?${query}`;
-        }
-
-        const isLocalHost = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:');
-        if (isLocalHost) {
-            try {
-                return new URL(`./quote-catalog.html?${query}`, location.href).href;
-            } catch (e) {
-                return `https://kng-portal.junparks.com/05_Management/forms/quote-catalog.html?${query}`;
+        if (catFile) {
+            const cleanFile = catFile.replace(/^\/api\/quotations\/uploads\//, '');
+            const shortCode = cleanFile.replace(/^item-/, '').replace(/\.(html|json)$/i, '');
+            if (this.shortUrlRouteReady) {
+                return `${SERVER_URL}/q/${encodeURIComponent(shortCode)}`;
             }
+            if (cleanFile.toLowerCase().endsWith('.html')) {
+                return `${SERVER_URL}/api/quotations/uploads/${encodeURIComponent(cleanFile)}`;
+            }
+            return `${SERVER_URL}/q/${encodeURIComponent(shortCode)}`;
         }
-        return new URL(`./quote-catalog.html?${query}`, location.href).href;
+
+        return `${SERVER_URL}/q/${encodeURIComponent(docNo)}`;
     },
 
     generateQrSvgTag: function(url) {
@@ -1986,8 +2024,9 @@ const app = {
             localStorage.setItem('kng_qr_preview_quote', JSON.stringify(this.buildPublicCatalogObject(q)));
         } catch (e) {}
 
-        // 서버 스냅샷이 아직 없으면 백그라운드 업로드하여 외부 스마트폰 스캔 즉시 지원
-        if (!this.extractCatalogFileFromQuote(q)) {
+        // 서버 단독 HTML 카탈로그 스냅샷 업로드하여 포털 주소 완전 은폐 및 외부 즉시 열람 지원
+        const existingCatFile = this.extractCatalogFileFromQuote(q);
+        if (!existingCatFile || !existingCatFile.toLowerCase().endsWith('.html') || !quoteObj) {
             await this.uploadPublicCatalogSnapshot(q);
         }
 
@@ -2059,13 +2098,16 @@ const app = {
             });
     },
 
-    openMobileCatalogPreview: function() {
+    openMobileCatalogPreview: async function() {
         const q = this.targetQuoteForQr || this.syncCurrentEditorToQuoteObj();
         if (!q) return;
         try {
             localStorage.setItem('kng_qr_preview_quote', JSON.stringify(this.buildPublicCatalogObject(q)));
         } catch (e) {}
-        const previewUrl = this.getQuoteCatalogUrl(q, true);
+        if (!this.extractCatalogFileFromQuote(q)) {
+            await this.uploadPublicCatalogSnapshot(q);
+        }
+        const previewUrl = this.getQuoteCatalogUrl(q, false);
         window.open(previewUrl, '_blank', 'width=480,height=860,scrollbars=yes,resizable=yes');
     },
 

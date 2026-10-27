@@ -245,7 +245,8 @@ const QUOTE_UPLOAD_DIR = path.join(UPLOAD_DIR, 'quotations');
 if (!fs.existsSync(QUOTE_UPLOAD_DIR)) fs.mkdirSync(QUOTE_UPLOAD_DIR, { recursive: true });
 app.use('/api/quotations/uploads', express.static(QUOTE_UPLOAD_DIR, { fallthrough: false }));
 
-// 견적서 QR 모바일 제품 상세 카탈로그 공개 조회 API — 인증 불필요 (단가/원가/마진 비공개)
+// 견적서 QR 모바일 제품 상세 카탈로그 공개 조회 API 및 단축 뷰어(/q/:code) — 인증 불필요 (포털 주소 완전 은폐 & 단가/원가/마진 비공개)
+app.get('/q/:code', (req, res) => quotationsRoutes.servePublicCatalogPage(req, res));
 app.get('/api/quotations/public/:id', (req, res) => quotationsRoutes.getPublicCatalog(req, res));
 app.get('/api/public/quotations/:id', (req, res) => quotationsRoutes.getPublicCatalog(req, res));
 
