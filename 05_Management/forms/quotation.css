@@ -1477,4 +1477,26 @@ body {
     bottom: 6px;
 }
 
+/* ── 품목 테이블 내 수량 및 숫자 입력창 잘림 방지 (스피너 화살표 제거 및 여백 최적화) ── */
+#quoteItemsTable input[type="number"]::-webkit-outer-spin-button,
+#quoteItemsTable input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#quoteItemsTable input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+#quoteItemsTable .qty-input {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    width: 100% !important;
+    min-width: 52px;
+    font-size: 12.5px !important;
+    color: #0f172a !important;
+}
+
+
 

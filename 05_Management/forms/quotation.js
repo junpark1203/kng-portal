@@ -827,12 +827,12 @@ const app = {
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center" value="${escHtml(it.spec)}" placeholder="규격/사양" oninput="app.updateItemField(${idx}, 'spec', this.value)">
                     </td>
                     <!-- 수량 -->
-                    <td>
-                        <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold" min="1" value="${it.qty || 1}" oninput="app.updateItemField(${idx}, 'qty', this.value)">
+                    <td class="px-1">
+                        <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold qty-input px-0" min="1" value="${it.qty || 1}" onfocus="this.select()" oninput="app.updateItemField(${idx}, 'qty', this.value)">
                     </td>
                     <!-- 단위 -->
-                    <td>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center" value="${escHtml(it.unit || 'EA')}" style="width:45px;" oninput="app.updateItemField(${idx}, 'unit', this.value)">
+                    <td class="px-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" value="${escHtml(it.unit || 'EA')}" style="width:45px; margin:0 auto;" oninput="app.updateItemField(${idx}, 'unit', this.value)">
                     </td>
                     <!-- 매입가 (수정 가능 - 원가) -->
                     <td class="col-cost">
