@@ -2547,7 +2547,7 @@ const app = {
             const media = extractItemMedia(it);
             const mainThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
-                ? `<td class="text-center p-1">
+                ? `<td class="text-center" style="padding: 2px; overflow: hidden;">
                      ${mainThumb ? `<img src="${escHtml(mainThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
@@ -2718,8 +2718,8 @@ const app = {
                     ${showImg ? (priceMode === 'all' ? `
                     <colgroup>
                         <col style="width: 3.8%;">  <!-- No -->
-                        <col style="width: 6.7%;">  <!-- 사진 -->
-                        <col style="width: 25.5%;"> <!-- 품목명 및 사양 -->
+                        <col style="width: 7.2%;">  <!-- 사진 -->
+                        <col style="width: 25%;">   <!-- 품목명 및 사양 -->
                         <col style="width: 9.5%;">  <!-- 규격 -->
                         <col style="width: 5.5%;">  <!-- 수량 -->
                         <col style="width: 4.5%;">  <!-- 단위 -->
@@ -2902,7 +2902,7 @@ const app = {
             const media = extractItemMedia(it);
             const cleanThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
-                ? `<td class="text-center p-1">
+                ? `<td class="text-center" style="padding: 2px; overflow: hidden;">
                      ${cleanThumb ? `<img src="${escHtml(cleanThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
@@ -2933,8 +2933,8 @@ const app = {
         const internalColgroupHtml = showImg ? `
             <colgroup>
                 <col style="width: 3.5%;">  <!-- No -->
-                <col style="width: 6%;">    <!-- 사진 -->
-                <col style="width: 17.5%;"> <!-- 품목명 및 사양 -->
+                <col style="width: 6.5%;">  <!-- 사진 -->
+                <col style="width: 17%;">   <!-- 품목명 및 사양 -->
                 <col style="width: 6.5%;">  <!-- 규격 -->
                 <col style="width: 5.5%;">  <!-- 수량 -->
                 <col style="width: 4%;">    <!-- 단위 -->
