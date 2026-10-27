@@ -790,14 +790,16 @@ body {
 
     .a4-items-table .cell-money {
         text-align: right !important;
-        padding-right: 4px !important;
+        padding-left: 2px !important;
+        padding-right: 3px !important;
         font-variant-numeric: tabular-nums;
-        white-space: nowrap;
+        white-space: nowrap !important;
+        letter-spacing: -0.25px;
     }
 
     /* ── 내부 검토용 전용 다열 테이블 (12열 가로공간 완벽 확보 & 컴팩트 레이아웃) ── */
     .a4-items-table.internal-table {
-        font-size: 7.5pt;
+        font-size: 7.2pt;
         margin-top: 6px;
         margin-bottom: 6px;
     }
@@ -805,29 +807,40 @@ body {
     .a4-items-table.internal-table th,
     .a4-items-table.internal-table td {
         padding: 2.5px 2px;
-        font-size: 7.5pt;
+        font-size: 7.2pt;
     }
 
     .a4-items-table.internal-table thead th {
-        font-size: 7.5pt;
+        font-size: 7.2pt;
         height: 22px;
         padding: 2px 1px;
+        text-align: center !important;
+        white-space: nowrap;
     }
 
     .a4-items-table.internal-table .cell-product-name {
-        font-size: 8pt;
+        font-size: 7.5pt;
         padding-left: 4px !important;
         line-height: 1.2;
     }
 
     .a4-items-table.internal-table .cell-remarks {
-        font-size: 7pt;
+        font-size: 6.8pt;
         padding-left: 3px !important;
         line-height: 1.15;
     }
 
     .a4-items-table.internal-table .cell-money {
-        padding-right: 2px !important;
+        font-size: 6.8pt !important;
+        letter-spacing: -0.4px !important;
+        padding-left: 1px !important;
+        padding-right: 2.5px !important;
+        white-space: nowrap !important;
+    }
+
+    .a4-items-table.internal-table tfoot .cell-money {
+        font-size: 6.6pt !important;
+        letter-spacing: -0.45px !important;
     }
 
     /* 인쇄 사진 스타일 [사용자 요구사항 완벽 반영: 원비율 유지] */
@@ -1201,34 +1214,54 @@ body {
     print-color-adjust: exact !important;
 }
 
-/* ── 내부 검토용 마진 분석 요약 박스 ── */
+/* ── 내부 검토용 마진 분석 요약 박스 (5열 균등 분할 그리드 - 줄바꿈/겹침 원천 차단) ── */
 .internal-margin-summary {
-    margin-top: 10px;
+    margin-top: 8px;
+    margin-bottom: 6px;
     border: 1.5px solid #0f172a;
     background: #f8fafc !important;
-    padding: 8px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 8.5pt;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: 100%;
+    box-sizing: border-box;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
 }
 
 .internal-margin-summary-item {
     display: flex;
-    align-items: baseline;
-    gap: 6px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 4px;
+    border-right: 1px solid #cbd5e1;
+    text-align: center;
+    min-width: 0;
+}
+
+.internal-margin-summary-item:last-child {
+    border-right: none;
 }
 
 .internal-margin-summary-item .label {
     color: #475569;
-    font-size: 8pt;
+    font-size: 7.2pt;
+    font-weight: 700;
+    white-space: nowrap;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    letter-spacing: -0.2px;
 }
 
 .internal-margin-summary-item .value {
+    font-size: 9.2pt;
     font-weight: 800;
     color: #0f172a;
+    white-space: nowrap;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
 }
 
 .internal-margin-summary-item .value.text-success {
@@ -1237,6 +1270,10 @@ body {
 
 .internal-margin-summary-item .value.text-primary {
     color: #2563eb !important;
+}
+
+.internal-margin-summary-item .value.text-danger {
+    color: #dc2626 !important;
 }
 
 /* ── A4 인쇄 다중 페이지 나눔 제어 ── */

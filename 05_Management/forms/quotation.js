@@ -2441,7 +2441,7 @@ const app = {
             const media = extractItemMedia(it);
             const mainThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
-                ? `<td class="text-center p-1" style="width: 50px;">
+                ? `<td class="text-center p-1">
                      ${mainThumb ? `<img src="${escHtml(mainThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
@@ -2450,13 +2450,13 @@ const app = {
             const vatText = (q.vat_type === 'exclusive') ? '별도' : fmtWon(it.vat);
             if (priceMode === 'all') {
                 priceCells = `
-                    <td class="text-end pe-2">${fmtWon(it.unit_price)}</td>
-                    <td class="text-end pe-2">${fmtWon(it.supply_price)}</td>
-                    <td class="text-end pe-2" style="color: #111;">${vatText}</td>
+                    <td class="cell-money">${fmtWon(it.unit_price)}</td>
+                    <td class="cell-money fw-semibold">${fmtWon(it.supply_price)}</td>
+                    <td class="cell-money" style="color: #111;">${vatText}</td>
                 `;
             } else if (priceMode === 'unit') {
                 priceCells = `
-                    <td class="text-end pe-2 fw-bold">${fmtWon(it.unit_price)}</td>
+                    <td class="cell-money fw-bold">${fmtWon(it.unit_price)}</td>
                 `;
             }
 
@@ -2465,9 +2465,9 @@ const app = {
                     <td class="text-center">${idx + 1}</td>
                     ${imgCell}
                     <td class="cell-product-name fw-semibold">${escHtml(it.product_name)}</td>
-                    <td class="text-center" style="font-size: 8.5pt;">${escHtml(it.spec || '-')}</td>
-                    <td class="text-center">${fmtNum(it.qty)}</td>
-                    <td class="text-center">${escHtml(it.unit || 'EA')}</td>
+                    <td class="text-center" style="font-size: 8pt;">${escHtml(it.spec || '-')}</td>
+                    <td class="text-center fw-semibold" style="white-space: nowrap;">${fmtNum(it.qty)}</td>
+                    <td class="text-center" style="white-space: nowrap;">${escHtml(it.unit || 'EA')}</td>
                     ${priceCells}
                     <td class="cell-remarks">${escHtml(it.remarks || '')}</td>
                 </tr>
@@ -2478,9 +2478,9 @@ const app = {
         let tfootHtml = '';
         if (priceMode === 'all') {
             priceHeaders = `
-                <th style="width: 75px;">단가</th>
-                <th style="width: 85px;">공급가액</th>
-                <th style="width: 70px;">세액</th>
+                <th>단가</th>
+                <th>공급가액</th>
+                <th>세액</th>
             `;
             const leadCols = showImg ? 7 : 6;
             const tfootVat = (q.vat_type === 'exclusive') ? '별도 (0원)' : fmtWon(q.total_vat);
@@ -2488,14 +2488,14 @@ const app = {
                 <tfoot>
                     <tr>
                         <th colspan="${leadCols}" class="text-center" style="font-size: 9pt; background: #f8fafc; letter-spacing: 2px;">합계</th>
-                        <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
-                        <td class="text-end pe-2" style="font-weight: bold; background: #f8fafc; color: #111;">${tfootVat}</td>
+                        <td class="cell-money" style="font-weight: bold; background: #f8fafc;">${fmtWon(q.total_supply_price)}</td>
+                        <td class="cell-money" style="font-weight: bold; background: #f8fafc; color: #111;">${tfootVat}</td>
                         <td class="text-center" style="font-size: 8pt; color: #888; background: #f8fafc;">-</td>
                     </tr>
                 </tfoot>
             `;
         } else if (priceMode === 'unit') {
-            priceHeaders = `<th style="width: 85px;">단가</th>`;
+            priceHeaders = `<th>단가</th>`;
         }
 
         let notesHtml = '';
@@ -2611,39 +2611,39 @@ const app = {
                 <table class="a4-items-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000;">
                     ${showImg ? (priceMode === 'all' ? `
                     <colgroup>
-                        <col style="width: 4%;">   <!-- No -->
-                        <col style="width: 7%;">   <!-- 사진 -->
-                        <col style="width: 27%;">  <!-- 품목명 및 사양 -->
-                        <col style="width: 12%;">  <!-- 규격 -->
-                        <col style="width: 5%;">   <!-- 수량 -->
-                        <col style="width: 5%;">   <!-- 단위 -->
-                        <col style="width: 10.5%;"> <!-- 단가 -->
-                        <col style="width: 11.5%;"> <!-- 공급가액 -->
-                        <col style="width: 9%;">   <!-- 세액 -->
-                        <col style="width: 9%;">   <!-- 비고 -->
+                        <col style="width: 3.8%;">  <!-- No -->
+                        <col style="width: 6.7%;">  <!-- 사진 -->
+                        <col style="width: 25.5%;"> <!-- 품목명 및 사양 -->
+                        <col style="width: 9.5%;">  <!-- 규격 -->
+                        <col style="width: 5.5%;">  <!-- 수량 -->
+                        <col style="width: 4.5%;">  <!-- 단위 -->
+                        <col style="width: 11%;">   <!-- 단가 -->
+                        <col style="width: 13%;">   <!-- 공급가액 -->
+                        <col style="width: 11%;">   <!-- 세액 -->
+                        <col style="width: 9.5%;">  <!-- 비고 -->
                     </colgroup>
                     ` : `
                     <colgroup>
                         <col style="width: 4.5%;"> <!-- No -->
                         <col style="width: 7.5%;"> <!-- 사진 -->
-                        <col style="width: 38%;">  <!-- 품목명 및 사양 -->
-                        <col style="width: 15%;">  <!-- 규격 -->
-                        <col style="width: 6%;">   <!-- 수량 -->
-                        <col style="width: 6%;">   <!-- 단위 -->
-                        ${priceMode === 'unit' ? '<col style="width: 12%;">' : ''}
-                        <col style="width: 11%;">  <!-- 비고 -->
+                        <col style="width: 37%;">  <!-- 품목명 및 사양 -->
+                        <col style="width: 14%;">  <!-- 규격 -->
+                        <col style="width: 6.5%;"> <!-- 수량 -->
+                        <col style="width: 5.5%;"> <!-- 단위 -->
+                        ${priceMode === 'unit' ? '<col style="width: 13%;">' : ''}
+                        <col style="width: 12%;">  <!-- 비고 -->
                     </colgroup>
                     `) : (priceMode === 'all' ? `
                     <colgroup>
-                        <col style="width: 4.5%;"> <!-- No -->
-                        <col style="width: 32%;">  <!-- 품목명 및 사양 -->
-                        <col style="width: 13.5%;"> <!-- 규격 -->
-                        <col style="width: 5.5%;"> <!-- 수량 -->
-                        <col style="width: 5.5%;"> <!-- 단위 -->
-                        <col style="width: 11%;">  <!-- 단가 -->
-                        <col style="width: 11.5%;"> <!-- 공급가액 -->
-                        <col style="width: 9%;">   <!-- 세액 -->
-                        <col style="width: 9%;">   <!-- 비고 -->
+                        <col style="width: 4%;">    <!-- No -->
+                        <col style="width: 30.5%;"> <!-- 품목명 및 사양 -->
+                        <col style="width: 10.5%;"> <!-- 규격 -->
+                        <col style="width: 6%;">    <!-- 수량 -->
+                        <col style="width: 5%;">    <!-- 단위 -->
+                        <col style="width: 11.5%;"> <!-- 단가 -->
+                        <col style="width: 13%;">   <!-- 공급가액 -->
+                        <col style="width: 10.5%;"> <!-- 세액 -->
+                        <col style="width: 9%;">    <!-- 비고 -->
                     </colgroup>
                     ` : `
                     <colgroup>
@@ -2796,7 +2796,7 @@ const app = {
             const media = extractItemMedia(it);
             const cleanThumb = media.thumbs[0] || cleanImgUrl(it.image_url);
             const imgCell = showImg
-                ? `<td class="text-center p-1" style="width: 38px;">
+                ? `<td class="text-center p-1">
                      ${cleanThumb ? `<img src="${escHtml(cleanThumb)}" class="a4-item-img" alt="사진">` : '<span style="color:#ccc; font-size:9px;">-</span>'}
                    </td>`
                 : '';
@@ -2807,13 +2807,13 @@ const app = {
                     ${imgCell}
                     <td class="cell-product-name fw-semibold">${escHtml(it.product_name)}</td>
                     <td class="text-center" style="font-size: 7.5pt;">${escHtml(it.spec || '-')}</td>
-                    <td class="text-center">${fmtNum(qty)}</td>
-                    <td class="text-center">${escHtml(it.unit || 'EA')}</td>
+                    <td class="text-center fw-semibold" style="white-space: nowrap;">${fmtNum(qty)}</td>
+                    <td class="text-center" style="white-space: nowrap;">${escHtml(it.unit || 'EA')}</td>
                     <td class="cell-money text-muted">${fmtWon(cost)}</td>
                     <td class="cell-money">${fmtWon(unit)}</td>
                     <td class="cell-money fw-semibold">${fmtWon(supply)}</td>
                     <td class="cell-money text-success fw-bold">${fmtWon(totalMargin)}</td>
-                    <td class="text-center fw-bold ${margin.rate < 15 ? 'text-danger' : 'text-primary'}">${margin.rate.toFixed(1)}%</td>
+                    <td class="text-center fw-bold ${margin.rate < 15 ? 'text-danger' : 'text-primary'}" style="white-space: nowrap;">${margin.rate.toFixed(1)}%</td>
                     <td class="cell-remarks">${escHtml(it.internal_remarks || '')}</td>
                 </tr>
             `;
@@ -2823,35 +2823,35 @@ const app = {
         const leadCols = showImg ? 6 : 5;
         const docNo = q.quote_number || this.generateStandardQuoteNumber();
 
-        // 12개 열 가로 100% 전폭 완벽 분배 (우측 빈 여백 방지 & 글자 겹침 원천 차단)
+        // 12개 열 가로 100% 전폭 완벽 분배 (고액 합계·마진 금액 칸 침범 원천 차단)
         const internalColgroupHtml = showImg ? `
             <colgroup>
-                <col style="width: 4%;">   <!-- No -->
-                <col style="width: 6.5%;"> <!-- 사진 -->
-                <col style="width: 21.5%;"> <!-- 품목명 및 사양 -->
-                <col style="width: 9%;">   <!-- 규격 -->
-                <col style="width: 4.5%;"> <!-- 수량 -->
-                <col style="width: 4%;">   <!-- 단위 -->
-                <col style="width: 8.5%;"> <!-- 매입가 -->
-                <col style="width: 8.5%;"> <!-- 제안단가 -->
-                <col style="width: 9.5%;"> <!-- 공급가액 -->
-                <col style="width: 8.5%;"> <!-- 마진액(총) -->
-                <col style="width: 6.5%;"> <!-- 마진율 -->
-                <col style="width: 9%;">   <!-- 내부 비고 -->
+                <col style="width: 3.5%;">  <!-- No -->
+                <col style="width: 6%;">    <!-- 사진 -->
+                <col style="width: 17.5%;"> <!-- 품목명 및 사양 -->
+                <col style="width: 6.5%;">  <!-- 규격 -->
+                <col style="width: 5.5%;">  <!-- 수량 -->
+                <col style="width: 4%;">    <!-- 단위 -->
+                <col style="width: 10.5%;"> <!-- 매입가 -->
+                <col style="width: 10%;">   <!-- 제안단가 -->
+                <col style="width: 11.5%;"> <!-- 공급가액 -->
+                <col style="width: 11%;">   <!-- 마진액(총) -->
+                <col style="width: 5.5%;">  <!-- 마진율 -->
+                <col style="width: 8.5%;">  <!-- 내부 비고 -->
             </colgroup>
         ` : `
             <colgroup>
-                <col style="width: 4.5%;"> <!-- No -->
-                <col style="width: 25.5%;"> <!-- 품목명 및 사양 -->
-                <col style="width: 9.5%;"> <!-- 규격 -->
-                <col style="width: 5%;">   <!-- 수량 -->
-                <col style="width: 4.5%;"> <!-- 단위 -->
-                <col style="width: 8.5%;"> <!-- 매입가 -->
-                <col style="width: 8.5%;"> <!-- 제안단가 -->
-                <col style="width: 9.5%;"> <!-- 공급가액 -->
-                <col style="width: 8.5%;"> <!-- 마진액(총) -->
-                <col style="width: 6.5%;"> <!-- 마진율 -->
-                <col style="width: 9.5%;"> <!-- 내부 비고 -->
+                <col style="width: 4%;">    <!-- No -->
+                <col style="width: 21.5%;"> <!-- 품목명 및 사양 -->
+                <col style="width: 7%;">    <!-- 규격 -->
+                <col style="width: 5.5%;">  <!-- 수량 -->
+                <col style="width: 4%;">    <!-- 단위 -->
+                <col style="width: 11%;">   <!-- 매입가 -->
+                <col style="width: 10.5%;"> <!-- 제안단가 -->
+                <col style="width: 12%;">   <!-- 공급가액 -->
+                <col style="width: 11.5%;"> <!-- 마진액(총) -->
+                <col style="width: 5.5%;">  <!-- 마진율 -->
+                <col style="width: 7.5%;">  <!-- 내부 비고 -->
             </colgroup>
         `;
 
@@ -2868,26 +2868,26 @@ const app = {
                 <!-- 1. 상단 헤더 컨테이너 (외부 발송용과 동일한 대제목 및 공급자 정보 표) -->
                 ${headerContainerHtml}
 
-                <!-- 2. 핵심 마진 분석 요약 리본 박스 -->
+                <!-- 2. 핵심 마진 분석 요약 리본 박스 (5열 균등 분할 그리드 - 줄바꿈/겹침 방지) -->
                 <div class="internal-margin-summary">
                     <div class="internal-margin-summary-item">
-                        <span class="label">총 매입원가:</span>
+                        <span class="label">총 매입원가</span>
                         <span class="value">${fmtWon(sumCost)}</span>
                     </div>
                     <div class="internal-margin-summary-item">
-                        <span class="label">총 공급가액:</span>
+                        <span class="label">총 공급가액</span>
                         <span class="value text-primary">${fmtWon(sumSupply)}</span>
                     </div>
                     <div class="internal-margin-summary-item">
-                        <span class="label">총 마진액:</span>
+                        <span class="label">총 마진액</span>
                         <span class="value text-success">${fmtWon(sumMargin)}</span>
                     </div>
                     <div class="internal-margin-summary-item">
-                        <span class="label">평균 마진율(매출총이익률):</span>
+                        <span class="label">평균 마진율(매출총이익률)</span>
                         <span class="value ${avgMarginRate < 15 ? 'text-danger' : 'text-primary'}">${avgMarginRate.toFixed(1)}%</span>
                     </div>
                     <div class="internal-margin-summary-item">
-                        <span class="label">총 견적금액(VAT포함):</span>
+                        <span class="label">총 견적금액(VAT포함)</span>
                         <span class="value">${fmtWon(q.total_amount)}</span>
                     </div>
                 </div>
@@ -2903,12 +2903,12 @@ const app = {
                             <th>규격</th>
                             <th>수량</th>
                             <th>단위</th>
-                            <th class="text-end pe-1">매입가</th>
-                            <th class="text-end pe-1">제안단가</th>
-                            <th class="text-end pe-1">공급가액</th>
-                            <th class="text-end pe-1">마진액(총)</th>
+                            <th>매입가</th>
+                            <th>제안단가</th>
+                            <th>공급가액</th>
+                            <th>마진액(총)</th>
                             <th>마진율</th>
-                            <th class="text-start ps-1">내부 비고</th>
+                            <th>내부 비고</th>
                         </tr>
                     </thead>
                     <tbody>
