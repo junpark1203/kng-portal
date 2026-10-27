@@ -357,6 +357,26 @@ body {
     cursor: pointer;
 }
 
+.erp-table tfoot th,
+.erp-table tfoot td {
+    background-color: #f8fafc !important;
+    border: 1px solid var(--erp-border) !important;
+    border-top: 2px solid #94a3b8 !important;
+    padding: 4px 6px !important;
+    height: 30px !important;
+    font-size: 11.5px;
+    vertical-align: middle !important;
+    white-space: nowrap;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+}
+
+.list-kpi-badges .badge {
+    font-weight: 500;
+    padding: 4px 8px;
+}
+
 /* ── 5. 견적서 작성기 폼 & 카드 스타일 ── */
 .quote-header-box .card {
     border-color: var(--erp-border) !important;

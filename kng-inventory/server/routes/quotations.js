@@ -178,7 +178,9 @@ router.get('/', (req, res) => {
     let sql = `
         SELECT q.*, 
                (SELECT COUNT(*) FROM quotation_items WHERE quote_id = q.id) as item_count,
-               (SELECT product_name FROM quotation_items WHERE quote_id = q.id ORDER BY seq ASC LIMIT 1) as first_item_name
+               (SELECT product_name FROM quotation_items WHERE quote_id = q.id ORDER BY seq ASC LIMIT 1) as first_item_name,
+               (SELECT COALESCE(SUM(COALESCE(cost_price, 0) * COALESCE(qty, 1)), 0) FROM quotation_items WHERE quote_id = q.id) as total_cost_price,
+               (SELECT COALESCE(SUM(COALESCE(supply_price, COALESCE(unit_price, 0) * COALESCE(qty, 1))), 0) FROM quotation_items WHERE quote_id = q.id) as items_supply_price
         FROM quotations q 
         WHERE 1=1
     `;

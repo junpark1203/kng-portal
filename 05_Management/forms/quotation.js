@@ -578,6 +578,132 @@ const app = {
         }
     },
 
+    // ── 견적서별 5대 재무지표(총 매입원가, 총 공급가액, 총 마진액, 평균 마진율, 총 견적금액) 계산 & 동기화 ──
+    listSortField: '',
+    listSortAsc: true,
+
+    getMetricsCache: function() {
+        try {
+            return JSON.parse(localStorage.getItem('kng_quote_metrics_cache') || '{}');
+        } catch (e) {
+            return {};
+        }
+    },
+
+    saveMetricsCache: function(cacheObj) {
+        try {
+            localStorage.setItem('kng_quote_metrics_cache', JSON.stringify(cacheObj || {}));
+        } catch (e) {}
+    },
+
+    computeQuoteFinancials: function(q) {
+        if (!q) return { cost: 0, supply: 0, margin: 0, rate: 0, total: 0 };
+
+        let cost = 0;
+        let supply = 0;
+        let total = Math.round(Number(q.total_amount) || 0);
+
+        if (Array.isArray(q.items) && q.items.length > 0) {
+            q.items.forEach(it => {
+                const qty = Number(it.qty) || 1;
+                const c = Number(it.cost_price) || 0;
+                const u = Number(it.unit_price) || 0;
+                const s = (it.supply_price !== undefined && it.supply_price !== null && Number(it.supply_price) > 0)
+                    ? Number(it.supply_price)
+                    : Math.round(qty * u);
+                cost += Math.round(c * qty);
+                supply += Math.round(s);
+            });
+        } else {
+            if (q.total_cost_price !== undefined && q.total_cost_price !== null) {
+                cost = Math.round(Number(q.total_cost_price) || 0);
+            }
+            if (q.total_supply_price !== undefined && q.total_supply_price !== null && Number(q.total_supply_price) > 0) {
+                supply = Math.round(Number(q.total_supply_price) || 0);
+            } else if (q.items_supply_price !== undefined && Number(q.items_supply_price) > 0) {
+                supply = Math.round(Number(q.items_supply_price) || 0);
+            } else if (total > 0) {
+                supply = (q.vat_type === 'exclusive' || q.vat_type === 'none') ? total : Math.round(total / 1.1);
+            }
+        }
+
+        if (supply <= 0 && Number(q.total_supply_price) > 0) {
+            supply = Math.round(Number(q.total_supply_price));
+        }
+        if (total <= 0 && supply > 0) {
+            total = (q.vat_type === 'inclusive') ? Math.round(supply * 1.1) : supply;
+        }
+
+        const margin = supply - cost;
+        const rate = supply > 0 ? (Math.round((margin / supply) * 1000) / 10) : 0;
+
+        q.total_cost_price = cost;
+        q.total_supply_price = supply;
+        q.total_margin_amount = margin;
+        q.avg_margin_rate = rate;
+        q.total_amount = total;
+
+        return { cost, supply, margin, rate, total };
+    },
+
+    syncQuoteMetricsToCache: function(q) {
+        if (!q || !q.id) return;
+        const fin = this.computeQuoteFinancials(q);
+        const cache = this.getMetricsCache();
+        cache[q.id] = {
+            updated_at: q.updated_at || '',
+            cost: fin.cost,
+            supply: fin.supply,
+            total: fin.total
+        };
+        this.saveMetricsCache(cache);
+    },
+
+    hydrateListMetrics: function(quotes) {
+        if (!Array.isArray(quotes) || quotes.length === 0) return;
+        const cache = this.getMetricsCache();
+        const missingQuotes = [];
+
+        quotes.forEach(q => {
+            if (q.total_cost_price === undefined && (!Array.isArray(q.items) || q.items.length === 0)) {
+                const cached = cache[q.id];
+                if (cached && cached.cost !== undefined && (!q.updated_at || !cached.updated_at || cached.updated_at === q.updated_at)) {
+                    q.total_cost_price = cached.cost;
+                    if (!q.total_supply_price && cached.supply) q.total_supply_price = cached.supply;
+                } else if (q.id) {
+                    missingQuotes.push(q);
+                }
+            }
+            this.computeQuoteFinancials(q);
+        });
+
+        if (missingQuotes.length > 0) {
+            Promise.all(missingQuotes.map(q =>
+                authFetch(`${API_BASE}/${q.id}`)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(detail => {
+                        if (detail && Array.isArray(detail.items)) {
+                            q.items = detail.items;
+                            const fin = this.computeQuoteFinancials(q);
+                            cache[q.id] = {
+                                updated_at: detail.updated_at || q.updated_at || '',
+                                cost: fin.cost,
+                                supply: fin.supply,
+                                total: fin.total
+                            };
+                        }
+                    })
+                    .catch(() => {})
+            )).then(() => {
+                this.saveMetricsCache(cache);
+                try {
+                    localStorage.setItem('kng_quotations_cache', JSON.stringify(this.quotations));
+                } catch (e) {}
+                this.renderQuoteList();
+            });
+        }
+    },
+
     // ── 견적서 보관함 목록 조회 (API 및 로컬 보관함 동기화) ──
     fetchQuotations: function() {
         // [무한로딩 방지] 서버 응답 전 로컬 캐시를 0초 만에 즉시 렌더링
@@ -587,6 +713,7 @@ const app = {
         } catch(e) {}
         if (cachedQuotes.length > 0 || this.quotations.length === 0) {
             this.quotations = cachedQuotes;
+            this.hydrateListMetrics(this.quotations);
             this.renderQuoteList();
             const badge = document.getElementById('quoteTotalCountBadge');
             const summary = document.getElementById('listSummaryText');
@@ -612,6 +739,7 @@ const app = {
             })
             .then(data => {
                 this.quotations = Array.isArray(data) ? data : [];
+                this.hydrateListMetrics(this.quotations);
                 // 가장 최근 저장된 서버 견적서의 공급자 정보로 다른 PC 간 동기화 보조
                 const latestWithSupplier = this.quotations.find(q => q.supplier_name && q.supplier_biz_num && q.supplier_biz_num !== '687-87-03314');
                 if (latestWithSupplier) {
@@ -661,28 +789,90 @@ const app = {
                 }
 
                 this.quotations = localQuotes;
+                this.hydrateListMetrics(this.quotations);
                 this.renderQuoteList();
                 document.getElementById('quoteTotalCountBadge').textContent = this.quotations.length;
                 document.getElementById('listSummaryText').textContent = `총 ${this.quotations.length}건 조회됨`;
             });
     },
 
+    sortList: function(field) {
+        if (!field || !Array.isArray(this.quotations)) return;
+        if (this.listSortField === field) {
+            this.listSortAsc = !this.listSortAsc;
+        } else {
+            this.listSortField = field;
+            this.listSortAsc = false;
+        }
+        const dir = this.listSortAsc ? 1 : -1;
+        this.quotations.sort((a, b) => {
+            this.computeQuoteFinancials(a);
+            this.computeQuoteFinancials(b);
+            const va = a[field];
+            const vb = b[field];
+            if (typeof va === 'number' || typeof vb === 'number') {
+                return ((Number(va) || 0) - (Number(vb) || 0)) * dir;
+            }
+            return String(va || '').localeCompare(String(vb || ''), 'ko') * dir;
+        });
+        this.renderQuoteList();
+    },
+
+    resetListColWidths: function() {
+        const colgroup = document.getElementById('quoteListColgroup');
+        if (!colgroup) return;
+        const defaultWidths = ['38px', '118px', '84px', '135px', 'auto', '56px', '100px', '100px', '100px', '78px', '115px', '72px', '120px', '152px'];
+        const cols = colgroup.querySelectorAll('col');
+        cols.forEach((col, i) => {
+            if (defaultWidths[i]) {
+                col.style.width = defaultWidths[i];
+                if (defaultWidths[i] === 'auto') col.style.minWidth = '170px';
+            }
+        });
+        showToast('열 너비가 기본값으로 초기화되었습니다.', 'info');
+    },
+
     renderQuoteList: function() {
         const tbody = document.getElementById('quoteListTbody');
+        const tfoot = document.getElementById('quoteListTfoot');
         if (!tbody) return;
 
+        let grandCost = 0;
+        let grandSupply = 0;
+        let grandMargin = 0;
+        let grandTotal = 0;
+        let grandItems = 0;
+
         if (this.quotations.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
+            tbody.innerHTML = `<tr><td colspan="14" class="text-center py-5 text-muted">
                 <i class='bx bx-folder-open fs-3 text-secondary'></i>
                 <div class="mt-2 fw-semibold" style="font-size: 13px;">등록된 견적서가 없습니다.</div>
                 <div class="small text-muted mt-1">상단 <button type="button" class="btn-erp btn-erp-primary py-0 px-2" style="height:22px; font-size:10.5px;" onclick="app.openNewEditor()"><i class='bx bx-plus-circle'></i> 신규 견적 작성</button> 버튼을 눌러 첫 견적서를 작성해보세요.</div>
             </td></tr>`;
+            if (tfoot) tfoot.innerHTML = '';
+            const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setTxt('listSumCost', '₩0');
+            setTxt('listSumSupply', '₩0');
+            setTxt('listSumMargin', '₩0');
+            setTxt('listAvgMarginRate', '0.0%');
+            setTxt('listSumTotal', '₩0');
             return;
         }
 
         const rows = this.quotations.map((q, idx) => {
             const statusBadge = q.status === '수주확정' ? 'bg-success' : (q.status === '제출완료' ? 'bg-primary' : 'bg-secondary');
-            const summary = q.project_name || (q.first_item_name ? (q.item_count > 1 ? `${q.first_item_name} 외 ${q.item_count - 1}건` : q.first_item_name) : '-');
+            const itemCount = Number(q.item_count || (q.items ? q.items.length : 0)) || 0;
+            const summary = q.project_name || (q.first_item_name ? (itemCount > 1 ? `${q.first_item_name} 외 ${itemCount - 1}건` : q.first_item_name) : '-');
+            const fin = this.computeQuoteFinancials(q);
+
+            grandCost += fin.cost;
+            grandSupply += fin.supply;
+            grandMargin += fin.margin;
+            grandTotal += fin.total;
+            grandItems += itemCount;
+
+            const marginClass = fin.margin < 0 ? 'text-danger' : 'text-success';
+            const rateClass = fin.rate < 15 ? 'text-danger' : 'text-primary';
 
             return `
                 <tr class="cursor-pointer" onclick="app.loadQuotationDetail('${escHtml(q.id)}')">
@@ -691,8 +881,12 @@ const app = {
                     <td class="text-center text-muted">${escHtml(q.issue_date || '-')}</td>
                     <td class="text-start ps-2 fw-semibold" title="${escHtml(q.customer_name)}">${escHtml(q.customer_name || '-')}</td>
                     <td class="text-start ps-2" title="${escHtml(summary)}">${escHtml(summary)}</td>
-                    <td class="text-center">${fmtNum(q.item_count || (q.items ? q.items.length : 0))}개</td>
-                    <td class="text-end pe-2 fw-bold text-dark">${fmtWon(q.total_amount)}</td>
+                    <td class="text-center">${fmtNum(itemCount)}개</td>
+                    <td class="text-end pe-2 text-muted">${fmtWon(fin.cost)}</td>
+                    <td class="text-end pe-2 fw-semibold text-dark">${fmtWon(fin.supply)}</td>
+                    <td class="text-end pe-2 fw-bold ${marginClass}">${fmtWon(fin.margin)}</td>
+                    <td class="text-center fw-bold ${rateClass}">${fin.rate.toFixed(1)}%</td>
+                    <td class="text-end pe-2 fw-bold text-primary">${fmtWon(fin.total)}</td>
                     <td class="text-center"><span class="badge ${statusBadge}">${escHtml(q.status || '작성중')}</span></td>
                     <td class="text-center text-muted">${escHtml(q.author || '관리자')}</td>
                     <td class="text-center no-print" onclick="event.stopPropagation()">
@@ -719,6 +913,31 @@ const app = {
         });
 
         tbody.innerHTML = rows.join('');
+
+        const grandRate = grandSupply > 0 ? (Math.round((grandMargin / grandSupply) * 1000) / 10) : 0;
+        const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setTxt('listSumCost', fmtWon(grandCost));
+        setTxt('listSumSupply', fmtWon(grandSupply));
+        setTxt('listSumMargin', fmtWon(grandMargin));
+        setTxt('listAvgMarginRate', `${grandRate.toFixed(1)}%`);
+        setTxt('listSumTotal', fmtWon(grandTotal));
+
+        if (tfoot) {
+            const footMarginClass = grandMargin < 0 ? 'text-danger' : 'text-success';
+            const footRateClass = grandRate < 15 ? 'text-danger' : 'text-primary';
+            tfoot.innerHTML = `
+                <tr>
+                    <th colspan="5" class="text-center fw-bold text-dark">합 계 (조회 ${this.quotations.length}건)</th>
+                    <td class="text-center fw-bold text-dark">${fmtNum(grandItems)}개</td>
+                    <td class="text-end pe-2 fw-bold text-secondary">${fmtWon(grandCost)}</td>
+                    <td class="text-end pe-2 fw-bold text-dark">${fmtWon(grandSupply)}</td>
+                    <td class="text-end pe-2 fw-bold ${footMarginClass}">${fmtWon(grandMargin)}</td>
+                    <td class="text-center fw-bold ${footRateClass}">${grandRate.toFixed(1)}%</td>
+                    <td class="text-end pe-2 fw-bold text-primary">${fmtWon(grandTotal)}</td>
+                    <td colspan="3" class="text-center text-muted">-</td>
+                </tr>
+            `;
+        }
     },
 
     // ── 견적서 상세 로드 ──
@@ -737,6 +956,7 @@ const app = {
             })
             .then(quote => {
                 this.currentQuote = quote;
+                this.syncQuoteMetricsToCache(quote);
                 this.bindEditorFields();
                 this.renderEditorItems();
                 this.recalcTotals();
@@ -2240,6 +2460,7 @@ const app = {
             payload.id = savedId;
             payload.quote_number = savedNumber;
             this.currentQuote = payload;
+            this.syncQuoteMetricsToCache(payload);
             document.getElementById('quoteId').value = savedId;
             document.getElementById('badgeQuoteNumber').textContent = savedNumber;
 
@@ -3105,14 +3326,17 @@ const app = {
         }
 
         const data = [
-            ["No.", "견적번호", "견적일자", "수신처(거래처)", "건명/품목요약", "품목수", "총금액", "상태", "작성자"]
+            ["No.", "견적번호", "견적일자", "수신처(거래처)", "건명/품목요약", "품목수", "총 매입원가", "총 공급가액", "총 마진액", "평균 마진율(%)", "총 견적금액(VAT포함)", "상태", "작성자"]
         ];
 
         this.quotations.forEach((q, idx) => {
+            const fin = this.computeQuoteFinancials(q);
+            const itemCount = Number(q.item_count || (q.items ? q.items.length : 0)) || 0;
             data.push([
                 idx + 1, q.quote_number, q.issue_date, q.customer_name,
-                q.project_name || q.first_item_name || '', q.item_count || 0,
-                q.total_amount, q.status, q.author
+                q.project_name || q.first_item_name || '', itemCount,
+                fin.cost, fin.supply, fin.margin, fin.rate, fin.total,
+                q.status, q.author
             ]);
         });
 
