@@ -3,60 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="K&G 본사 매입 현황 — 실시간 재고 (ECOUNT ERP Style)">
-    <title>본사 실시간 재고 현황</title>
+    <meta name="description" content="K&G 본사 매입 현황 — 실시간 재고 및 입출고·마진 통합 워크스페이스 (ECOUNT ERP Style)">
+    <title>본사 매입 현황 — 실시간 재고 &amp; 입출고 마진 원장</title>
     <!-- Bootstrap 5 & Boxicons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Common Design Systems -->
     <link rel="stylesheet" href="./Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="hq-inventory.css?v=20261007_1">
+    <link rel="stylesheet" href="hq-inventory.css?v=20261028_2">
 </head>
 <body>
 
     <!-- 인쇄 전용 헤더 -->
     <div class="print-report-header">
-        <h3 style="font-size: 16pt; font-weight: bold; margin-bottom: 4px;">본사 매입 현황 — 실시간 재고 보고서</h3>
+        <h3 id="printReportTitle" style="font-size: 16pt; font-weight: bold; margin-bottom: 4px;">본사 매입 현황 — 실시간 재고 및 마진 보고서</h3>
         <p id="printMetaInfo" style="font-size: 9pt; color: #64748b; margin: 0;"></p>
     </div>
 
     <!-- ── [모바일 전용] 상단 앱 헤더 & 원터치 제어 센터 (≤ 768px) ── -->
     <div class="mobile-inventory-header d-md-none no-print">
-        <!-- 1행: 내비게이션 + 타이틀 + SKU 카운트 + 뷰전환 + 필터 + 메뉴 -->
+        <!-- 1행: 내비게이션 + 워크스페이스 스위처 + 액션 -->
         <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-1">
                 <a href="index.html" class="btn btn-sm btn-light border p-1 d-inline-flex align-items-center" title="포털 메인으로 이동">
                     <i class='bx bx-arrow-back fs-5 text-dark'></i>
                 </a>
-                <span class="fw-bold fs-6 text-dark d-flex align-items-center gap-1">
-                    <i class='bx bx-building-house text-primary'></i> 본사 재고
-                </span>
-                <span class="badge bg-primary text-white" id="mobileSkuBadge" style="font-size: 11px;">0 SKU</span>
+                <div class="erp-workspace-switcher">
+                    <button type="button" class="erp-ws-btn active" id="mobWsBtnInventory" onclick="app.switchWorkspace('inventory')">
+                        <i class='bx bx-package'></i> 실시간 재고 <span class="ws-count" id="mobWsCountInv">0</span>
+                    </button>
+                    <button type="button" class="erp-ws-btn" id="mobWsBtnTransactions" onclick="app.switchWorkspace('transactions')">
+                        <i class='bx bx-transfer-alt'></i> 입출고·마진 <span class="ws-count" id="mobWsCountTx">0</span>
+                    </button>
+                </div>
             </div>
             <div class="d-flex align-items-center gap-1">
-                <!-- 뷰 전환 토글 (카드 뷰 <-> ECOUNT 시트 그리드) -->
+                <button type="button" class="btn btn-sm btn-primary py-1 px-2 fw-bold" onclick="app.openVoucherWithSelected('IN')" title="입고 전표 등록">
+                    입고
+                </button>
+                <button type="button" class="btn btn-sm btn-warning text-dark py-1 px-2 fw-bold" onclick="app.openVoucherWithSelected('OUT')" title="출고 전표 등록">
+                    출고
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" id="mobileViewToggleBtn" onclick="app.toggleViewMode()" title="보기 모드 전환 (카드/테이블)">
                     <i class='bx bx-table'></i>
                 </button>
-                <!-- 필터 드로어 열기 버튼 -->
-                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 position-relative" onclick="app.toggleMobileFilter()" title="필터 상세 설정">
-                    <i class='bx bx-filter-alt'></i>
-                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none" id="mobileFilterDot"></span>
-                </button>
-                <!-- 추가 메뉴 드롭다운 -->
                 <div class="dropdown">
                     <button class="btn btn-sm btn-light border py-1 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class='bx bx-dots-vertical-rounded'></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 12.5px;">
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openNewModal()"><i class='bx bx-plus-circle text-primary me-2'></i> 새 상품 등록</a></li>
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.exportExcel()"><i class='bx bx-download text-success me-2'></i> 엑셀 다운로드</a></li>
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="location.href='./05_Management/forms/quotation.html'"><i class='bx bx-cart-alt text-warning me-2'></i> 견적서 바구니 이동</a></li>
-                        <li><a class="dropdown-item py-2" href="hq-transactions.html?v=20261007_1"><i class='bx bx-transfer text-info me-2'></i> 입출고 내역 바로가기</a></li>
-                        <li><a class="dropdown-item py-2" href="hq-label.html"><i class='bx bx-purchase-tag-alt text-secondary me-2'></i> 라벨 출력 디자이너</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openVoucherWithSelected('IN')"><i class='bx bx-down-arrow-circle text-primary me-2'></i> 매입(입고) &amp; 적정판매가 등록</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openVoucherWithSelected('OUT')"><i class='bx bx-up-arrow-circle text-warning me-2'></i> 출고 &amp; 마진 전표 등록</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.openNewModal()"><i class='bx bx-plus-circle text-success me-2'></i> 단일 품목 마스터 등록</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.printReport()"><i class='bx bx-printer text-muted me-2'></i> 재고 보고서 인쇄</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.exportExcel()"><i class='bx bx-download text-success me-2'></i> 현재 화면 엑셀 다운로드</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="location.href='./05_Management/forms/quotation.html'"><i class='bx bx-cart-alt text-warning me-2'></i> 견적서 바구니 이동</a></li>
+                        <li><a class="dropdown-item py-2" href="hq-label.html"><i class='bx bx-purchase-tag-alt text-secondary me-2'></i> 라벨 출력 디자이너</a></li>
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="app.printReport()"><i class='bx bx-printer text-muted me-2'></i> 보고서 인쇄</a></li>
                     </ul>
                 </div>
             </div>
@@ -79,8 +83,8 @@
             </div>
         </div>
 
-        <!-- 4행: 재고 상태 세그먼트 버튼군 (전체 / 보유 / 부족 / 품절) -->
-        <div class="mobile-stock-filter-wrapper mb-2">
+        <!-- 4행(재고전용): 재고 상태 세그먼트 버튼군 -->
+        <div class="mobile-stock-filter-wrapper mb-2" id="mobStockFilterBar">
             <div class="mobile-stock-filter-track">
                 <button type="button" class="mob-stock-chip active" data-stock="all" onclick="app.setStockFilter('all')">전체</button>
                 <button type="button" class="mob-stock-chip" data-stock="in_stock" onclick="app.setStockFilter('in_stock')">보유 (&gt;0)</button>
@@ -89,34 +93,52 @@
             </div>
         </div>
 
-        <!-- 5행: 초슬림 1라인 KPI 요약 바 (가로 스크롤 & white-space: nowrap) -->
+        <!-- 4행(전표전용): 입출고 구분 세그먼트 버튼군 -->
+        <div class="mobile-stock-filter-wrapper mb-2 d-none" id="mobTxTypeFilterBar">
+            <div class="mobile-stock-filter-track">
+                <button type="button" class="mob-stock-chip active" data-txtype="" onclick="app.setTxTypeFilter('')">전체 내역</button>
+                <button type="button" class="mob-stock-chip" data-txtype="IN" onclick="app.setTxTypeFilter('IN')">매입(입고)</button>
+                <button type="button" class="mob-stock-chip" data-txtype="OUT" onclick="app.setTxTypeFilter('OUT')">출고(판매)</button>
+            </div>
+        </div>
+
+        <!-- 5행: 초슬림 1라인 KPI 요약 바 -->
         <div class="mobile-hq-kpi-bar shadow-sm">
             <div class="mobile-hq-kpi-track">
                 <span class="kpi-tag"><i class='bx bx-box text-primary'></i> 총재고 <strong id="mobileKpiQty">0</strong>개</span>
                 <span class="kpi-divider">|</span>
                 <span class="kpi-tag"><i class='bx bx-coin-stack text-success'></i> 재고원가 <strong id="mobileKpiStockVal" class="text-success">₩0</strong></span>
                 <span class="kpi-divider">|</span>
-                <span class="kpi-tag"><i class='bx bx-trending-up text-primary'></i> 누적매출 <strong id="mobileKpiRevenue" class="text-primary">₩0</strong></span>
+                <span class="kpi-tag"><i class='bx bx-trending-up text-primary'></i> 출고매출 <strong id="mobileKpiRevenue" class="text-primary">₩0</strong></span>
+                <span class="kpi-divider">|</span>
+                <span class="kpi-tag"><i class='bx bx-medal text-warning'></i> 실현마진 <strong id="mobileKpiMargin" class="text-success">₩0 (0%)</strong></span>
                 <span class="kpi-divider">|</span>
                 <span class="kpi-tag"><i class='bx bx-trending-down text-secondary'></i> 누적매입 <strong id="mobileKpiCost" class="text-secondary">₩0</strong></span>
             </div>
         </div>
     </div>
 
-    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (데스크톱 전용) ── -->
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (데스크톱 전용 올인원 헤더) ── -->
     <div class="erp-top-toolbar no-print d-none d-md-flex">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="erp-title-tag">
-                <i class='bx bx-building-house text-primary'></i> 본사 실시간 재고
-            </span>
+            <!-- 올인원 워크스페이스 스위처 (실시간 재고 ⇄ 입출고 & 마진 원장) -->
+            <div class="erp-workspace-switcher">
+                <button type="button" class="erp-ws-btn active" id="wsBtnInventory" onclick="app.switchWorkspace('inventory')">
+                    <i class='bx bx-package'></i> 실시간 재고 현황 <span class="ws-count" id="wsCountInv">0</span>
+                </button>
+                <button type="button" class="erp-ws-btn" id="wsBtnTransactions" onclick="app.switchWorkspace('transactions')">
+                    <i class='bx bx-transfer-alt'></i> 입출고 &amp; 마진 원장 <span class="ws-count" id="wsCountTx">0</span>
+                </button>
+            </div>
 
-            <!-- 실시간 KPI 요약 배지 -->
+            <!-- 실시간 통합 KPI 요약 배지 -->
             <div class="erp-badge-group">
-                <span class="erp-stat-badge badge-dark" id="skuCountBadge" title="총 품목 수">관리 0 SKU</span>
-                <span class="erp-stat-badge badge-blue" id="totalQtyBadge" title="총 보유 재고수량">총 재고: 0개</span>
-                <span class="erp-stat-badge badge-emerald" id="totalStockValueBadge" title="재고 평가액 (매입가 기준 합계)">재고원가: ₩0</span>
-                <span class="erp-stat-badge badge-purple" id="kpiRevenueBadge" title="출고 누적 매출">누적 매출: ₩0</span>
-                <span class="erp-stat-badge badge-dark" id="kpiCostBadge" title="비용 누적 매입">누적 매입: ₩0</span>
+                <span class="erp-stat-badge badge-dark" id="skuCountBadge" title="총 등록 품목 수">관리 0 SKU</span>
+                <span class="erp-stat-badge badge-blue" id="totalQtyBadge" title="현재 보유 중인 총 재고 수량">현재고: 0개</span>
+                <span class="erp-stat-badge badge-emerald" id="totalStockValueBadge" title="현재 보유 재고 평가액 (매입 공급가 기준)">재고원가: ₩0</span>
+                <span class="erp-stat-badge badge-purple" id="kpiRevenueBadge" title="출고 누적 매출액 (공급가 기준)">출고매출: ₩0</span>
+                <span class="erp-stat-badge badge-emerald" id="kpiRealizedMarginBadge" title="출고 확정된 누적 실현 판매마진 및 평균 마진율 (공급가 기준)">실현마진: ₩0 (0.0%)</span>
+                <span class="erp-stat-badge badge-dark" id="kpiCostBadge" title="누적 매입액 (공급가 기준)">누적매입: ₩0</span>
             </div>
 
             <!-- 공급사 퀵 필터 탭 -->
@@ -128,132 +150,247 @@
         </div>
 
         <div class="d-flex align-items-center gap-1 flex-wrap">
-            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openNewModal()" title="새 상품 등록 (단축키: F2)">
-                <i class='bx bx-plus-circle'></i> 신규 등록 <span class="key-shortcut-badge">F2</span>
+            <button type="button" class="btn-erp btn-erp-primary" id="btnQuickIn" onclick="app.openVoucherWithSelected('IN')" title="매입(입고) 및 적정판매가·인터넷최저가 등록 (단축키: F2 / 체크된 품목 자동 연동)">
+                <i class='bx bx-down-arrow-circle'></i> <span id="lblQuickIn">입고·판매가 등록</span> <span class="key-shortcut-badge">F2</span>
             </button>
-            <button type="button" class="btn-erp btn-erp-danger" id="deleteBtn" onclick="app.handleDelete()" title="선택한 상품 일괄 삭제">
+            <button type="button" class="btn-erp btn-erp-amber" id="btnQuickOut" onclick="app.openVoucherWithSelected('OUT')" title="출고 전표 및 실시간 판매마진 등록 (단축키: F3 / 체크된 품목 자동 연동)">
+                <i class='bx bx-up-arrow-circle'></i> <span id="lblQuickOut">출고·마진 등록</span> <span class="key-shortcut-badge">F3</span>
+            </button>
+            <button type="button" class="btn-erp btn-erp-success" id="btnNewSingleProduct" onclick="app.openNewModal()" title="단일 품목 마스터 직접 등록 (단축키: F4)">
+                <i class='bx bx-plus-circle'></i> 단품 등록 <span class="key-shortcut-badge">F4</span>
+            </button>
+            <button type="button" class="btn-erp btn-erp-danger" id="deleteBtn" onclick="app.handleDelete()" title="선택한 항목 일괄 삭제">
                 <i class='bx bx-trash'></i> 선택 삭제 (<span id="selectedCount">0</span>)
             </button>
-            <button type="button" class="btn-erp btn-erp-warning" onclick="app.addSelectedToQuoteCart()" title="선택한 품목을 견적 바구니에 담기">
+            <button type="button" class="btn-erp btn-erp-warning" id="btnQuoteCart" onclick="app.addSelectedToQuoteCart()" title="선택한 품목을 견적 바구니에 담기">
                 <i class='bx bx-cart-alt'></i> 견적 담기
             </button>
-            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 조회된 재고 목록 엑셀 다운로드">
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 활성 탭 목록 엑셀 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
             </button>
-            <button type="button" class="btn-erp text-muted" onclick="app.printReport()" title="A4 인쇄 서식 출력">
+            <button type="button" class="btn-erp text-muted" onclick="app.printReport()" title="현재 화면 A4 인쇄 서식 출력">
                 <i class='bx bx-printer'></i> 인쇄
             </button>
-            <a href="hq-transactions.html?v=20261007_1" class="btn-erp" title="입출고 내역 화면으로 이동">
-                <i class='bx bx-transfer'></i> 입출고 내역
-            </a>
             <a href="hq-label.html" class="btn-erp" title="라벨 출력 디자이너로 이동">
                 <i class='bx bx-purchase-tag-alt'></i> 라벨 출력
             </a>
         </div>
     </div>
 
-    <!-- ── 2. ECOUNT ERP 2행 필터 리본 (데스크톱 전용) ── -->
-    <div class="erp-filter-ribbon no-print d-none d-md-flex">
-        <div class="d-flex align-items-center gap-1 flex-wrap">
-            <!-- 재고 상태 빠른 필터 -->
-            <div class="erp-stock-filters me-1">
-                <button type="button" class="erp-filter-chip active" data-stock="all" onclick="app.setStockFilter('all')">전체 재고</button>
-                <button type="button" class="erp-filter-chip" data-stock="in_stock" onclick="app.setStockFilter('in_stock')">보유 (1개 이상)</button>
-                <button type="button" class="erp-filter-chip" data-stock="low_stock" onclick="app.setStockFilter('low_stock')">부족 (2개 이하)</button>
-                <button type="button" class="erp-filter-chip" data-stock="out_of_stock" onclick="app.setStockFilter('out_of_stock')">품절 (0개)</button>
+    <!-- =========================================================================
+         [WORKSPACE 1] 실시간 재고 현황 뷰 (#workspaceInventory)
+         ========================================================================= -->
+    <div id="workspaceInventory">
+        <!-- ── 2A. 실시간 재고 필터 리본 (데스크톱 전용) ── -->
+        <div class="erp-filter-ribbon no-print d-none d-md-flex">
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                <!-- 재고 상태 빠른 필터 -->
+                <div class="erp-stock-filters me-1">
+                    <button type="button" class="erp-filter-chip active" data-stock="all" onclick="app.setStockFilter('all')">전체 재고</button>
+                    <button type="button" class="erp-filter-chip" data-stock="in_stock" onclick="app.setStockFilter('in_stock')">보유 (1개 이상)</button>
+                    <button type="button" class="erp-filter-chip" data-stock="low_stock" onclick="app.setStockFilter('low_stock')">부족 (2개 이하)</button>
+                    <button type="button" class="erp-filter-chip" data-stock="out_of_stock" onclick="app.setStockFilter('out_of_stock')">품절 (0개)</button>
+                </div>
+
+                <!-- 검색 대상 선택 -->
+                <select class="form-select erp-select-target" id="searchTarget" onchange="app.onSearchTargetChange()">
+                    <option value="all">통합 검색</option>
+                    <option value="supplier">공급사</option>
+                    <option value="brand">브랜드</option>
+                    <option value="name">상품명</option>
+                    <option value="color">컬러</option>
+                    <option value="size">사이즈</option>
+                </select>
+
+                <!-- 스마트 다중 검색창 (공백 구분 AND) -->
+                <div class="position-relative erp-search-box">
+                    <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="스마트 다중 검색 (공백 구분)..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합(AND) 검색이 지원됩니다">
+                    <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="지우기" style="font-size: 0.75rem;">
+                        <i class='bx bx-x-circle'></i>
+                    </button>
+                </div>
+
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.search()"><i class='bx bx-search'></i> 검색</button>
+                <button type="button" class="btn-erp" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
             </div>
 
-            <!-- 검색 대상 선택 -->
-            <select class="form-select erp-select-target" id="searchTarget" onchange="app.onSearchTargetChange()">
-                <option value="all">통합 검색</option>
-                <option value="supplier">공급사</option>
-                <option value="brand">브랜드</option>
-                <option value="name">상품명</option>
-                <option value="color">컬러</option>
-                <option value="size">사이즈</option>
-            </select>
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                <!-- 결과 내 재검색 인풋 -->
+                <div class="input-group input-group-sm erp-subsearch-group">
+                    <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
+                    <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)">
+                    <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
+                </div>
 
-            <!-- 스마트 다중 검색창 (공백 구분 AND) -->
-            <div class="position-relative erp-search-box">
-                <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="스마트 다중 검색 (공백 구분)..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합(AND) 검색이 지원됩니다">
-                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="지우기" style="font-size: 0.75rem;">
-                    <i class='bx bx-x-circle'></i>
+                <!-- 열 너비 조절 도구 버튼 -->
+                <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('inventoryTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                    <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
+                </button>
+                <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.resetWidths('inventoryTable')" title="열 너비를 기본값으로 초기화합니다">
+                    <i class='bx bx-reset text-secondary'></i> 기본값 초기화
                 </button>
             </div>
-
-            <button type="button" class="btn-erp btn-erp-primary" onclick="app.search()"><i class='bx bx-search'></i> 검색</button>
-            <button type="button" class="btn-erp" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
         </div>
 
-        <div class="d-flex align-items-center gap-1 flex-wrap">
-            <!-- 결과 내 재검색 인풋 -->
-            <div class="input-group input-group-sm erp-subsearch-group">
-                <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
-                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)">
-                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
+        <!-- ── 3A-0. 모바일 전용 재고 카드 뷰 컨테이너 ── -->
+        <div class="mobile-cards-container d-md-none" id="mobileCardsContainer">
+            <div class="text-center py-5 text-muted">
+                <i class='bx bx-loader-alt bx-spin fs-2 text-primary mb-2'></i>
+                <div>본사 재고 데이터를 불러오는 중입니다...</div>
+            </div>
+        </div>
+
+        <!-- ── 3A. 실시간 재고 고밀도 시트 그리드 (15개 컬럼: 최저가·적정판매가·예상마진·마진율 탑재) ── -->
+        <div class="erp-grid-wrapper shadow-sm mobile-hidden-table" id="inventoryGridWrapper">
+            <table id="inventoryTable" class="erp-sheet-table">
+                <thead>
+                    <tr>
+                        <th class="col-check no-print" style="width: 30px;"><input type="checkbox" id="selectAll" onchange="app.toggleSelectAll(this.checked)"></th>
+                        <th class="col-no" style="width: 38px;">No.</th>
+                        <th class="sortable text-center" data-sort="supplier" style="width: 90px;">공급사 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-start ps-2" data-sort="brand" style="width: 95px;">브랜드 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-start ps-2" data-sort="name" style="min-width: 210px;">상품명 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-sort="color" style="width: 74px;">컬러 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-sort="size" style="width: 66px;">사이즈 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-sort="buyPrice" style="width: 105px;" title="매입 공급가 (VAT별도)">매입단가(공급가) <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-sort="onlineTotal" style="width: 120px;" title="인터넷 최저가 (상품가 + 배송비)">인터넷 최저가 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-sort="sellPrice" style="width: 120px;" title="입고 시 설정한 적정 판매가 (출고 시 자동 표기)">적정 판매가 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-sort="unitMargin" style="width: 105px;" title="적정판매가(공급가 환산) - 매입단가(공급가)">예상 판매마진 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-sort="marginRate" style="width: 78px;" title="공급가 통일 기준 예상 마진율">마진율 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-sort="stock" style="width: 78px;">현재 재고 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-sort="stockValue" style="width: 112px;">재고 평가액 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="col-action text-center no-print" style="width: 112px;">빠른 전표 / 관리</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="15" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 본사 재고 데이터를 불러오는 중입니다...</td></tr>
+                </tbody>
+                <tfoot id="tableFoot" class="d-none">
+                    <tr>
+                        <td class="col-check no-print"></td>
+                        <td class="col-no text-center">합계</td>
+                        <td colspan="5" class="ps-2" id="footSummaryText">총 0개 품목</td>
+                        <td class="col-num pe-2" id="footAvgBuyPrice">-</td>
+                        <td class="col-num pe-2" id="footAvgOnlinePrice">-</td>
+                        <td class="col-num pe-2" id="footAvgSellPrice">-</td>
+                        <td class="col-num pe-2" id="footAvgUnitMargin">-</td>
+                        <td class="text-center" id="footAvgMargin">-</td>
+                        <td class="text-center" style="font-weight: 800; color: var(--erp-primary);" id="footTotalStock">0</td>
+                        <td class="col-num pe-2" style="font-weight: 800; color: #047857;" id="footTotalStockValue">₩0</td>
+                        <td class="col-action no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         [WORKSPACE 2] 입출고 & 마진 원장 뷰 (#workspaceTransactions)
+         ========================================================================= -->
+    <div id="workspaceTransactions" class="d-none">
+        <!-- ── 2B. 입출고 & 마진 원장 필터 리본 (데스크톱 전용) ── -->
+        <div class="erp-filter-ribbon no-print d-none d-md-flex">
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                <!-- 구분 필터 칩 -->
+                <div class="erp-stock-filters me-1" id="txTypeChipGroup">
+                    <button type="button" class="erp-filter-chip active" data-txtype="" onclick="app.setTxTypeFilter('')">전체 내역</button>
+                    <button type="button" class="erp-filter-chip" data-txtype="IN" onclick="app.setTxTypeFilter('IN')">매입(입고)</button>
+                    <button type="button" class="erp-filter-chip" data-txtype="OUT" onclick="app.setTxTypeFilter('OUT')">출고(판매)</button>
+                </div>
+
+                <!-- 날짜 퀵 프리셋 -->
+                <div class="erp-date-presets">
+                    <button type="button" class="erp-date-chip" data-preset="today" onclick="app.setTxDatePreset('today')">오늘</button>
+                    <button type="button" class="erp-date-chip" data-preset="week" onclick="app.setTxDatePreset('week')">1주일</button>
+                    <button type="button" class="erp-date-chip" data-preset="month" onclick="app.setTxDatePreset('month')">당월</button>
+                    <button type="button" class="erp-date-chip" data-preset="3months" onclick="app.setTxDatePreset('3months')">3개월</button>
+                    <button type="button" class="erp-date-chip active" data-preset="all" onclick="app.setTxDatePreset('all')">전체기간</button>
+                </div>
+
+                <!-- 기간 직접 선택 -->
+                <div class="d-flex align-items-center gap-1">
+                    <input type="date" class="form-control form-control-sm" id="txStartDate" style="height:24px; font-size:11px; width:118px;" onchange="app.onTxDateRangeChange()">
+                    <span class="text-muted small">~</span>
+                    <input type="date" class="form-control form-control-sm" id="txEndDate" style="height:24px; font-size:11px; width:118px;" onchange="app.onTxDateRangeChange()">
+                </div>
+
+                <!-- 검색창 -->
+                <div class="position-relative erp-search-box" style="width: 190px;">
+                    <input type="text" class="form-control form-control-sm" id="txSearchInput" placeholder="거래처, 브랜드, 상품명, 비고..." onkeyup="app.onTxSearchKeyup(event)">
+                </div>
+
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.searchTx()"><i class='bx bx-search'></i> 조회</button>
+                <button type="button" class="btn-erp" onclick="app.resetTxSearch()"><i class='bx bx-reset'></i> 초기화</button>
             </div>
 
-            <!-- 열 너비 조절 도구 버튼 -->
-            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('inventoryTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
-                <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
-            </button>
-            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.resetWidths('inventoryTable')" title="열 너비를 기본값으로 초기화합니다">
-                <i class='bx bx-reset text-secondary'></i> 기본값 초기화
-            </button>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- 조회기간 실시간 손익 요약 칩 -->
+                <div class="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-white" style="font-size: 11px;">
+                    <span>조회매입: <strong class="text-primary" id="txRibbonInSum">₩0</strong></span>
+                    <span class="text-muted">|</span>
+                    <span>조회출고: <strong class="text-warning" style="color:#b45309 !important;" id="txRibbonOutSum">₩0</strong></span>
+                    <span class="text-muted">|</span>
+                    <span>조회 실현마진: <strong class="text-success" id="txRibbonMarginSum">₩0 (0.0%)</strong></span>
+                </div>
+
+                <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('txTable')">
+                    <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
+                </button>
+            </div>
+        </div>
+
+        <!-- ── 3B-0. 모바일 전용 입출고 카드 뷰 컨테이너 ── -->
+        <div class="mobile-cards-container d-md-none" id="mobileTxCardsContainer">
+            <div class="text-center py-5 text-muted">
+                <i class='bx bx-loader-alt bx-spin fs-2 text-primary mb-2'></i>
+                <div>입출고 원장 데이터를 불러오는 중입니다...</div>
+            </div>
+        </div>
+
+        <!-- ── 3B. 입출고 & 마진 원장 고밀도 시트 그리드 (15개 컬럼) ── -->
+        <div class="erp-grid-wrapper shadow-sm mobile-hidden-table" id="txGridWrapper">
+            <table id="txTable" class="erp-sheet-table">
+                <thead>
+                    <tr>
+                        <th class="col-check no-print" style="width: 30px;"><input type="checkbox" id="txSelectAll" onchange="app.toggleSelectAll(this.checked)"></th>
+                        <th class="col-no" style="width: 38px;">No.</th>
+                        <th class="sortable text-center" data-txsort="txDate" style="width: 88px;">거래일자 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-txsort="type" style="width: 68px;">구분 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-center" data-txsort="supplier" style="width: 95px;">공급사/출고처 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-start ps-2" data-txsort="brand" style="width: 90px;">브랜드 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable text-start ps-2" data-txsort="productName" style="min-width: 200px;">상품명 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="text-center" style="width: 95px;">컬러 / 사이즈</th>
+                        <th class="sortable text-center" data-txsort="qty" style="width: 60px;">수량 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="col-num pe-2" style="width: 110px;" title="매입 공급가 원가 (입고 시 상품가+운임)">매입단가(원가)</th>
+                        <th class="col-num pe-2" style="width: 118px;" title="설정된 적정 판매가 및 인터넷 최저가">적정판매가(기준)</th>
+                        <th class="sortable col-num pe-2" data-txsort="price" style="width: 112px;" title="실제 입출고 거래 단가">거래 단가 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-txsort="totalAmount" style="width: 115px;" title="수량 × 거래단가(공급가)">총 거래액(공급가) <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="sortable col-num pe-2" data-txsort="totalMargin" style="width: 125px;" title="출고 시 실현된 총 판매마진 및 마진율 (입고 시 예상마진율)">판매마진 / 마진율 <i class='bx bx-sort sort-icon'></i></th>
+                        <th class="text-start ps-2 no-print" style="width: 130px;">비고 / 관리</th>
+                    </tr>
+                </thead>
+                <tbody id="txTableBody">
+                    <tr><td colspan="15" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 입출고 내역을 불러오는 중입니다...</td></tr>
+                </tbody>
+                <tfoot id="txTableFoot" class="d-none">
+                    <tr>
+                        <td class="col-check no-print"></td>
+                        <td class="col-no text-center">합계</td>
+                        <td colspan="6" class="ps-2" id="txFootSummaryText">조회 0건</td>
+                        <td class="text-center fw-bold text-primary" id="txFootTotalQty">0</td>
+                        <td class="col-num pe-2 text-muted" id="txFootAvgBuyCost">-</td>
+                        <td class="col-num pe-2 text-muted" id="txFootAvgSellPrice">-</td>
+                        <td class="col-num pe-2" id="txFootAvgTxPrice">-</td>
+                        <td class="col-num pe-2 fw-bold text-dark" id="txFootTotalAmount">₩0</td>
+                        <td class="col-num pe-2 fw-bold text-success" id="txFootTotalMargin">₩0 (0.0%)</td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 
-    <!-- ── 3-0. 모바일 전용 터치 최적화 카드 뷰 컨테이너 (≤ 768px 기본 노출) ── -->
-    <div class="mobile-cards-container d-md-none" id="mobileCardsContainer">
-        <!-- JS로 동적 카드 렌더링 -->
-        <div class="text-center py-5 text-muted">
-            <i class='bx bx-loader-alt bx-spin fs-2 text-primary mb-2'></i>
-            <div>본사 재고 데이터를 불러오는 중입니다...</div>
-        </div>
-    </div>
-
-    <!-- ── 3. ERP 고밀도 시트 그리드 (14개 최적 컬럼 고밀도 체제 / 모바일 전환 가능) ── -->
-    <div class="erp-grid-wrapper shadow-sm mobile-hidden-table" id="inventoryGridWrapper">
-        <table id="inventoryTable" class="erp-sheet-table">
-            <thead>
-                <tr>
-                    <th class="col-check no-print" style="width: 32px;"><input type="checkbox" id="selectAll" onchange="app.toggleSelectAll(this.checked)"></th>
-                    <th class="col-no" style="width: 42px;">No.</th>
-                    <th class="sortable text-center" data-sort="supplier" style="width: 100px;">공급사 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-start ps-2" data-sort="brand" style="width: 110px;">브랜드 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-start ps-2" data-sort="name" style="min-width: 220px;">상품명 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-center" data-sort="color" style="width: 80px;">컬러 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-center" data-sort="size" style="width: 70px;">사이즈 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable col-num pe-2" data-sort="buyPrice" style="width: 105px;">매입 단가 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable col-num pe-2" data-sort="sellPrice" style="width: 110px;">일반 판매가 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable col-num pe-2" data-sort="discountPrice" style="width: 110px;">할인 판매가 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-center" data-sort="marginRate" style="width: 75px;">마진율 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable text-center" data-sort="stock" style="width: 85px;">현재 재고 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="sortable col-num pe-2" data-sort="stockValue" style="width: 120px;">재고 평가액 <i class='bx bx-sort sort-icon'></i></th>
-                    <th class="col-action text-center no-print" style="width: 65px;">관리</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                <tr><td colspan="14" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 본사 재고 데이터를 불러오는 중입니다...</td></tr>
-            </tbody>
-            <tfoot id="tableFoot" class="d-none">
-                <tr>
-                    <td class="col-check no-print"></td>
-                    <td class="col-no text-center">합계</td>
-                    <td colspan="5" class="ps-2" id="footSummaryText">총 0개 품목</td>
-                    <td class="col-num pe-2" id="footAvgBuyPrice">-</td>
-                    <td class="col-num pe-2" id="footAvgSellPrice">-</td>
-                    <td class="col-num pe-2" id="footAvgDiscountPrice">-</td>
-                    <td class="text-center" id="footAvgMargin">-</td>
-                    <td class="text-center" style="font-weight: 800; color: var(--erp-primary);" id="footTotalStock">0</td>
-                    <td class="col-num pe-2" style="font-weight: 800; color: #047857;" id="footTotalStockValue">₩0</td>
-                    <td class="col-action no-print"></td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-
-    <!-- ── 4. 하단 상태바 및 페이지네이션 (.erp-bottom-bar / 데스크톱 전용) ── -->
+    <!-- ── 4. 공통 하단 상태바 및 페이지네이션 (.erp-bottom-bar / 데스크톱 전용) ── -->
     <div class="erp-bottom-bar no-print d-none d-md-flex">
         <div class="d-flex align-items-center gap-2">
             <span>선택: <strong id="bottomSelectedCount" class="text-primary">0</strong>건</span>
@@ -276,8 +413,8 @@
         </div>
     </div>
 
-    <!-- ── 모바일 전용 플로팅 액션 버튼 (신규 등록 FAB) ── -->
-    <button type="button" class="mobile-fab-btn d-md-none" onclick="app.openNewModal()" title="새 상품 등록">
+    <!-- ── 모바일 전용 플로팅 액션 버튼 ── -->
+    <button type="button" class="mobile-fab-btn d-md-none" onclick="app.openVoucherWithSelected('IN')" title="입출고 전표 등록">
         <i class='bx bx-plus'></i>
     </button>
 
@@ -289,8 +426,11 @@
                 <span class="fw-bold small text-white"><span id="mobileSelectionCount">0</span>개 선택</span>
             </div>
             <div class="d-flex align-items-center gap-1">
-                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2" onclick="app.addSelectedToQuoteCart()">
-                    <i class='bx bx-cart-alt'></i> 견적담기
+                <button type="button" class="btn btn-sm btn-primary fw-bold py-1 px-2" onclick="app.openVoucherWithSelected('IN')">
+                    입고
+                </button>
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2" onclick="app.openVoucherWithSelected('OUT')">
+                    출고
                 </button>
                 <button type="button" class="btn btn-sm btn-danger fw-bold py-1 px-2" onclick="app.handleDelete()">
                     <i class='bx bx-trash'></i> 삭제
@@ -299,76 +439,168 @@
         </div>
     </div>
 
-    <!-- ── 모바일 전용 상세 필터 드로어 (바텀시트) ── -->
-    <div class="mobile-filter-backdrop d-none" id="mobileFilterBackdrop" onclick="app.toggleMobileFilter()"></div>
-    <div class="mobile-filter-drawer d-md-none" id="mobileFilterDrawer">
-        <div class="drawer-header d-flex align-items-center justify-content-between p-3 border-bottom">
-            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                <i class='bx bx-filter-alt text-primary'></i> 재고 상세 필터 &amp; 정렬
-            </h6>
-            <button type="button" class="btn-close" onclick="app.toggleMobileFilter()"></button>
-        </div>
-        <div class="drawer-body p-3 overflow-auto" style="max-height: 65vh;">
-            <!-- 공급사 선택 -->
-            <div class="mb-3">
-                <label class="form-label fw-bold text-secondary small">공급사 (거래처)</label>
-                <select class="form-select form-select-sm" id="mobileDrawerSupplier">
-                    <option value="">전체 공급사</option>
-                </select>
-            </div>
+    <!-- =========================================================================
+         [MODAL 1] 입출고 & 적정판매가·마진 일괄 전표 모달 (#voucherModal)
+         ========================================================================= -->
+    <div class="modal fade" id="voucherModal" tabindex="-1" aria-labelledby="voucherModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center" id="voucherModalHeader">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <h6 class="modal-title m-0 d-flex align-items-center gap-1">
+                            <i class='bx bx-receipt text-info'></i> <span id="voucherModalTitleText">입출고 &amp; 판매가·마진 전표 등록</span>
+                        </h6>
+                        <!-- 매입(입고) / 출고 모드 세그먼트 -->
+                        <div class="voucher-mode-toggle">
+                            <button type="button" class="voucher-mode-btn active mode-in" id="btnModeIn" onclick="app.setVoucherMode('IN')">
+                                <i class='bx bx-down-arrow-circle'></i> 매입(입고) &amp; 적정판매가 설정
+                            </button>
+                            <button type="button" class="voucher-mode-btn" id="btnModeOut" onclick="app.setVoucherMode('OUT')">
+                                <i class='bx bx-up-arrow-circle'></i> 출고 &amp; 실시간 판매마진 계산
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
 
-            <!-- 재고 보유 상태 -->
-            <div class="mb-3">
-                <label class="form-label fw-bold text-secondary small">재고 상태</label>
-                <select class="form-select form-select-sm" id="mobileDrawerStock">
-                    <option value="all">전체 (품절 포함)</option>
-                    <option value="in_stock">보유 (1개 이상)</option>
-                    <option value="low_stock">부족 (2개 이하)</option>
-                    <option value="out_of_stock">품절 (0개)</option>
-                </select>
-            </div>
+                <div class="modal-body p-3 bg-light">
+                    <!-- 상단 전표 마스터 설정 바 -->
+                    <div class="border shadow-sm mb-2 bg-white">
+                        <table class="erp-form-table">
+                            <colgroup>
+                                <col style="width: 75px;">
+                                <col style="width: 135px;">
+                                <col style="width: 88px;">
+                                <col style="width: 170px;">
+                                <col style="width: 75px;">
+                                <col style="width: 200px;">
+                                <col style="width: 90px;">
+                                <col>
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <th>거래일자 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <input type="date" class="form-control text-center fw-semibold" id="vTxDate" required>
+                                    </td>
+                                    <th id="lblVSupplier">공급사 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <input type="text" class="form-control fw-semibold" id="vSupplier" placeholder="공급사/출고처 입력" value="최가유통">
+                                    </td>
+                                    <th>공통 비고</th>
+                                    <td>
+                                        <input type="text" class="form-control" id="vRemarks" placeholder="전표 공통 메모 (선택)">
+                                    </td>
+                                    <th>부가세 설정</th>
+                                    <td class="p-1 px-2 bg-white">
+                                        <!-- 입고(IN) 모드 부가세 옵션: 인터넷최저가 & 배송비는 VAT포함 기본 체크! -->
+                                        <div class="d-flex align-items-center gap-3 flex-wrap" id="inVatOptions">
+                                            <label class="d-flex align-items-center gap-1 small fw-semibold text-secondary" style="cursor:pointer;" title="체크 시 입력한 상품가가 공급가(VAT별도)로 그대로 반영됩니다. 해제 시 /1.1로 공급가를 역산합니다.">
+                                                <input type="checkbox" id="chkBaseVat" checked onchange="app.recalcAllVoucherRows()"> 매입 상품가 VAT별도
+                                            </label>
+                                            <label class="d-flex align-items-center gap-1 small fw-semibold text-secondary" style="cursor:pointer;" title="체크 시 입력한 운임이 공급가(VAT별도)로 그대로 반영됩니다.">
+                                                <input type="checkbox" id="chkFreightVat" checked onchange="app.recalcAllVoucherRows()"> 매입 운임 VAT별도
+                                            </label>
+                                            <span class="text-muted">|</span>
+                                            <label class="d-flex align-items-center gap-1 small fw-bold text-primary" style="cursor:pointer;" title="인터넷 최저가와 배송비는 소비자 판매가이므로 부가세(VAT) 포함이 기본 체크되어 있습니다.">
+                                                <input type="checkbox" id="chkOnlineVat" checked onchange="app.recalcAllVoucherRows()"> 인터넷최저가·배송비 VAT포함
+                                            </label>
+                                            <label class="d-flex align-items-center gap-1 small fw-bold text-success" style="cursor:pointer;" title="적정 판매가 입력 시 부가세(VAT) 포함 여부입니다. 마진 계산 시 자동으로 공급가(/1.1)로 환산되어 매입원가와 정확히 비교됩니다.">
+                                                <input type="checkbox" id="chkSellVat" checked onchange="app.recalcAllVoucherRows()"> 적정판매가 VAT포함
+                                            </label>
+                                        </div>
+                                        <!-- 출고(OUT) 모드 부가세 옵션 -->
+                                        <div class="d-flex align-items-center gap-3 flex-wrap d-none" id="outVatOptions">
+                                            <label class="d-flex align-items-center gap-1 small fw-bold text-primary" style="cursor:pointer;" title="체크 시 적정판매가(VAT포함) 금액 그대로 출고단가에 입력되며, 마진 및 마진율 계산 시에는 자동으로 공급가(/1.1)로 환산하여 매입단가(공급가)를 차감합니다.">
+                                                <input type="checkbox" id="chkOutVat" checked onchange="app.recalcAllVoucherRows()"> 출고단가 부가세(VAT) 포함 입력
+                                            </label>
+                                            <span class="small text-muted">
+                                                <i class='bx bx-check-shield text-success'></i> 마진 계산은 항상 <strong>공급가(VAT별도) 통일 기준</strong>으로 10% 착시 없이 정밀 산출됩니다.
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-            <!-- 검색 대상 기준 -->
-            <div class="mb-3">
-                <label class="form-label fw-bold text-secondary small">검색 기준 대상</label>
-                <select class="form-select form-select-sm" id="mobileDrawerTarget">
-                    <option value="all">통합 검색 (공급사/브랜드/상품명/컬러/사이즈)</option>
-                    <option value="supplier">공급사만</option>
-                    <option value="brand">브랜드만</option>
-                    <option value="name">상품명만</option>
-                    <option value="color">컬러만</option>
-                    <option value="size">사이즈만</option>
-                </select>
-            </div>
+                    <!-- 모드별 안내 배너 -->
+                    <div class="px-3 py-1 mb-2 rounded-1 border d-flex align-items-center justify-content-between" id="voucherGuideBanner" style="background: #eff6ff; border-color: #bfdbfe !important; font-size: 11.5px; color: #1e40af;">
+                        <div id="voucherGuideText">
+                            <i class='bx bx-bulb'></i> <strong>[매입(입고) 안내]</strong> 상품을 검색해 선택하거나 새로운 상품명을 직접 입력하면 <strong>신규 품목 생성 + 입고 + 인터넷 최저가(상품/배송비) 및 적정 판매가 설정</strong>이 한 번에 완료됩니다.
+                        </div>
+                        <div class="small text-muted">
+                            단축키: <kbd>Alt+A</kbd> 행 추가 / <kbd>F8</kbd> 일괄 저장
+                        </div>
+                    </div>
 
-            <!-- 정렬 기준 -->
-            <div class="mb-3">
-                <label class="form-label fw-bold text-secondary small">정렬 기준</label>
-                <select class="form-select form-select-sm" id="mobileDrawerSort">
-                    <option value="name_asc">상품명 오름차순 (ㄱ-ㅎ)</option>
-                    <option value="name_desc">상품명 내림차순 (ㅎ-ㄱ)</option>
-                    <option value="stock_desc">재고 많은 순</option>
-                    <option value="stock_asc">재고 적은 순 (품절 우선)</option>
-                    <option value="buyPrice_desc">매입단가 높은 순</option>
-                    <option value="buyPrice_asc">매입단가 낮은 순</option>
-                    <option value="marginRate_desc">마진율 높은 순</option>
-                    <option value="stockValue_desc">재고평가액 높은 순</option>
-                </select>
+                    <!-- 품목 명세서 그리드 래퍼 -->
+                    <div class="voucher-grid-wrapper bg-white shadow-sm mb-2">
+                        <table class="erp-form-table w-100" id="voucherItemTable">
+                            <thead id="voucherThead">
+                                <!-- JS에서 IN / OUT 모드에 맞춰 헤더 렌더링 -->
+                            </thead>
+                            <tbody id="voucherTbody">
+                                <!-- JS 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 전표 요약 및 행추가 바 -->
+                    <div class="p-2 px-3 bg-white border rounded-1 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 11.5px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn-erp btn-erp-primary" onclick="app.addVoucherRow()">
+                                <i class='bx bx-plus'></i> 품목 행 추가 (Alt+A)
+                            </button>
+                            <button type="button" class="btn-erp text-muted" onclick="app.clearVoucherRows()">
+                                <i class='bx bx-reset'></i> 행 초기화
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div>
+                                <span class="text-muted me-1">품목 수:</span>
+                                <strong id="vSummaryCount" class="text-dark">0</strong>건
+                            </div>
+                            <div>
+                                <span class="text-muted me-1">총 수량:</span>
+                                <strong id="vSummaryQty" class="text-primary">0</strong>개
+                            </div>
+                            <div>
+                                <span class="text-muted me-1" id="lblVSummaryAmount">전표 공급가 합계:</span>
+                                <strong id="vSummaryAmount" class="text-dark fs-6">₩0</strong>
+                            </div>
+                            <div class="ps-2 border-start">
+                                <span class="text-muted me-1" id="lblVSummaryMargin">예상 총 판매마진 (공급가 기준):</span>
+                                <strong id="vSummaryMargin" class="text-success fs-6">₩0 (0.0%)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between">
+                    <span class="text-muted small">
+                        <i class='bx bx-info-circle'></i> <kbd>F8</kbd> 키를 누르면 전표가 즉시 저장되며 재고 및 적정판매가가 실시간 동기화됩니다.
+                    </span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
+                        <button type="button" class="btn-erp btn-erp-primary px-3" id="btnSubmitVoucher" onclick="app.submitVoucher()">
+                            <i class='bx bx-save'></i> 전표 일괄 저장 <span class="key-shortcut-badge">F8</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="drawer-footer p-3 border-top d-flex gap-2 bg-light">
-            <button type="button" class="btn btn-outline-secondary flex-fill" onclick="app.resetMobileDrawerFilter()">초기화</button>
-            <button type="button" class="btn btn-primary flex-fill fw-bold" onclick="app.applyMobileDrawerFilter()">필터 적용</button>
         </div>
     </div>
 
-    <!-- ── 5. ECOUNT ERP 상품 등록 / 수정 모달 다이얼로그 ── -->
+    <!-- =========================================================================
+         [MODAL 2] 품목 마스터 단품 등록 / 수정 모달 (#productModal)
+         ========================================================================= -->
     <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
                 <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
                     <h6 class="modal-title m-0" id="productModalLabel">
-                        <i class='bx bx-box text-primary'></i> <span id="modalModeTitle">본사 상품 등록</span>
+                        <i class='bx bx-box text-primary'></i> <span id="modalModeTitle">본사 상품 및 적정판매가 설정</span>
                     </h6>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -376,194 +608,114 @@
                     <form id="productForm" onsubmit="app.handleSaveProduct(event)" autocomplete="off">
                         <input type="hidden" id="editId">
 
-                        <!-- ── [PC/태블릿 전용] ECOUNT ERP 4열 전표/마스터 폼 테이블 ── -->
-                        <div class="d-none d-md-block">
-                            <div class="border shadow-sm mb-3">
-                                <table class="erp-form-table">
-                                    <colgroup>
-                                        <col style="width: 100px;">
-                                        <col style="width: 40%;">
-                                        <col style="width: 100px;">
-                                        <col style="width: 40%;">
-                                    </colgroup>
-                                    <tbody>
-                                        <tr>
-                                            <th>공급사 <span class="text-danger">*</span></th>
-                                            <td>
-                                                <input type="text" class="form-control" id="mSupplier" required placeholder="예: 최가유통" value="최가유통">
-                                            </td>
-                                            <th>브랜드 <span class="text-danger">*</span></th>
-                                            <td>
-                                                <input type="text" class="form-control" id="mBrand" required placeholder="예: 나이키 / 아디다스">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th>상품명 <span class="text-danger">*</span></th>
-                                            <td colspan="3">
-                                                <input type="text" class="form-control" id="mName" required placeholder="상품명을 입력하세요">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th>컬러</th>
-                                            <td>
-                                                <input type="text" class="form-control" id="mColor" placeholder="예: 블랙 / 화이트">
-                                            </td>
-                                            <th>사이즈</th>
-                                            <td>
-                                                <input type="text" class="form-control" id="mSize" placeholder="예: 260 / L / Free">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th>매입 단가(공급가)</th>
-                                            <td>
-                                                <input type="text" class="form-control col-num pe-2" id="mBuyPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcModalMargin();" onfocus="app.clearZero(this)">
-                                            </td>
-                                            <th>현재 재고 <span class="text-danger">*</span></th>
-                                            <td>
-                                                <input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="mStock" required min="0" placeholder="0" onfocus="app.clearZero(this)" oninput="app.calcModalMargin();">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th>일반 판매가 <br><span class="text-muted fw-normal" style="font-size: 10px;">(VAT포함)</span></th>
-                                            <td>
-                                                <input type="text" class="form-control col-num pe-2" id="mSellPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcModalMargin();" onfocus="app.clearZero(this)">
-                                            </td>
-                                            <th>할인 판매가 <br><span class="text-muted fw-normal" style="font-size: 10px;">(VAT포함)</span></th>
-                                            <td>
-                                                <input type="text" class="form-control col-num pe-2 text-danger fw-semibold" id="mDiscountPrice" placeholder="0" oninput="app.formatMoneyInput(this)" onfocus="app.clearZero(this)">
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <!-- 실시간 마진율 및 재고평가 요약 패널 -->
-                            <div class="p-2 px-3 bg-white border rounded-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
-                                <div>
-                                    <span class="text-muted me-2">예상 마진율 (일반판매가 기준):</span>
-                                    <strong id="modalExpectedMargin" class="text-primary fs-6">-</strong>
-                                </div>
-                                <div>
-                                    <span class="text-muted me-2">총 재고 평가액:</span>
-                                    <strong id="modalExpectedStockValue" class="text-dark fs-6">₩0</strong>
-                                </div>
-                            </div>
+                        <div class="border shadow-sm mb-2 bg-white">
+                            <table class="erp-form-table">
+                                <colgroup>
+                                    <col style="width: 115px;">
+                                    <col style="width: 38%;">
+                                    <col style="width: 115px;">
+                                    <col style="width: 38%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>공급사 <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="text" class="form-control" id="mSupplier" required placeholder="예: 최가유통" value="최가유통">
+                                        </td>
+                                        <th>브랜드 <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="text" class="form-control" id="mBrand" required placeholder="예: 나이키 / 아디다스 / 요넥스">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>상품명 <span class="text-danger">*</span></th>
+                                        <td colspan="3">
+                                            <input type="text" class="form-control fw-bold" id="mName" required placeholder="상품명을 입력하세요">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>컬러</th>
+                                        <td>
+                                            <input type="text" class="form-control" id="mColor" placeholder="예: 블랙 / 화이트">
+                                        </td>
+                                        <th>사이즈</th>
+                                        <td>
+                                            <input type="text" class="form-control" id="mSize" placeholder="예: 260 / L / Free">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>상품가 (VAT별도)</th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2" id="mBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.onProductBaseOrFreightInput();" onfocus="app.clearZero(this)">
+                                        </td>
+                                        <th>운임 (VAT별도)</th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2" id="mFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.onProductBaseOrFreightInput();" onfocus="app.clearZero(this)">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>매입 단가(공급가) <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2 fw-bold" id="mBuyPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcModalMargin();" onfocus="app.clearZero(this)">
+                                        </td>
+                                        <th>현재 재고 <span class="text-danger">*</span></th>
+                                        <td>
+                                            <input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="mStock" required min="0" placeholder="0" onfocus="app.clearZero(this)" oninput="app.calcModalMargin();">
+                                        </td>
+                                    </tr>
+                                    <tr style="background: #f8fafc;">
+                                        <th>
+                                            인터넷 최저가
+                                            <div class="mt-1">
+                                                <label class="d-inline-flex align-items-center gap-1 fw-normal text-primary" style="font-size:10px; cursor:pointer;">
+                                                    <input type="checkbox" id="mOnlineVat" checked onchange="app.onProductOnlineInput()"> VAT포함
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2" id="mOnlinePrice" placeholder="최저가 상품가 (0)" oninput="app.formatMoneyInput(this); app.onProductOnlineInput();" onfocus="app.clearZero(this)">
+                                        </td>
+                                        <th>최저가 배송비</th>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <input type="text" class="form-control col-num pe-2" id="mOnlineShipping" placeholder="배송비 (0)" oninput="app.formatMoneyInput(this); app.onProductOnlineInput();" onfocus="app.clearZero(this)">
+                                            </div>
+                                            <div class="cell-sub-hint text-end pe-1" id="mOnlineSumHint">최저가 합계: ₩0</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            적정 판매가 <span class="text-danger">*</span>
+                                            <div class="mt-1">
+                                                <label class="d-inline-flex align-items-center gap-1 fw-normal text-success" style="font-size:10px; cursor:pointer;">
+                                                    <input type="checkbox" id="mSellVat" checked onchange="app.calcModalMargin()"> VAT포함
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <td colspan="3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="text" class="form-control col-num pe-2 fw-bold text-primary" id="mSellPrice" placeholder="출고 시 자동 표기될 적정 판매가" oninput="app.formatMoneyInput(this); app.calcModalMargin();" onfocus="app.clearZero(this)" style="max-width: 220px;">
+                                                <button type="button" class="btn-apply-mini" onclick="app.applyOnlineSumToProductSellPrice()" title="인터넷 최저가 + 배송비 합계를 적정 판매가로 바로 복사합니다">
+                                                    = 인터넷최저가 합계 적용
+                                                </button>
+                                                <span class="small text-muted" id="mSellSupplyHint">(공급가 환산: ₩0)</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <!-- ── [모바일 전용] 1열 터치 최적화 상세 / 상품 등록 카드 폼 (≤ 768px) ── -->
-                        <div class="d-md-none mobile-product-modal-container">
-                            <!-- 실시간 마진율 및 재고평가액 프리뷰 카드 -->
-                            <div class="mobile-modal-margin-card shadow-sm mb-2" id="mobModalMarginCard">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 12px;">
-                                        <i class='bx bx-calculator text-primary'></i> 실시간 마진 및 평가액
-                                    </span>
-                                    <span class="mobile-margin-badge badge-mid" id="mobModalMarginBadge">
-                                        -
-                                    </span>
-                                </div>
-                                <div class="mob-preview-grid">
-                                    <div class="mob-preview-box">
-                                        <div class="mob-preview-label">매입 단가</div>
-                                        <div class="mob-preview-val text-dark" id="mobModalBuyPreview">₩0</div>
-                                    </div>
-                                    <div class="mob-preview-box">
-                                        <div class="mob-preview-label">일반 판매가</div>
-                                        <div class="mob-preview-val text-primary" id="mobModalSellPreview">₩0</div>
-                                    </div>
-                                    <div class="mob-preview-box">
-                                        <div class="mob-preview-label">개당 마진</div>
-                                        <div class="mob-preview-val text-success" id="mobModalProfitPreview">₩0</div>
-                                    </div>
-                                    <div class="mob-preview-box">
-                                        <div class="mob-preview-label">재고 평가액</div>
-                                        <div class="mob-preview-val text-dark fw-bold" id="mobModalStockValPreview">₩0</div>
-                                    </div>
-                                </div>
+                        <!-- 실시간 마진율 및 재고평가 요약 패널 -->
+                        <div class="p-2 px-3 bg-white border rounded-1 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 11.5px;">
+                            <div>
+                                <span class="text-muted me-1">예상 판매마진 (공급가 기준):</span>
+                                <strong id="modalExpectedProfit" class="text-success fs-6">₩0</strong>
+                                <span class="ms-2">마진율: <strong id="modalExpectedMargin" class="text-primary fs-6">-</strong></span>
                             </div>
-
-                            <!-- 섹션 1: 기본 정보 -->
-                            <div class="card border mb-2 shadow-sm rounded-2 bg-white">
-                                <div class="card-header py-1 px-2 bg-light fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 11.5px;">
-                                    <i class='bx bx-cube text-primary'></i> 상품 기본 정보
-                                </div>
-                                <div class="card-body p-2">
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                공급사 <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm" id="mobSupplier" placeholder="예: 최가유통" value="최가유통" oninput="app.syncModalInputs('supplier')">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                브랜드 <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm" id="mobBrand" placeholder="예: 나이키" oninput="app.syncModalInputs('brand')">
-                                        </div>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                            상품명 <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm fw-bold text-dark" id="mobName" placeholder="상품명 입력" oninput="app.syncModalInputs('name')">
-                                    </div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">컬러</label>
-                                            <input type="text" class="form-control form-control-sm" id="mobColor" placeholder="블랙 / 화이트" oninput="app.syncModalInputs('color')">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">사이즈</label>
-                                            <input type="text" class="form-control form-control-sm" id="mobSize" placeholder="260 / L / Free" oninput="app.syncModalInputs('size')">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 섹션 2: 재고 및 가격 설정 -->
-                            <div class="card border mb-2 shadow-sm rounded-2 bg-white">
-                                <div class="card-header py-1 px-2 bg-light fw-bold text-dark d-flex align-items-center gap-1" style="font-size: 11.5px;">
-                                    <i class='bx bx-won text-success'></i> 재고 및 단가 설정
-                                </div>
-                                <div class="card-body p-2">
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                현재 재고 <span class="text-danger">*</span>
-                                            </label>
-                                            <input type="number" class="form-control form-control-sm text-end fw-bold text-primary" id="mobStock" min="0" placeholder="0" oninput="app.syncModalInputs('stock'); app.calcModalMargin();" onfocus="app.clearZero(this)">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                매입 단가
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm text-end" id="mobBuyPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.syncModalInputs('buyPrice'); app.calcModalMargin();" onfocus="app.clearZero(this)">
-                                        </div>
-                                    </div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                일반 판매가
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm text-end" id="mobSellPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.syncModalInputs('sellPrice'); app.calcModalMargin();" onfocus="app.clearZero(this)">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label mb-1 text-secondary fw-semibold" style="font-size: 11px;">
-                                                할인 판매가
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm text-end text-danger fw-semibold" id="mobDiscountPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.syncModalInputs('discountPrice');" onfocus="app.clearZero(this)">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 모바일 모달 하단 전용 액션 버튼 -->
-                            <div class="d-flex gap-2 mt-3">
-                                <button type="button" class="btn btn-outline-secondary flex-fill py-2" data-bs-dismiss="modal">취소</button>
-                                <button type="button" class="btn btn-primary flex-fill fw-bold py-2" onclick="document.getElementById('hiddenSubmitBtn').click()">
-                                    <i class='bx bx-save'></i> 저장하기
-                                </button>
+                            <div>
+                                <span class="text-muted me-2">총 재고 평가액(원가):</span>
+                                <strong id="modalExpectedStockValue" class="text-dark fs-6">₩0</strong>
                             </div>
                         </div>
 
@@ -572,7 +724,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer erp-modal-footer d-none d-md-flex justify-content-between">
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between">
                     <span class="text-muted small">
                         <i class='bx bx-info-circle'></i> <kbd>F8</kbd> 키를 누르면 바로 저장됩니다.
                     </span>
@@ -587,6 +739,125 @@
         </div>
     </div>
 
+    <!-- =========================================================================
+         [MODAL 3] 입출고 단일 내역 상세 수정 모달 (#txEditModal)
+         ========================================================================= -->
+    <div class="modal fade" id="txEditModal" tabindex="-1" aria-labelledby="txEditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title m-0">
+                        <i class='bx bx-edit text-primary'></i> 입출고 전표 내역 수정
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 bg-light">
+                    <form id="txEditForm" onsubmit="app.handleSaveTxEdit(event)" autocomplete="off">
+                        <input type="hidden" id="eTxId">
+                        <input type="hidden" id="eTxRawType">
+
+                        <div class="border shadow-sm mb-2 bg-white">
+                            <table class="erp-form-table">
+                                <colgroup>
+                                    <col style="width: 115px;">
+                                    <col style="width: 38%;">
+                                    <col style="width: 115px;">
+                                    <col style="width: 38%;">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>거래일자 <span class="text-danger">*</span></th>
+                                        <td><input type="date" class="form-control" id="eTxDate" required></td>
+                                        <th>거래구분</th>
+                                        <td><input type="text" class="form-control fw-bold" id="eTxTypeLabel" readonly style="background:#f1f5f9 !important;"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>공급사/출고처</th>
+                                        <td><input type="text" class="form-control" id="eSupplier"></td>
+                                        <th>브랜드</th>
+                                        <td><input type="text" class="form-control" id="eBrand"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>상품명 <span class="text-danger">*</span></th>
+                                        <td colspan="3"><input type="text" class="form-control fw-bold" id="eName" required></td>
+                                    </tr>
+                                    <tr>
+                                        <th>컬러</th>
+                                        <td><input type="text" class="form-control" id="eColor"></td>
+                                        <th>사이즈</th>
+                                        <td><input type="text" class="form-control" id="eSize"></td>
+                                    </tr>
+                                    <tr id="eRowInDetails">
+                                        <th>상품가 (VAT별도)</th>
+                                        <td><input type="text" class="form-control col-num pe-2" id="eBasePrice" placeholder="0" oninput="app.formatMoneyInput(this); app.calcTxEditInPrice();"></td>
+                                        <th>운임 (VAT별도)</th>
+                                        <td><input type="text" class="form-control col-num pe-2" id="eFreight" placeholder="0" oninput="app.formatMoneyInput(this); app.calcTxEditInPrice();"></td>
+                                    </tr>
+                                    <tr id="eRowOnlineDetails">
+                                        <th>인터넷 최저가 (VAT포함)</th>
+                                        <td><input type="text" class="form-control col-num pe-2" id="eOnlinePrice" placeholder="0" oninput="app.formatMoneyInput(this);"></td>
+                                        <th>최저가 배송비 (VAT포함)</th>
+                                        <td><input type="text" class="form-control col-num pe-2" id="eOnlineShipping" placeholder="0" oninput="app.formatMoneyInput(this);"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>수량 <span class="text-danger">*</span></th>
+                                        <td><input type="number" class="form-control col-num pe-2 fw-bold text-primary" id="eQty" min="1" required oninput="app.recalcTxEditModal();"></td>
+                                        <th>적정 판매가 (VAT포함)</th>
+                                        <td><input type="text" class="form-control col-num pe-2 text-primary fw-semibold" id="eSellPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.recalcTxEditModal();"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>매입원가(공급가)</th>
+                                        <td><input type="text" class="form-control col-num pe-2" id="eBuyPrice" placeholder="0" oninput="app.formatMoneyInput(this); app.recalcTxEditModal();"></td>
+                                        <th>
+                                            <span id="lblETxPrice">거래단가(공급가)</span> <span class="text-danger">*</span>
+                                            <div id="eOutVatWrap" class="d-none mt-1">
+                                                <label class="d-inline-flex align-items-center gap-1 fw-normal text-primary" style="font-size:10px; cursor:pointer;">
+                                                    <input type="checkbox" id="eOutVat" onchange="app.recalcTxEditModal()"> VAT포함 입력
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <td>
+                                            <input type="text" class="form-control col-num pe-2 fw-bold" id="ePrice" required oninput="app.formatMoneyInput(this); app.recalcTxEditModal();">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>총 합계(공급가)</th>
+                                        <td><input type="text" class="form-control col-num pe-2 text-dark fw-bold" id="eTotalAmount" readonly style="background:#f8fafc !important;"></td>
+                                        <th>비고</th>
+                                        <td><input type="text" class="form-control" id="eRemarks" placeholder="메모"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="p-2 px-3 bg-white border rounded-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+                            <div>
+                                <span class="text-muted me-1">개당 마진(공급가 기준):</span>
+                                <strong id="eUnitMarginPreview" class="text-success">₩0</strong>
+                                <span class="ms-2">마진율: <strong id="eMarginRatePreview" class="text-primary">0.0%</strong></span>
+                            </div>
+                            <div>
+                                <span class="text-muted me-1">총 실현마진:</span>
+                                <strong id="eTotalMarginPreview" class="text-success fs-6">₩0</strong>
+                            </div>
+                        </div>
+
+                        <div class="d-none"><button type="submit" id="hiddenTxEditSubmitBtn"></button></div>
+                    </form>
+                </div>
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between">
+                    <span class="text-muted small"><i class='bx bx-info-circle'></i> 수정 저장 시 품목 현재 재고 및 마진 원장이 자동으로 재계산됩니다.</span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="document.getElementById('hiddenTxEditSubmitBtn').click()">
+                            <i class='bx bx-save'></i> 수정 저장 <span class="key-shortcut-badge">F8</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 토스트 컨테이너 -->
     <div id="toastContainer" class="toast-container no-print"></div>
 
@@ -594,6 +865,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./Common/js/erp-grid-resizer.js"></script>
-    <script src="hq-inventory.js?v=20261007_1"></script>
+    <script src="hq-inventory.js?v=20261028_2"></script>
 </body>
 </html>

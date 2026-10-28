@@ -1,19 +1,17 @@
 /**
- * 본사 매입 현황 — 실시간 재고 (HQ Inventory) ECOUNT ERP Engine
- * - ECOUNT ERP 고밀도 시트 그리드 및 14개 컬럼 체제
- * - 스마트 다중 교집합(AND) 검색 및 결과 내 2차 재검색
- * - 공급사 퀵 탭 & 재고 상태 세그먼트 필터 (보유/부족/품절)
- * - F2(신규) / F8(저장) ECOUNT ERP 단축키 시스템 및 0 자동 클리어 UX
- * - 실시간 재고평가액 / 마진율 자동 계산 및 하단 요약 푸터
- * - SheetJS 엑셀 다운로드 및 A4 인쇄 서식 지원
- * - ErpGridResizer 열 너비 마우스 드래그 조절 & 자동맞춤
+ * 본사 매입 현황 — 실시간 재고 & 입출고·마진 통합 워크스페이스 Engine
+ * - 올인원 통합 워크스페이스: [실시간 재고 현황] ⇄ [입출고 & 마진 원장] 무새로고침 즉시 전환
+ * - 입고(IN) 시 인터넷 최저가(상품가 + 배송비 분리, VAT포함 기본 체크) 및 적정 판매가 설계
+ * - 출고(OUT) 시 설정된 적정 판매가 자동 표기/자동 입력 및 출고단가 수정 시 실시간 판매마진(₩)·마진율(%) 산출
+ * - 모든 마진 계산은 공급가(VAT별도, /1.1) 통일 기준으로 10% 부가세 착시 완벽 제거
+ * - 체크박스 선택 품목 원클릭 [선택 입고] / [선택 출고] 전표 연동
  */
 
 (function () {
     'use strict';
 
     // ==========================================
-    // Auth & API 설정
+    // 1. Auth & API 설정
     // ==========================================
     let _authReady = null;
     function waitForAuth(timeout = 8000) {
@@ -62,41 +60,207 @@
         : 'https://kng.junparks.com/api/hq';
 
     // ==========================================
-    // State
+    // 2. State
     // ==========================================
-    let products = [];
-    let metrics = { totalRevenue: 0, totalCost: 0 };
-    let filteredList = [];
-    const selectedIds = new Set();
-    let focusedRowIndex = -1;
-    let viewMode = window.innerWidth <= 768 ? 'card' : 'table'; // 'card' or 'table'
+    const urlParams = new URLSearchParams(window.location.search);
+    const defaultTabByPath = window.location.pathname.includes('hq-transactions') ? 'transactions' : 'inventory';
+    let activeWorkspace = urlParams.get('tab') || window.HQ_DEFAULT_TAB || defaultTabByPath; // 'inventory' | 'transactions'
 
-    let sort = { col: 'name', asc: true };
+    let products = [];
+    let transactions = [];
+    let metrics = { totalRevenue: 0, totalCost: 0 };
+
+    let filteredInvList = [];
+    let filteredTxList = [];
+
+    const selectedInvIds = new Set();
+    const selectedTxIds = new Set();
+    let focusedRowIndex = -1;
+    let viewMode = window.innerWidth <= 768 ? 'card' : 'table';
+
+    // Inventory filter/sort state
+    let invSort = { col: 'name', asc: true };
     let searchTarget = 'all';
     let searchQuery = '';
     let subSearchQuery = '';
-    let stockFilter = 'all'; // 'all', 'in_stock', 'low_stock', 'out_of_stock'
-    let supplierFilter = ''; // '' for all
+    let stockFilter = 'all';
+    let supplierFilter = '';
+
+    // Transactions filter/sort state
+    let txSort = { col: 'txDate', asc: false };
+    let txTypeFilter = ''; // '', 'IN', 'OUT'
+    let txStartDate = '';
+    let txEndDate = '';
+    let txSearchQuery = '';
+
+    // Pagination state
     let page = 1;
     let pageSize = 50;
 
+    // Modals & Voucher state
     let productModal = null;
+    let voucherModal = null;
+    let txEditModal = null;
+    let voucherMode = 'IN'; // 'IN' | 'OUT'
+    let voucherRowCounter = 0;
 
     // ==========================================
-    // Utility Helpers
+    // 3. Utility & Pricing Helpers (공급가 통일 마진 엔진)
     // ==========================================
     const $ = id => document.getElementById(id);
-    const fmtNum = n => Number(n || 0).toLocaleString('ko-KR');
+    const fmtNum = n => Number(Math.round(Number(n) || 0)).toLocaleString('ko-KR');
     const fmtWon = n => '₩' + fmtNum(n);
+    const parseNumber = val => {
+        if (val === null || val === undefined || val === '') return 0;
+        return parseInt(String(val).replace(/[^0-9-]/g, ''), 10) || 0;
+    };
     const escHtml = s => {
         if (s == null) return '';
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     };
+
+    function todayStr() {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    /**
+     * 부가세 포함 단가를 공급가(VAT별도)로 변환
+     */
+    function toSupplyPrice(amount, isVatIncluded) {
+        const n = Number(amount) || 0;
+        if (n <= 0) return 0;
+        return isVatIncluded ? Math.round(n / 1.1) : Math.round(n);
+    }
+
+    /**
+     * 품목 객체의 가격·마진 지표를 공급가 통일 기준으로 계산
+     */
+    function computeProductMetrics(p) {
+        const buySupply = Number(p.buyPrice) || 0; // 매입단가는 항상 공급가(VAT별도)
+        const basePrice = Number(p.basePrice) || 0;
+        const freight = Number(p.freight) || 0;
+
+        const onlinePrice = Number(p.onlinePrice) || 0;
+        const onlineShipping = Number(p.onlineShipping) || 0;
+        const onlineTotal = onlinePrice + onlineShipping;
+        const onlineVatIncluded = p.onlineVatIncluded !== undefined ? Number(p.onlineVatIncluded) !== 0 : true;
+        const onlineSupply = toSupplyPrice(onlineTotal, onlineVatIncluded);
+
+        // 적정판매가 (기존 discountPrice나 sellPrice 완벽 계승)
+        const sellPrice = Number(p.sellPrice || p.discountPrice) || 0;
+        const sellVatIncluded = p.sellVatIncluded !== undefined ? Number(p.sellVatIncluded) !== 0 : true;
+        const sellSupply = toSupplyPrice(sellPrice, sellVatIncluded);
+
+        const unitMargin = sellSupply > 0 ? (sellSupply - buySupply) : 0;
+        const marginRate = sellSupply > 0 ? Number(((unitMargin / sellSupply) * 100).toFixed(1)) : 0;
+        const stock = Number(p.stock) || 0;
+        const stockValue = buySupply * stock;
+
+        return {
+            buySupply,
+            basePrice,
+            freight,
+            onlinePrice,
+            onlineShipping,
+            onlineTotal,
+            onlineVatIncluded,
+            onlineSupply,
+            sellPrice,
+            sellVatIncluded,
+            sellSupply,
+            unitMargin,
+            marginRate,
+            stock,
+            stockValue
+        };
+    }
+
+    /**
+     * 거래 내역 객체의 마진 지표를 공급가 통일 기준으로 계산
+     */
+    function computeTxMetrics(t) {
+        const qty = Number(t.qty) || 0;
+        const txSupplyPrice = Number(t.price) || 0; // 거래 공급가 단가
+        const totalAmount = txSupplyPrice * qty;
+
+        // 연결된 품목 마스터 조회 (백업 참조용)
+        const linkedProd = products.find(p => String(p.id) === String(t.productId)) ||
+            products.find(p => p.brand === t.brand && p.name === t.productName && p.color === t.color && p.size === t.size);
+
+        const buySupply = t.type === 'IN'
+            ? txSupplyPrice
+            : (Number(t.buyPrice) || Number(linkedProd?.buyPrice) || 0);
+
+        const sellPrice = Number(t.sellPrice) || Number(linkedProd?.sellPrice || linkedProd?.discountPrice) || 0;
+        const sellVatIncluded = t.sellVatIncluded !== undefined ? Number(t.sellVatIncluded) !== 0 : true;
+        const sellSupply = toSupplyPrice(sellPrice, sellVatIncluded);
+
+        const onlinePrice = Number(t.onlinePrice) || Number(linkedProd?.onlinePrice) || 0;
+        const onlineShipping = Number(t.onlineShipping) || Number(linkedProd?.onlineShipping) || 0;
+        const onlineTotal = onlinePrice + onlineShipping;
+
+        const outVatIncluded = t.outVatIncluded !== undefined ? Number(t.outVatIncluded) !== 0 : false;
+        const rawOutPrice = Number(t.rawOutPrice) || (outVatIncluded ? Math.round(txSupplyPrice * 1.1) : txSupplyPrice);
+
+        let unitMargin = 0;
+        let totalMargin = 0;
+        let marginRate = 0;
+
+        if (t.type === 'OUT') {
+            unitMargin = (t.marginAmount !== undefined && t.marginAmount !== null && Number(t.marginAmount) !== 0)
+                ? Number(t.marginAmount)
+                : (txSupplyPrice - buySupply);
+            totalMargin = unitMargin * qty;
+            marginRate = txSupplyPrice > 0 ? Number(((unitMargin / txSupplyPrice) * 100).toFixed(1)) : 0;
+        } else {
+            // IN 거래의 경우 설정한 적정판매가 기준 예상 마진
+            unitMargin = sellSupply > 0 ? (sellSupply - buySupply) : 0;
+            totalMargin = unitMargin * qty;
+            marginRate = sellSupply > 0 ? Number(((unitMargin / sellSupply) * 100).toFixed(1)) : 0;
+        }
+
+        return {
+            qty,
+            txSupplyPrice,
+            totalAmount,
+            buySupply,
+            sellPrice,
+            sellVatIncluded,
+            sellSupply,
+            onlinePrice,
+            onlineShipping,
+            onlineTotal,
+            outVatIncluded,
+            rawOutPrice,
+            unitMargin,
+            totalMargin,
+            marginRate
+        };
+    }
+
+    function getMarginBadgeClass(rate) {
+        if (rate >= 22) return 'margin-high';
+        if (rate >= 10) return 'margin-mid';
+        return 'margin-low';
+    }
 
     function showToast(msg, type = 'info') {
         const c = $('toastContainer');
         if (!c) return;
-        const icons = { success: 'bx-check-circle', error: 'bx-error-circle', warning: 'bx-error', info: 'bx-info-circle' };
+        const icons = {
+            success: 'bx-check-circle',
+            error: 'bx-error-circle',
+            warning: 'bx-error',
+            info: 'bx-info-circle'
+        };
         const t = document.createElement('div');
         t.className = `toast toast-${type}`;
         t.innerHTML = `<i class='bx ${icons[type] || icons.info} fs-5'></i> <span>${escHtml(msg)}</span>`;
@@ -105,26 +269,64 @@
         setTimeout(() => {
             t.classList.remove('show');
             setTimeout(() => t.remove(), 250);
-        }, 3000);
+        }, 3200);
+    }
+
+    function formatMoneyInput(el) {
+        if (!el) return;
+        const raw = el.value.replace(/[^0-9-]/g, '');
+        if (raw === '' || raw === '-') {
+            el.value = raw;
+            return;
+        }
+        el.value = fmtNum(parseInt(raw, 10) || 0);
+    }
+
+    function clearZero(el) {
+        if (!el) return;
+        if (el.value === '0') el.value = '';
+        el.select();
     }
 
     // ==========================================
-    // API Data Fetching
+    // 4. API Data Fetching & Sync
     // ==========================================
+    async function loadAllData() {
+        await Promise.all([fetchProducts(), fetchTransactions(), fetchMetrics()]);
+        updateTopKpiBadges();
+    }
+
     async function fetchProducts() {
         try {
             const res = await authFetch(API_BASE + '/products');
-            if (!res.ok) throw new Error('서버 통신 실패 (' + res.status + ')');
+            if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
             products = await res.json();
             buildSupplierTabs();
-            renderTable();
+            renderInventory();
             initGridResizer();
             applyViewMode();
+            updateTopKpiBadges();
         } catch (e) {
             showToast('상품 목록 로딩 실패: ' + e.message, 'error');
-            $('tableBody').innerHTML = `<tr><td colspan="14" class="text-center py-5 text-danger"><i class='bx bx-error-circle'></i> 데이터를 불러오지 못했습니다 (${escHtml(e.message)})</td></tr>`;
-            if ($('mobileCardsContainer')) {
-                $('mobileCardsContainer').innerHTML = `<div class="text-center py-5 text-danger"><i class='bx bx-error-circle fs-2 mb-2'></i><div>데이터를 불러오지 못했습니다.</div></div>`;
+            if ($('tableBody')) {
+                $('tableBody').innerHTML = `<tr><td colspan="15" class="text-center py-5 text-danger"><i class='bx bx-error-circle'></i> 재고 데이터를 불러오지 못했습니다 (${escHtml(e.message)})</td></tr>`;
+            }
+        }
+    }
+
+    async function fetchTransactions() {
+        try {
+            const res = await authFetch(API_BASE + '/transactions');
+            if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
+            transactions = await res.json();
+            renderTransactions();
+            initGridResizer();
+            applyViewMode();
+            updateTopKpiBadges();
+        } catch (e) {
+            showToast('입출고 원장 로딩 실패: ' + e.message, 'error');
+            if ($('txTableBody')) {
+                $('txTableBody').innerHTML = `<tr><td colspan="15" class="text-center py-5 text-danger"><i class='bx bx-error-circle'></i> 입출고 데이터를 불러오지 못했습니다 (${escHtml(e.message)})</td></tr>`;
             }
         }
     }
@@ -134,15 +336,98 @@
             const res = await authFetch(API_BASE + '/metrics');
             if (!res.ok) return;
             metrics = await res.json();
-            if ($('kpiRevenueBadge')) $('kpiRevenueBadge').textContent = '누적 매출: ' + fmtWon(metrics.totalRevenue || 0);
-            if ($('kpiCostBadge')) $('kpiCostBadge').textContent = '누적 매입: ' + fmtWon(metrics.totalCost || 0);
-            if ($('mobileKpiRevenue')) $('mobileKpiRevenue').textContent = fmtWon(metrics.totalRevenue || 0);
-            if ($('mobileKpiCost')) $('mobileKpiCost').textContent = fmtWon(metrics.totalCost || 0);
+            updateTopKpiBadges();
         } catch (e) { /* silent */ }
     }
 
+    function updateTopKpiBadges() {
+        const skuCount = products.length;
+        let totalStockQty = 0;
+        let totalStockVal = 0;
+        products.forEach(p => {
+            const m = computeProductMetrics(p);
+            totalStockQty += m.stock;
+            totalStockVal += m.stockValue;
+        });
+
+        let outRevenueSum = 0;
+        let outMarginSum = 0;
+        let inCostSum = 0;
+        transactions.forEach(t => {
+            const tm = computeTxMetrics(t);
+            if (t.type === 'OUT') {
+                outRevenueSum += tm.totalAmount;
+                outMarginSum += tm.totalMargin;
+            } else if (t.type === 'IN') {
+                inCostSum += tm.totalAmount;
+            }
+        });
+
+        const revDisplay = outRevenueSum || Number(metrics.totalRevenue) || 0;
+        const costDisplay = inCostSum || Number(metrics.totalCost) || 0;
+        const avgRealizedMarginRate = outRevenueSum > 0 ? ((outMarginSum / outRevenueSum) * 100).toFixed(1) : '0.0';
+
+        if ($('wsCountInv')) $('wsCountInv').textContent = fmtNum(skuCount);
+        if ($('mobWsCountInv')) $('mobWsCountInv').textContent = fmtNum(skuCount);
+        if ($('wsCountTx')) $('wsCountTx').textContent = fmtNum(transactions.length);
+        if ($('mobWsCountTx')) $('mobWsCountTx').textContent = fmtNum(transactions.length);
+
+        if ($('skuCountBadge')) $('skuCountBadge').textContent = `관리 ${fmtNum(skuCount)} SKU`;
+        if ($('totalQtyBadge')) $('totalQtyBadge').textContent = `현재고: ${fmtNum(totalStockQty)}개`;
+        if ($('totalStockValueBadge')) $('totalStockValueBadge').textContent = `재고원가: ${fmtWon(totalStockVal)}`;
+        if ($('kpiRevenueBadge')) $('kpiRevenueBadge').textContent = `출고매출: ${fmtWon(revDisplay)}`;
+        if ($('kpiRealizedMarginBadge')) {
+            $('kpiRealizedMarginBadge').textContent = `실현마진: ${fmtWon(outMarginSum)} (${avgRealizedMarginRate}%)`;
+        }
+        if ($('kpiCostBadge')) $('kpiCostBadge').textContent = `누적매입: ${fmtWon(costDisplay)}`;
+
+        // 모바일 상단 KPI
+        if ($('mobileKpiQty')) $('mobileKpiQty').textContent = fmtNum(totalStockQty);
+        if ($('mobileKpiStockVal')) $('mobileKpiStockVal').textContent = fmtWon(totalStockVal);
+        if ($('mobileKpiRevenue')) $('mobileKpiRevenue').textContent = fmtWon(revDisplay);
+        if ($('mobileKpiMargin')) $('mobileKpiMargin').textContent = `${fmtWon(outMarginSum)} (${avgRealizedMarginRate}%)`;
+        if ($('mobileKpiCost')) $('mobileKpiCost').textContent = fmtWon(costDisplay);
+    }
+
     // ==========================================
-    // 공급사 탭 생성 (동적 카운트 & 모바일 트랙/드로어 연동)
+    // 5. 올인원 워크스페이스 전환 (실시간 재고 ⇄ 입출고 & 마진 원장)
+    // ==========================================
+    function switchWorkspace(mode) {
+        activeWorkspace = mode === 'transactions' ? 'transactions' : 'inventory';
+        page = 1;
+        focusedRowIndex = -1;
+
+        const isInv = activeWorkspace === 'inventory';
+        if ($('workspaceInventory')) $('workspaceInventory').classList.toggle('d-none', !isInv);
+        if ($('workspaceTransactions')) $('workspaceTransactions').classList.toggle('d-none', isInv);
+
+        if ($('wsBtnInventory')) $('wsBtnInventory').classList.toggle('active', isInv);
+        if ($('wsBtnTransactions')) $('wsBtnTransactions').classList.toggle('active', !isInv);
+        if ($('mobWsBtnInventory')) $('mobWsBtnInventory').classList.toggle('active', isInv);
+        if ($('mobWsBtnTransactions')) $('mobWsBtnTransactions').classList.toggle('active', !isInv);
+
+        if ($('mobStockFilterBar')) $('mobStockFilterBar').classList.toggle('d-none', !isInv);
+        if ($('mobTxTypeFilterBar')) $('mobTxTypeFilterBar').classList.toggle('d-none', isInv);
+        if ($('btnQuoteCart')) $('btnQuoteCart').classList.toggle('d-none', !isInv);
+
+        if ($('printReportTitle')) {
+            $('printReportTitle').textContent = isInv
+                ? '본사 매입 현황 — 실시간 재고 및 적정판매가·마진 보고서'
+                : '본사 매입 현황 — 입출고 및 실현 판매마진 원장 보고서';
+        }
+
+        if (isInv) {
+            renderInventory();
+        } else {
+            renderTransactions();
+        }
+        updateSelectedUI();
+        applyViewMode();
+        initGridResizer();
+    }
+
+    // ==========================================
+    // 6. 공급사 탭 생성
     // ==========================================
     function buildSupplierTabs() {
         const suppliersMap = {};
@@ -151,10 +436,8 @@
             suppliersMap[s] = (suppliersMap[s] || 0) + 1;
         });
 
-        const tabGroup = $('supplierTabGroup');
         const sortedSuppliers = Object.keys(suppliersMap).sort();
-
-        // 1) 데스크톱 탭
+        const tabGroup = $('supplierTabGroup');
         if (tabGroup) {
             let html = `
                 <button type="button" class="erp-tab-btn ${supplierFilter === '' ? 'active' : ''}" data-supplier="" onclick="app.setSupplierFilter('')">
@@ -172,7 +455,6 @@
             tabGroup.innerHTML = html;
         }
 
-        // 2) 모바일 가로 스와이프 트랙 (#mobileSupplierScrollTrack)
         const mobTrack = $('mobileSupplierScrollTrack');
         if (mobTrack) {
             let mobHtml = `
@@ -190,811 +472,1796 @@
             });
             mobTrack.innerHTML = mobHtml;
         }
-
-        // 3) 모바일 필터 드로어 공급사 드롭다운 (#mobileDrawerSupplier)
-        const drawerSelect = $('mobileDrawerSupplier');
-        if (drawerSelect) {
-            let optHtml = `<option value="">전체 공급사 (${products.length})</option>`;
-            sortedSuppliers.forEach(s => {
-                optHtml += `<option value="${escHtml(s)}" ${supplierFilter === s ? 'selected' : ''}>${escHtml(s)} (${suppliersMap[s]})</option>`;
-            });
-            drawerSelect.innerHTML = optHtml;
-        }
     }
 
     // ==========================================
-    // 필터링 & 검색 엔진
+    // 7. [WORKSPACE 1] 실시간 재고 현황 렌더링
     // ==========================================
-    function filterProducts() {
-        let list = products.slice();
+    function filterAndSortInventory() {
+        const qTokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+        const subTokens = subSearchQuery.toLowerCase().split(/\s+/).filter(Boolean);
 
-        // 1) 공급사 필터
-        if (supplierFilter) {
-            list = list.filter(p => (p.supplier || '최가유통').trim() === supplierFilter);
-        }
+        filteredInvList = products.filter(p => {
+            const s = (p.supplier || '최가유통').trim();
+            if (supplierFilter && s !== supplierFilter) return false;
 
-        // 2) 재고 상태 세그먼트 필터
-        if (stockFilter === 'in_stock') {
-            list = list.filter(p => (p.stock || 0) > 0);
-        } else if (stockFilter === 'low_stock') {
-            list = list.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= 2);
-        } else if (stockFilter === 'out_of_stock') {
-            list = list.filter(p => (p.stock || 0) === 0);
-        }
+            const stock = Number(p.stock) || 0;
+            if (stockFilter === 'in_stock' && stock <= 0) return false;
+            if (stockFilter === 'low_stock' && (stock <= 0 || stock > 2)) return false;
+            if (stockFilter === 'out_of_stock' && stock > 0) return false;
 
-        // 3) 스마트 다중 교집합(AND) 검색
-        if (searchQuery) {
-            const tokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
-            list = list.filter(p => {
-                let targetText = '';
-                if (searchTarget === 'all') {
-                    targetText = [p.supplier, p.brand, p.name, p.color, p.size].join(' ').toLowerCase();
-                } else if (searchTarget === 'supplier') {
-                    targetText = (p.supplier || '').toLowerCase();
-                } else if (searchTarget === 'brand') {
-                    targetText = (p.brand || '').toLowerCase();
-                } else if (searchTarget === 'name') {
-                    targetText = (p.name || '').toLowerCase();
-                } else if (searchTarget === 'color') {
-                    targetText = (p.color || '').toLowerCase();
-                } else if (searchTarget === 'size') {
-                    targetText = (p.size || '').toLowerCase();
-                }
-                return tokens.every(tok => targetText.includes(tok));
-            });
-        }
-
-        // 4) 결과 내 2차 재검색 (Sub-Search)
-        if (subSearchQuery) {
-            const sq = subSearchQuery.toLowerCase();
-            list = list.filter(p => {
-                const combined = [p.supplier, p.brand, p.name, p.color, p.size, p.buyPrice, p.sellPrice, p.discountPrice, p.stock].join(' ').toLowerCase();
-                return combined.includes(sq);
-            });
-        }
-
-        // 5) 정렬 (Sorting)
-        list.sort((a, b) => {
-            const buyA = Number(a.buyPrice) || 0, buyB = Number(b.buyPrice) || 0;
-            const sellA = Number(a.sellPrice) || 0, sellB = Number(b.sellPrice) || 0;
-            const discA = Number(a.discountPrice) || 0, discB = Number(b.discountPrice) || 0;
-            const stockA = Number(a.stock) || 0, stockB = Number(b.stock) || 0;
-            const stockValA = buyA * stockA, stockValB = buyB * stockB;
-            const marginA = sellA > 0 ? ((sellA - buyA) / sellA) * 100 : 0;
-            const marginB = sellB > 0 ? ((sellB - buyB) / sellB) * 100 : 0;
-
-            let va = a[sort.col] ?? '', vb = b[sort.col] ?? '';
-
-            if (sort.col === 'buyPrice') { va = buyA; vb = buyB; }
-            else if (sort.col === 'sellPrice') { va = sellA; vb = sellB; }
-            else if (sort.col === 'discountPrice') { va = discA; vb = discB; }
-            else if (sort.col === 'stock') { va = stockA; vb = stockB; }
-            else if (sort.col === 'stockValue') { va = stockValA; vb = stockValB; }
-            else if (sort.col === 'marginRate') { va = marginA; vb = marginB; }
-            else if (typeof va === 'string') {
-                va = va.toLowerCase();
-                vb = (vb + '').toLowerCase();
+            if (qTokens.length > 0) {
+                const targetStr = searchTarget === 'all'
+                    ? `${p.supplier || ''} ${p.brand || ''} ${p.name || ''} ${p.color || ''} ${p.size || ''}`.toLowerCase()
+                    : String(p[searchTarget] || '').toLowerCase();
+                if (!qTokens.every(t => targetStr.includes(t))) return false;
             }
 
-            if (va < vb) return sort.asc ? -1 : 1;
-            if (va > vb) return sort.asc ? 1 : -1;
+            if (subTokens.length > 0) {
+                const allStr = `${p.supplier || ''} ${p.brand || ''} ${p.name || ''} ${p.color || ''} ${p.size || ''}`.toLowerCase();
+                if (!subTokens.every(t => allStr.includes(t))) return false;
+            }
+
+            return true;
+        });
+
+        filteredInvList.sort((a, b) => {
+            const ma = computeProductMetrics(a);
+            const mb = computeProductMetrics(b);
+            let va, vb;
+
+            switch (invSort.col) {
+                case 'buyPrice': va = ma.buySupply; vb = mb.buySupply; break;
+                case 'onlineTotal': va = ma.onlineTotal; vb = mb.onlineTotal; break;
+                case 'sellPrice': va = ma.sellPrice; vb = mb.sellPrice; break;
+                case 'unitMargin': va = ma.unitMargin; vb = mb.unitMargin; break;
+                case 'marginRate': va = ma.marginRate; vb = mb.marginRate; break;
+                case 'stock': va = ma.stock; vb = mb.stock; break;
+                case 'stockValue': va = ma.stockValue; vb = mb.stockValue; break;
+                default:
+                    va = String(a[invSort.col] || '').toLowerCase();
+                    vb = String(b[invSort.col] || '').toLowerCase();
+            }
+
+            if (va < vb) return invSort.asc ? -1 : 1;
+            if (va > vb) return invSort.asc ? 1 : -1;
             return 0;
         });
-
-        filteredList = list;
-        return list;
     }
 
-    // ==========================================
-    // 테이블 및 푸터 렌더링
-    // ==========================================
-    function renderTable() {
-        const list = filterProducts();
+    function renderInventory() {
+        filterAndSortInventory();
+
         const tbody = $('tableBody');
         const tfoot = $('tableFoot');
+        if (!tbody) return;
 
-        // 상단 KPI 뱃지 업데이트
-        const totalItemsCount = list.length;
-        const totalStockQty = list.reduce((s, p) => s + (Number(p.stock) || 0), 0);
-        const totalStockVal = list.reduce((s, p) => s + ((Number(p.buyPrice) || 0) * (Number(p.stock) || 0)), 0);
-        const totalSellVal = list.reduce((s, p) => s + ((Number(p.sellPrice) || 0) * (Number(p.stock) || 0)), 0);
-
-        // 데스크톱 KPI
-        if ($('skuCountBadge')) $('skuCountBadge').textContent = `관리 ${fmtNum(totalItemsCount)} SKU`;
-        if ($('totalQtyBadge')) $('totalQtyBadge').textContent = `총 재고: ${fmtNum(totalStockQty)}개`;
-        if ($('totalStockValueBadge')) $('totalStockValueBadge').textContent = `재고원가: ${fmtWon(totalStockVal)}`;
-
-        // 모바일 헤더 및 초슬림 KPI 바 동기화
-        if ($('mobileSkuBadge')) $('mobileSkuBadge').textContent = `${fmtNum(totalItemsCount)} SKU`;
-        if ($('mobileKpiQty')) $('mobileKpiQty').textContent = fmtNum(totalStockQty);
-        if ($('mobileKpiStockVal')) $('mobileKpiStockVal').textContent = fmtWon(totalStockVal);
-        if ($('mobileKpiRevenue')) $('mobileKpiRevenue').textContent = fmtWon(metrics.totalRevenue || 0);
-        if ($('mobileKpiCost')) $('mobileKpiCost').textContent = fmtWon(metrics.totalCost || 0);
-
-        // 정렬 헤더 UI 갱신
+        // 정렬 아이콘 업데이트
         document.querySelectorAll('#inventoryTable thead th.sortable').forEach(th => {
-            const col = th.dataset.sort;
+            th.classList.remove('sort-asc', 'sort-desc');
             const icon = th.querySelector('.sort-icon');
-            if (icon) {
-                if (sort.col === col) {
-                    th.classList.add('sorted');
-                    icon.className = `bx bx-sort-${sort.asc ? 'up' : 'down'} sort-icon text-primary`;
-                } else {
-                    th.classList.remove('sorted');
-                    icon.className = 'bx bx-sort sort-icon';
-                }
+            if (icon) icon.className = 'bx bx-sort sort-icon';
+            if (th.dataset.sort === invSort.col) {
+                th.classList.add(invSort.asc ? 'sort-asc' : 'sort-desc');
+                if (icon) icon.className = `bx ${invSort.asc ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt'} sort-icon`;
             }
         });
 
-        // 데이터가 없는 경우
-        if (list.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="14" class="text-center py-5 text-muted"><i class='bx bx-search-alt'></i> 조건에 일치하는 상품 데이터가 없습니다.</td></tr>`;
-            const mobContainer = $('mobileCardsContainer');
-            if (mobContainer) {
-                mobContainer.innerHTML = `
-                    <div class="text-center py-5 text-muted">
-                        <i class='bx bx-search-alt fs-1 text-secondary mb-2'></i>
-                        <div class="fw-bold">조건에 일치하는 상품이 없습니다.</div>
-                        <small class="text-muted">검색어 또는 필터 조건을 변경해 보세요.</small>
-                    </div>
-                `;
-            }
-            tfoot.classList.add('d-none');
-            renderPagination(0);
-            updateSelectedUI();
-            return;
-        }
+        const total = filteredInvList.length;
+        const limit = pageSize === 'all' ? (total || 1) : Number(pageSize);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        if (page > totalPages) page = totalPages;
 
-        tfoot.classList.remove('d-none');
+        const startIdx = (page - 1) * limit;
+        const pageItems = pageSize === 'all' ? filteredInvList : filteredInvList.slice(startIdx, startIdx + limit);
 
-        // 페이지네이션 슬라이스
-        let pagedList = list;
-        let totalPages = 1;
-        let startIdx = 0;
-
-        if (pageSize !== 'all') {
-            const ps = parseInt(pageSize, 10);
-            totalPages = Math.ceil(list.length / ps) || 1;
-            if (page > totalPages) page = totalPages;
-            if (page < 1) page = 1;
-            startIdx = (page - 1) * ps;
-            pagedList = list.slice(startIdx, startIdx + ps);
-        }
-
-        let html = '';
-        pagedList.forEach((p, idx) => {
-            const rowNo = startIdx + idx + 1;
-            const isChecked = selectedIds.has(p.id);
-            const isFocused = focusedRowIndex === idx;
-
-            const buyPrice = Number(p.buyPrice) || 0;
-            const sellPrice = Number(p.sellPrice) || 0;
-            const discPrice = Number(p.discountPrice) || 0;
-            const stock = Number(p.stock) || 0;
-            const stockVal = buyPrice * stock;
-
-            // 마진율 계산
-            let marginRate = 0;
-            let marginBadge = '';
-            if (sellPrice > 0) {
-                const activeSell = discPrice > 0 ? discPrice : sellPrice;
-                marginRate = Math.round(((activeSell - buyPrice) / activeSell) * 100);
-                let badgeClass = 'mid';
-                if (marginRate >= 40) badgeClass = 'high';
-                else if (marginRate < 10 && marginRate >= 0) badgeClass = 'low';
-                else if (marginRate < 0) badgeClass = 'neg';
-                marginBadge = `<span class="margin-badge ${badgeClass}">${marginRate}%</span>`;
-            } else {
-                marginBadge = '<span class="text-muted">-</span>';
-            }
-
-            // 재고 상태 배지
-            let stockBadge = '';
-            if (stock === 0) {
-                stockBadge = '<span class="stock-pill stock-zero">0 품절</span>';
-            } else if (stock <= 2) {
-                stockBadge = `<span class="stock-pill stock-low">${stock}</span>`;
-            } else {
-                stockBadge = `<span class="stock-pill stock-ok">${stock}</span>`;
-            }
-
-            html += `
-                <tr class="${isChecked ? 'checked-row' : ''} ${isFocused ? 'focused-row' : ''}" onclick="app.onRowClick(event, '${escHtml(p.id)}', ${idx})">
-                    <td class="col-check no-print" onclick="event.stopPropagation()">
-                        <input type="checkbox" class="row-check" value="${escHtml(p.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(p.id)}', this.checked)">
-                    </td>
-                    <td class="col-no">${rowNo}</td>
-                    <td class="text-center" title="${escHtml(p.supplier || '최가유통')}">${escHtml(p.supplier || '최가유통')}</td>
-                    <td class="text-start ps-2" title="${escHtml(p.brand)}">${escHtml(p.brand)}</td>
-                    <td class="text-start ps-2 fw-semibold" title="${escHtml(p.name)}">${escHtml(p.name)}</td>
-                    <td class="text-center" title="${escHtml(p.color)}">${escHtml(p.color || '-')}</td>
-                    <td class="text-center" title="${escHtml(p.size)}">${escHtml(p.size || '-')}</td>
-                    <td class="col-num pe-2">${buyPrice > 0 ? fmtWon(buyPrice) : '-'}</td>
-                    <td class="col-num pe-2">${sellPrice > 0 ? fmtWon(sellPrice) : '-'}</td>
-                    <td class="col-num pe-2 text-danger">${discPrice > 0 ? fmtWon(discPrice) : '-'}</td>
-                    <td class="text-center">${marginBadge}</td>
-                    <td class="text-center">${stockBadge}</td>
-                    <td class="col-num pe-2 fw-semibold" style="color: #047857;">${stockVal > 0 ? fmtWon(stockVal) : '-'}</td>
-                    <td class="col-action text-center no-print" onclick="event.stopPropagation()">
-                        <button type="button" class="btn-erp" style="height: 20px; padding: 0 5px; font-size: 10.5px;" onclick="app.openEditModal('${escHtml(p.id)}')">
-                            <i class='bx bx-edit-alt'></i> 수정
-                        </button>
+        if (total === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="15" class="text-center py-5 text-muted">
+                        <i class='bx bx-package fs-3 d-block mb-1'></i>
+                        조건에 일치하는 재고 품목이 없습니다.
                     </td>
                 </tr>
             `;
-        });
+            if (tfoot) tfoot.classList.add('d-none');
+        } else {
+            tbody.innerHTML = pageItems.map((p, idx) => {
+                const m = computeProductMetrics(p);
+                const isChecked = selectedInvIds.has(String(p.id));
+                const no = startIdx + idx + 1;
 
-        tbody.innerHTML = html;
+                let stockBadgeClass = 'stock-ok';
+                if (m.stock <= 0) stockBadgeClass = 'stock-out';
+                else if (m.stock <= 2) stockBadgeClass = 'stock-low';
 
-        // 푸터 합계 계산 및 반영
-        const avgBuy = totalItemsCount > 0 ? Math.round(list.reduce((s, p) => s + (Number(p.buyPrice) || 0), 0) / totalItemsCount) : 0;
-        const avgSell = totalItemsCount > 0 ? Math.round(list.reduce((s, p) => s + (Number(p.sellPrice) || 0), 0) / totalItemsCount) : 0;
-        const avgDiscount = totalItemsCount > 0 ? Math.round(list.reduce((s, p) => s + (Number(p.discountPrice) || 0), 0) / totalItemsCount) : 0;
-        const avgMargin = avgSell > 0 ? Math.round(((avgSell - avgBuy) / avgSell) * 100) : 0;
+                // 매입단가(공급가) 표시 + 상품가/운임 힌트
+                const buyDetailHint = (m.basePrice > 0 || m.freight > 0)
+                    ? `<span class="price-sub">상품 ${fmtNum(m.basePrice)}${m.freight > 0 ? ` + 운임 ${fmtNum(m.freight)}` : ''}</span>`
+                    : `<span class="price-sub">VAT별도 공급가</span>`;
 
-        $('footSummaryText').textContent = `조회 품목 총 ${fmtNum(totalItemsCount)}건`;
-        $('footAvgBuyPrice').textContent = avgBuy > 0 ? fmtWon(avgBuy) : '-';
-        $('footAvgSellPrice').textContent = avgSell > 0 ? fmtWon(avgSell) : '-';
-        $('footAvgDiscountPrice').textContent = avgDiscount > 0 ? fmtWon(avgDiscount) : '-';
-        $('footAvgMargin').textContent = avgSell > 0 ? `${avgMargin}%` : '-';
-        $('footTotalStock').textContent = fmtNum(totalStockQty);
-        $('footTotalStockValue').textContent = fmtWon(totalStockVal);
+                // 인터넷 최저가 (상품가 + 배송비 분리 표시)
+                const onlineDisplay = m.onlineTotal > 0
+                    ? `<div class="price-stack">
+                           <span class="price-main text-dark">${fmtWon(m.onlineTotal)}</span>
+                           <span class="price-sub">상품 ${fmtNum(m.onlinePrice)} + 배송 ${fmtNum(m.onlineShipping)}</span>
+                       </div>`
+                    : `<span class="text-muted">-</span>`;
 
-        // 모바일 카드 뷰 렌더링
-        renderMobileCards(pagedList);
+                // 적정 판매가 (VAT포함 여부 + 공급가 환산 표시)
+                const sellDisplay = m.sellPrice > 0
+                    ? `<div class="price-stack">
+                           <span class="price-main text-primary">${fmtWon(m.sellPrice)}</span>
+                           <span class="price-sub">${m.sellVatIncluded ? `공급가 ${fmtWon(m.sellSupply)}` : 'VAT별도'}</span>
+                       </div>`
+                    : `<span class="text-muted">미설정</span>`;
 
-        renderPagination(list.length);
-        updateSelectedUI();
-        initGridResizer();
+                // 예상 판매마진 (공급가 기준)
+                const marginWonDisplay = m.sellPrice > 0
+                    ? `<div class="price-stack">
+                           <span class="price-main ${m.unitMargin >= 0 ? 'text-success' : 'text-danger'}">${m.unitMargin >= 0 ? '+' : ''}${fmtWon(m.unitMargin)}</span>
+                           <span class="price-sub">공급가 차익</span>
+                       </div>`
+                    : `<span class="text-muted">-</span>`;
+
+                // 마진율 배지
+                const marginRateDisplay = m.sellPrice > 0
+                    ? `<span class="margin-badge ${getMarginBadgeClass(m.marginRate)}">${m.marginRate.toFixed(1)}%</span>`
+                    : `<span class="text-muted">-</span>`;
+
+                return `
+                    <tr class="${isChecked ? 'selected-row' : ''}" onclick="app.onRowClick(event, '${escHtml(p.id)}', ${idx})" ondblclick="app.openEditModal('${escHtml(p.id)}')">
+                        <td class="col-check no-print" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="row-check" value="${escHtml(p.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(p.id)}', this.checked)">
+                        </td>
+                        <td class="col-no">${no}</td>
+                        <td class="text-center"><span class="supplier-tag">${escHtml(p.supplier || '최가유통')}</span></td>
+                        <td class="text-start ps-2 fw-semibold text-secondary">${escHtml(p.brand || '-')}</td>
+                        <td class="text-start ps-2 fw-bold text-dark">${escHtml(p.name || '-')}</td>
+                        <td class="text-center">${escHtml(p.color || '-')}</td>
+                        <td class="text-center"><span class="size-badge">${escHtml(p.size || '-')}</span></td>
+                        <td class="col-num pe-2">
+                            <div class="price-stack">
+                                <span class="price-main">${fmtWon(m.buySupply)}</span>
+                                ${buyDetailHint}
+                            </div>
+                        </td>
+                        <td class="col-num pe-2">${onlineDisplay}</td>
+                        <td class="col-num pe-2">${sellDisplay}</td>
+                        <td class="col-num pe-2">${marginWonDisplay}</td>
+                        <td class="text-center">${marginRateDisplay}</td>
+                        <td class="text-center">
+                            <span class="stock-pill ${stockBadgeClass}">${fmtNum(m.stock)}</span>
+                        </td>
+                        <td class="col-num pe-2 fw-bold" style="color:#047857;">${fmtWon(m.stockValue)}</td>
+                        <td class="col-action text-center no-print" onclick="event.stopPropagation()">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <button type="button" class="btn-apply-mini" onclick="app.openVoucherForSingleProduct('${escHtml(p.id)}', 'IN')" title="이 품목 바로 입고 및 적정판매가 설정">입고</button>
+                                <button type="button" class="btn-apply-mini" style="color:#b45309; background:#fef3c7; border-color:#fde68a;" onclick="app.openVoucherForSingleProduct('${escHtml(p.id)}', 'OUT')" title="이 품목 바로 출고 (적정판매가 자동 표기)">출고</button>
+                                <button type="button" class="btn-row-edit" onclick="app.openEditModal('${escHtml(p.id)}')" title="품목 마스터 수정">수정</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // 하단 합계/평균 푸터 업데이트
+            if (tfoot) {
+                tfoot.classList.remove('d-none');
+                let sumBuy = 0, sumOnline = 0, cntOnline = 0, sumSell = 0, cntSell = 0, sumMarginWon = 0, sumMarginRate = 0, sumStock = 0, sumStockVal = 0;
+
+                filteredInvList.forEach(p => {
+                    const m = computeProductMetrics(p);
+                    sumBuy += m.buySupply;
+                    if (m.onlineTotal > 0) { sumOnline += m.onlineTotal; cntOnline++; }
+                    if (m.sellPrice > 0) {
+                        sumSell += m.sellPrice;
+                        sumMarginWon += m.unitMargin;
+                        sumMarginRate += m.marginRate;
+                        cntSell++;
+                    }
+                    sumStock += m.stock;
+                    sumStockVal += m.stockValue;
+                });
+
+                const avgBuy = total > 0 ? Math.round(sumBuy / total) : 0;
+                const avgOnline = cntOnline > 0 ? Math.round(sumOnline / cntOnline) : 0;
+                const avgSell = cntSell > 0 ? Math.round(sumSell / cntSell) : 0;
+                const avgMarginWon = cntSell > 0 ? Math.round(sumMarginWon / cntSell) : 0;
+                const avgMarginRate = cntSell > 0 ? (sumMarginRate / cntSell).toFixed(1) : '0.0';
+
+                if ($('footSummaryText')) $('footSummaryText').textContent = `조회 품목 총 ${fmtNum(total)}개 SKU (평균 단가 / 총 재고 합계)`;
+                if ($('footAvgBuyPrice')) $('footAvgBuyPrice').textContent = `평균 ${fmtWon(avgBuy)}`;
+                if ($('footAvgOnlinePrice')) $('footAvgOnlinePrice').textContent = cntOnline > 0 ? `평균 ${fmtWon(avgOnline)}` : '-';
+                if ($('footAvgSellPrice')) $('footAvgSellPrice').textContent = cntSell > 0 ? `평균 ${fmtWon(avgSell)}` : '-';
+                if ($('footAvgUnitMargin')) $('footAvgUnitMargin').textContent = cntSell > 0 ? `평균 ${fmtWon(avgMarginWon)}` : '-';
+                if ($('footAvgMargin')) $('footAvgMargin').textContent = cntSell > 0 ? `${avgMarginRate}%` : '-';
+                if ($('footTotalStock')) $('footTotalStock').textContent = `${fmtNum(sumStock)}개`;
+                if ($('footTotalStockValue')) $('footTotalStockValue').textContent = fmtWon(sumStockVal);
+            }
+        }
+
+        renderMobileInventoryCards(pageItems);
+        if (activeWorkspace === 'inventory') {
+            renderPagination(total, totalPages);
+            if ($('bottomPageInfo')) $('bottomPageInfo').textContent = `실시간 재고 총 ${fmtNum(total)}건 조회됨`;
+        }
     }
 
-    // ==========================================
-    // 모바일 전용 카드 뷰 렌더링
-    // ==========================================
-    function renderMobileCards(pagedList) {
+    function renderMobileInventoryCards(pageItems) {
         const container = $('mobileCardsContainer');
         if (!container) return;
 
-        if (!pagedList || pagedList.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-5 text-muted">
-                    <i class='bx bx-search-alt fs-1 text-secondary mb-2'></i>
-                    <div class="fw-bold">조건에 일치하는 상품이 없습니다.</div>
-                    <small class="text-muted">검색어 또는 필터 조건을 변경해 보세요.</small>
-                </div>
-            `;
+        if (pageItems.length === 0) {
+            container.innerHTML = `<div class="text-center py-5 text-muted"><i class='bx bx-package fs-1 mb-2'></i><div>조건에 맞는 상품이 없습니다.</div></div>`;
             return;
         }
 
-        let html = '';
-        pagedList.forEach(p => {
-            const isChecked = selectedIds.has(p.id);
-            const buyPrice = Number(p.buyPrice) || 0;
-            const sellPrice = Number(p.sellPrice) || 0;
-            const discPrice = Number(p.discountPrice) || 0;
-            const stock = Number(p.stock) || 0;
-            const stockVal = buyPrice * stock;
+        container.innerHTML = pageItems.map(p => {
+            const m = computeProductMetrics(p);
+            const isChecked = selectedInvIds.has(String(p.id));
+            let stockClass = 'stock-ok', stockLabel = `재고 ${fmtNum(m.stock)}개`;
+            if (m.stock <= 0) { stockClass = 'stock-out'; stockLabel = '품절 (0개)'; }
+            else if (m.stock <= 2) { stockClass = 'stock-low'; stockLabel = `부족 (${fmtNum(m.stock)}개)`; }
 
-            // 마진율 계산
-            let marginRate = 0;
-            let marginBadgeHtml = '<span class="text-muted small">-</span>';
-            if (sellPrice > 0) {
-                const activeSell = discPrice > 0 ? discPrice : sellPrice;
-                marginRate = Math.round(((activeSell - buyPrice) / activeSell) * 100);
-                let badgeClass = 'mid';
-                if (marginRate >= 40) badgeClass = 'high';
-                else if (marginRate < 10 && marginRate >= 0) badgeClass = 'low';
-                else if (marginRate < 0) badgeClass = 'neg';
-                marginBadgeHtml = `<span class="mobile-margin-badge badge-${badgeClass}">${marginRate}%</span>`;
-            }
-
-            // 재고 상태 뱃지
-            let stockBadge = '';
-            if (stock === 0) {
-                stockBadge = '<span class="stock-pill stock-zero">0 품절</span>';
-            } else if (stock <= 2) {
-                stockBadge = `<span class="stock-pill stock-low">${stock}개</span>`;
-            } else {
-                stockBadge = `<span class="stock-pill stock-ok">${stock}개</span>`;
-            }
-
-            // 판매가 노출 방식 (할인가 있을 시 취소선 + 레드 강조)
-            let priceHtml = '';
-            if (discPrice > 0) {
-                priceHtml = `
-                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                        <span class="text-decoration-line-through text-muted" style="font-size: 11px;">${fmtWon(sellPrice)}</span>
-                        <span class="text-danger fw-bold">${fmtWon(discPrice)}</span>
+            return `
+                <div class="mobile-inv-card ${isChecked ? 'card-selected' : ''}" onclick="app.openEditModal('${escHtml(p.id)}')">
+                    <div class="card-top-row">
+                        <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="form-check-input mt-0" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(p.id)}', this.checked)">
+                            <span class="supplier-badge">${escHtml(p.supplier || '최가유통')}</span>
+                            <span class="brand-badge">${escHtml(p.brand || '-')}</span>
+                        </div>
+                        <span class="mobile-stock-badge ${stockClass}">${stockLabel}</span>
                     </div>
+                    <div class="card-title-row">
+                        <div class="product-title">${escHtml(p.name || '-')}</div>
+                        <div class="product-spec">${escHtml(p.color || '-')} / ${escHtml(p.size || '-')}</div>
+                    </div>
+                    <div class="card-price-grid">
+                        <div class="price-box">
+                            <span class="price-label">매입단가(공급가)</span>
+                            <span class="price-val">${fmtWon(m.buySupply)}</span>
+                        </div>
+                        <div class="price-box">
+                            <span class="price-label">인터넷최저가(합계)</span>
+                            <span class="price-val text-secondary">${m.onlineTotal > 0 ? fmtWon(m.onlineTotal) : '-'}</span>
+                        </div>
+                        <div class="price-box">
+                            <span class="price-label">적정 판매가</span>
+                            <span class="price-val text-primary fw-bold">${m.sellPrice > 0 ? fmtWon(m.sellPrice) : '미설정'}</span>
+                        </div>
+                        <div class="price-box">
+                            <span class="price-label">예상마진 / 마진율</span>
+                            <span class="price-val text-success fw-bold">${m.sellPrice > 0 ? `${fmtWon(m.unitMargin)} (${m.marginRate.toFixed(1)}%)` : '-'}</span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top" onclick="event.stopPropagation()">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;" onclick="app.openVoucherForSingleProduct('${escHtml(p.id)}', 'IN')">+ 입고등록</button>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2" style="font-size:11px;" onclick="app.openVoucherForSingleProduct('${escHtml(p.id)}', 'OUT')">↗ 출고등록</button>
+                        <button type="button" class="btn btn-sm btn-light border py-0 px-2" style="font-size:11px;" onclick="app.openEditModal('${escHtml(p.id)}')">수정</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ==========================================
+    // 8. [WORKSPACE 2] 입출고 & 마진 원장 렌더링
+    // ==========================================
+    function filterAndSortTransactions() {
+        const qTokens = (txSearchQuery || searchQuery).toLowerCase().split(/\s+/).filter(Boolean);
+
+        filteredTxList = transactions.filter(t => {
+            if (supplierFilter && (t.supplier || '').trim() !== supplierFilter) return false;
+            if (txTypeFilter && t.type !== txTypeFilter) return false;
+            if (txStartDate && (t.txDate || '') < txStartDate) return false;
+            if (txEndDate && (t.txDate || '') > txEndDate) return false;
+
+            if (qTokens.length > 0) {
+                const hay = `${t.supplier || ''} ${t.brand || ''} ${t.productName || ''} ${t.color || ''} ${t.size || ''} ${t.remarks || ''}`.toLowerCase();
+                if (!qTokens.every(tok => hay.includes(tok))) return false;
+            }
+            return true;
+        });
+
+        filteredTxList.sort((a, b) => {
+            const ma = computeTxMetrics(a);
+            const mb = computeTxMetrics(b);
+            let va, vb;
+
+            switch (txSort.col) {
+                case 'qty': va = ma.qty; vb = mb.qty; break;
+                case 'price': va = ma.txSupplyPrice; vb = mb.txSupplyPrice; break;
+                case 'totalAmount': va = ma.totalAmount; vb = mb.totalAmount; break;
+                case 'totalMargin': va = ma.totalMargin; vb = mb.totalMargin; break;
+                case 'txDate':
+                    va = `${a.txDate || ''}_${String(a.id).padStart(10, '0')}`;
+                    vb = `${b.txDate || ''}_${String(b.id).padStart(10, '0')}`;
+                    break;
+                default:
+                    va = String(a[txSort.col] || '').toLowerCase();
+                    vb = String(b[txSort.col] || '').toLowerCase();
+            }
+
+            if (va < vb) return txSort.asc ? -1 : 1;
+            if (va > vb) return txSort.asc ? 1 : -1;
+            return 0;
+        });
+    }
+
+    function renderTransactions() {
+        filterAndSortTransactions();
+
+        const tbody = $('txTableBody');
+        const tfoot = $('txTableFoot');
+        if (!tbody) return;
+
+        // 조회기간 요약 리본 업데이트
+        let sumIn = 0, sumOut = 0, sumOutMargin = 0, sumQty = 0;
+        filteredTxList.forEach(t => {
+            const tm = computeTxMetrics(t);
+            sumQty += tm.qty;
+            if (t.type === 'IN') {
+                sumIn += tm.totalAmount;
+            } else {
+                sumOut += tm.totalAmount;
+                sumOutMargin += tm.totalMargin;
+            }
+        });
+        const periodMarginRate = sumOut > 0 ? ((sumOutMargin / sumOut) * 100).toFixed(1) : '0.0';
+
+        if ($('txRibbonInSum')) $('txRibbonInSum').textContent = fmtWon(sumIn);
+        if ($('txRibbonOutSum')) $('txRibbonOutSum').textContent = fmtWon(sumOut);
+        if ($('txRibbonMarginSum')) $('txRibbonMarginSum').textContent = `${fmtWon(sumOutMargin)} (${periodMarginRate}%)`;
+
+        const total = filteredTxList.length;
+        const limit = pageSize === 'all' ? (total || 1) : Number(pageSize);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        if (page > totalPages) page = totalPages;
+
+        const startIdx = (page - 1) * limit;
+        const pageItems = pageSize === 'all' ? filteredTxList : filteredTxList.slice(startIdx, startIdx + limit);
+
+        if (total === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="15" class="text-center py-5 text-muted">
+                        <i class='bx bx-transfer-alt fs-3 d-block mb-1'></i>
+                        조회된 입출고 내역이 없습니다.
+                    </td>
+                </tr>
+            `;
+            if (tfoot) tfoot.classList.add('d-none');
+        } else {
+            tbody.innerHTML = pageItems.map((t, idx) => {
+                const tm = computeTxMetrics(t);
+                const isChecked = selectedTxIds.has(String(t.id));
+                const no = startIdx + idx + 1;
+                const isOut = t.type === 'OUT';
+
+                const typeBadge = isOut
+                    ? `<span class="tx-badge tx-badge-out">↗ 출고</span>`
+                    : `<span class="tx-badge tx-badge-in">📥 입고</span>`;
+
+                // 매입단가(원가)
+                const buyCostCell = !isOut && (Number(t.basePrice) > 0 || Number(t.freight) > 0)
+                    ? `<div class="price-stack">
+                           <span class="price-main">${fmtWon(tm.buySupply)}</span>
+                           <span class="price-sub">상품 ${fmtNum(t.basePrice)} + 운임 ${fmtNum(t.freight)}</span>
+                       </div>`
+                    : `<div class="price-stack">
+                           <span class="price-main">${fmtWon(tm.buySupply)}</span>
+                           <span class="price-sub">공급가 원가</span>
+                       </div>`;
+
+                // 적정판매가(기준) & 인터넷최저가
+                const targetSellCell = tm.sellPrice > 0
+                    ? `<div class="price-stack">
+                           <span class="price-main text-primary">${fmtWon(tm.sellPrice)}</span>
+                           <span class="price-sub">${tm.onlineTotal > 0 ? `최저가 ${fmtWon(tm.onlineTotal)}` : `공급가 ${fmtWon(tm.sellSupply)}`}</span>
+                       </div>`
+                    : `<span class="text-muted">-</span>`;
+
+                // 거래 단가
+                const txPriceCell = isOut
+                    ? `<div class="price-stack">
+                           <span class="price-main fw-bold" style="color:#b45309;">${fmtWon(tm.txSupplyPrice)}</span>
+                           <span class="price-sub">${tm.outVatIncluded ? `VAT포함 ${fmtWon(tm.rawOutPrice)}` : '공급가 기준'}</span>
+                       </div>`
+                    : `<div class="price-stack">
+                           <span class="price-main fw-bold text-primary">${fmtWon(tm.txSupplyPrice)}</span>
+                           <span class="price-sub">입고 공급가</span>
+                       </div>`;
+
+                // 판매마진 / 마진율
+                const marginCell = isOut
+                    ? `<div class="price-stack">
+                           <span class="price-main ${tm.totalMargin >= 0 ? 'text-success' : 'text-danger'}">
+                               ${tm.totalMargin >= 0 ? '+' : ''}${fmtWon(tm.totalMargin)}
+                               <span class="margin-badge ${getMarginBadgeClass(tm.marginRate)} ms-1">${tm.marginRate.toFixed(1)}%</span>
+                           </span>
+                           <span class="price-sub">개당 ${tm.unitMargin >= 0 ? '+' : ''}${fmtWon(tm.unitMargin)}</span>
+                       </div>`
+                    : (tm.sellPrice > 0
+                        ? `<div class="price-stack">
+                               <span class="price-sub">예상마진 ${fmtWon(tm.unitMargin)}</span>
+                               <span class="margin-badge ${getMarginBadgeClass(tm.marginRate)}">${tm.marginRate.toFixed(1)}%</span>
+                           </div>`
+                        : `<span class="text-muted">-</span>`);
+
+                return `
+                    <tr class="${isChecked ? 'selected-row' : ''}" ondblclick="app.openTxEditModal(${t.id})">
+                        <td class="col-check no-print" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="tx-row-check" value="${t.id}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${t.id}', this.checked)">
+                        </td>
+                        <td class="col-no">${no}</td>
+                        <td class="text-center font-monospace">${escHtml(t.txDate || '-')}</td>
+                        <td class="text-center">${typeBadge}</td>
+                        <td class="text-center"><span class="supplier-tag">${escHtml(t.supplier || '-')}</span></td>
+                        <td class="text-start ps-2 fw-semibold text-secondary">${escHtml(t.brand || '-')}</td>
+                        <td class="text-start ps-2 fw-bold text-dark">${escHtml(t.productName || '-')}</td>
+                        <td class="text-center">${escHtml(t.color || '-')} / <span class="size-badge">${escHtml(t.size || '-')}</span></td>
+                        <td class="text-center fw-bold ${isOut ? 'text-danger' : 'text-primary'}">${isOut ? '-' : '+'}${fmtNum(tm.qty)}</td>
+                        <td class="col-num pe-2">${buyCostCell}</td>
+                        <td class="col-num pe-2">${targetSellCell}</td>
+                        <td class="col-num pe-2">${txPriceCell}</td>
+                        <td class="col-num pe-2 fw-bold">${fmtWon(tm.totalAmount)}</td>
+                        <td class="col-num pe-2">${marginCell}</td>
+                        <td class="text-start ps-2 no-print" onclick="event.stopPropagation()">
+                            <div class="d-flex align-items-center justify-content-between gap-1">
+                                <span class="text-muted text-truncate" style="max-width: 82px;" title="${escHtml(t.remarks || '')}">${escHtml(t.remarks || '-')}</span>
+                                <button type="button" class="btn-row-edit" onclick="app.openTxEditModal(${t.id})">수정</button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
-            } else {
-                priceHtml = sellPrice > 0 ? fmtWon(sellPrice) : '-';
+            }).join('');
+
+            if (tfoot) {
+                tfoot.classList.remove('d-none');
+                if ($('txFootSummaryText')) $('txFootSummaryText').textContent = `조회 총 ${fmtNum(total)}건 (매입 ${fmtWon(sumIn)} / 출고 ${fmtWon(sumOut)})`;
+                if ($('txFootTotalQty')) $('txFootTotalQty').textContent = `${fmtNum(sumQty)}개`;
+                if ($('txFootTotalAmount')) $('txFootTotalAmount').textContent = fmtWon(sumIn + sumOut);
+                if ($('txFootTotalMargin')) $('txFootTotalMargin').textContent = `${fmtWon(sumOutMargin)} (${periodMarginRate}%)`;
             }
+        }
 
-            html += `
-                <div class="mobile-hq-card ${isChecked ? 'checked-card' : ''}" data-id="${escHtml(p.id)}">
-                    <div class="mob-card-head">
-                        <div class="mob-card-head-left">
-                            <input type="checkbox" class="form-check-input mt-0 row-check-mob" value="${escHtml(p.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectOne('${escHtml(p.id)}', this.checked)">
-                            <span class="mob-badge-supplier">${escHtml(p.supplier || '최가유통')}</span>
-                            <span class="mob-badge-brand">${escHtml(p.brand || '-')}</span>
+        renderMobileTxCards(pageItems);
+        if (activeWorkspace === 'transactions') {
+            renderPagination(total, totalPages);
+            if ($('bottomPageInfo')) $('bottomPageInfo').textContent = `입출고 내역 총 ${fmtNum(total)}건 조회됨`;
+        }
+    }
+
+    function renderMobileTxCards(pageItems) {
+        const container = $('mobileTxCardsContainer');
+        if (!container) return;
+
+        if (pageItems.length === 0) {
+            container.innerHTML = `<div class="text-center py-5 text-muted"><i class='bx bx-transfer-alt fs-1 mb-2'></i><div>조회된 입출고 내역이 없습니다.</div></div>`;
+            return;
+        }
+
+        container.innerHTML = pageItems.map(t => {
+            const tm = computeTxMetrics(t);
+            const isOut = t.type === 'OUT';
+            return `
+                <div class="mobile-inv-card" onclick="app.openTxEditModal(${t.id})">
+                    <div class="card-top-row">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="tx-badge ${isOut ? 'tx-badge-out' : 'tx-badge-in'}">${isOut ? '출고' : '입고'}</span>
+                            <span class="small text-muted font-monospace">${escHtml(t.txDate || '')}</span>
+                            <span class="supplier-badge">${escHtml(t.supplier || '-')}</span>
                         </div>
-                        <div class="mob-card-head-right">
-                            ${stockBadge}
-                        </div>
+                        <span class="fw-bold ${isOut ? 'text-danger' : 'text-primary'}">${isOut ? '-' : '+'}${fmtNum(tm.qty)}개</span>
                     </div>
-
-                    <div class="mob-card-title">${escHtml(p.name)}</div>
-
-                    <div class="mob-card-meta">
-                        ${p.color ? `<span class="mob-meta-tag"><i class='bx bx-palette me-1 text-primary'></i>${escHtml(p.color)}</span>` : ''}
-                        ${p.size ? `<span class="mob-meta-tag"><i class='bx bx-ruler me-1 text-secondary'></i>${escHtml(p.size)}</span>` : ''}
+                    <div class="card-title-row">
+                        <div class="product-title">[${escHtml(t.brand || '-')}] ${escHtml(t.productName || '-')}</div>
+                        <div class="product-spec">${escHtml(t.color || '-')} / ${escHtml(t.size || '-')}</div>
                     </div>
-
-                    <div class="mob-card-grid">
-                        <div class="mob-grid-item">
-                            <span class="mob-grid-label">매입 단가</span>
-                            <span class="mob-grid-val text-dark">${buyPrice > 0 ? fmtWon(buyPrice) : '-'}</span>
+                    <div class="card-price-grid">
+                        <div class="price-box">
+                            <span class="price-label">매입원가(공급가)</span>
+                            <span class="price-val">${fmtWon(tm.buySupply)}</span>
                         </div>
-                        <div class="mob-grid-item">
-                            <span class="mob-grid-label">${discPrice > 0 ? '할인 판매가' : '일반 판매가'}</span>
-                            <span class="mob-grid-val">${priceHtml}</span>
+                        <div class="price-box">
+                            <span class="price-label">적정판매가</span>
+                            <span class="price-val text-primary">${tm.sellPrice > 0 ? fmtWon(tm.sellPrice) : '-'}</span>
                         </div>
-                        <div class="mob-grid-item">
-                            <span class="mob-grid-label">마진율</span>
-                            <span class="mob-grid-val">${marginBadgeHtml}</span>
+                        <div class="price-box">
+                            <span class="price-label">거래단가 / 합계</span>
+                            <span class="price-val fw-bold">${fmtWon(tm.txSupplyPrice)} (${fmtWon(tm.totalAmount)})</span>
                         </div>
-                        <div class="mob-grid-item">
-                            <span class="mob-grid-label">재고 평가액</span>
-                            <span class="mob-grid-val text-success">${stockVal > 0 ? fmtWon(stockVal) : '-'}</span>
-                        </div>
-                    </div>
-
-                    <div class="mob-card-actions">
-                        <button type="button" class="mob-action-btn btn-quote" onclick="app.addItemToQuoteCart('${escHtml(p.id)}')">
-                            <i class='bx bx-cart-alt'></i> 견적담기
-                        </button>
-                        <div class="d-flex gap-1">
-                            <button type="button" class="mob-action-btn btn-edit" onclick="app.openEditModal('${escHtml(p.id)}')">
-                                <i class='bx bx-edit-alt'></i> 수정
-                            </button>
-                            <button type="button" class="mob-action-btn btn-delete" onclick="app.deleteSingleProduct('${escHtml(p.id)}')">
-                                <i class='bx bx-trash'></i> 삭제
-                            </button>
+                        <div class="price-box">
+                            <span class="price-label">${isOut ? '실현 판매마진' : '예상 마진율'}</span>
+                            <span class="price-val text-success fw-bold">${isOut ? `${fmtWon(tm.totalMargin)} (${tm.marginRate.toFixed(1)}%)` : `${tm.marginRate.toFixed(1)}%`}</span>
                         </div>
                     </div>
                 </div>
             `;
-        });
-
-        container.innerHTML = html;
+        }).join('');
     }
 
     // ==========================================
-    // 페이지네이션 렌더링
+    // 9. 입출고 & 적정판매가·마진 일괄 전표 모달 (#voucherModal)
     // ==========================================
-    function renderPagination(totalCount) {
-        const bottomPageInfo = $('bottomPageInfo');
-        const paginationContainer = $('pagination');
+    function openVoucherWithSelected(mode = 'IN') {
+        if (!voucherModal) {
+            const el = $('voucherModal');
+            if (el && window.bootstrap) voucherModal = new bootstrap.Modal(el, { keyboard: true });
+        }
 
-        if (pageSize === 'all' || totalCount === 0) {
-            if (bottomPageInfo) bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 전체 표시`;
-            if (paginationContainer) paginationContainer.innerHTML = '';
+        if ($('vTxDate') && !$('vTxDate').value) {
+            $('vTxDate').value = todayStr();
+        }
+        if ($('vRemarks')) $('vRemarks').value = '';
+
+        // 기본 부가세 체크박스 초기화 (인터넷최저가/배송비 VAT포함 기본 체크!)
+        if ($('chkBaseVat')) $('chkBaseVat').checked = true;
+        if ($('chkFreightVat')) $('chkFreightVat').checked = true;
+        if ($('chkOnlineVat')) $('chkOnlineVat').checked = true;
+        if ($('chkSellVat')) $('chkSellVat').checked = true;
+        if ($('chkOutVat')) $('chkOutVat').checked = true;
+
+        setVoucherMode(mode, false);
+
+        // 재고 그리드에서 체크된 품목이 있다면 자동으로 전표 행에 탑재!
+        const checkedProducts = [];
+        selectedInvIds.forEach(id => {
+            const p = products.find(item => String(item.id) === String(id));
+            if (p) checkedProducts.push(p);
+        });
+
+        const tbody = $('voucherTbody');
+        if (tbody) tbody.innerHTML = '';
+        voucherRowCounter = 0;
+
+        if (checkedProducts.length > 0) {
+            if ($('vSupplier') && checkedProducts[0].supplier && mode === 'IN') {
+                $('vSupplier').value = checkedProducts[0].supplier;
+            }
+            checkedProducts.forEach(p => {
+                addVoucherRow(p);
+            });
+            showToast(`선택한 ${checkedProducts.length}개 품목이 ${mode === 'IN' ? '입고' : '출고'} 전표에 자동 입력되었습니다.`, 'info');
+        } else {
+            // 기본 3개 빈 행 생성
+            for (let i = 0; i < 3; i++) addVoucherRow();
+        }
+
+        recalcAllVoucherRows();
+        if (voucherModal) voucherModal.show();
+    }
+
+    function openVoucherForSingleProduct(productId, mode = 'IN') {
+        const p = products.find(item => String(item.id) === String(productId));
+        if (!p) return;
+
+        if (!voucherModal) {
+            const el = $('voucherModal');
+            if (el && window.bootstrap) voucherModal = new bootstrap.Modal(el, { keyboard: true });
+        }
+
+        if ($('vTxDate') && !$('vTxDate').value) {
+            $('vTxDate').value = todayStr();
+        }
+        if ($('vRemarks')) $('vRemarks').value = '';
+        if ($('vSupplier')) $('vSupplier').value = mode === 'IN' ? (p.supplier || '최가유통') : ($('vSupplier').value || '본사출고');
+
+        if ($('chkBaseVat')) $('chkBaseVat').checked = true;
+        if ($('chkFreightVat')) $('chkFreightVat').checked = true;
+        if ($('chkOnlineVat')) $('chkOnlineVat').checked = true;
+        if ($('chkSellVat')) $('chkSellVat').checked = true;
+        if ($('chkOutVat')) $('chkOutVat').checked = true;
+
+        setVoucherMode(mode, false);
+
+        const tbody = $('voucherTbody');
+        if (tbody) tbody.innerHTML = '';
+        voucherRowCounter = 0;
+
+        addVoucherRow(p);
+        recalcAllVoucherRows();
+        if (voucherModal) voucherModal.show();
+    }
+
+    function setVoucherMode(mode, preserveRows = true) {
+        voucherMode = mode === 'OUT' ? 'OUT' : 'IN';
+        const isOut = voucherMode === 'OUT';
+
+        if ($('btnModeIn')) $('btnModeIn').className = `voucher-mode-btn ${!isOut ? 'active mode-in' : ''}`;
+        if ($('btnModeOut')) $('btnModeOut').className = `voucher-mode-btn ${isOut ? 'active mode-out' : ''}`;
+
+        if ($('inVatOptions')) $('inVatOptions').classList.toggle('d-none', isOut);
+        if ($('outVatOptions')) $('outVatOptions').classList.toggle('d-none', !isOut);
+
+        if ($('lblVSupplier')) {
+            $('lblVSupplier').innerHTML = isOut ? '출고처(고객) <span class="text-danger">*</span>' : '공급사 <span class="text-danger">*</span>';
+        }
+        if ($('vSupplier')) {
+            if (isOut && $('vSupplier').value === '최가유통') $('vSupplier').value = '본사판매출고';
+            if (!isOut && $('vSupplier').value === '본사판매출고') $('vSupplier').value = '최가유통';
+        }
+
+        const banner = $('voucherGuideBanner');
+        const guideText = $('voucherGuideText');
+        if (banner && guideText) {
+            if (isOut) {
+                banner.style.background = '#fffbeb';
+                banner.style.borderColor = '#fde68a';
+                banner.style.color = '#92400e';
+                guideText.innerHTML = `<i class='bx bx-up-arrow-circle'></i> <strong>[출고 & 실시간 마진 안내]</strong> 품목을 선택하면 입고 시 설정한 <strong>적정 판매가가 자동으로 표기 및 입력</strong>되며, 출고단가를 조정하면 <strong>판매마진(₩)과 마진율(%)</strong>이 즉시 계산됩니다.`;
+            } else {
+                banner.style.background = '#eff6ff';
+                banner.style.borderColor = '#bfdbfe';
+                banner.style.color = '#1e40af';
+                guideText.innerHTML = `<i class='bx bx-down-arrow-circle'></i> <strong>[매입(입고) & 적정판매가 설계]</strong> 입고 시 <strong>인터넷 최저가와 배송비를 따로 입력(VAT포함 기본 체크)</strong>하고 <strong>적정 판매가</strong>를 직접 설정할 수 있습니다.`;
+            }
+        }
+
+        if ($('lblVSummaryMargin')) {
+            $('lblVSummaryMargin').textContent = isOut ? '출고 총 판매마진 (평균 마진율):' : '적정판매가 기준 예상 마진:';
+        }
+
+        // 기존 행에 선택된 품목 보존
+        const existingProducts = [];
+        if (preserveRows && $('voucherTbody')) {
+            $('voucherTbody').querySelectorAll('tr').forEach(tr => {
+                const pid = tr.dataset.productId;
+                if (pid) {
+                    const p = products.find(x => String(x.id) === String(pid));
+                    if (p) existingProducts.push(p);
+                }
+            });
+        }
+
+        renderVoucherHeader();
+
+        if ($('voucherTbody')) {
+            $('voucherTbody').innerHTML = '';
+            voucherRowCounter = 0;
+            if (existingProducts.length > 0) {
+                existingProducts.forEach(p => addVoucherRow(p));
+            } else {
+                for (let i = 0; i < 3; i++) addVoucherRow();
+            }
+        }
+
+        recalcAllVoucherRows();
+    }
+
+    function renderVoucherHeader() {
+        const thead = $('voucherThead');
+        if (!thead) return;
+
+        if (voucherMode === 'IN') {
+            thead.innerHTML = `
+                <tr>
+                    <th style="width: 32px;">No.</th>
+                    <th style="min-width: 195px;" class="text-start ps-2">상품명 (검색 또는 신규 입력) <span class="text-danger">*</span></th>
+                    <th style="width: 85px;">브랜드</th>
+                    <th style="width: 72px;">컬러</th>
+                    <th style="width: 64px;">사이즈</th>
+                    <th style="width: 62px;">입고수량 <span class="text-danger">*</span></th>
+                    <th style="width: 88px;">상품가</th>
+                    <th style="width: 78px;">운임</th>
+                    <th style="width: 98px;" title="매입 공급가 (VAT별도)">매입단가(공급가)</th>
+                    <th style="width: 95px; background:#eff6ff;" title="인터넷 최저가 상품가 (VAT포함 기본)">인터넷 최저가</th>
+                    <th style="width: 85px; background:#eff6ff;" title="인터넷 최저가 배송비 (VAT포함 기본)">최저가 배송비</th>
+                    <th style="width: 132px; background:#f0fdf4;" title="출고 시 자동으로 표기될 적정 판매가">적정 판매가 설정 <span class="text-danger">*</span></th>
+                    <th style="width: 112px;" title="적정판매가(공급가) - 매입단가(공급가)">예상마진 / 마진율</th>
+                    <th style="width: 98px;">매입합계(공급가)</th>
+                    <th style="width: 36px;">삭제</th>
+                </tr>
+            `;
+        } else {
+            thead.innerHTML = `
+                <tr>
+                    <th style="width: 32px;">No.</th>
+                    <th style="min-width: 215px;" class="text-start ps-2">출고 상품 검색 / 선택 <span class="text-danger">*</span></th>
+                    <th style="width: 88px;">브랜드</th>
+                    <th style="width: 85px;">컬러 / 사이즈</th>
+                    <th style="width: 66px;">현재고</th>
+                    <th style="width: 66px;">출고수량 <span class="text-danger">*</span></th>
+                    <th style="width: 96px;" title="매입 원가 (VAT별도 공급가)">매입단가(공급가)</th>
+                    <th style="width: 105px;" title="입고 시 입력한 인터넷 최저가 + 배송비 합계">인터넷 최저가(합계)</th>
+                    <th style="width: 115px; background:#f5f3ff;" title="입고 시 설정한 적정 판매가">설정된 적정판매가</th>
+                    <th style="width: 120px; background:#fffbeb;" title="적정 판매가가 자동으로 입력되며 자유롭게 수정 가능합니다">출고 단가 입력 <span class="text-danger">*</span></th>
+                    <th style="width: 115px;" title="출고단가(공급가) - 매입단가(공급가)">판매마진 (개당/총액)</th>
+                    <th style="width: 78px;" title="공급가 기준 실현 마진율">마진율</th>
+                    <th style="width: 102px;">출고합계(공급가)</th>
+                    <th style="width: 36px;">삭제</th>
+                </tr>
+            `;
+        }
+    }
+
+    function addVoucherRow(prefillProduct = null) {
+        const tbody = $('voucherTbody');
+        if (!tbody) return;
+        voucherRowCounter++;
+        const rowId = voucherRowCounter;
+        const tr = document.createElement('tr');
+        tr.id = `vRow_${rowId}`;
+        tr.dataset.rowId = String(rowId);
+
+        if (voucherMode === 'IN') {
+            tr.innerHTML = `
+                <td class="text-center text-muted row-no"></td>
+                <td class="position-relative">
+                    <input type="text" class="form-control v-name fw-bold" placeholder="상품명 검색 또는 신규 입력..." oninput="app.onVoucherNameInput(${rowId}, this.value)" onfocus="app.onVoucherNameInput(${rowId}, this.value)">
+                    <div class="erp-autocomplete-menu d-none" id="vAuto_${rowId}"></div>
+                </td>
+                <td><input type="text" class="form-control v-brand" placeholder="브랜드"></td>
+                <td><input type="text" class="form-control v-color text-center" placeholder="컬러"></td>
+                <td><input type="text" class="form-control v-size text-center" placeholder="사이즈"></td>
+                <td><input type="number" class="form-control col-num pe-1 fw-bold text-primary v-qty" value="1" min="1" oninput="app.recalcVoucherRow(${rowId})" onfocus="app.clearZero(this)"></td>
+                <td><input type="text" class="form-control col-num pe-1 v-base" value="0" oninput="app.formatMoneyInput(this); app.onVoucherBaseOrFreightInput(${rowId})" onfocus="app.clearZero(this)"></td>
+                <td><input type="text" class="form-control col-num pe-1 v-freight" value="0" oninput="app.formatMoneyInput(this); app.onVoucherBaseOrFreightInput(${rowId})" onfocus="app.clearZero(this)"></td>
+                <td>
+                    <input type="text" class="form-control col-num pe-1 fw-bold v-buy" value="0" oninput="app.formatMoneyInput(this); app.recalcVoucherRow(${rowId})" onfocus="app.clearZero(this)">
+                </td>
+                <td style="background:#f8fafc;">
+                    <input type="text" class="form-control col-num pe-1 v-online-price" value="0" placeholder="최저가" oninput="app.formatMoneyInput(this); app.onVoucherOnlineInput(${rowId})" onfocus="app.clearZero(this)">
+                </td>
+                <td style="background:#f8fafc;">
+                    <input type="text" class="form-control col-num pe-1 v-online-ship" value="0" placeholder="배송비" oninput="app.formatMoneyInput(this); app.onVoucherOnlineInput(${rowId})" onfocus="app.clearZero(this)">
+                    <div class="cell-sub-hint text-end pe-1 v-online-sum-hint">합계: ₩0</div>
+                </td>
+                <td style="background:#f0fdf4;">
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="text" class="form-control col-num pe-1 fw-bold text-primary v-sell" value="0" placeholder="적정판매가" oninput="app.formatMoneyInput(this); this.dataset.manual='1'; app.recalcVoucherRow(${rowId})" onfocus="app.clearZero(this)">
+                        <button type="button" class="btn-apply-mini" onclick="app.applyOnlineToSellInRow(${rowId})" title="인터넷최저가 + 배송비 합계를 적정 판매가로 즉시 적용">=최저가</button>
+                    </div>
+                    <div class="cell-sub-hint text-end pe-1 v-sell-supply-hint">공급가: ₩0</div>
+                </td>
+                <td class="col-num pe-2 v-margin-cell">
+                    <div class="price-stack">
+                        <span class="price-main text-muted v-margin-won">₩0</span>
+                        <span class="price-sub v-margin-rate">0.0%</span>
+                    </div>
+                </td>
+                <td class="col-num pe-2 fw-bold text-dark v-row-total">₩0</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="app.removeVoucherRow(${rowId})" title="행 삭제"><i class='bx bx-x fs-5'></i></button>
+                </td>
+            `;
+        } else {
+            tr.innerHTML = `
+                <td class="text-center text-muted row-no"></td>
+                <td class="position-relative">
+                    <input type="text" class="form-control v-name fw-bold" placeholder="출고할 상품 검색 / 선택..." oninput="app.onVoucherNameInput(${rowId}, this.value)" onfocus="app.onVoucherNameInput(${rowId}, this.value)">
+                    <div class="erp-autocomplete-menu d-none" id="vAuto_${rowId}"></div>
+                </td>
+                <td><input type="text" class="form-control v-brand bg-light" readonly placeholder="-"></td>
+                <td><input type="text" class="form-control v-spec text-center bg-light" readonly placeholder="-"></td>
+                <td class="text-center"><span class="stock-pill stock-ok v-stock-badge">-</span></td>
+                <td><input type="number" class="form-control col-num pe-1 fw-bold text-primary v-qty" value="1" min="1" oninput="app.recalcVoucherRow(${rowId})" onfocus="app.clearZero(this)"></td>
+                <td class="col-num pe-2">
+                    <input type="text" class="form-control col-num pe-1 bg-light v-buy" value="0" readonly>
+                    <div class="cell-sub-hint text-end pe-1">공급가 원가</div>
+                </td>
+                <td class="col-num pe-2">
+                    <div class="price-stack">
+                        <span class="price-main text-secondary v-online-display">-</span>
+                        <span class="price-sub v-online-detail-display">최저가 참고</span>
+                    </div>
+                </td>
+                <td class="col-num pe-2" style="background:#f5f3ff;">
+                    <div class="d-flex align-items-center justify-content-end gap-1">
+                        <strong class="text-primary v-target-sell-display">미설정</strong>
+                        <button type="button" class="btn-apply-mini" onclick="app.applyTargetSellToOutRow(${rowId})" title="적정 판매가를 출고 단가로 다시 적용">적정가적용</button>
+                    </div>
+                    <div class="cell-sub-hint text-end pe-1 v-target-sell-sub">출고 시 자동 표기</div>
+                </td>
+                <td style="background:#fffbeb;">
+                    <input type="text" class="form-control col-num pe-1 fw-bold text-dark v-out-price" value="0" placeholder="출고단가 입력" oninput="app.formatMoneyInput(this); app.recalcVoucherRow(${rowId})" onfocus="app.clearZero(this)">
+                    <div class="cell-sub-hint text-end pe-1 v-out-supply-hint">공급가: ₩0</div>
+                </td>
+                <td class="col-num pe-2">
+                    <div class="price-stack">
+                        <span class="price-main text-success v-out-margin-total">₩0</span>
+                        <span class="price-sub v-out-margin-unit">개당 ₩0</span>
+                    </div>
+                </td>
+                <td class="text-center v-out-rate-cell">
+                    <span class="margin-badge margin-mid v-out-rate-badge">0.0%</span>
+                </td>
+                <td class="col-num pe-2 fw-bold text-dark v-row-total">₩0</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="app.removeVoucherRow(${rowId})" title="행 삭제"><i class='bx bx-x fs-5'></i></button>
+                </td>
+            `;
+        }
+
+        tbody.appendChild(tr);
+        renumberVoucherRows();
+
+        if (prefillProduct) {
+            selectVoucherProduct(rowId, prefillProduct.id);
+        }
+    }
+
+    function removeVoucherRow(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (tr) tr.remove();
+        if ($('voucherTbody') && $('voucherTbody').children.length === 0) {
+            addVoucherRow();
+        }
+        renumberVoucherRows();
+        recalcAllVoucherRows();
+    }
+
+    function clearVoucherRows() {
+        if ($('voucherTbody')) $('voucherTbody').innerHTML = '';
+        voucherRowCounter = 0;
+        for (let i = 0; i < 3; i++) addVoucherRow();
+        recalcAllVoucherRows();
+    }
+
+    function renumberVoucherRows() {
+        if (!$('voucherTbody')) return;
+        $('voucherTbody').querySelectorAll('tr').forEach((tr, idx) => {
+            const noCell = tr.querySelector('.row-no');
+            if (noCell) noCell.textContent = idx + 1;
+        });
+    }
+
+    // 상품 자동완성 검색
+    function onVoucherNameInput(rowId, keyword) {
+        const tr = $(`vRow_${rowId}`);
+        const menu = $(`vAuto_${rowId}`);
+        if (!tr || !menu) return;
+
+        // 열려있는 다른 자동완성 닫기
+        document.querySelectorAll('.erp-autocomplete-menu').forEach(el => {
+            if (el.id !== `vAuto_${rowId}`) el.classList.add('d-none');
+        });
+
+        const kw = (keyword || '').trim().toLowerCase();
+        const tokens = kw.split(/\s+/).filter(Boolean);
+
+        const matches = products.filter(p => {
+            if (tokens.length === 0) return true;
+            const hay = `${p.supplier || ''} ${p.brand || ''} ${p.name || ''} ${p.color || ''} ${p.size || ''}`.toLowerCase();
+            return tokens.every(t => hay.includes(t));
+        }).slice(0, 18);
+
+        if (matches.length === 0) {
+            menu.classList.add('d-none');
             return;
         }
 
-        const ps = parseInt(pageSize, 10);
-        const totalPages = Math.ceil(totalCount / ps) || 1;
-        const startItem = (page - 1) * ps + 1;
-        const endItem = Math.min(page * ps, totalCount);
-
-        if (bottomPageInfo) bottomPageInfo.textContent = `총 ${fmtNum(totalCount)}건 중 ${fmtNum(startItem)}~${fmtNum(endItem)}`;
-
-        let html = '';
-        html += `<button type="button" class="erp-page-btn" ${page <= 1 ? 'disabled' : ''} onclick="app.goPage(${page - 1})">‹</button>`;
-
-        const startP = Math.max(1, page - 2);
-        const endP = Math.min(totalPages, startP + 4);
-
-        if (startP > 1) {
-            html += `<button type="button" class="erp-page-btn" onclick="app.goPage(1)">1</button>`;
-            if (startP > 2) html += `<span class="px-1 text-muted">...</span>`;
-        }
-
-        for (let p = startP; p <= endP; p++) {
-            html += `<button type="button" class="erp-page-btn ${p === page ? 'active' : ''}" onclick="app.goPage(${p})">${p}</button>`;
-        }
-
-        if (endP < totalPages) {
-            if (endP < totalPages - 1) html += `<span class="px-1 text-muted">...</span>`;
-            html += `<button type="button" class="erp-page-btn" onclick="app.goPage(${totalPages})">${totalPages}</button>`;
-        }
-
-        html += `<button type="button" class="erp-page-btn" ${page >= totalPages ? 'disabled' : ''} onclick="app.goPage(${page + 1})">›</button>`;
-        if (paginationContainer) paginationContainer.innerHTML = html;
+        menu.innerHTML = matches.map(p => {
+            const m = computeProductMetrics(p);
+            return `
+                <div class="erp-autocomplete-item" onmousedown="app.selectVoucherProduct(${rowId}, '${escHtml(p.id)}')">
+                    <div>
+                        <span class="fw-bold text-dark">[${escHtml(p.brand || '-')}] ${escHtml(p.name || '-')}</span>
+                        <span class="text-muted ms-1">(${escHtml(p.color || '-')} / ${escHtml(p.size || '-')})</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-secondary">원가 ${fmtWon(m.buySupply)}</span>
+                        <span class="text-primary fw-bold">적정가 ${m.sellPrice > 0 ? fmtWon(m.sellPrice) : '미설정'}</span>
+                        <span class="badge ${m.stock > 0 ? 'bg-primary' : 'bg-danger'}">재고 ${fmtNum(m.stock)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        menu.classList.remove('d-none');
     }
 
-    // ==========================================
-    // 선택 및 체크박스 제어
-    // ==========================================
-    function updateSelectedUI() {
-        const count = selectedIds.size;
-        if ($('selectedCount')) $('selectedCount').textContent = count;
-        if ($('bottomSelectedCount')) $('bottomSelectedCount').textContent = count;
+    function selectVoucherProduct(rowId, productId) {
+        const tr = $(`vRow_${rowId}`);
+        const menu = $(`vAuto_${rowId}`);
+        if (menu) menu.classList.add('d-none');
+        if (!tr) return;
 
-        // 모바일 플로팅 일괄 선택 바 업데이트
-        const mobFloatingBar = $('mobileFloatingSelectionBar');
-        const mobSelCount = $('mobileSelectionCount');
-        const mobSelectAllCheck = $('mobSelectAllCheck');
-        if (mobFloatingBar) {
-            mobFloatingBar.classList.toggle('d-none', count === 0);
-        }
-        if (mobSelCount) {
-            mobSelCount.textContent = count;
-        }
+        const p = products.find(item => String(item.id) === String(productId));
+        if (!p) return;
 
-        // 모바일 카드 체크박스 및 배경 동기화
-        document.querySelectorAll('.mobile-hq-card').forEach(card => {
-            const id = card.dataset.id;
-            const checked = selectedIds.has(id);
-            card.classList.toggle('checked-card', checked);
-            const chk = card.querySelector('.row-check-mob');
-            if (chk) chk.checked = checked;
-        });
+        const m = computeProductMetrics(p);
+        tr.dataset.productId = String(p.id);
+        tr.dataset.targetSellPrice = String(m.sellPrice);
+        tr.dataset.targetSellVat = m.sellVatIncluded ? '1' : '0';
 
-        // 데스크톱 테이블 행 체크박스 및 배경 동기화
-        document.querySelectorAll('#tableBody tr').forEach(tr => {
-            const chk = tr.querySelector('.row-check');
-            if (chk) {
-                const checked = selectedIds.has(chk.value);
-                chk.checked = checked;
-                tr.classList.toggle('checked-row', checked);
-            }
-        });
+        const nameInput = tr.querySelector('.v-name');
+        if (nameInput) nameInput.value = p.name || '';
 
-        const selectAll = $('selectAll');
-        const pageChecks = document.querySelectorAll('.row-check');
-        if (selectAll && pageChecks.length > 0) {
-            const allChecked = Array.from(pageChecks).every(c => c.checked);
-            const someChecked = Array.from(pageChecks).some(c => c.checked);
-            selectAll.checked = allChecked;
-            selectAll.indeterminate = someChecked && !allChecked;
-            if (mobSelectAllCheck) {
-                mobSelectAllCheck.checked = allChecked;
-                mobSelectAllCheck.indeterminate = someChecked && !allChecked;
-            }
-        } else if (selectAll) {
-            selectAll.checked = false;
-            selectAll.indeterminate = false;
-            if (mobSelectAllCheck) {
-                mobSelectAllCheck.checked = false;
-                mobSelectAllCheck.indeterminate = false;
-            }
-        }
-    }
+        const brandInput = tr.querySelector('.v-brand');
+        if (brandInput) brandInput.value = p.brand || '';
 
-    // ==========================================
-    // 뷰 모드 전환 (카드 뷰 <-> ECOUNT 그리드)
-    // ==========================================
-    function toggleViewMode() {
-        viewMode = viewMode === 'card' ? 'table' : 'card';
-        applyViewMode();
-    }
+        if (voucherMode === 'IN') {
+            const colorInput = tr.querySelector('.v-color');
+            const sizeInput = tr.querySelector('.v-size');
+            const baseInput = tr.querySelector('.v-base');
+            const freightInput = tr.querySelector('.v-freight');
+            const buyInput = tr.querySelector('.v-buy');
+            const onlinePriceInput = tr.querySelector('.v-online-price');
+            const onlineShipInput = tr.querySelector('.v-online-ship');
+            const sellInput = tr.querySelector('.v-sell');
 
-    function applyViewMode() {
-        const gridWrap = $('inventoryGridWrapper');
-        const cardWrap = $('mobileCardsContainer');
-        const toggleBtn = $('mobileViewToggleBtn');
-        const bottomBar = document.querySelector('.erp-bottom-bar');
-
-        if (window.innerWidth <= 768) {
-            if (viewMode === 'card') {
-                if (gridWrap) gridWrap.classList.add('mobile-hidden-table');
-                if (cardWrap) cardWrap.classList.remove('d-none');
-                if (bottomBar) bottomBar.classList.add('d-none');
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = "<i class='bx bx-table'></i>";
-                    toggleBtn.title = "테이블 그리드로 보기";
-                }
-            } else {
-                if (gridWrap) gridWrap.classList.remove('mobile-hidden-table');
-                if (cardWrap) cardWrap.classList.add('d-none');
-                if (bottomBar) bottomBar.classList.remove('d-none');
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = "<i class='bx bx-grid-alt'></i>";
-                    toggleBtn.title = "카드 뷰로 보기";
-                }
+            if (colorInput) colorInput.value = p.color || '';
+            if (sizeInput) sizeInput.value = p.size || '';
+            if (baseInput) baseInput.value = fmtNum(m.basePrice || m.buySupply);
+            if (freightInput) freightInput.value = fmtNum(m.freight || 0);
+            if (buyInput) buyInput.value = fmtNum(m.buySupply);
+            if (onlinePriceInput) onlinePriceInput.value = fmtNum(m.onlinePrice);
+            if (onlineShipInput) onlineShipInput.value = fmtNum(m.onlineShipping);
+            if (sellInput) {
+                sellInput.value = fmtNum(m.sellPrice);
+                sellInput.dataset.manual = m.sellPrice > 0 ? '1' : '0';
             }
         } else {
-            if (gridWrap) gridWrap.classList.remove('mobile-hidden-table');
-            if (cardWrap) cardWrap.classList.add('d-none');
-            if (bottomBar) bottomBar.classList.remove('d-none');
+            // OUT 모드: 적정 판매가를 자동으로 표기 및 출고 단가에 기본 세팅!
+            const specInput = tr.querySelector('.v-spec');
+            const stockBadge = tr.querySelector('.v-stock-badge');
+            const buyInput = tr.querySelector('.v-buy');
+            const onlineDisplay = tr.querySelector('.v-online-display');
+            const onlineDetailDisplay = tr.querySelector('.v-online-detail-display');
+            const targetSellDisplay = tr.querySelector('.v-target-sell-display');
+            const targetSellSub = tr.querySelector('.v-target-sell-sub');
+            const outPriceInput = tr.querySelector('.v-out-price');
+
+            if (specInput) specInput.value = `${p.color || '-'} / ${p.size || '-'}`;
+            if (stockBadge) {
+                stockBadge.textContent = `${fmtNum(m.stock)}개`;
+                stockBadge.className = `stock-pill ${m.stock <= 0 ? 'stock-out' : (m.stock <= 2 ? 'stock-low' : 'stock-ok')}`;
+            }
+            if (buyInput) buyInput.value = fmtNum(m.buySupply);
+
+            if (onlineDisplay) {
+                onlineDisplay.textContent = m.onlineTotal > 0 ? fmtWon(m.onlineTotal) : '-';
+            }
+            if (onlineDetailDisplay) {
+                onlineDetailDisplay.textContent = m.onlineTotal > 0
+                    ? `상품 ${fmtNum(m.onlinePrice)} + 배송 ${fmtNum(m.onlineShipping)}`
+                    : '최저가 미입력';
+            }
+
+            if (targetSellDisplay) {
+                targetSellDisplay.textContent = m.sellPrice > 0 ? fmtWon(m.sellPrice) : '미설정';
+            }
+            if (targetSellSub) {
+                targetSellSub.textContent = m.sellPrice > 0
+                    ? (m.sellVatIncluded ? `VAT포함 (공급가 ${fmtWon(m.sellSupply)})` : 'VAT별도 공급가')
+                    : '입고 시 설정 가능';
+            }
+
+            // 출고단가에 적정 판매가 자동 입력!
+            if (outPriceInput) {
+                const chkOutVat = $('chkOutVat') ? $('chkOutVat').checked : true;
+                if (m.sellPrice > 0) {
+                    const defaultOutVal = chkOutVat
+                        ? (m.sellVatIncluded ? m.sellPrice : Math.round(m.sellSupply * 1.1))
+                        : m.sellSupply;
+                    outPriceInput.value = fmtNum(defaultOutVal);
+                } else {
+                    outPriceInput.value = fmtNum(chkOutVat ? Math.round(m.buySupply * 1.1) : m.buySupply);
+                }
+            }
+        }
+
+        recalcVoucherRow(rowId);
+    }
+
+    function onVoucherBaseOrFreightInput(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (!tr) return;
+        const chkBaseVat = $('chkBaseVat') ? $('chkBaseVat').checked : true; // true = VAT별도
+        const chkFreightVat = $('chkFreightVat') ? $('chkFreightVat').checked : true; // true = VAT별도
+
+        const rawBase = parseNumber(tr.querySelector('.v-base')?.value);
+        const rawFreight = parseNumber(tr.querySelector('.v-freight')?.value);
+
+        const netBase = chkBaseVat ? rawBase : Math.round(rawBase / 1.1);
+        const netFreight = chkFreightVat ? rawFreight : Math.round(rawFreight / 1.1);
+
+        const buyInput = tr.querySelector('.v-buy');
+        if (buyInput) buyInput.value = fmtNum(netBase + netFreight);
+
+        recalcVoucherRow(rowId);
+    }
+
+    function onVoucherOnlineInput(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (!tr) return;
+        const onlinePrice = parseNumber(tr.querySelector('.v-online-price')?.value);
+        const onlineShip = parseNumber(tr.querySelector('.v-online-ship')?.value);
+        const onlineSum = onlinePrice + onlineShip;
+
+        // 적정판매가가 아직 수동 입력되지 않았다면 인터넷최저가 합계를 자동으로 가이드 세팅
+        const sellInput = tr.querySelector('.v-sell');
+        if (sellInput && sellInput.dataset.manual !== '1' && onlineSum > 0) {
+            sellInput.value = fmtNum(onlineSum);
+        }
+
+        recalcVoucherRow(rowId);
+    }
+
+    function applyOnlineToSellInRow(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (!tr) return;
+        const onlinePrice = parseNumber(tr.querySelector('.v-online-price')?.value);
+        const onlineShip = parseNumber(tr.querySelector('.v-online-ship')?.value);
+        const sellInput = tr.querySelector('.v-sell');
+        if (sellInput) {
+            sellInput.value = fmtNum(onlinePrice + onlineShip);
+            sellInput.dataset.manual = '1';
+        }
+        recalcVoucherRow(rowId);
+    }
+
+    function applyTargetSellToOutRow(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (!tr) return;
+        const targetSell = Number(tr.dataset.targetSellPrice) || 0;
+        const targetSellVat = tr.dataset.targetSellVat !== '0';
+        if (targetSell <= 0) {
+            showToast('이 품목에 설정된 적정 판매가가 없습니다.', 'warning');
+            return;
+        }
+        const chkOutVat = $('chkOutVat') ? $('chkOutVat').checked : true;
+        const targetSupply = toSupplyPrice(targetSell, targetSellVat);
+        const outPriceInput = tr.querySelector('.v-out-price');
+        if (outPriceInput) {
+            outPriceInput.value = fmtNum(chkOutVat ? (targetSellVat ? targetSell : Math.round(targetSupply * 1.1)) : targetSupply);
+        }
+        recalcVoucherRow(rowId);
+    }
+
+    function recalcVoucherRow(rowId) {
+        const tr = $(`vRow_${rowId}`);
+        if (!tr) return;
+
+        const qty = Math.max(1, parseNumber(tr.querySelector('.v-qty')?.value));
+
+        if (voucherMode === 'IN') {
+            const chkOnlineVat = $('chkOnlineVat') ? $('chkOnlineVat').checked : true; // true = VAT포함
+            const chkSellVat = $('chkSellVat') ? $('chkSellVat').checked : true; // true = VAT포함
+
+            const buySupply = parseNumber(tr.querySelector('.v-buy')?.value);
+            const onlinePrice = parseNumber(tr.querySelector('.v-online-price')?.value);
+            const onlineShip = parseNumber(tr.querySelector('.v-online-ship')?.value);
+            const onlineTotal = onlinePrice + onlineShip;
+            const onlineSupply = toSupplyPrice(onlineTotal, chkOnlineVat);
+
+            const sellPrice = parseNumber(tr.querySelector('.v-sell')?.value);
+            const sellSupply = toSupplyPrice(sellPrice, chkSellVat);
+
+            const onlineHint = tr.querySelector('.v-online-sum-hint');
+            if (onlineHint) {
+                onlineHint.textContent = onlineTotal > 0
+                    ? `합계: ${fmtWon(onlineTotal)} (공급가 ${fmtWon(onlineSupply)})`
+                    : '합계: ₩0';
+            }
+
+            const sellHint = tr.querySelector('.v-sell-supply-hint');
+            if (sellHint) {
+                const diffVsOnline = (onlineTotal > 0 && sellPrice > 0) ? (sellPrice - onlineTotal) : 0;
+                const diffLabel = (onlineTotal > 0 && sellPrice > 0)
+                    ? ` | 최저가대비 ${diffVsOnline > 0 ? '+' : ''}${fmtNum(diffVsOnline)}`
+                    : '';
+                sellHint.textContent = `공급가: ${fmtWon(sellSupply)}${diffLabel}`;
+            }
+
+            const unitMargin = sellSupply > 0 ? (sellSupply - buySupply) : 0;
+            const marginRate = sellSupply > 0 ? ((unitMargin / sellSupply) * 100) : 0;
+
+            const marginWonEl = tr.querySelector('.v-margin-won');
+            const marginRateEl = tr.querySelector('.v-margin-rate');
+            if (marginWonEl) {
+                marginWonEl.textContent = sellSupply > 0 ? `${unitMargin >= 0 ? '+' : ''}${fmtWon(unitMargin)}` : '-';
+                marginWonEl.className = `price-main ${unitMargin >= 0 ? 'text-success' : 'text-danger'}`;
+            }
+            if (marginRateEl) {
+                marginRateEl.innerHTML = sellSupply > 0
+                    ? `<span class="margin-badge ${getMarginBadgeClass(marginRate)}">${marginRate.toFixed(1)}%</span>`
+                    : '0.0%';
+            }
+
+            const rowTotalEl = tr.querySelector('.v-row-total');
+            if (rowTotalEl) rowTotalEl.textContent = fmtWon(buySupply * qty);
+        } else {
+            // OUT 모드: 출고단가 입력 시 실시간 판매마진 & 마진율 계산
+            const chkOutVat = $('chkOutVat') ? $('chkOutVat').checked : true; // true = VAT포함 입력
+            const buySupply = parseNumber(tr.querySelector('.v-buy')?.value);
+            const rawOutPrice = parseNumber(tr.querySelector('.v-out-price')?.value);
+            const netOutSupply = toSupplyPrice(rawOutPrice, chkOutVat);
+
+            const outSupplyHint = tr.querySelector('.v-out-supply-hint');
+            if (outSupplyHint) {
+                outSupplyHint.textContent = chkOutVat
+                    ? `공급가 환산: ${fmtWon(netOutSupply)}`
+                    : `VAT포함 환산: ${fmtWon(Math.round(netOutSupply * 1.1))}`;
+            }
+
+            const unitMargin = netOutSupply - buySupply;
+            const totalMargin = unitMargin * qty;
+            const marginRate = netOutSupply > 0 ? ((unitMargin / netOutSupply) * 100) : 0;
+
+            const marginTotalEl = tr.querySelector('.v-out-margin-total');
+            const marginUnitEl = tr.querySelector('.v-out-margin-unit');
+            const rateBadgeEl = tr.querySelector('.v-out-rate-badge');
+            const rowTotalEl = tr.querySelector('.v-row-total');
+
+            if (marginTotalEl) {
+                marginTotalEl.textContent = `${totalMargin >= 0 ? '+' : ''}${fmtWon(totalMargin)}`;
+                marginTotalEl.className = `price-main fw-bold ${totalMargin >= 0 ? 'text-success' : 'text-danger'}`;
+            }
+            if (marginUnitEl) {
+                marginUnitEl.textContent = `개당 ${unitMargin >= 0 ? '+' : ''}${fmtWon(unitMargin)}`;
+            }
+            if (rateBadgeEl) {
+                rateBadgeEl.textContent = `${marginRate.toFixed(1)}%`;
+                rateBadgeEl.className = `margin-badge ${getMarginBadgeClass(marginRate)}`;
+            }
+            if (rowTotalEl) {
+                rowTotalEl.textContent = fmtWon(netOutSupply * qty);
+            }
+        }
+
+        updateVoucherSummaryFooter();
+    }
+
+    function recalcAllVoucherRows() {
+        if (!$('voucherTbody')) return;
+        $('voucherTbody').querySelectorAll('tr').forEach(tr => {
+            const rowId = Number(tr.dataset.rowId);
+            if (voucherMode === 'IN') {
+                const rawBase = parseNumber(tr.querySelector('.v-base')?.value);
+                const rawFreight = parseNumber(tr.querySelector('.v-freight')?.value);
+                if (rawBase > 0 || rawFreight > 0) {
+                    onVoucherBaseOrFreightInput(rowId);
+                    return;
+                }
+            }
+            recalcVoucherRow(rowId);
+        });
+        updateVoucherSummaryFooter();
+    }
+
+    function updateVoucherSummaryFooter() {
+        if (!$('voucherTbody')) return;
+        let validCount = 0;
+        let sumQty = 0;
+        let sumAmount = 0;
+        let sumMargin = 0;
+        let sumSellSupplyTotal = 0;
+
+        const chkSellVat = $('chkSellVat') ? $('chkSellVat').checked : true;
+        const chkOutVat = $('chkOutVat') ? $('chkOutVat').checked : true;
+
+        $('voucherTbody').querySelectorAll('tr').forEach(tr => {
+            const name = (tr.querySelector('.v-name')?.value || '').trim();
+            if (!name) return;
+            validCount++;
+
+            const qty = Math.max(1, parseNumber(tr.querySelector('.v-qty')?.value));
+            const buySupply = parseNumber(tr.querySelector('.v-buy')?.value);
+            sumQty += qty;
+
+            if (voucherMode === 'IN') {
+                sumAmount += buySupply * qty;
+                const sellPrice = parseNumber(tr.querySelector('.v-sell')?.value);
+                const sellSupply = toSupplyPrice(sellPrice, chkSellVat);
+                if (sellSupply > 0) {
+                    sumMargin += (sellSupply - buySupply) * qty;
+                    sumSellSupplyTotal += sellSupply * qty;
+                }
+            } else {
+                const rawOut = parseNumber(tr.querySelector('.v-out-price')?.value);
+                const netOut = toSupplyPrice(rawOut, chkOutVat);
+                sumAmount += netOut * qty;
+                sumMargin += (netOut - buySupply) * qty;
+                sumSellSupplyTotal += netOut * qty;
+            }
+        });
+
+        const avgRate = sumSellSupplyTotal > 0 ? ((sumMargin / sumSellSupplyTotal) * 100).toFixed(1) : '0.0';
+
+        if ($('vSummaryCount')) $('vSummaryCount').textContent = fmtNum(validCount);
+        if ($('vSummaryQty')) $('vSummaryQty').textContent = fmtNum(sumQty);
+        if ($('vSummaryAmount')) $('vSummaryAmount').textContent = fmtWon(sumAmount);
+        if ($('vSummaryMargin')) {
+            $('vSummaryMargin').textContent = `${sumMargin >= 0 ? '+' : ''}${fmtWon(sumMargin)} (${avgRate}%)`;
+            $('vSummaryMargin').className = `${sumMargin >= 0 ? 'text-success' : 'text-danger'} fs-6`;
+        }
+    }
+
+    // 전표 일괄 저장
+    async function submitVoucher() {
+        const txDate = ($('vTxDate')?.value || '').trim();
+        const supplier = ($('vSupplier')?.value || '').trim() || (voucherMode === 'IN' ? '최가유통' : '본사출고');
+        const commonRemarks = ($('vRemarks')?.value || '').trim();
+
+        if (!txDate) {
+            showToast('거래일자를 선택해주세요.', 'warning');
+            return;
+        }
+
+        const rows = Array.from($('voucherTbody')?.querySelectorAll('tr') || []);
+        const chkOnlineVat = $('chkOnlineVat') ? $('chkOnlineVat').checked : true;
+        const chkSellVat = $('chkSellVat') ? $('chkSellVat').checked : true;
+        const chkOutVat = $('chkOutVat') ? $('chkOutVat').checked : true;
+
+        const items = [];
+
+        for (const tr of rows) {
+            const name = (tr.querySelector('.v-name')?.value || '').trim();
+            if (!name) continue;
+
+            const qty = Math.max(1, parseNumber(tr.querySelector('.v-qty')?.value));
+            const brand = (tr.querySelector('.v-brand')?.value || '').trim();
+            let productId = tr.dataset.productId || '';
+
+            if (voucherMode === 'IN') {
+                const color = (tr.querySelector('.v-color')?.value || '').trim();
+                const size = (tr.querySelector('.v-size')?.value || '').trim();
+                const basePrice = parseNumber(tr.querySelector('.v-base')?.value);
+                const freight = parseNumber(tr.querySelector('.v-freight')?.value);
+                const buySupply = parseNumber(tr.querySelector('.v-buy')?.value);
+                const onlinePrice = parseNumber(tr.querySelector('.v-online-price')?.value);
+                const onlineShipping = parseNumber(tr.querySelector('.v-online-ship')?.value);
+                const sellPrice = parseNumber(tr.querySelector('.v-sell')?.value);
+
+                // 기존 상품 매칭 또는 신규 생성
+                let match = productId
+                    ? products.find(p => String(p.id) === String(productId))
+                    : products.find(p => p.brand === brand && p.name === name && p.color === color && p.size === size);
+
+                if (!match) {
+                    try {
+                        const createRes = await authFetch(API_BASE + '/products', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                supplier,
+                                brand,
+                                name,
+                                color,
+                                size,
+                                stock: 0,
+                                buyPrice: buySupply,
+                                basePrice,
+                                freight,
+                                onlinePrice,
+                                onlineShipping,
+                                onlineVatIncluded: chkOnlineVat ? 1 : 0,
+                                sellPrice,
+                                sellVatIncluded: chkSellVat ? 1 : 0,
+                                discountPrice: sellPrice
+                            })
+                        });
+                        if (!createRes.ok) throw new Error('신규 품목 마스터 생성 실패');
+                        const created = await createRes.json();
+                        productId = created.id;
+                    } catch (err) {
+                        showToast(`품목 생성 오류 (${name}): ${err.message}`, 'error');
+                        return;
+                    }
+                } else {
+                    productId = match.id;
+                }
+
+                const sellSupply = toSupplyPrice(sellPrice, chkSellVat);
+                const unitMargin = sellSupply > 0 ? (sellSupply - buySupply) : 0;
+                const marginRate = sellSupply > 0 ? Number(((unitMargin / sellSupply) * 100).toFixed(1)) : 0;
+
+                items.push({
+                    type: 'IN',
+                    txDate,
+                    supplier,
+                    brand,
+                    productName: name,
+                    color,
+                    size,
+                    qty,
+                    price: buySupply,
+                    basePrice,
+                    freight,
+                    onlinePrice,
+                    onlineShipping,
+                    onlineVatIncluded: chkOnlineVat ? 1 : 0,
+                    sellPrice,
+                    sellVatIncluded: chkSellVat ? 1 : 0,
+                    buyPrice: buySupply,
+                    marginAmount: unitMargin,
+                    marginRate,
+                    remarks: commonRemarks,
+                    productId
+                });
+            } else {
+                // OUT 모드
+                const match = productId
+                    ? products.find(p => String(p.id) === String(productId))
+                    : products.find(p => p.name === name);
+
+                if (!match) {
+                    showToast(`출고할 상품을 목록에서 선택해주세요: ${name}`, 'warning');
+                    return;
+                }
+
+                const buySupply = parseNumber(tr.querySelector('.v-buy')?.value) || Number(match.buyPrice) || 0;
+                const rawOutPrice = parseNumber(tr.querySelector('.v-out-price')?.value);
+                const netOutSupply = toSupplyPrice(rawOutPrice, chkOutVat);
+                const unitMargin = netOutSupply - buySupply;
+                const marginRate = netOutSupply > 0 ? Number(((unitMargin / netOutSupply) * 100).toFixed(1)) : 0;
+
+                items.push({
+                    type: 'OUT',
+                    txDate,
+                    supplier,
+                    brand: match.brand || brand,
+                    productName: match.name || name,
+                    color: match.color || '',
+                    size: match.size || '',
+                    qty,
+                    price: netOutSupply,
+                    rawOutPrice,
+                    outVatIncluded: chkOutVat ? 1 : 0,
+                    basePrice: 0,
+                    freight: 0,
+                    onlinePrice: Number(match.onlinePrice) || 0,
+                    onlineShipping: Number(match.onlineShipping) || 0,
+                    onlineVatIncluded: match.onlineVatIncluded !== undefined ? Number(match.onlineVatIncluded) : 1,
+                    sellPrice: Number(match.sellPrice || match.discountPrice) || 0,
+                    sellVatIncluded: match.sellVatIncluded !== undefined ? Number(match.sellVatIncluded) : 1,
+                    buyPrice: buySupply,
+                    marginAmount: unitMargin,
+                    marginRate,
+                    remarks: commonRemarks,
+                    productId: match.id
+                });
+            }
+        }
+
+        if (items.length === 0) {
+            showToast('전표에 등록할 품목을 1건 이상 입력해주세요.', 'warning');
+            return;
+        }
+
+        const btn = $('btnSubmitVoucher');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await authFetch(API_BASE + '/transactions/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || '전표 저장 실패');
+            }
+
+            showToast(`${items.length}건의 ${voucherMode === 'IN' ? '입고 및 적정판매가' : '출고 및 판매마진'} 전표가 등록되었습니다!`, 'success');
+            if (voucherModal) voucherModal.hide();
+            selectedInvIds.clear();
+            updateSelectedUI();
+            await loadAllData();
+        } catch (e) {
+            showToast('전표 저장 오류: ' + e.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
     // ==========================================
-    // 모달 및 CRUD 제어
+    // 10. 품목 마스터 단품 등록 / 수정 모달 (#productModal)
     // ==========================================
     function openNewModal() {
+        if (!productModal) {
+            const el = $('productModal');
+            if (el && window.bootstrap) productModal = new bootstrap.Modal(el, { keyboard: true });
+        }
         $('editId').value = '';
-        $('modalModeTitle').textContent = '본사 신규 상품 등록';
-
-        // PC 폼 필드 초기화
-        $('mSupplier').value = '최가유통';
+        if ($('modalModeTitle')) $('modalModeTitle').textContent = '본사 상품 등록 및 적정판매가 설정';
+        $('mSupplier').value = supplierFilter || '최가유통';
         $('mBrand').value = '';
         $('mName').value = '';
         $('mColor').value = '';
         $('mSize').value = '';
+        $('mBasePrice').value = '0';
+        $('mFreight').value = '0';
         $('mBuyPrice').value = '0';
-        $('mSellPrice').value = '0';
-        $('mDiscountPrice').value = '0';
         $('mStock').value = '0';
-
-        // 모바일 폼 필드 동기화
-        if ($('mobSupplier')) $('mobSupplier').value = '최가유통';
-        if ($('mobBrand')) $('mobBrand').value = '';
-        if ($('mobName')) $('mobName').value = '';
-        if ($('mobColor')) $('mobColor').value = '';
-        if ($('mobSize')) $('mobSize').value = '';
-        if ($('mobBuyPrice')) $('mobBuyPrice').value = '0';
-        if ($('mobSellPrice')) $('mobSellPrice').value = '0';
-        if ($('mobDiscountPrice')) $('mobDiscountPrice').value = '0';
-        if ($('mobStock')) $('mobStock').value = '0';
+        $('mOnlineVat').checked = true;
+        $('mOnlinePrice').value = '0';
+        $('mOnlineShipping').value = '0';
+        $('mSellVat').checked = true;
+        $('mSellPrice').value = '0';
 
         calcModalMargin();
-        productModal.show();
-        setTimeout(() => {
-            if (window.innerWidth <= 768) {
-                if ($('mobBrand')) $('mobBrand').focus();
-            } else {
-                $('mBrand').focus();
-            }
-        }, 300);
+        if (productModal) productModal.show();
     }
 
     function openEditModal(id) {
         const p = products.find(item => String(item.id) === String(id));
-        if (!p) {
-            showToast('상품 정보를 찾을 수 없습니다.', 'warning');
-            return;
+        if (!p) return;
+
+        if (!productModal) {
+            const el = $('productModal');
+            if (el && window.bootstrap) productModal = new bootstrap.Modal(el, { keyboard: true });
         }
 
+        const m = computeProductMetrics(p);
         $('editId').value = p.id;
-        $('modalModeTitle').textContent = `상품 정보 수정 (${p.name})`;
-
-        // PC 폼 필드 채우기
+        if ($('modalModeTitle')) $('modalModeTitle').textContent = '본사 상품 및 적정판매가 수정';
         $('mSupplier').value = p.supplier || '최가유통';
         $('mBrand').value = p.brand || '';
         $('mName').value = p.name || '';
         $('mColor').value = p.color || '';
         $('mSize').value = p.size || '';
-        $('mBuyPrice').value = fmtNum(p.buyPrice || 0);
-        $('mSellPrice').value = fmtNum(p.sellPrice || 0);
-        $('mDiscountPrice').value = fmtNum(p.discountPrice || 0);
-        $('mStock').value = p.stock ?? 0;
-
-        // 모바일 폼 필드 채우기
-        if ($('mobSupplier')) $('mobSupplier').value = p.supplier || '최가유통';
-        if ($('mobBrand')) $('mobBrand').value = p.brand || '';
-        if ($('mobName')) $('mobName').value = p.name || '';
-        if ($('mobColor')) $('mobColor').value = p.color || '';
-        if ($('mobSize')) $('mobSize').value = p.size || '';
-        if ($('mobBuyPrice')) $('mobBuyPrice').value = fmtNum(p.buyPrice || 0);
-        if ($('mobSellPrice')) $('mobSellPrice').value = fmtNum(p.sellPrice || 0);
-        if ($('mobDiscountPrice')) $('mobDiscountPrice').value = fmtNum(p.discountPrice || 0);
-        if ($('mobStock')) $('mobStock').value = p.stock ?? 0;
+        $('mBasePrice').value = fmtNum(m.basePrice);
+        $('mFreight').value = fmtNum(m.freight);
+        $('mBuyPrice').value = fmtNum(m.buySupply);
+        $('mStock').value = m.stock;
+        $('mOnlineVat').checked = m.onlineVatIncluded;
+        $('mOnlinePrice').value = fmtNum(m.onlinePrice);
+        $('mOnlineShipping').value = fmtNum(m.onlineShipping);
+        $('mSellVat').checked = m.sellVatIncluded;
+        $('mSellPrice').value = fmtNum(m.sellPrice);
 
         calcModalMargin();
-        productModal.show();
-        setTimeout(() => {
-            if (window.innerWidth <= 768) {
-                if ($('mobStock')) $('mobStock').focus();
-            } else {
-                $('mStock').focus();
-            }
-        }, 300);
+        if (productModal) productModal.show();
     }
 
-    function syncModalInputs(field) {
-        if (field === 'supplier') {
-            if ($('mobSupplier')) $('mSupplier').value = $('mobSupplier').value;
-        } else if (field === 'brand') {
-            if ($('mobBrand')) $('mBrand').value = $('mobBrand').value;
-        } else if (field === 'name') {
-            if ($('mobName')) $('mName').value = $('mobName').value;
-        } else if (field === 'color') {
-            if ($('mobColor')) $('mColor').value = $('mobColor').value;
-        } else if (field === 'size') {
-            if ($('mobSize')) $('mSize').value = $('mobSize').value;
-        } else if (field === 'stock') {
-            if ($('mobStock')) $('mStock').value = $('mobStock').value;
-        } else if (field === 'buyPrice') {
-            if ($('mobBuyPrice')) $('mBuyPrice').value = $('mobBuyPrice').value;
-        } else if (field === 'sellPrice') {
-            if ($('mobSellPrice')) $('mSellPrice').value = $('mobSellPrice').value;
-        } else if (field === 'discountPrice') {
-            if ($('mobDiscountPrice')) $('mDiscountPrice').value = $('mobDiscountPrice').value;
+    function onProductBaseOrFreightInput() {
+        const base = parseNumber($('mBasePrice')?.value);
+        const freight = parseNumber($('mFreight')?.value);
+        if ($('mBuyPrice')) $('mBuyPrice').value = fmtNum(base + freight);
+        calcModalMargin();
+    }
+
+    function onProductOnlineInput() {
+        const onlinePrice = parseNumber($('mOnlinePrice')?.value);
+        const onlineShip = parseNumber($('mOnlineShipping')?.value);
+        const sum = onlinePrice + onlineShip;
+        const isVat = $('mOnlineVat') ? $('mOnlineVat').checked : true;
+        if ($('mOnlineSumHint')) {
+            $('mOnlineSumHint').textContent = `최저가 합계: ${fmtWon(sum)} (공급가 ${fmtWon(toSupplyPrice(sum, isVat))})`;
         }
+        calcModalMargin();
+    }
+
+    function applyOnlineSumToProductSellPrice() {
+        const onlinePrice = parseNumber($('mOnlinePrice')?.value);
+        const onlineShip = parseNumber($('mOnlineShipping')?.value);
+        if ($('mSellPrice')) {
+            $('mSellPrice').value = fmtNum(onlinePrice + onlineShip);
+        }
+        calcModalMargin();
     }
 
     function calcModalMargin() {
-        const buy = parseNumber($('mBuyPrice').value || ($('mobBuyPrice') && $('mobBuyPrice').value));
-        const sell = parseNumber($('mSellPrice').value || ($('mobSellPrice') && $('mobSellPrice').value));
-        const stock = parseNumber($('mStock').value || ($('mobStock') && $('mobStock').value));
-        const disc = parseNumber($('mDiscountPrice').value || ($('mobDiscountPrice') && $('mobDiscountPrice').value));
+        const buySupply = parseNumber($('mBuyPrice')?.value);
+        const stock = parseNumber($('mStock')?.value);
+        const onlinePrice = parseNumber($('mOnlinePrice')?.value);
+        const onlineShip = parseNumber($('mOnlineShipping')?.value);
+        const onlineSum = onlinePrice + onlineShip;
+        const onlineVat = $('mOnlineVat') ? $('mOnlineVat').checked : true;
 
-        // PC 요약 패널
-        const marginEl = $('modalExpectedMargin');
-        if (marginEl) {
-            if (sell > 0) {
-                const marginRate = Math.round(((sell - buy) / sell) * 100);
-                marginEl.textContent = `${marginRate}% (마진 ₩${fmtNum(sell - buy)})`;
-                marginEl.className = marginRate >= 30 ? 'text-success fs-6' : (marginRate < 10 ? 'text-danger fs-6' : 'text-primary fs-6');
-            } else {
-                marginEl.textContent = '-';
-                marginEl.className = 'text-muted fs-6';
-            }
+        if ($('mOnlineSumHint')) {
+            $('mOnlineSumHint').textContent = `최저가 합계: ${fmtWon(onlineSum)} (공급가 ${fmtWon(toSupplyPrice(onlineSum, onlineVat))})`;
+        }
+
+        const sellPrice = parseNumber($('mSellPrice')?.value);
+        const sellVat = $('mSellVat') ? $('mSellVat').checked : true;
+        const sellSupply = toSupplyPrice(sellPrice, sellVat);
+
+        if ($('mSellSupplyHint')) {
+            $('mSellSupplyHint').textContent = `(공급가 환산: ${fmtWon(sellSupply)})`;
+        }
+
+        const unitMargin = sellSupply > 0 ? (sellSupply - buySupply) : 0;
+        const marginRate = sellSupply > 0 ? ((unitMargin / sellSupply) * 100).toFixed(1) : null;
+        const stockValue = buySupply * stock;
+
+        if ($('modalExpectedProfit')) {
+            $('modalExpectedProfit').textContent = sellSupply > 0 ? `${unitMargin >= 0 ? '+' : ''}${fmtWon(unitMargin)}` : '₩0';
+            $('modalExpectedProfit').className = `${unitMargin >= 0 ? 'text-success' : 'text-danger'} fs-6`;
+        }
+        if ($('modalExpectedMargin')) {
+            $('modalExpectedMargin').textContent = marginRate !== null ? `${marginRate}%` : '-';
         }
         if ($('modalExpectedStockValue')) {
-            $('modalExpectedStockValue').textContent = fmtWon(buy * stock);
-        }
-
-        // 모바일 실시간 프리뷰 카드
-        const mobBadge = $('mobModalMarginBadge');
-        if (mobBadge) {
-            if (sell > 0) {
-                const activeSell = disc > 0 ? disc : sell;
-                const marginRate = Math.round(((activeSell - buy) / activeSell) * 100);
-                let badgeClass = 'badge-mid';
-                if (marginRate >= 40) badgeClass = 'badge-high';
-                else if (marginRate < 10 && marginRate >= 0) badgeClass = 'badge-low';
-                else if (marginRate < 0) badgeClass = 'badge-neg';
-
-                mobBadge.textContent = `${marginRate}%`;
-                mobBadge.className = `mobile-margin-badge ${badgeClass}`;
-            } else {
-                mobBadge.textContent = '미등록';
-                mobBadge.className = 'mobile-margin-badge badge-mid';
-            }
-        }
-        if ($('mobModalBuyPreview')) $('mobModalBuyPreview').textContent = fmtWon(buy);
-        if ($('mobModalSellPreview')) $('mobModalSellPreview').textContent = sell > 0 ? fmtWon(sell) : '₩0';
-        if ($('mobModalProfitPreview')) {
-            const profit = sell > 0 ? (sell - buy) : 0;
-            $('mobModalProfitPreview').textContent = (profit >= 0 ? '+' : '') + fmtWon(profit);
-            $('mobModalProfitPreview').className = profit < 0 ? 'mob-preview-val text-danger' : 'mob-preview-val text-success';
-        }
-        if ($('mobModalStockValPreview')) $('mobModalStockValPreview').textContent = fmtWon(buy * stock);
-    }
-
-    function parseNumber(val) {
-        if (!val) return 0;
-        return parseInt(String(val).replace(/[^0-9]/g, ''), 10) || 0;
-    }
-
-    function formatMoneyInput(el) {
-        const num = parseNumber(el.value);
-        el.value = fmtNum(num);
-    }
-
-    function clearZero(el) {
-        if (el.value === '0' || el.value === '0원') {
-            el.value = '';
+            $('modalExpectedStockValue').textContent = fmtWon(stockValue);
         }
     }
 
     async function handleSaveProduct(e) {
         if (e) e.preventDefault();
 
-        const id = $('editId').value.trim();
-        const supplier = ($('mSupplier').value || ($('mobSupplier') && $('mobSupplier').value) || '최가유통').trim();
-        const brand = ($('mBrand').value || ($('mobBrand') && $('mobBrand').value) || '').trim();
-        const name = ($('mName').value || ($('mobName') && $('mobName').value) || '').trim();
-        const color = ($('mColor').value || ($('mobColor') && $('mobColor').value) || '').trim();
-        const size = ($('mSize').value || ($('mobSize') && $('mobSize').value) || '').trim();
-        const buyPrice = parseNumber($('mBuyPrice').value || ($('mobBuyPrice') && $('mobBuyPrice').value));
-        const sellPrice = parseNumber($('mSellPrice').value || ($('mobSellPrice') && $('mobSellPrice').value));
-        const discountPrice = parseNumber($('mDiscountPrice').value || ($('mobDiscountPrice') && $('mobDiscountPrice').value));
-        const stock = parseNumber($('mStock').value || ($('mobStock') && $('mobStock').value));
-
-        if (!brand) {
-            showToast('브랜드를 입력해 주세요.', 'warning');
-            if (window.innerWidth <= 768 && $('mobBrand')) $('mobBrand').focus();
-            else $('mBrand').focus();
-            return;
-        }
-        if (!name) {
-            showToast('상품명을 입력해 주세요.', 'warning');
-            if (window.innerWidth <= 768 && $('mobName')) $('mobName').focus();
-            else $('mName').focus();
-            return;
-        }
-
+        const editId = ($('editId')?.value || '').trim();
         const payload = {
-            supplier, brand, name, color, size,
-            buyPrice, sellPrice, discountPrice, stock
+            supplier: ($('mSupplier')?.value || '최가유통').trim(),
+            brand: ($('mBrand')?.value || '').trim(),
+            name: ($('mName')?.value || '').trim(),
+            color: ($('mColor')?.value || '').trim(),
+            size: ($('mSize')?.value || '').trim(),
+            basePrice: parseNumber($('mBasePrice')?.value),
+            freight: parseNumber($('mFreight')?.value),
+            buyPrice: parseNumber($('mBuyPrice')?.value),
+            stock: parseNumber($('mStock')?.value),
+            onlinePrice: parseNumber($('mOnlinePrice')?.value),
+            onlineShipping: parseNumber($('mOnlineShipping')?.value),
+            onlineVatIncluded: $('mOnlineVat')?.checked ? 1 : 0,
+            sellPrice: parseNumber($('mSellPrice')?.value),
+            sellVatIncluded: $('mSellVat')?.checked ? 1 : 0,
+            discountPrice: parseNumber($('mSellPrice')?.value)
         };
 
-        const isEdit = !!id;
-        const url = isEdit ? `${API_BASE}/products/${id}` : `${API_BASE}/products`;
-        const method = isEdit ? 'PUT' : 'POST';
+        if (!payload.name) {
+            showToast('상품명을 입력해주세요.', 'warning');
+            return;
+        }
 
         try {
+            const url = editId ? `${API_BASE}/products/${editId}` : `${API_BASE}/products`;
+            const method = editId ? 'PUT' : 'POST';
             const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || '저장 실패');
-            }
-
-            showToast(isEdit ? '상품 정보가 수정되었습니다.' : '신규 상품이 등록되었습니다.', 'success');
-            productModal.hide();
-            await fetchProducts();
-            await fetchMetrics();
+            if (!res.ok) throw new Error('저장 실패 (' + res.status + ')');
+            showToast(editId ? '상품 및 적정판매가 정보가 수정되었습니다.' : '새 상품이 등록되었습니다.', 'success');
+            if (productModal) productModal.hide();
+            await loadAllData();
         } catch (err) {
-            showToast('저장 중 오류 발생: ' + err.message, 'error');
+            showToast('저장 중 오류: ' + err.message, 'error');
         }
+    }
+
+    // ==========================================
+    // 11. 입출고 단일 내역 수정 모달 (#txEditModal)
+    // ==========================================
+    function openTxEditModal(txId) {
+        const t = transactions.find(x => Number(x.id) === Number(txId));
+        if (!t) return;
+
+        if (!txEditModal) {
+            const el = $('txEditModal');
+            if (el && window.bootstrap) txEditModal = new bootstrap.Modal(el, { keyboard: true });
+        }
+
+        const tm = computeTxMetrics(t);
+        const isOut = t.type === 'OUT';
+
+        $('eTxId').value = t.id;
+        $('eTxRawType').value = t.type;
+        $('eTxDate').value = t.txDate || todayStr();
+        $('eTxTypeLabel').value = isOut ? '↗ 출고 (판매)' : '📥 매입 (입고)';
+        $('eSupplier').value = t.supplier || '';
+        $('eBrand').value = t.brand || '';
+        $('eName').value = t.productName || '';
+        $('eColor').value = t.color || '';
+        $('eSize').value = t.size || '';
+        $('eBasePrice').value = fmtNum(t.basePrice || 0);
+        $('eFreight').value = fmtNum(t.freight || 0);
+        $('eOnlinePrice').value = fmtNum(tm.onlinePrice);
+        $('eOnlineShipping').value = fmtNum(tm.onlineShipping);
+        $('eQty').value = tm.qty;
+        $('eSellPrice').value = fmtNum(tm.sellPrice);
+        $('eBuyPrice').value = fmtNum(tm.buySupply);
+        $('eRemarks').value = t.remarks || '';
+
+        if ($('eRowInDetails')) $('eRowInDetails').classList.toggle('d-none', isOut);
+        if ($('eRowOnlineDetails')) $('eRowOnlineDetails').classList.toggle('d-none', isOut);
+        if ($('eOutVatWrap')) $('eOutVatWrap').classList.toggle('d-none', !isOut);
+
+        if (isOut) {
+            if ($('lblETxPrice')) $('lblETxPrice').textContent = '출고단가';
+            if ($('eOutVat')) $('eOutVat').checked = tm.outVatIncluded;
+            $('ePrice').value = fmtNum(tm.outVatIncluded ? tm.rawOutPrice : tm.txSupplyPrice);
+        } else {
+            if ($('lblETxPrice')) $('lblETxPrice').textContent = '입고단가(공급가)';
+            if ($('eOutVat')) $('eOutVat').checked = false;
+            $('ePrice').value = fmtNum(tm.txSupplyPrice);
+        }
+
+        recalcTxEditModal();
+        if (txEditModal) txEditModal.show();
+    }
+
+    function calcTxEditInPrice() {
+        const base = parseNumber($('eBasePrice')?.value);
+        const freight = parseNumber($('eFreight')?.value);
+        const sum = base + freight;
+        if ($('eBuyPrice')) $('eBuyPrice').value = fmtNum(sum);
+        if ($('ePrice')) $('ePrice').value = fmtNum(sum);
+        recalcTxEditModal();
+    }
+
+    function recalcTxEditModal() {
+        const type = $('eTxRawType')?.value || 'IN';
+        const qty = Math.max(1, parseNumber($('eQty')?.value));
+        const buySupply = parseNumber($('eBuyPrice')?.value);
+        const sellPrice = parseNumber($('eSellPrice')?.value);
+        const sellSupply = toSupplyPrice(sellPrice, true);
+        const rawPriceInput = parseNumber($('ePrice')?.value);
+
+        let netTxPrice = rawPriceInput;
+        let unitMargin = 0;
+        let marginRate = 0;
+
+        if (type === 'OUT') {
+            const outVat = $('eOutVat') ? $('eOutVat').checked : false;
+            netTxPrice = toSupplyPrice(rawPriceInput, outVat);
+            unitMargin = netTxPrice - buySupply;
+            marginRate = netTxPrice > 0 ? ((unitMargin / netTxPrice) * 100) : 0;
+        } else {
+            netTxPrice = rawPriceInput;
+            unitMargin = sellSupply > 0 ? (sellSupply - netTxPrice) : 0;
+            marginRate = sellSupply > 0 ? ((unitMargin / sellSupply) * 100) : 0;
+        }
+
+        if ($('eTotalAmount')) $('eTotalAmount').value = fmtWon(netTxPrice * qty);
+        if ($('eUnitMarginPreview')) $('eUnitMarginPreview').textContent = `${unitMargin >= 0 ? '+' : ''}${fmtWon(unitMargin)}`;
+        if ($('eMarginRatePreview')) $('eMarginRatePreview').textContent = `${marginRate.toFixed(1)}%`;
+        if ($('eTotalMarginPreview')) $('eTotalMarginPreview').textContent = `${unitMargin * qty >= 0 ? '+' : ''}${fmtWon(unitMargin * qty)}`;
+    }
+
+    async function handleSaveTxEdit(e) {
+        if (e) e.preventDefault();
+        const id = $('eTxId')?.value;
+        if (!id) return;
+
+        const type = $('eTxRawType')?.value || 'IN';
+        const qty = Math.max(1, parseNumber($('eQty')?.value));
+        const buySupply = parseNumber($('eBuyPrice')?.value);
+        const sellPrice = parseNumber($('eSellPrice')?.value);
+        const sellSupply = toSupplyPrice(sellPrice, true);
+        const rawPriceInput = parseNumber($('ePrice')?.value);
+        const outVat = (type === 'OUT' && $('eOutVat')) ? $('eOutVat').checked : false;
+        const netTxPrice = type === 'OUT' ? toSupplyPrice(rawPriceInput, outVat) : rawPriceInput;
+
+        const unitMargin = type === 'OUT' ? (netTxPrice - buySupply) : (sellSupply > 0 ? sellSupply - netTxPrice : 0);
+        const marginRate = type === 'OUT'
+            ? (netTxPrice > 0 ? Number(((unitMargin / netTxPrice) * 100).toFixed(1)) : 0)
+            : (sellSupply > 0 ? Number(((unitMargin / sellSupply) * 100).toFixed(1)) : 0);
+
+        const payload = {
+            txDate: $('eTxDate')?.value,
+            supplier: ($('eSupplier')?.value || '').trim(),
+            brand: ($('eBrand')?.value || '').trim(),
+            productName: ($('eName')?.value || '').trim(),
+            color: ($('eColor')?.value || '').trim(),
+            size: ($('eSize')?.value || '').trim(),
+            qty,
+            price: netTxPrice,
+            rawOutPrice: rawPriceInput,
+            outVatIncluded: outVat ? 1 : 0,
+            basePrice: parseNumber($('eBasePrice')?.value),
+            freight: parseNumber($('eFreight')?.value),
+            onlinePrice: parseNumber($('eOnlinePrice')?.value),
+            onlineShipping: parseNumber($('eOnlineShipping')?.value),
+            onlineVatIncluded: 1,
+            sellPrice,
+            sellVatIncluded: 1,
+            buyPrice: type === 'IN' ? netTxPrice : buySupply,
+            marginAmount: unitMargin,
+            marginRate,
+            remarks: ($('eRemarks')?.value || '').trim()
+        };
+
+        try {
+            const res = await authFetch(`${API_BASE}/transactions/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('내역 수정 실패');
+            showToast('입출고 내역 및 재고/마진 정보가 업데이트되었습니다.', 'success');
+            if (txEditModal) txEditModal.hide();
+            await loadAllData();
+        } catch (err) {
+            showToast('수정 오류: ' + err.message, 'error');
+        }
+    }
+
+    // ==========================================
+    // 12. 선택/삭제/페이지네이션/엑셀/인쇄/견적 연동
+    // ==========================================
+    function getActiveSelectedSet() {
+        return activeWorkspace === 'inventory' ? selectedInvIds : selectedTxIds;
+    }
+
+    function updateSelectedUI() {
+        const set = getActiveSelectedSet();
+        const cnt = set.size;
+        if ($('selectedCount')) $('selectedCount').textContent = cnt;
+        if ($('bottomSelectedCount')) $('bottomSelectedCount').textContent = cnt;
+        if ($('mobileSelectionCount')) $('mobileSelectionCount').textContent = cnt;
+
+        if ($('lblQuickIn')) {
+            $('lblQuickIn').textContent = (activeWorkspace === 'inventory' && selectedInvIds.size > 0)
+                ? `선택입고 (${selectedInvIds.size})`
+                : '입고·판매가 등록';
+        }
+        if ($('lblQuickOut')) {
+            $('lblQuickOut').textContent = (activeWorkspace === 'inventory' && selectedInvIds.size > 0)
+                ? `선택출고 (${selectedInvIds.size})`
+                : '출고·마진 등록';
+        }
+
+        if ($('mobileFloatingSelectionBar')) {
+            $('mobileFloatingSelectionBar').classList.toggle('d-none', cnt === 0);
+        }
+    }
+
+    function toggleSelectAll(checked) {
+        const set = getActiveSelectedSet();
+        const selector = activeWorkspace === 'inventory' ? '.row-check' : '.tx-row-check';
+        document.querySelectorAll(selector).forEach(chk => {
+            chk.checked = checked;
+            if (checked) set.add(String(chk.value));
+            else set.delete(String(chk.value));
+        });
+        if (activeWorkspace === 'inventory') renderInventory();
+        else renderTransactions();
+        updateSelectedUI();
+    }
+
+    function toggleSelectOne(id, checked) {
+        const set = getActiveSelectedSet();
+        if (checked) set.add(String(id));
+        else set.delete(String(id));
+        if (activeWorkspace === 'inventory') renderInventory();
+        else renderTransactions();
+        updateSelectedUI();
     }
 
     async function handleDelete() {
-        if (selectedIds.size === 0) {
-            showToast('삭제할 상품을 먼저 체크박스로 선택해 주세요.', 'warning');
+        const set = getActiveSelectedSet();
+        if (set.size === 0) {
+            showToast('삭제할 항목을 먼저 체크해주세요.', 'warning');
             return;
         }
 
-        const count = selectedIds.size;
-        if (!confirm(`선택한 ${count}개 상품을 영구 삭제하시겠습니까?\n(입출고 내역 데이터에는 영향이 없습니다)`)) return;
+        const label = activeWorkspace === 'inventory' ? '재고 품목' : '입출고 전표 내역';
+        if (!confirm(`선택한 ${set.size}건의 ${label}을(를) 정말 삭제하시겠습니까?`)) return;
 
-        const ids = Array.from(selectedIds);
         try {
-            const res = await authFetch(API_BASE + '/products/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids })
-            });
-
-            if (!res.ok) throw new Error('삭제 처리 실패');
-
-            showToast(`${count}개 상품이 삭제되었습니다.`, 'success');
-            selectedIds.clear();
-            await fetchProducts();
-            await fetchMetrics();
+            for (const id of set) {
+                const endpoint = activeWorkspace === 'inventory'
+                    ? `${API_BASE}/products/${id}`
+                    : `${API_BASE}/transactions/${id}`;
+                await authFetch(endpoint, { method: 'DELETE' });
+            }
+            set.clear();
+            updateSelectedUI();
+            showToast('선택한 항목이 삭제되었습니다.', 'success');
+            await loadAllData();
         } catch (err) {
             showToast('삭제 중 오류: ' + err.message, 'error');
         }
     }
 
-    async function deleteSingleProduct(id) {
-        const p = products.find(item => String(item.id) === String(id));
-        const name = p ? p.name : '해당 상품';
-        if (!confirm(`[${name}] 상품을 영구 삭제하시겠습니까?\n(입출고 내역 데이터에는 영향이 없습니다)`)) return;
-
-        try {
-            const res = await authFetch(API_BASE + '/products/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids: [id] })
-            });
-
-            if (!res.ok) throw new Error('삭제 처리 실패');
-
-            showToast(`[${name}] 상품이 삭제되었습니다.`, 'success');
-            selectedIds.delete(id);
-            await fetchProducts();
-            await fetchMetrics();
-        } catch (err) {
-            showToast('삭제 중 오류: ' + err.message, 'error');
+    function renderPagination(total, totalPages) {
+        const container = $('pagination');
+        if (!container) return;
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
         }
+
+        let html = `<button class="erp-page-btn" ${page <= 1 ? 'disabled' : ''} onclick="app.goPage(${page - 1})"><i class='bx bx-chevron-left'></i></button>`;
+        const startP = Math.max(1, page - 2);
+        const endP = Math.min(totalPages, startP + 4);
+        for (let p = startP; p <= endP; p++) {
+            html += `<button class="erp-page-btn ${p === page ? 'active' : ''}" onclick="app.goPage(${p})">${p}</button>`;
+        }
+        html += `<button class="erp-page-btn" ${page >= totalPages ? 'disabled' : ''} onclick="app.goPage(${page + 1})"><i class='bx bx-chevron-right'></i></button>`;
+        container.innerHTML = html;
     }
 
-    function addItemToQuoteCart(id) {
-        const p = products.find(item => String(item.id) === String(id));
-        if (!p) {
-            showToast('상품 정보를 찾을 수 없습니다.', 'warning');
+    function addSelectedToQuoteCart() {
+        if (selectedInvIds.size === 0) {
+            showToast('견적서에 담을 상품을 먼저 체크박스로 선택해주세요.', 'warning');
             return;
         }
 
@@ -1006,331 +2273,345 @@
             cart = [];
         }
 
-        const existing = cart.find(c => c.source_module === 'hq-inventory' && String(c.source_id) === String(p.id));
-        if (existing) {
-            existing.qty = (Number(existing.qty) || 1) + 1;
-        } else {
-            cart.push({
-                source_module: 'hq-inventory',
-                source_id: p.id,
-                product_name: p.name || '',
-                spec: [p.color, p.size].filter(Boolean).join(' / ') || p.spec || '',
-                color: p.color || '',
-                unit: p.unit || 'EA',
-                qty: 1,
-                cost_price: Number(p.buyPrice || 0),
-                unit_price: Number(p.discountPrice || p.sellPrice || p.buyPrice || 0),
-                image_url: p.image_url || '',
-                remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
-            });
-        }
+        let addedCount = 0;
+        selectedInvIds.forEach(id => {
+            const p = products.find(item => String(item.id) === String(id));
+            if (!p) return;
+            const m = computeProductMetrics(p);
+
+            const existing = cart.find(c => c.source_module === 'hq-inventory' && String(c.source_id) === String(p.id));
+            if (existing) {
+                existing.qty = (Number(existing.qty) || 1) + 1;
+            } else {
+                cart.push({
+                    source_module: 'hq-inventory',
+                    source_id: p.id,
+                    product_name: p.name || '',
+                    spec: [p.color, p.size].filter(Boolean).join(' / ') || p.spec || '',
+                    color: p.color || '',
+                    unit: p.unit || 'EA',
+                    qty: 1,
+                    cost_price: m.buySupply,
+                    unit_price: m.sellPrice || m.buySupply,
+                    image_url: p.image_url || '',
+                    remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
+                });
+            }
+            addedCount++;
+        });
 
         localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
-        showToast(`[${p.name}] 견적서 장바구니에 담겼습니다.`, 'success');
+        showToast(`${addedCount}개 품목이 견적서 장바구니에 담겼습니다.`, 'success');
 
-        if (confirm(`[${p.name}] 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
+        if (confirm(`${addedCount}개 품목이 견적서 바구니에 담겼습니다.\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
             location.href = './05_Management/forms/quotation.html';
         }
     }
 
-    // ==========================================
-    // 엑셀 내보내기 (SheetJS)
-    // ==========================================
     function exportExcel() {
-        if (typeof XLSX === 'undefined') {
-            showToast('엑셀 생성 라이브러리를 불러오지 못했습니다.', 'error');
+        if (!window.XLSX) {
+            showToast('엑셀 라이브러리를 불러오지 못했습니다.', 'error');
             return;
         }
 
-        const list = filterProducts();
-        if (list.length === 0) {
-            showToast('내보낼 데이터가 없습니다.', 'warning');
-            return;
+        if (activeWorkspace === 'inventory') {
+            const rows = filteredInvList.map((p, idx) => {
+                const m = computeProductMetrics(p);
+                return {
+                    'No.': idx + 1,
+                    '공급사': p.supplier || '최가유통',
+                    '브랜드': p.brand || '',
+                    '상품명': p.name || '',
+                    '컬러': p.color || '',
+                    '사이즈': p.size || '',
+                    '상품가(VAT별도)': m.basePrice,
+                    '운임(VAT별도)': m.freight,
+                    '매입단가(공급가)': m.buySupply,
+                    '인터넷최저가(상품)': m.onlinePrice,
+                    '최저가배송비': m.onlineShipping,
+                    '인터넷최저가(합계)': m.onlineTotal,
+                    '적정판매가(VAT포함)': m.sellPrice,
+                    '적정판매가(공급가환산)': m.sellSupply,
+                    '예상판매마진(공급가기준)': m.unitMargin,
+                    '예상마진율(%)': m.marginRate,
+                    '현재재고': m.stock,
+                    '재고평가액': m.stockValue
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '본사_실시간재고_적정판매가');
+            XLSX.writeFile(wb, `본사_실시간재고_적정판매가_${todayStr()}.xlsx`);
+            showToast('실시간 재고 및 적정판매가 엑셀 다운로드 완료!', 'success');
+        } else {
+            const rows = filteredTxList.map((t, idx) => {
+                const tm = computeTxMetrics(t);
+                return {
+                    'No.': idx + 1,
+                    '거래일자': t.txDate || '',
+                    '구분': t.type === 'OUT' ? '출고' : '매입(입고)',
+                    '공급사/출고처': t.supplier || '',
+                    '브랜드': t.brand || '',
+                    '상품명': t.productName || '',
+                    '컬러': t.color || '',
+                    '사이즈': t.size || '',
+                    '수량': tm.qty,
+                    '매입단가(원가/공급가)': tm.buySupply,
+                    '인터넷최저가(합계)': tm.onlineTotal,
+                    '적정판매가': tm.sellPrice,
+                    '거래단가(공급가)': tm.txSupplyPrice,
+                    '총거래액(공급가)': tm.totalAmount,
+                    '개당마진(공급가기준)': tm.unitMargin,
+                    '총판매마진(공급가기준)': tm.totalMargin,
+                    '마진율(%)': tm.marginRate,
+                    '비고': t.remarks || ''
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '본사_입출고_마진원장');
+            XLSX.writeFile(wb, `본사_입출고_마진원장_${todayStr()}.xlsx`);
+            showToast('입출고 & 마진 원장 엑셀 다운로드 완료!', 'success');
         }
-
-        const excelData = list.map((p, idx) => {
-            const buy = Number(p.buyPrice) || 0;
-            const sell = Number(p.sellPrice) || 0;
-            const disc = Number(p.discountPrice) || 0;
-            const stock = Number(p.stock) || 0;
-            const activeSell = disc > 0 ? disc : sell;
-            const margin = activeSell > 0 ? Math.round(((activeSell - buy) / activeSell) * 100) : 0;
-            const stockVal = buy * stock;
-
-            return {
-                'No.': idx + 1,
-                '공급사': p.supplier || '최가유통',
-                '브랜드': p.brand,
-                '상품명': p.name,
-                '컬러': p.color || '',
-                '사이즈': p.size || '',
-                '매입단가(공급가)': buy,
-                '일반판매가(VAT포함)': sell,
-                '할인판매가(VAT포함)': disc,
-                '마진율(%)': margin,
-                '현재재고': stock,
-                '재고평가액': stockVal
-            };
-        });
-
-        // 푸터 합계 행 추가
-        const totalStock = list.reduce((s, p) => s + (Number(p.stock) || 0), 0);
-        const totalVal = list.reduce((s, p) => s + ((Number(p.buyPrice) || 0) * (Number(p.stock) || 0)), 0);
-        excelData.push({
-            'No.': '합계',
-            '공급사': '',
-            '브랜드': '',
-            '상품명': `총 ${list.length} SKU`,
-            '컬러': '',
-            '사이즈': '',
-            '매입단가(공급가)': '',
-            '일반판매가(VAT포함)': '',
-            '할인판매가(VAT포함)': '',
-            '마진율(%)': '',
-            '현재재고': totalStock,
-            '재고평가액': totalVal
-        });
-
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '실시간재고현황');
-
-        const now = new Date();
-        const ymd = now.toISOString().slice(0, 10).replace(/-/g, '');
-        XLSX.writeFile(wb, `본사_실시간재고현황_${ymd}.xlsx`);
-        showToast('엑셀 파일이 다운로드되었습니다.', 'success');
     }
 
-    // ==========================================
-    // 인쇄 출력
-    // ==========================================
     function printReport() {
-        const now = new Date();
-        const nowStr = now.getFullYear() + '-' +
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0') + ' ' +
-            String(now.getHours()).padStart(2, '0') + ':' +
-            String(now.getMinutes()).padStart(2, '0');
-
-        $('printMetaInfo').textContent = `출력일시: ${nowStr} | 조회 조건: [공급사: ${supplierFilter || '전체'}] [상태: ${stockFilter}] [검색: ${searchQuery || '전체'}]`;
+        if ($('printMetaInfo')) {
+            $('printMetaInfo').textContent = `출력일시: ${new Date().toLocaleString('ko-KR')} | 조회모드: ${activeWorkspace === 'inventory' ? '실시간 재고 현황' : '입출고 & 마진 원장'}`;
+        }
         window.print();
     }
 
-    // ==========================================
-    // 열 너비 조절기 초기화
-    // ==========================================
     function initGridResizer() {
-        if (window.ErpGridResizer && typeof window.ErpGridResizer.init === 'function') {
-            setTimeout(() => {
-                window.ErpGridResizer.init('inventoryTable', {
-                    storageKey: 'kng_hq_inventory_grid_widths_v1'
-                });
-            }, 60);
+        if (window.ErpGridResizer) {
+            window.ErpGridResizer.init('inventoryTable');
+            window.ErpGridResizer.init('txTable');
         }
+    }
+
+    function applyViewMode() {
+        const isMobile = window.innerWidth <= 768;
+        const invWrapper = $('inventoryGridWrapper');
+        const txWrapper = $('txGridWrapper');
+        const mobInvCards = $('mobileCardsContainer');
+        const mobTxCards = $('mobileTxCardsContainer');
+
+        if (!isMobile) {
+            if (invWrapper) invWrapper.classList.remove('mobile-hidden-table');
+            if (txWrapper) txWrapper.classList.remove('mobile-hidden-table');
+            return;
+        }
+
+        const showTable = viewMode === 'table';
+        if (invWrapper) invWrapper.classList.toggle('mobile-hidden-table', !showTable);
+        if (txWrapper) txWrapper.classList.toggle('mobile-hidden-table', !showTable);
+        if (mobInvCards) mobInvCards.classList.toggle('d-none', showTable);
+        if (mobTxCards) mobTxCards.classList.toggle('d-none', showTable);
+    }
+
+    function toggleViewMode() {
+        viewMode = viewMode === 'card' ? 'table' : 'card';
+        applyViewMode();
     }
 
     // ==========================================
-    // 모바일 필터 드로어 제어
-    // ==========================================
-    function toggleMobileFilter() {
-        const drawer = $('mobileFilterDrawer');
-        const backdrop = $('mobileFilterBackdrop');
-        if (!drawer || !backdrop) return;
-
-        const isOpen = drawer.classList.contains('open');
-        if (isOpen) {
-            drawer.classList.remove('open');
-            backdrop.classList.add('d-none');
-        } else {
-            // 필터 드로어 열릴 때 현재 필터값 동기화
-            if ($('mobileDrawerSupplier')) $('mobileDrawerSupplier').value = supplierFilter;
-            if ($('mobileDrawerStock')) $('mobileDrawerStock').value = stockFilter;
-            if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = searchTarget;
-            if ($('mobileDrawerSort')) $('mobileDrawerSort').value = `${sort.col}_${sort.asc ? 'asc' : 'desc'}`;
-
-            drawer.classList.add('open');
-            backdrop.classList.remove('d-none');
-        }
-    }
-
-    function applyMobileDrawerFilter() {
-        if ($('mobileDrawerSupplier')) {
-            supplierFilter = $('mobileDrawerSupplier').value;
-        }
-        if ($('mobileDrawerStock')) {
-            stockFilter = $('mobileDrawerStock').value;
-        }
-        if ($('mobileDrawerTarget')) {
-            searchTarget = $('mobileDrawerTarget').value;
-            if ($('searchTarget')) $('searchTarget').value = searchTarget;
-        }
-        if ($('mobileDrawerSort')) {
-            const sVal = $('mobileDrawerSort').value.split('_');
-            sort.col = sVal[0];
-            sort.asc = sVal[1] === 'asc';
-        }
-
-        // 모바일 필터 활성 뱃지(레드 닷) 표시 여부
-        const hasFilter = supplierFilter !== '' || stockFilter !== 'all' || searchTarget !== 'all';
-        if ($('mobileFilterDot')) $('mobileFilterDot').classList.toggle('d-none', !hasFilter);
-
-        // 상단 칩 UI 동기화
-        document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.supplier === supplierFilter);
-        });
-        document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
-            const s = chip.getAttribute('onclick') || '';
-            if (supplierFilter === '') {
-                chip.classList.toggle('active', s.includes("('')"));
-            } else {
-                chip.classList.toggle('active', s.includes(`('${supplierFilter}')`));
-            }
-        });
-        document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.stock === stockFilter);
-        });
-        document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.stock === stockFilter);
-        });
-
-        toggleMobileFilter();
-        page = 1;
-        renderTable();
-    }
-
-    function resetMobileDrawerFilter() {
-        supplierFilter = '';
-        stockFilter = 'all';
-        searchTarget = 'all';
-        sort = { col: 'name', asc: true };
-        searchQuery = '';
-        subSearchQuery = '';
-
-        if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
-        if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
-        if ($('searchInput')) $('searchInput').value = '';
-        if ($('clearSearchBtn')) $('clearSearchBtn').classList.add('d-none');
-        if ($('mobileFilterDot')) $('mobileFilterDot').classList.add('d-none');
-
-        // 상단 칩 UI 동기화
-        document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.supplier === '');
-        });
-        document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
-            const s = chip.getAttribute('onclick') || '';
-            chip.classList.toggle('active', s.includes("('')"));
-        });
-        document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.stock === 'all');
-        });
-        document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.stock === 'all');
-        });
-
-        toggleMobileFilter();
-        page = 1;
-        renderTable();
-    }
-
-    // ==========================================
-    // 이벤트 바인딩 & 공개 인터페이스
+    // 13. Public App Interface
     // ==========================================
     const app = {
+        switchWorkspace,
+        openVoucherWithSelected,
+        openVoucherForSingleProduct,
+        setVoucherMode,
+        addVoucherRow,
+        removeVoucherRow,
+        clearVoucherRows,
+        onVoucherNameInput,
+        selectVoucherProduct,
+        onVoucherBaseOrFreightInput,
+        onVoucherOnlineInput,
+        applyOnlineToSellInRow,
+        applyTargetSellToOutRow,
+        recalcVoucherRow,
+        recalcAllVoucherRows,
+        submitVoucher,
+
+        openNewModal,
+        openEditModal,
+        onProductBaseOrFreightInput,
+        onProductOnlineInput,
+        applyOnlineSumToProductSellPrice,
+        calcModalMargin,
+        handleSaveProduct,
+
+        openTxEditModal,
+        calcTxEditInPrice,
+        recalcTxEditModal,
+        handleSaveTxEdit,
+
+        formatMoneyInput,
+        clearZero,
+        toggleSelectAll,
+        toggleSelectOne,
+        handleDelete,
+        addSelectedToQuoteCart,
+        exportExcel,
+        printReport,
+        toggleViewMode,
+
         setSupplierFilter(s) {
             supplierFilter = s;
             document.querySelectorAll('#supplierTabGroup .erp-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.supplier === s);
             });
-            document.querySelectorAll('.mobile-supplier-chip').forEach(chip => {
-                const onclickAttr = chip.getAttribute('onclick') || '';
-                if (s === '') {
-                    chip.classList.toggle('active', onclickAttr.includes("('')"));
-                } else {
-                    chip.classList.toggle('active', onclickAttr.includes(`('${s}')`));
-                }
-            });
-            if ($('mobileDrawerSupplier')) $('mobileDrawerSupplier').value = s;
             page = 1;
-            renderTable();
+            renderInventory();
+            renderTransactions();
         },
 
         setStockFilter(filter) {
             stockFilter = filter;
-            document.querySelectorAll('.erp-stock-filters .erp-filter-chip').forEach(btn => {
+            document.querySelectorAll('#workspaceInventory .erp-filter-chip').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.stock === filter);
             });
-            document.querySelectorAll('.mobile-stock-filter-track .mob-stock-chip').forEach(btn => {
+            document.querySelectorAll('#mobStockFilterBar .mob-stock-chip').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.stock === filter);
             });
-            if ($('mobileDrawerStock')) $('mobileDrawerStock').value = filter;
             page = 1;
-            renderTable();
+            renderInventory();
         },
 
-        onSearchTargetChange() {
-            searchTarget = $('searchTarget').value;
-            if ($('mobileDrawerTarget')) $('mobileDrawerTarget').value = searchTarget;
+        setTxTypeFilter(type) {
+            txTypeFilter = type;
+            document.querySelectorAll('#txTypeChipGroup .erp-filter-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.txtype === type);
+            });
+            document.querySelectorAll('#mobTxTypeFilterBar .mob-stock-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.txtype === type);
+            });
             page = 1;
-            renderTable();
+            renderTransactions();
         },
 
-        onSearchInputKeyup(e) {
-            const val = $('searchInput').value;
-            $('clearSearchBtn').classList.toggle('d-none', !val);
+        setTxDatePreset(preset) {
+            document.querySelectorAll('.erp-date-presets .erp-date-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === preset);
+            });
+            const now = new Date();
+            const end = todayStr();
+            let start = '';
+
+            if (preset === 'today') {
+                start = end;
+            } else if (preset === 'week') {
+                const d = new Date(now);
+                d.setDate(d.getDate() - 7);
+                start = d.toISOString().slice(0, 10);
+            } else if (preset === 'month') {
+                start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            } else if (preset === '3months') {
+                const d = new Date(now);
+                d.setMonth(d.getMonth() - 3);
+                start = d.toISOString().slice(0, 10);
+            } else {
+                start = '';
+            }
+
+            txStartDate = start;
+            txEndDate = preset === 'all' ? '' : end;
+            if ($('txStartDate')) $('txStartDate').value = txStartDate;
+            if ($('txEndDate')) $('txEndDate').value = txEndDate;
+            page = 1;
+            renderTransactions();
+        },
+
+        onTxDateRangeChange() {
+            txStartDate = $('txStartDate')?.value || '';
+            txEndDate = $('txEndDate')?.value || '';
+            document.querySelectorAll('.erp-date-presets .erp-date-chip').forEach(btn => btn.classList.remove('active'));
+            page = 1;
+            renderTransactions();
+        },
+
+        onTxSearchKeyup(e) {
+            txSearchQuery = ($('txSearchInput')?.value || '').trim();
             if (e.key === 'Enter') {
-                this.search();
+                page = 1;
+                renderTransactions();
             }
         },
 
+        searchTx() {
+            txSearchQuery = ($('txSearchInput')?.value || '').trim();
+            page = 1;
+            renderTransactions();
+        },
+
+        resetTxSearch() {
+            txTypeFilter = '';
+            txStartDate = '';
+            txEndDate = '';
+            txSearchQuery = '';
+            if ($('txStartDate')) $('txStartDate').value = '';
+            if ($('txEndDate')) $('txEndDate').value = '';
+            if ($('txSearchInput')) $('txSearchInput').value = '';
+            this.setTxTypeFilter('');
+            this.setTxDatePreset('all');
+        },
+
+        onSearchTargetChange() {
+            searchTarget = $('searchTarget')?.value || 'all';
+            page = 1;
+            renderInventory();
+        },
+
+        onSearchInputKeyup(e) {
+            const val = $('searchInput')?.value || '';
+            if ($('clearSearchBtn')) $('clearSearchBtn').classList.toggle('d-none', !val);
+            if (e.key === 'Enter') this.search();
+        },
+
         clearSearchInput() {
-            $('searchInput').value = '';
-            $('clearSearchBtn').classList.add('d-none');
-            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
-            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+            if ($('searchInput')) $('searchInput').value = '';
+            if ($('clearSearchBtn')) $('clearSearchBtn').classList.add('d-none');
             this.search();
         },
 
         onMobileSearchKeyup(e) {
-            const val = $('mobileSearchInput').value;
+            const val = $('mobileSearchInput')?.value || '';
             if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.toggle('d-none', !val);
-            if (e.key === 'Enter') {
-                this.submitMobileSearch();
-            }
+            if (e.key === 'Enter') this.submitMobileSearch();
         },
 
         submitMobileSearch() {
-            searchQuery = ($('mobileSearchInput').value || '').trim();
-            $('searchInput').value = searchQuery;
-            $('clearSearchBtn').classList.toggle('d-none', !searchQuery);
+            searchQuery = ($('mobileSearchInput')?.value || '').trim();
+            txSearchQuery = searchQuery;
+            if ($('searchInput')) $('searchInput').value = searchQuery;
+            if ($('txSearchInput')) $('txSearchInput').value = searchQuery;
             page = 1;
-            renderTable();
+            renderInventory();
+            renderTransactions();
         },
 
         clearMobileSearch() {
             if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
             if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
-            $('searchInput').value = '';
-            $('clearSearchBtn').classList.add('d-none');
-            this.search();
+            this.submitMobileSearch();
         },
 
         search() {
-            searchQuery = $('searchInput').value.trim();
-            if ($('mobileSearchInput')) $('mobileSearchInput').value = searchQuery;
+            searchQuery = ($('searchInput')?.value || '').trim();
             page = 1;
-            renderTable();
+            renderInventory();
         },
 
         resetSearch() {
-            $('searchTarget').value = 'all';
+            if ($('searchTarget')) $('searchTarget').value = 'all';
             searchTarget = 'all';
-            $('searchInput').value = '';
-            $('clearSearchBtn').classList.add('d-none');
-            if ($('mobileSearchInput')) $('mobileSearchInput').value = '';
-            if ($('mobileClearSearchBtn')) $('mobileClearSearchBtn').classList.add('d-none');
+            if ($('searchInput')) $('searchInput').value = '';
+            if ($('clearSearchBtn')) $('clearSearchBtn').classList.add('d-none');
             searchQuery = '';
-            $('subSearchInput').value = '';
-            $('clearSubSearchBtn').classList.add('d-none');
+            if ($('subSearchInput')) $('subSearchInput').value = '';
+            if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
             subSearchQuery = '';
             this.setStockFilter('all');
             this.setSupplierFilter('');
@@ -1338,46 +2619,35 @@
 
         onSubSearchInput(val) {
             subSearchQuery = (val || '').trim();
-            $('clearSubSearchBtn').classList.toggle('d-none', !subSearchQuery);
+            if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.toggle('d-none', !subSearchQuery);
             page = 1;
-            renderTable();
+            renderInventory();
         },
 
         clearSubSearch() {
-            $('subSearchInput').value = '';
-            $('clearSubSearchBtn').classList.add('d-none');
+            if ($('subSearchInput')) $('subSearchInput').value = '';
+            if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
             subSearchQuery = '';
             page = 1;
-            renderTable();
+            renderInventory();
         },
 
         changePageSize(size) {
             pageSize = size;
             page = 1;
-            renderTable();
+            renderInventory();
+            renderTransactions();
         },
 
         goPage(p) {
             page = p;
-            renderTable();
-            $('inventoryGridWrapper').scrollTop = 0;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        },
-
-        toggleSelectAll(checked) {
-            const pageChecks = document.querySelectorAll('.row-check');
-            pageChecks.forEach(c => {
-                c.checked = checked;
-                if (checked) selectedIds.add(c.value);
-                else selectedIds.delete(c.value);
-            });
-            updateSelectedUI();
-        },
-
-        toggleSelectOne(id, checked) {
-            if (checked) selectedIds.add(id);
-            else selectedIds.delete(id);
-            updateSelectedUI();
+            if (activeWorkspace === 'inventory') {
+                renderInventory();
+                if ($('inventoryGridWrapper')) $('inventoryGridWrapper').scrollTop = 0;
+            } else {
+                renderTransactions();
+                if ($('txGridWrapper')) $('txGridWrapper').scrollTop = 0;
+            }
         },
 
         onRowClick(e, id, idx) {
@@ -1385,147 +2655,91 @@
             document.querySelectorAll('#tableBody tr').forEach((tr, i) => {
                 tr.classList.toggle('focused-row', i === idx);
             });
-        },
-
-        addSelectedToQuoteCart() {
-            if (selectedIds.size === 0) {
-                showToast('견적서에 담을 상품을 먼저 체크박스로 선택해주세요.', 'warning');
-                return;
-            }
-
-            let cart = [];
-            try {
-                cart = JSON.parse(localStorage.getItem('kng_quote_cart') || '[]');
-                if (!Array.isArray(cart)) cart = [];
-            } catch (e) {
-                cart = [];
-            }
-
-            let addedCount = 0;
-            selectedIds.forEach(id => {
-                const p = products.find(item => String(item.id) === String(id));
-                if (!p) return;
-
-                const existing = cart.find(c => c.source_module === 'hq-inventory' && String(c.source_id) === String(p.id));
-                if (existing) {
-                    existing.qty = (Number(existing.qty) || 1) + 1;
-                } else {
-                    cart.push({
-                        source_module: 'hq-inventory',
-                        source_id: p.id,
-                        product_name: p.name || '',
-                        spec: [p.color, p.size].filter(Boolean).join(' / ') || p.spec || '',
-                        color: p.color || '',
-                        unit: p.unit || 'EA',
-                        qty: 1,
-                        cost_price: Number(p.buyPrice || 0),
-                        unit_price: Number(p.discountPrice || p.sellPrice || p.buyPrice || 0),
-                        image_url: p.image_url || '',
-                        remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
-                    });
-                }
-                addedCount++;
-            });
-
-            localStorage.setItem('kng_quote_cart', JSON.stringify(cart));
-            showToast(`${addedCount}개 품목이 견적서 장바구니에 담겼습니다.`, 'success');
-
-            if (confirm(`${addedCount}개 품목이 견적서 바구니에 담겼습니다.\n(현재 바구니 총 ${cart.length}개 품목)\n\n지금 [견적서 관리] 화면으로 이동하시겠습니까?`)) {
-                location.href = './05_Management/forms/quotation.html';
-            }
-        },
-
-        addItemToQuoteCart,
-        deleteSingleProduct,
-        openNewModal,
-        openEditModal,
-        syncModalInputs,
-        calcModalMargin,
-        formatMoneyInput,
-        clearZero,
-        handleSaveProduct,
-        handleDelete,
-        exportExcel,
-        printReport,
-        toggleViewMode,
-        toggleMobileFilter,
-        applyMobileDrawerFilter,
-        resetMobileDrawerFilter
+        }
     };
 
     window.app = app;
 
-    // DOM Ready
+    // ==========================================
+    // 14. DOM Ready & Event Binding
+    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
-        // Bootstrap modal 초기화
-        const modalEl = $('productModal');
-        if (modalEl && window.bootstrap) {
-            productModal = new bootstrap.Modal(modalEl, { keyboard: true });
+        if ($('productModal') && window.bootstrap) {
+            productModal = new bootstrap.Modal($('productModal'), { keyboard: true });
+        }
+        if ($('voucherModal') && window.bootstrap) {
+            voucherModal = new bootstrap.Modal($('voucherModal'), { keyboard: true });
+        }
+        if ($('txEditModal') && window.bootstrap) {
+            txEditModal = new bootstrap.Modal($('txEditModal'), { keyboard: true });
         }
 
-        // 헤더 컬럼 정렬 클릭 이벤트
+        // 재고 그리드 정렬 클릭
         document.querySelectorAll('#inventoryTable thead th.sortable').forEach(th => {
             th.addEventListener('click', () => {
                 const col = th.dataset.sort;
-                if (sort.col === col) {
-                    sort.asc = !sort.asc;
-                } else {
-                    sort.col = col;
-                    sort.asc = true;
-                }
-                renderTable();
+                if (invSort.col === col) invSort.asc = !invSort.asc;
+                else { invSort.col = col; invSort.asc = true; }
+                renderInventory();
             });
         });
 
-        // 윈도우 크기 변경 시 뷰 모드 및 레이아웃 자동 반영
-        window.addEventListener('resize', () => {
-            applyViewMode();
+        // 원장 그리드 정렬 클릭
+        document.querySelectorAll('#txTable thead th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.txsort;
+                if (txSort.col === col) txSort.asc = !txSort.asc;
+                else { txSort.col = col; txSort.asc = false; }
+                renderTransactions();
+            });
         });
 
-        // ECOUNT ERP 표준 키보드 단축키
+        // 외부 클릭 시 자동완성 드롭다운 닫기
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.position-relative')) {
+                document.querySelectorAll('.erp-autocomplete-menu').forEach(el => el.classList.add('d-none'));
+            }
+        });
+
+        window.addEventListener('resize', applyViewMode);
+
+        // ECOUNT ERP 단축키 (F2: 입고전표 / F3: 출고전표 / F4: 단품등록 / F8: 저장 / Alt+A: 행추가)
         window.addEventListener('keydown', (e) => {
-            // F2: 신규 등록
             if (e.key === 'F2') {
+                e.preventDefault();
+                openVoucherWithSelected('IN');
+                return;
+            }
+            if (e.key === 'F3') {
+                e.preventDefault();
+                openVoucherWithSelected('OUT');
+                return;
+            }
+            if (e.key === 'F4') {
                 e.preventDefault();
                 openNewModal();
                 return;
             }
-
-            // F8: 모달 내 저장
-            if (e.key === 'F8') {
-                e.preventDefault();
-                const isModalOpen = modalEl && modalEl.classList.contains('show');
-                if (isModalOpen) {
-                    handleSaveProduct();
+            if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+                if ($('voucherModal')?.classList.contains('show')) {
+                    e.preventDefault();
+                    addVoucherRow();
                 }
                 return;
             }
-
-            // 방향키 행 이동 (그리드 포커스)
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                const rows = document.querySelectorAll('#tableBody tr');
-                if (rows.length === 0) return;
-                const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
-                if (isInput) return;
-
+            if (e.key === 'F8') {
                 e.preventDefault();
-                if (e.key === 'ArrowDown') {
-                    focusedRowIndex = Math.min(rows.length - 1, focusedRowIndex + 1);
-                } else {
-                    focusedRowIndex = Math.max(0, focusedRowIndex - 1);
-                }
-
-                rows.forEach((tr, idx) => {
-                    tr.classList.toggle('focused-row', idx === focusedRowIndex);
-                });
-                if (rows[focusedRowIndex]) {
-                    rows[focusedRowIndex].scrollIntoView({ block: 'nearest' });
+                if ($('voucherModal')?.classList.contains('show')) {
+                    submitVoucher();
+                } else if ($('productModal')?.classList.contains('show')) {
+                    handleSaveProduct();
+                } else if ($('txEditModal')?.classList.contains('show')) {
+                    handleSaveTxEdit();
                 }
             }
         });
 
-        // 데이터 로드
-        fetchProducts();
-        fetchMetrics();
+        switchWorkspace(activeWorkspace);
+        loadAllData();
     });
 })();

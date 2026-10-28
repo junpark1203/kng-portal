@@ -544,6 +544,7 @@ const app = {
                 if (cols[5] !== undefined && currentRow.querySelector('.dir-in-price')) currentRow.querySelector('.dir-in-price').value = cols[5].trim().replace(/,/g, '');
                 if (cols[6] !== undefined && currentRow.querySelector('.dir-out-price')) currentRow.querySelector('.dir-out-price').value = cols[6].trim().replace(/,/g, '');
                 if (cols[7] !== undefined && currentRow.querySelector('.dir-note')) currentRow.querySelector('.dir-note').value = cols[7].trim();
+                app.recalcDirectRow(currentRow, 'init');
             } else if (type === 'outbound') {
                 if (cols[0] !== undefined && currentRow.querySelector('.out-item')) currentRow.querySelector('.out-item').value = cols[0].trim();
                 if (cols[1] !== undefined && currentRow.querySelector('.out-category')) currentRow.querySelector('.out-category').value = cols[1].trim();
@@ -1127,7 +1128,7 @@ const app = {
             applyWarningOrClear(inPriceInp, priceInfo.freight_type, effectiveFreight);
             applyWarningOrClear(outPriceInp, priceInfo.freight_type, effectiveFreight);
             if (updated) {
-                this.updateDirectGridTotals();
+                this.recalcDirectRow(row, 'init');
             }
         } else if (type === 'inbound') {
             const priceInp = row.querySelector('.in-price');
@@ -1337,7 +1338,22 @@ const app = {
         if (eof) eof.addEventListener('submit', this.submitEditOutbound.bind(this));
         
         const edf = $('editDirectForm');
-        if (edf) edf.addEventListener('submit', this.submitEditDirectOutbound.bind(this));
+        if (edf) {
+            edf.addEventListener('submit', this.submitEditDirectOutbound.bind(this));
+            ['edit_direct_qty', 'edit_direct_inbound_price', 'edit_direct_outbound_price', 'edit_direct_margin_rate', 'edit_direct_margin_amt'].forEach(id => {
+                const el = $(id);
+                if (el) {
+                    const srcMap = {
+                        'edit_direct_qty': 'qty',
+                        'edit_direct_inbound_price': 'inPrice',
+                        'edit_direct_outbound_price': 'outPrice',
+                        'edit_direct_margin_rate': 'marginRate',
+                        'edit_direct_margin_amt': 'marginAmt'
+                    };
+                    el.addEventListener('input', () => this.recalcEditDirectModal(srcMap[id]));
+                }
+            });
+        }
         
         const beol = $('btnEditOutboundLot');
         if (beol) beol.addEventListener('click', this.openEditOutboundLotModal.bind(this));
@@ -2342,6 +2358,9 @@ const app = {
                 const catBadge = item.category ? `<span class="erp-badge erp-badge-cat ms-1">${item.category}</span>` : '';
 
                 if (isDirect) {
+                    const rowMarginAmt = outAmt - inAmt;
+                    const rowMarginRate = outPrice > 0 ? Number((((outPrice - inPrice) / outPrice) * 100).toFixed(2)) : 0;
+                    const marginColorClass = rowMarginAmt < 0 ? 'text-danger' : 'text-success';
                     return `
                         <tr>
                             <td class="text-center row-index">${idx + 1}</td>
@@ -2357,6 +2376,8 @@ const app = {
                             <td class="text-end text-muted tabular-nums">${inAmt ? inAmt.toLocaleString() + '원' : '-'}</td>
                             <td class="text-end fw-bold text-dark tabular-nums">${outPrice ? outPrice.toLocaleString() + '원' : '-'}</td>
                             <td class="text-end fw-bold text-danger tabular-nums">${outAmt ? outAmt.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-semibold ${marginColorClass} tabular-nums">${outPrice > 0 ? rowMarginRate + '%' : '-'}</td>
+                            <td class="text-end fw-semibold ${marginColorClass} tabular-nums">${rowMarginAmt.toLocaleString()}원</td>
                         </tr>
                     `;
                 } else if (type === 'inbound') {
@@ -2399,17 +2420,22 @@ const app = {
             let tableSummaryHtml = '';
 
             if (isDirect) {
+                const totalMarginAmt = totalOutboundAmt - totalInboundAmt;
+                const totalMarginRate = totalOutboundAmt > 0 ? Number((((totalOutboundAmt - totalInboundAmt) / totalOutboundAmt) * 100).toFixed(2)) : 0;
+                const totalMarginClass = totalMarginAmt < 0 ? 'text-danger' : 'text-success';
                 tableHeaderHtml = `
                     <tr>
                         <th class="th-no" style="width: 36px;">#</th>
                         <th>품명</th>
-                        <th style="width: 120px;">규격</th>
-                        <th style="width: 60px;">단위</th>
-                        <th style="width: 80px;" class="text-end">수량</th>
-                        <th style="width: 105px;" class="text-end">매입단가</th>
-                        <th style="width: 115px;" class="text-end">매입금액</th>
-                        <th style="width: 105px;" class="text-end">매출단가</th>
-                        <th style="width: 115px;" class="text-end">매출금액</th>
+                        <th style="width: 115px;">규격</th>
+                        <th style="width: 55px;">단위</th>
+                        <th style="width: 75px;" class="text-end">수량</th>
+                        <th style="width: 100px;" class="text-end">매입단가</th>
+                        <th style="width: 110px;" class="text-end">매입금액</th>
+                        <th style="width: 100px;" class="text-end">매출단가</th>
+                        <th style="width: 110px;" class="text-end">매출금액</th>
+                        <th style="width: 80px;" class="text-end text-success">마진율</th>
+                        <th style="width: 105px;" class="text-end text-success">마진액</th>
                     </tr>
                 `;
                 tableSummaryHtml = `
@@ -2421,6 +2447,8 @@ const app = {
                             <td class="text-end fw-bold text-muted tabular-nums">${totalInboundAmt.toLocaleString()}원</td>
                             <td></td>
                             <td class="text-end fw-bold text-danger tabular-nums">${totalOutboundAmt.toLocaleString()}원</td>
+                            <td class="text-end fw-bold ${totalMarginClass} tabular-nums">${totalMarginRate}%</td>
+                            <td class="text-end fw-bold ${totalMarginClass} tabular-nums">${totalMarginAmt.toLocaleString()}원</td>
                         </tr>
                     </tfoot>
                 `;
@@ -3443,6 +3471,12 @@ const app = {
                     <input type="text" class="erp-cell-input dir-out-supply text-end bg-readonly text-danger fw-bold" placeholder="0원" readonly tabindex="-1">
                 </td>
                 <td>
+                    <input type="number" class="erp-cell-input dir-margin-rate text-end fw-semibold" placeholder="0%" step="0.01" title="마진율(%) = (매출단가 - 매입단가) / 매출단가 × 100">
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input dir-margin-amt text-end fw-semibold" placeholder="0" step="1" title="총 마진액 = 매출공급가 - 매입공급가">
+                </td>
+                <td>
                     <input type="text" class="erp-cell-input dir-note" placeholder="적요/비고">
                 </td>
                 <td class="text-center">
@@ -3547,10 +3581,14 @@ const app = {
         const qtyInp = newRow.querySelector('.dir-qty');
         const inPriceInp = newRow.querySelector('.dir-in-price');
         const outPriceInp = newRow.querySelector('.dir-out-price');
-        const updateCalc = () => this.updateDirectGridTotals();
-        qtyInp.addEventListener('input', updateCalc);
-        inPriceInp.addEventListener('input', updateCalc);
-        outPriceInp.addEventListener('input', updateCalc);
+        const marginRateInp = newRow.querySelector('.dir-margin-rate');
+        const marginAmtInp = newRow.querySelector('.dir-margin-amt');
+
+        if (qtyInp) qtyInp.addEventListener('input', () => this.recalcDirectRow(newRow, 'qty'));
+        if (inPriceInp) inPriceInp.addEventListener('input', () => this.recalcDirectRow(newRow, 'inPrice'));
+        if (outPriceInp) outPriceInp.addEventListener('input', () => this.recalcDirectRow(newRow, 'outPrice'));
+        if (marginRateInp) marginRateInp.addEventListener('input', () => this.recalcDirectRow(newRow, 'marginRate'));
+        if (marginAmtInp) marginAmtInp.addEventListener('input', () => this.recalcDirectRow(newRow, 'marginAmt'));
 
         // ERP 그리드 키보드 이동 및 엑셀 붙여넣기 바인딩
         this.bindGridKeyboardAndPaste(newRow, 'direct');
@@ -3583,6 +3621,117 @@ const app = {
         }
     },
 
+    // 직출고 행 3자 연동 계산 (매입단가 고정 기준: 매출단가 ↔ 마진율(%) ↔ 총 마진액)
+    // - 마진율(%) = (매출단가 - 매입단가) / 매출단가 * 100 (매출단가 기준 이익률)
+    // - 총 마진액 = 매출공급가 - 매입공급가 = (매출단가 - 매입단가) * 수량
+    recalcDirectRow: function(row, source = 'init') {
+        if (!row) return;
+        const qtyInp = row.querySelector('.dir-qty');
+        const inPriceInp = row.querySelector('.dir-in-price');
+        const outPriceInp = row.querySelector('.dir-out-price');
+        const marginRateInp = row.querySelector('.dir-margin-rate');
+        const marginAmtInp = row.querySelector('.dir-margin-amt');
+
+        const q = parseFloat(qtyInp?.value) || 0;
+        const effQty = q > 0 ? q : 1;
+        const inRaw = inPriceInp ? inPriceInp.value.trim() : '';
+        const inP = parseFloat(inRaw) || 0;
+
+        if (marginRateInp) {
+            marginRateInp.classList.remove('price-warn-highlight');
+        }
+
+        if (source === 'marginRate' && marginRateInp) {
+            const rawRate = marginRateInp.value.trim();
+            if (rawRate === '' || rawRate === '-' || isNaN(parseFloat(rawRate))) {
+                this.updateDirectGridTotals();
+                return;
+            }
+            const rate = parseFloat(rawRate);
+            if (rate >= 100) {
+                marginRateInp.classList.add('price-warn-highlight');
+                marginRateInp.title = '매출단가 기준 마진율은 100% 미만이어야 합니다.';
+                this.updateDirectGridTotals();
+                return;
+            }
+            marginRateInp.title = '마진율(%) = (매출단가 - 매입단가) / 매출단가 × 100';
+            const outP = Math.round(inP / (1 - (rate / 100)));
+            if (outPriceInp) outPriceInp.value = outP;
+            if (marginAmtInp) {
+                marginAmtInp.value = q > 0 ? Math.round((outP - inP) * q) : Math.round(outP - inP);
+            }
+        } else if (source === 'marginAmt' && marginAmtInp) {
+            const rawAmt = marginAmtInp.value.trim();
+            if (rawAmt === '' || rawAmt === '-' || isNaN(parseFloat(rawAmt))) {
+                this.updateDirectGridTotals();
+                return;
+            }
+            const marginAmt = parseFloat(rawAmt);
+            const outP = Math.round(inP + (marginAmt / effQty));
+            if (outPriceInp) outPriceInp.value = outP;
+            if (marginRateInp) {
+                if (outP > 0) {
+                    const rate = ((outP - inP) / outP) * 100;
+                    marginRateInp.value = Number(rate.toFixed(2));
+                } else {
+                    marginRateInp.value = '';
+                }
+            }
+        } else {
+            // source === 'outPrice' | 'inPrice' | 'qty' | 'init'
+            const outRaw = outPriceInp ? outPriceInp.value.trim() : '';
+            let outP = parseFloat(outRaw) || 0;
+
+            // 매출단가가 비어있고 마진율이 먼저 입력된 상태에서 매입단가나 수량을 입력한 경우 마진율 기준 역산
+            if (outRaw === '' && marginRateInp && marginRateInp.value.trim() !== '' && inP > 0) {
+                const rate = parseFloat(marginRateInp.value.trim());
+                if (!isNaN(rate) && rate < 100) {
+                    outP = Math.round(inP / (1 - (rate / 100)));
+                    if (outPriceInp) outPriceInp.value = outP;
+                }
+            }
+
+            const hasPriceInput = (outPriceInp && outPriceInp.value.trim() !== '') || inRaw !== '';
+            if (hasPriceInput && outPriceInp && outPriceInp.value.trim() !== '') {
+                if (marginRateInp) {
+                    if (outP > 0) {
+                        const rate = ((outP - inP) / outP) * 100;
+                        marginRateInp.value = Number(rate.toFixed(2));
+                    } else {
+                        marginRateInp.value = inP > 0 ? -100 : 0;
+                    }
+                }
+                if (marginAmtInp) {
+                    marginAmtInp.value = q > 0 ? Math.round((outP - inP) * q) : Math.round(outP - inP);
+                }
+            } else if (!outPriceInp || outPriceInp.value.trim() === '') {
+                if (source === 'outPrice' || source === 'init') {
+                    if (marginRateInp) marginRateInp.value = '';
+                    if (marginAmtInp) marginAmtInp.value = '';
+                }
+            }
+        }
+
+        this.applyDirectRowMarginStyle(row);
+        this.updateDirectGridTotals();
+    },
+
+    applyDirectRowMarginStyle: function(row) {
+        if (!row) return;
+        const marginRateInp = row.querySelector('.dir-margin-rate');
+        const marginAmtInp = row.querySelector('.dir-margin-amt');
+        [marginRateInp, marginAmtInp].forEach(el => {
+            if (!el) return;
+            el.classList.remove('text-success', 'text-danger', 'text-muted');
+            const v = parseFloat(el.value);
+            if (!isNaN(v)) {
+                if (v < 0) el.classList.add('text-danger');
+                else if (v > 0) el.classList.add('text-success');
+                else el.classList.add('text-muted');
+            }
+        });
+    },
+
     updateDirectGridTotals: function() {
         const container = $('directItemsContainer');
         if (!container) return;
@@ -3606,10 +3755,18 @@ const app = {
             if (inSupplyEl) inSupplyEl.value = inS ? inS.toLocaleString() + '원' : '';
             if (outSupplyEl) outSupplyEl.value = outS ? outS.toLocaleString() + '원' : '';
 
+            this.applyDirectRowMarginStyle(r);
+
             totalQty += q;
             totalInSupply += inS;
             totalOutSupply += outS;
         });
+
+        const totalMarginAmt = totalOutSupply - totalInSupply;
+        const totalMarginRate = totalOutSupply > 0 ? (((totalOutSupply - totalInSupply) / totalOutSupply) * 100) : 0;
+        const formattedMarginRate = (totalOutSupply > 0 || totalInSupply > 0)
+            ? Number(totalMarginRate.toFixed(2)) + '%'
+            : '0%';
 
         const inShipping = parseFloat($('dir_in_shipping')?.value) || 0;
         const outShipping = parseFloat($('dir_out_shipping')?.value) || 0;
@@ -3631,6 +3788,20 @@ const app = {
         if ($('dir_total_qty')) $('dir_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
         if ($('dir_total_in_supply')) $('dir_total_in_supply').innerText = totalInSupply.toLocaleString() + '원';
         if ($('dir_total_out_supply')) $('dir_total_out_supply').innerText = totalOutSupply.toLocaleString() + '원';
+
+        const isLoss = totalMarginAmt < 0;
+        ['dir_total_margin_rate', 'dir_total_margin_amt', 'dir_summary_margin_rate', 'dir_summary_margin_amt'].forEach(id => {
+            const el = $(id);
+            if (!el) return;
+            el.classList.remove('text-success', 'text-danger');
+            el.classList.add(isLoss ? 'text-danger' : 'text-success');
+        });
+
+        if ($('dir_total_margin_rate')) $('dir_total_margin_rate').innerText = formattedMarginRate;
+        if ($('dir_total_margin_amt')) $('dir_total_margin_amt').innerText = totalMarginAmt.toLocaleString() + '원';
+        if ($('dir_summary_margin_rate')) $('dir_summary_margin_rate').innerText = formattedMarginRate;
+        if ($('dir_summary_margin_amt')) $('dir_summary_margin_amt').innerText = totalMarginAmt.toLocaleString() + '원';
+
         if ($('dir_grand_in_total')) $('dir_grand_in_total').innerText = grandInTotal.toLocaleString();
         if ($('dir_grand_out_total')) $('dir_grand_out_total').innerText = grandOutTotal.toLocaleString();
         if ($('dir_row_count')) $('dir_row_count').innerText = rows.length + '건';
@@ -5092,6 +5263,7 @@ const app = {
                     newRow.querySelector('.dir-freight-type').value = item.freight_type || '하차도';
                     newRow.dataset.freightManuallySet = 'true';
                 }
+                this.recalcDirectRow(newRow, 'init');
             });
             this.updateDirectGridTotals();
 
@@ -6230,6 +6402,7 @@ const app = {
             $('edit_direct_qty').value = item.qty;
             $('edit_direct_inbound_price').value = item.inbound_price || 0;
             $('edit_direct_outbound_price').value = item.selling_price || item.price || 0;
+            this.recalcEditDirectModal('init');
             
             const modalEl = document.getElementById('editDirectModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
@@ -6239,6 +6412,57 @@ const app = {
             console.error(err);
             alert('직출고 데이터를 불러오는 중 오류가 발생했습니다.');
         }
+    },
+
+    recalcEditDirectModal: function(source = 'init') {
+        const qtyInp = $('edit_direct_qty');
+        const inPriceInp = $('edit_direct_inbound_price');
+        const outPriceInp = $('edit_direct_outbound_price');
+        const marginRateInp = $('edit_direct_margin_rate');
+        const marginAmtInp = $('edit_direct_margin_amt');
+        if (!qtyInp || !inPriceInp || !outPriceInp) return;
+
+        const q = parseFloat(qtyInp.value) || 0;
+        const effQty = q > 0 ? q : 1;
+        const inP = parseFloat(inPriceInp.value) || 0;
+
+        if (source === 'marginRate' && marginRateInp) {
+            const rawRate = marginRateInp.value.trim();
+            if (rawRate === '' || rawRate === '-' || isNaN(parseFloat(rawRate))) return;
+            const rate = parseFloat(rawRate);
+            if (rate >= 100) return;
+            const outP = Math.round(inP / (1 - (rate / 100)));
+            outPriceInp.value = outP;
+            if (marginAmtInp) marginAmtInp.value = Math.round((outP - inP) * effQty);
+        } else if (source === 'marginAmt' && marginAmtInp) {
+            const rawAmt = marginAmtInp.value.trim();
+            if (rawAmt === '' || rawAmt === '-' || isNaN(parseFloat(rawAmt))) return;
+            const marginAmt = parseFloat(rawAmt);
+            const outP = Math.round(inP + (marginAmt / effQty));
+            outPriceInp.value = outP;
+            if (marginRateInp) {
+                marginRateInp.value = outP > 0 ? Number((((outP - inP) / outP) * 100).toFixed(2)) : '';
+            }
+        } else {
+            const outP = parseFloat(outPriceInp.value) || 0;
+            if (marginRateInp) {
+                marginRateInp.value = outP > 0 ? Number((((outP - inP) / outP) * 100).toFixed(2)) : (inP > 0 ? -100 : 0);
+            }
+            if (marginAmtInp) {
+                marginAmtInp.value = Math.round((outP - inP) * effQty);
+            }
+        }
+
+        [marginRateInp, marginAmtInp].forEach(el => {
+            if (!el) return;
+            el.classList.remove('text-success', 'text-danger', 'text-muted');
+            const v = parseFloat(el.value);
+            if (!isNaN(v)) {
+                if (v < 0) el.classList.add('text-danger');
+                else if (v > 0) el.classList.add('text-success');
+                else el.classList.add('text-muted');
+            }
+        });
     },
 
     submitEditDirectOutbound: async function(e) {

@@ -1176,3 +1176,312 @@ body {
     .mobile-margin-badge.badge-low  { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
     .mobile-margin-badge.badge-neg  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 }
+
+/* ==========================================================================
+   ── 11. 올인원 통합 워크스페이스 (재고 ⇄ 입출고·마진 원장) & 고도화 전표 스타일 ──
+   ========================================================================== */
+
+/* 메인 워크스페이스 스위처 (상단 좌측 탭) */
+.erp-workspace-switcher {
+    display: inline-flex;
+    background: #0f172a;
+    padding: 2px;
+    border-radius: 4px;
+    gap: 2px;
+    margin-right: 4px;
+}
+
+.erp-ws-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.erp-ws-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.erp-ws-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.erp-ws-btn.active.ws-tx {
+    background: #059669;
+}
+
+.erp-ws-count {
+    font-size: 10px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+/* 추가 배지 컬러 */
+.erp-stat-badge.badge-amber {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.erp-stat-badge.badge-rose {
+    background: #fff1f2;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+
+.btn-erp-amber {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #ffffff;
+}
+.btn-erp-amber:hover {
+    background: #c2410c;
+    border-color: #c2410c;
+    color: #ffffff;
+}
+.btn-erp-amber .key-shortcut-badge {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-erp-warning {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #b45309;
+}
+.btn-erp-warning:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+/* 입출고 구분 뱃지 */
+.tx-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 3px;
+    text-align: center;
+    line-height: 1.3;
+}
+.tx-badge.in {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+.tx-badge.out {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+/* 날짜 프리셋 버튼 그룹 (입출고 탭용) */
+.erp-date-presets {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+.erp-preset-btn {
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    line-height: 18px;
+}
+.erp-preset-btn:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: #0f172a;
+}
+.erp-preset-btn.active {
+    background: #ffffff;
+    border-color: var(--erp-border);
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.erp-date-input {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    width: 118px !important;
+    background-color: #ffffff;
+    color: #1e293b;
+}
+
+/* 전표 모달 (와이드 확장) */
+#voucherModal .modal-xl {
+    max-width: 1380px;
+}
+
+.modal-header.erp-modal-header.out-mode {
+    background: #9a3412;
+}
+
+.voucher-mode-toggle {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.voucher-mode-btn {
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.75);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+}
+.voucher-mode-btn:hover {
+    color: #ffffff;
+}
+.voucher-mode-btn.active.mode-in {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.voucher-mode-btn.active.mode-out {
+    background: #ea580c;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.voucher-grid-wrapper {
+    max-height: 430px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid var(--erp-border);
+}
+
+#voucherItemTable th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f1f5f9;
+    font-size: 11px;
+    padding: 4px 4px;
+    line-height: 1.25;
+}
+
+#voucherItemTable td {
+    height: 44px;
+    vertical-align: middle;
+    padding: 2px 3px;
+}
+
+#voucherItemTable .form-control {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 5px !important;
+    border: 1px solid transparent !important;
+    border-radius: 2px !important;
+}
+#voucherItemTable .form-control:hover {
+    border-color: #cbd5e1 !important;
+}
+#voucherItemTable .form-control:focus {
+    border-color: #2563eb !important;
+    background: #ffffff !important;
+}
+
+/* 셀 내부 보조 힌트 (최저가 합계, 공급가 환산 등) */
+.cell-sub-hint {
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.15;
+    padding: 1px 4px 0 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.btn-apply-mini {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 2px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    line-height: 14px;
+}
+.btn-apply-mini:hover {
+    background: #dbeafe;
+}
+
+/* 자동완성 드롭다운 */
+.erp-autocomplete-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 380px;
+    background: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 3px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1080;
+}
+.erp-autocomplete-item {
+    padding: 6px 10px;
+    font-size: 11.5px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 8px;
+}
+.erp-autocomplete-item:hover,
+.erp-autocomplete-item.active {
+    background-color: #eff6ff;
+}
+
+/* 테이블 내 2단 가격 표기 */
+.price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.15;
+    padding: 1px 0;
+}
+.price-stack .price-main {
+    font-weight: 700;
+    font-size: 11.5px;
+}
+.price-stack .price-sub {
+    font-size: 9.5px;
+    color: #64748b;
+    font-weight: 400;
+}

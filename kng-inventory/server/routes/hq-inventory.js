@@ -43,7 +43,13 @@ function initHqTables(database) {
                         size TEXT NOT NULL DEFAULT '',
                         stock INTEGER DEFAULT 0,
                         buyPrice INTEGER DEFAULT 0,
+                        basePrice INTEGER DEFAULT 0,
+                        freight INTEGER DEFAULT 0,
+                        onlinePrice INTEGER DEFAULT 0,
+                        onlineShipping INTEGER DEFAULT 0,
+                        onlineVatIncluded INTEGER DEFAULT 1,
                         sellPrice INTEGER DEFAULT 0,
+                        sellVatIncluded INTEGER DEFAULT 1,
                         discountPrice INTEGER DEFAULT 0,
                         createdAt TEXT DEFAULT (datetime('now')),
                         updatedAt TEXT DEFAULT (datetime('now'))
@@ -71,6 +77,15 @@ function initHqTables(database) {
                         buyPrice INTEGER DEFAULT 0,
                         basePrice INTEGER DEFAULT 0,
                         freight INTEGER DEFAULT 0,
+                        onlinePrice INTEGER DEFAULT 0,
+                        onlineShipping INTEGER DEFAULT 0,
+                        onlineVatIncluded INTEGER DEFAULT 1,
+                        sellPrice INTEGER DEFAULT 0,
+                        sellVatIncluded INTEGER DEFAULT 1,
+                        outVatIncluded INTEGER DEFAULT 1,
+                        rawOutPrice INTEGER DEFAULT 0,
+                        marginAmount INTEGER DEFAULT 0,
+                        marginRate REAL DEFAULT 0,
                         remarks TEXT,
                         batchId TEXT,
                         createdAt TEXT DEFAULT (datetime('now'))
@@ -167,7 +182,25 @@ function initHqTables(database) {
         });
 
         // 2) 기존 DB 호환 — 누락 컬럼을 안전하게 추가 (PRAGMA 확인 후 ALTER)
+        await addColumnIfNotExists(database, 'hq_products', 'discountPrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_products', 'basePrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_products', 'freight', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_products', 'onlinePrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_products', 'onlineShipping', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_products', 'onlineVatIncluded', 'INTEGER DEFAULT 1');
+        await addColumnIfNotExists(database, 'hq_products', 'sellVatIncluded', 'INTEGER DEFAULT 1');
+
         await addColumnIfNotExists(database, 'hq_transactions', 'batchId', 'TEXT');
+        await addColumnIfNotExists(database, 'hq_transactions', 'onlinePrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_transactions', 'onlineShipping', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_transactions', 'onlineVatIncluded', 'INTEGER DEFAULT 1');
+        await addColumnIfNotExists(database, 'hq_transactions', 'sellPrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_transactions', 'sellVatIncluded', 'INTEGER DEFAULT 1');
+        await addColumnIfNotExists(database, 'hq_transactions', 'outVatIncluded', 'INTEGER DEFAULT 1');
+        await addColumnIfNotExists(database, 'hq_transactions', 'rawOutPrice', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_transactions', 'marginAmount', 'INTEGER DEFAULT 0');
+        await addColumnIfNotExists(database, 'hq_transactions', 'marginRate', 'REAL DEFAULT 0');
+
         await addColumnIfNotExists(database, 'hq_labels', 'layout', "TEXT DEFAULT '{}'");
         await addColumnIfNotExists(database, 'hq_labels', 'memoImageBase64', "TEXT DEFAULT ''");
         await addColumnIfNotExists(database, 'hq_labels', 'color', "TEXT DEFAULT ''");
@@ -176,7 +209,42 @@ function initHqTables(database) {
         await addColumnIfNotExists(database, 'hq_label_specs', 'labelWidth', 'REAL DEFAULT 63.5');
         await addColumnIfNotExists(database, 'hq_label_specs', 'labelHeight', 'REAL DEFAULT 38.1');
 
-        console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
+        // 3) 기존 데이터 무손실 승계 및 출고 원가/마진 자동 보정 (Backfill)
+        await new Promise((res) => {
+            database.serialize(() => {
+                // 기존 할인판매가(discountPrice)만 입력되어 있던 상품은 적정판매가(sellPrice)로 자동 승계
+                database.run(`
+                    UPDATE hq_products
+                    SET sellPrice = discountPrice
+                    WHERE (sellPrice IS NULL OR sellPrice = 0) AND discountPrice > 0
+                `, () => {});
+
+                // 과거 출고(OUT) 내역 중 buyPrice가 0인 건에 대해 상품 마스터의 buyPrice 자동 매칭
+                database.run(`
+                    UPDATE hq_transactions
+                    SET buyPrice = (
+                        SELECT p.buyPrice FROM hq_products p WHERE p.id = hq_transactions.productId
+                    )
+                    WHERE type = 'OUT'
+                      AND (buyPrice IS NULL OR buyPrice = 0)
+                      AND productId IS NOT NULL AND productId != ''
+                      AND EXISTS (SELECT 1 FROM hq_products p WHERE p.id = hq_transactions.productId AND p.buyPrice > 0)
+                `, () => {});
+
+                // 과거 출고(OUT) 내역 중 marginAmount가 비어있는 건에 대해 실현 마진 자동 계산
+                database.run(`
+                    UPDATE hq_transactions
+                    SET marginAmount = (price - COALESCE(buyPrice, 0)),
+                        marginRate = ROUND(CAST(price - COALESCE(buyPrice, 0) AS REAL) * 100.0 / price, 1)
+                    WHERE type = 'OUT'
+                      AND price > 0
+                      AND (marginAmount IS NULL OR marginAmount = 0)
+                      AND COALESCE(buyPrice, 0) > 0
+                `, () => res());
+            });
+        });
+
+        console.log('hq_labels / hq_label_specs / hq_logo_templates 및 고도화 컬럼 확인 완료');
         resolve();
     });
 }
@@ -207,9 +275,22 @@ router.post('/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('HQP-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, discountPrice, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, p.discountPrice||0, now, now];
+    const onlineVatIncluded = p.onlineVatIncluded !== undefined ? (p.onlineVatIncluded ? 1 : 0) : 1;
+    const sellVatIncluded = p.sellVatIncluded !== undefined ? (p.sellVatIncluded ? 1 : 0) : 1;
+    const sql = `INSERT INTO hq_products (
+                    id, supplier, brand, name, color, size, stock,
+                    buyPrice, basePrice, freight,
+                    onlinePrice, onlineShipping, onlineVatIncluded,
+                    sellPrice, sellVatIncluded, discountPrice,
+                    createdAt, updatedAt
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [
+        id, p.supplier||'최가유통', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0,
+        p.buyPrice||0, p.basePrice||0, p.freight||0,
+        p.onlinePrice||0, p.onlineShipping||0, onlineVatIncluded,
+        p.sellPrice||0, sellVatIncluded, p.discountPrice||0,
+        now, now
+    ];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id });
@@ -221,12 +302,42 @@ router.put('/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE hq_products SET supplier=?, brand=?, name=?, color=?, size=?, stock=?, buyPrice=?, sellPrice=?, discountPrice=?, updatedAt=? WHERE id=?`;
-    const params = [p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, p.discountPrice||0, now, id];
-    db.run(sql, params, function(err) {
+    db.get('SELECT * FROM hq_products WHERE id = ?', [id], (err, existing) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
-        res.json({ message: '수정 성공' });
+        if (!existing) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+
+        const onlineVatIncluded = p.onlineVatIncluded !== undefined ? (p.onlineVatIncluded ? 1 : 0) : (existing.onlineVatIncluded ?? 1);
+        const sellVatIncluded = p.sellVatIncluded !== undefined ? (p.sellVatIncluded ? 1 : 0) : (existing.sellVatIncluded ?? 1);
+
+        const sql = `UPDATE hq_products SET
+                        supplier=?, brand=?, name=?, color=?, size=?, stock=?,
+                        buyPrice=?, basePrice=?, freight=?,
+                        onlinePrice=?, onlineShipping=?, onlineVatIncluded=?,
+                        sellPrice=?, sellVatIncluded=?, discountPrice=?,
+                        updatedAt=?
+                     WHERE id=?`;
+        const params = [
+            p.supplier !== undefined ? p.supplier : (existing.supplier || '최가유통'),
+            p.brand !== undefined ? p.brand : (existing.brand || ''),
+            p.name !== undefined ? p.name : (existing.name || ''),
+            p.color !== undefined ? p.color : (existing.color || ''),
+            p.size !== undefined ? p.size : (existing.size || ''),
+            p.stock !== undefined ? p.stock : (existing.stock || 0),
+            p.buyPrice !== undefined ? p.buyPrice : (existing.buyPrice || 0),
+            p.basePrice !== undefined ? p.basePrice : (existing.basePrice || 0),
+            p.freight !== undefined ? p.freight : (existing.freight || 0),
+            p.onlinePrice !== undefined ? p.onlinePrice : (existing.onlinePrice || 0),
+            p.onlineShipping !== undefined ? p.onlineShipping : (existing.onlineShipping || 0),
+            onlineVatIncluded,
+            p.sellPrice !== undefined ? p.sellPrice : (existing.sellPrice || 0),
+            sellVatIncluded,
+            p.discountPrice !== undefined ? p.discountPrice : (existing.discountPrice || 0),
+            now, id
+        ];
+        db.run(sql, params, function(err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            res.json({ message: '수정 성공' });
+        });
     });
 });
 
@@ -273,7 +384,7 @@ router.get('/transactions', (req, res) => {
     });
 });
 
-// 입출고 등록 (재고 자동 증감 + 메트릭 갱신)
+// 입출고 등록 (재고 자동 증감 + 상품마스터 단가 동기화 + 메트릭 갱신)
 router.post('/transactions', (req, res) => {
     const t = req.body;
     const id = t.id || ('HQT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
@@ -281,52 +392,106 @@ router.post('/transactions', (req, res) => {
     
     // Check negative stock for OUT
     if (t.type === 'OUT' && t.productId) {
-        db.get('SELECT stock, name FROM hq_products WHERE id = ?', [t.productId], (err, prod) => {
+        db.get('SELECT stock, name, buyPrice, sellPrice FROM hq_products WHERE id = ?', [t.productId], (err, prod) => {
             if (err) return res.status(500).json({ error: err.message });
             if (!prod) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
             if (prod.stock - (t.qty || 0) < 0) {
                 return res.status(400).json({ error: `재고 부족: ${prod.name} (현재 재고: ${prod.stock}, 출고 요청: ${t.qty})` });
             }
-            insertTx();
+            insertTx(prod);
         });
     } else {
-        insertTx();
+        insertTx(null);
     }
 
-    function insertTx() {
-        const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, batchId, createdAt)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    function insertTx(prod) {
+        const qty = Number(t.qty) || 0;
+        const price = Number(t.price) || 0;
+        const buyPrice = Number(t.buyPrice || (prod && prod.buyPrice) || (t.type === 'IN' ? price : 0));
+        const basePrice = Number(t.basePrice) || 0;
+        const freight = Number(t.freight) || 0;
+        const onlinePrice = Number(t.onlinePrice) || 0;
+        const onlineShipping = Number(t.onlineShipping) || 0;
+        const onlineVatIncluded = t.onlineVatIncluded !== undefined ? (t.onlineVatIncluded ? 1 : 0) : 1;
+        const sellPrice = Number(t.sellPrice || (prod && prod.sellPrice) || 0);
+        const sellVatIncluded = t.sellVatIncluded !== undefined ? (t.sellVatIncluded ? 1 : 0) : 1;
+        const outVatIncluded = t.outVatIncluded !== undefined ? (t.outVatIncluded ? 1 : 0) : 1;
+        const rawOutPrice = Number(t.rawOutPrice || price);
+
+        let marginAmount = t.marginAmount !== undefined ? Number(t.marginAmount) : 0;
+        let marginRate = t.marginRate !== undefined ? Number(t.marginRate) : 0;
+        if (t.type === 'OUT' && price > 0) {
+            marginAmount = price - buyPrice;
+            marginRate = Math.round(((price - buyPrice) / price) * 1000) / 10;
+        }
+
+        const sql = `INSERT INTO hq_transactions (
+                        id, type, txDate, timestamp, productId, supplier, brand, productName, color, size,
+                        qty, price, buyPrice, basePrice, freight,
+                        onlinePrice, onlineShipping, onlineVatIncluded,
+                        sellPrice, sellVatIncluded, outVatIncluded, rawOutPrice,
+                        marginAmount, marginRate,
+                        remarks, batchId, createdAt
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id, t.type, t.txDate||'', now,
             t.productId||'', t.supplier||'', t.brand||'', t.productName||'',
-            t.color||'', t.size||'', t.qty||0, t.price||0,
-            t.buyPrice||0, t.basePrice||0, t.freight||0,
+            t.color||'', t.size||'', qty, price,
+            buyPrice, basePrice, freight,
+            onlinePrice, onlineShipping, onlineVatIncluded,
+            sellPrice, sellVatIncluded, outVatIncluded, rawOutPrice,
+            marginAmount, marginRate,
             t.remarks||'', t.batchId||null, now
         ];
 
-    db.run(sql, params, function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        db.run(sql, params, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
 
-        const qty = t.qty || 0;
-        const price = t.price || 0;
-        const totalAmount = qty * price;
+            const totalAmount = qty * price;
 
-        // 재고 증감
-        if (t.productId) {
-            const stockDelta = t.type === 'IN' ? qty : -qty;
-            db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?',
-                [stockDelta, now, t.productId]);
-        }
+            // 재고 증감 및 입고 시 상품 마스터 가격 갱신
+            if (t.productId) {
+                const stockDelta = t.type === 'IN' ? qty : -qty;
+                if (t.type === 'IN') {
+                    db.run(`UPDATE hq_products SET
+                                stock = stock + ?,
+                                buyPrice = CASE WHEN ? > 0 THEN ? ELSE buyPrice END,
+                                basePrice = CASE WHEN ? > 0 THEN ? ELSE basePrice END,
+                                freight = CASE WHEN ? >= 0 AND ? > 0 THEN ? ELSE freight END,
+                                onlinePrice = CASE WHEN ? > 0 THEN ? ELSE onlinePrice END,
+                                onlineShipping = CASE WHEN ? > 0 OR ? > 0 THEN ? ELSE onlineShipping END,
+                                onlineVatIncluded = ?,
+                                sellPrice = CASE WHEN ? > 0 THEN ? ELSE sellPrice END,
+                                sellVatIncluded = ?,
+                                updatedAt = ?
+                            WHERE id = ?`,
+                        [
+                            stockDelta,
+                            price, price,
+                            basePrice, basePrice,
+                            freight, price, freight,
+                            onlinePrice, onlinePrice,
+                            onlinePrice, onlineShipping, onlineShipping,
+                            onlineVatIncluded,
+                            sellPrice, sellPrice,
+                            sellVatIncluded,
+                            now, t.productId
+                        ]);
+                } else {
+                    db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?',
+                        [stockDelta, now, t.productId]);
+                }
+            }
 
-        // 메트릭 갱신
-        if (t.type === 'IN') {
-            db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalCost']);
-        } else {
-            db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalRevenue']);
-        }
+            // 메트릭 갱신
+            if (t.type === 'IN') {
+                db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalCost']);
+            } else {
+                db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalRevenue']);
+            }
 
-        res.status(201).json({ message: '등록 성공', id });
-    });
+            res.status(201).json({ message: '등록 성공', id });
+        });
     }
 });
 
@@ -345,29 +510,60 @@ router.post('/transactions/bulk', async (req, res) => {
         await dbRun('BEGIN TRANSACTION', []);
 
         for (const t of items) {
-            const qty = t.qty || 0;
-            const price = t.price || 0;
+            const qty = Number(t.qty) || 0;
+            const price = Number(t.price) || 0;
             const totalAmount = qty * price;
             const productId = t.productId || '';
             const type = t.type;
 
+            let prod = null;
+            if (productId) {
+                prod = await dbGet('SELECT * FROM hq_products WHERE id = ?', [productId]);
+            }
+
             if (type === 'OUT' && productId) {
-                const prod = await dbGet('SELECT stock, name FROM hq_products WHERE id = ?', [productId]);
                 if (!prod) throw new Error(`등록되지 않은 상품입니다: ${t.productName}`);
                 if (prod.stock - qty < 0) {
                     throw new Error(`재고 부족: ${prod.name} (현재 재고: ${prod.stock}, 요청: ${qty})`);
                 }
             }
 
+            const buyPrice = Number(t.buyPrice || (prod && prod.buyPrice) || (type === 'IN' ? price : 0));
+            const basePrice = Number(t.basePrice) || 0;
+            const freight = Number(t.freight) || 0;
+            const onlinePrice = Number(t.onlinePrice) || 0;
+            const onlineShipping = Number(t.onlineShipping) || 0;
+            const onlineVatIncluded = t.onlineVatIncluded !== undefined ? (t.onlineVatIncluded ? 1 : 0) : 1;
+            const sellPrice = Number(t.sellPrice || (prod && prod.sellPrice) || 0);
+            const sellVatIncluded = t.sellVatIncluded !== undefined ? (t.sellVatIncluded ? 1 : 0) : 1;
+            const outVatIncluded = t.outVatIncluded !== undefined ? (t.outVatIncluded ? 1 : 0) : 1;
+            const rawOutPrice = Number(t.rawOutPrice || price);
+
+            let marginAmount = t.marginAmount !== undefined ? Number(t.marginAmount) : 0;
+            let marginRate = t.marginRate !== undefined ? Number(t.marginRate) : 0;
+            if (type === 'OUT' && price > 0) {
+                marginAmount = price - buyPrice;
+                marginRate = Math.round(((price - buyPrice) / price) * 1000) / 10;
+            }
+
             const id = t.id || ('HQT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
 
-            const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, batchId, createdAt)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            const sql = `INSERT INTO hq_transactions (
+                            id, type, txDate, timestamp, productId, supplier, brand, productName, color, size,
+                            qty, price, buyPrice, basePrice, freight,
+                            onlinePrice, onlineShipping, onlineVatIncluded,
+                            sellPrice, sellVatIncluded, outVatIncluded, rawOutPrice,
+                            marginAmount, marginRate,
+                            remarks, batchId, createdAt
+                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
             const params = [
                 id, type, t.txDate||'', now,
                 productId, t.supplier||'', t.brand||'', t.productName||'',
                 t.color||'', t.size||'', qty, price,
-                t.buyPrice||0, t.basePrice||0, t.freight||0,
+                buyPrice, basePrice, freight,
+                onlinePrice, onlineShipping, onlineVatIncluded,
+                sellPrice, sellVatIncluded, outVatIncluded, rawOutPrice,
+                marginAmount, marginRate,
                 t.remarks||'', batchId, now
             ];
 
@@ -375,7 +571,34 @@ router.post('/transactions/bulk', async (req, res) => {
 
             if (productId) {
                 const stockDelta = type === 'IN' ? qty : -qty;
-                await dbRun('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [stockDelta, now, productId]);
+                if (type === 'IN') {
+                    await dbRun(`UPDATE hq_products SET
+                                    stock = stock + ?,
+                                    buyPrice = CASE WHEN ? > 0 THEN ? ELSE buyPrice END,
+                                    basePrice = CASE WHEN ? > 0 THEN ? ELSE basePrice END,
+                                    freight = CASE WHEN ? >= 0 AND ? > 0 THEN ? ELSE freight END,
+                                    onlinePrice = CASE WHEN ? > 0 THEN ? ELSE onlinePrice END,
+                                    onlineShipping = CASE WHEN ? > 0 OR ? > 0 THEN ? ELSE onlineShipping END,
+                                    onlineVatIncluded = ?,
+                                    sellPrice = CASE WHEN ? > 0 THEN ? ELSE sellPrice END,
+                                    sellVatIncluded = ?,
+                                    updatedAt = ?
+                                WHERE id = ?`,
+                        [
+                            stockDelta,
+                            price, price,
+                            basePrice, basePrice,
+                            freight, price, freight,
+                            onlinePrice, onlinePrice,
+                            onlinePrice, onlineShipping, onlineShipping,
+                            onlineVatIncluded,
+                            sellPrice, sellPrice,
+                            sellVatIncluded,
+                            now, productId
+                        ]);
+                } else {
+                    await dbRun('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [stockDelta, now, productId]);
+                }
             }
 
             if (type === 'IN') {
@@ -405,12 +628,37 @@ router.put('/transactions/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!old) return res.status(404).json({ error: '내역을 찾을 수 없습니다.' });
 
-        const sql = `UPDATE hq_transactions SET type=?, txDate=?, supplier=?, brand=?, productName=?, color=?, size=?, qty=?, price=?, buyPrice=?, basePrice=?, freight=?, remarks=? WHERE id=?`;
+        const type = t.type || old.type;
+        const qty = Number(t.qty !== undefined ? t.qty : old.qty) || 0;
+        const price = Number(t.price !== undefined ? t.price : old.price) || 0;
+        const buyPrice = Number(t.buyPrice !== undefined ? t.buyPrice : (old.buyPrice || (type === 'IN' ? price : 0))) || 0;
+        const basePrice = Number(t.basePrice !== undefined ? t.basePrice : old.basePrice) || 0;
+        const freight = Number(t.freight !== undefined ? t.freight : old.freight) || 0;
+        const onlinePrice = Number(t.onlinePrice !== undefined ? t.onlinePrice : old.onlinePrice) || 0;
+        const onlineShipping = Number(t.onlineShipping !== undefined ? t.onlineShipping : old.onlineShipping) || 0;
+        const sellPrice = Number(t.sellPrice !== undefined ? t.sellPrice : old.sellPrice) || 0;
+        const rawOutPrice = Number(t.rawOutPrice !== undefined ? t.rawOutPrice : (old.rawOutPrice || price)) || 0;
+
+        let marginAmount = t.marginAmount !== undefined ? Number(t.marginAmount) : (old.marginAmount || 0);
+        let marginRate = t.marginRate !== undefined ? Number(t.marginRate) : (old.marginRate || 0);
+        if (type === 'OUT' && price > 0) {
+            marginAmount = price - buyPrice;
+            marginRate = Math.round(((price - buyPrice) / price) * 1000) / 10;
+        }
+
+        const sql = `UPDATE hq_transactions SET
+                        type=?, txDate=?, supplier=?, brand=?, productName=?, color=?, size=?,
+                        qty=?, price=?, buyPrice=?, basePrice=?, freight=?,
+                        onlinePrice=?, onlineShipping=?, sellPrice=?, rawOutPrice=?,
+                        marginAmount=?, marginRate=?, remarks=?
+                     WHERE id=?`;
         const params = [
-            t.type||old.type, t.txDate||old.txDate, t.supplier||'', t.brand||'', t.productName||'',
-            t.color||'', t.size||'', t.qty||0, t.price||0,
-            t.buyPrice||0, t.basePrice||0, t.freight||0,
-            t.remarks||'', id
+            type, t.txDate||old.txDate, t.supplier||'', t.brand||'', t.productName||'',
+            t.color||'', t.size||'', qty, price,
+            buyPrice, basePrice, freight,
+            onlinePrice, onlineShipping, sellPrice, rawOutPrice,
+            marginAmount, marginRate,
+            t.remarks !== undefined ? t.remarks : (old.remarks || ''), id
         ];
 
         db.run(sql, params, function(err2) {
@@ -424,19 +672,42 @@ router.put('/transactions/:id', (req, res) => {
             }
             const productId = t.productId || old.productId;
             if (productId) {
-                const newDelta = (t.type||old.type) === 'IN' ? (t.qty||0) : -(t.qty||0);
-                db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [newDelta, now, productId]);
+                const newDelta = type === 'IN' ? qty : -qty;
+                if (type === 'IN') {
+                    db.run(`UPDATE hq_products SET
+                                stock = stock + ?,
+                                buyPrice = CASE WHEN ? > 0 THEN ? ELSE buyPrice END,
+                                basePrice = CASE WHEN ? > 0 THEN ? ELSE basePrice END,
+                                freight = CASE WHEN ? >= 0 AND ? > 0 THEN ? ELSE freight END,
+                                onlinePrice = CASE WHEN ? > 0 THEN ? ELSE onlinePrice END,
+                                onlineShipping = CASE WHEN ? > 0 OR ? > 0 THEN ? ELSE onlineShipping END,
+                                sellPrice = CASE WHEN ? > 0 THEN ? ELSE sellPrice END,
+                                updatedAt = ?
+                            WHERE id = ?`,
+                        [
+                            newDelta,
+                            price, price,
+                            basePrice, basePrice,
+                            freight, price, freight,
+                            onlinePrice, onlinePrice,
+                            onlinePrice, onlineShipping, onlineShipping,
+                            sellPrice, sellPrice,
+                            now, productId
+                        ]);
+                } else {
+                    db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [newDelta, now, productId]);
+                }
             }
 
             // 메트릭 롤백 & 재적용
             const oldTotal = old.qty * old.price;
-            const newTotal = (t.qty||0) * (t.price||0);
+            const newTotal = qty * price;
             if (old.type === 'IN') {
                 db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [oldTotal, 'totalCost']);
             } else {
                 db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [oldTotal, 'totalRevenue']);
             }
-            if ((t.type||old.type) === 'IN') {
+            if (type === 'IN') {
                 db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [newTotal, 'totalCost']);
             } else {
                 db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [newTotal, 'totalRevenue']);

@@ -2714,15 +2714,17 @@
                         <table class="erp-sheet-table align-middle text-nowrap" id="directSheetTable">
                             <colgroup>
                                 <col style="width: 36px;"> <!-- No -->
-                                <col style="width: 18%;"> <!-- 품목명 -->
-                                <col style="width: 14%;"> <!-- 규격 -->
-                                <col style="width: 7%;"> <!-- 분류 -->
-                                <col style="width: 6%;"> <!-- 수량 -->
+                                <col style="width: 15%;"> <!-- 품목명 -->
+                                <col style="width: 11%;"> <!-- 규격 -->
+                                <col style="width: 6%;"> <!-- 분류 -->
+                                <col style="width: 5.5%;"> <!-- 수량 -->
                                 <col style="width: 4%;"> <!-- 단위 -->
-                                <col style="width: 8%;"> <!-- 매입단가 -->
-                                <col style="width: 9%;"> <!-- 매입공급가 -->
-                                <col style="width: 8%;"> <!-- 매출단가 -->
-                                <col style="width: 9%;"> <!-- 매출공급가 -->
+                                <col style="width: 7.5%;"> <!-- 매입단가 -->
+                                <col style="width: 8.5%;"> <!-- 매입공급가 -->
+                                <col style="width: 7.5%;"> <!-- 매출단가 -->
+                                <col style="width: 8.5%;"> <!-- 매출공급가 -->
+                                <col style="width: 6.5%;"> <!-- 마진율(%) -->
+                                <col style="width: 8%;"> <!-- 마진액 -->
                                 <col> <!-- 적요 / 비고 -->
                                 <col style="width: 40px;"> <!-- DEL -->
                             </colgroup>
@@ -2738,6 +2740,8 @@
                                     <th>매입공급가</th>
                                     <th>매출단가</th>
                                     <th>매출공급가</th>
+                                    <th class="text-success" title="매출단가 기준 이익률: (매출단가 - 매입단가) / 매출단가 × 100">마진율(%)</th>
+                                    <th class="text-success" title="총 마진액: 매출공급가 - 매입공급가">마진액</th>
                                     <th>적요 / 비고</th>
                                     <th>DEL</th>
                                 </tr>
@@ -2747,12 +2751,14 @@
                             </tbody>
                             <tfoot id="directItemsFoot">
                                 <tr class="fw-bold">
-                                    <td colspan="5" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
                                     <td class="text-end text-dark" id="dir_total_qty">0</td>
                                     <td colspan="2"></td>
                                     <td class="text-end text-primary" id="dir_total_in_supply">0원</td>
                                     <td></td>
                                     <td class="text-end text-danger" id="dir_total_out_supply">0원</td>
+                                    <td class="text-end text-success" id="dir_total_margin_rate">0%</td>
+                                    <td class="text-end text-success" id="dir_total_margin_amt">0원</td>
                                     <td colspan="2"></td>
                                 </tr>
                             </tfoot>
@@ -2765,6 +2771,7 @@
                             <span class="text-secondary small fw-bold">직출고 집계:</span>
                             <span class="small text-muted">매입총액(VAT포함): <strong class="text-primary" id="dir_grand_in_total">0</strong>원</span>
                             <span class="small text-muted">매출총액(VAT포함): <strong class="text-danger" id="dir_grand_out_total">0</strong>원</span>
+                            <span class="small text-muted border-start ps-3">품목 마진(공급가 기준): <strong class="text-success" id="dir_summary_margin_amt">0원</strong> (<strong class="text-success" id="dir_summary_margin_rate">0%</strong>)</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <button type="submit" class="btn btn-warning btn-submit-erp shadow-sm fw-bold" id="btnDirectSubmit">직출고 동시 처리</button>
@@ -3113,17 +3120,25 @@
                             <input type="text" class="form-control bg-light" id="edit_direct_unit" readonly>
                         </div>
                         
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <label class="form-label text-muted small mb-1">수량</label>
                             <input type="number" step="0.01" class="form-control" id="edit_direct_qty" required>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted small mb-1">매입단가</label>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small mb-1">매입단가 (고정기준)</label>
                             <input type="number" class="form-control" id="edit_direct_inbound_price" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-muted small mb-1">매출단가</label>
                             <input type="number" class="form-control" id="edit_direct_outbound_price" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-success small fw-bold mb-1" title="(매출단가 - 매입단가) / 매출단가 × 100">마진율(%)</label>
+                            <input type="number" step="0.01" class="form-control text-end fw-bold" id="edit_direct_margin_rate" placeholder="0.0">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-success small fw-bold mb-1" title="총 마진액 = (매출단가 - 매입단가) × 수량">마진액(총액)</label>
+                            <input type="number" step="1" class="form-control text-end fw-bold" id="edit_direct_margin_amt" placeholder="0">
                         </div>
 
                         <div class="col-md-6">
