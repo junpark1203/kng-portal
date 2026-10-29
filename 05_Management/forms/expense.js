@@ -23,10 +23,30 @@ async function authFetch(url, options = {}) {
 }
 
 const API_URL = 'https://kng.junparks.com/api/expense-resolution';
+const PARTNERS_API_URL = 'https://kng.junparks.com/api/partners';
 let currentExpenses = [];
 let currentVendors = [];
 let editingExpenseId = null;
 let editingVendorId = null;
+
+function findVendorByIdOrName(vendorId, vendorName = '') {
+    if (vendorId) {
+        const strId = String(vendorId);
+        const byId = currentVendors.find(v => String(v.id) === strId || (Array.isArray(v.aliasIds) && v.aliasIds.includes(strId)));
+        if (byId) return byId;
+    }
+    if (vendorName) {
+        const normName = vendorName.trim().toLowerCase();
+        const byName = currentVendors.find(v =>
+            (v.vendorName && v.vendorName.trim().toLowerCase() === normName) ||
+            (v.korName && v.korName.trim().toLowerCase() === normName) ||
+            (v.companyName && v.companyName.trim().toLowerCase() === normName) ||
+            (v.companyNameEn && v.companyNameEn.trim().toLowerCase() === normName)
+        );
+        if (byName) return byName;
+    }
+    return null;
+}
 
 let filters = { title: '', vendor: '', person: '', currency: '' };
 let currentSort = { key: 'createdDate', asc: false };
@@ -218,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 proxyInputWrap.style.display = 'none';
                 if (fVendorId.value) {
                     vendorInfoDisplay.style.display = 'grid';
-                    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
+                    const selectedVendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
                     if (selectedVendor && selectedVendor.accounts && selectedVendor.accounts.length > 1) {
                         accountSelectWrap.style.display = 'block';
                     }
@@ -523,8 +543,13 @@ async function editExpense(id) {
         fVendorSearch.value = '';
         fVendorId.value = exp.vendorId || '';
         
-        const vendor = currentVendors.find(v => v.id === exp.vendorId);
-        if (vendor) fVendorSearch.value = vendor.vendorName;
+        const vendor = findVendorByIdOrName(exp.vendorId, exp.vendorName);
+        if (vendor) {
+            fVendorId.value = vendor.id;
+            fVendorSearch.value = vendor.vendorName;
+        } else if (exp.vendorName) {
+            fVendorSearch.value = exp.vendorName;
+        }
         
         updateVendorDropdown();
         handleVendorSelect();
@@ -595,8 +620,13 @@ async function duplicateExpense(id) {
         fVendorSearch.value = '';
         fVendorId.value = exp.vendorId || '';
         
-        const vendor = currentVendors.find(v => v.id === exp.vendorId);
-        if (vendor) fVendorSearch.value = vendor.vendorName;
+        const vendor = findVendorByIdOrName(exp.vendorId, exp.vendorName);
+        if (vendor) {
+            fVendorId.value = vendor.id;
+            fVendorSearch.value = vendor.vendorName;
+        } else if (exp.vendorName) {
+            fVendorSearch.value = exp.vendorName;
+        }
         
         updateVendorDropdown();
         handleVendorSelect();
@@ -629,7 +659,7 @@ async function saveExpense() {
         return;
     }
 
-    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
+    const selectedVendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
     if (!selectedVendor) return;
 
     let vendorName = selectedVendor.vendorName;
@@ -768,6 +798,22 @@ function isForeignCurrency(curr) {
     return curr !== 'KRW';
 }
 
+function selectBestAccountForCurrency(vendor, curr) {
+    if (!vendor || !Array.isArray(vendor.accounts) || vendor.accounts.length <= 1) return;
+    const upperCurr = (curr || 'KRW').toUpperCase();
+    let bestIdx = vendor.accounts.findIndex(a => (a.currency || 'KRW').toUpperCase() === upperCurr && a.isDefault);
+    if (bestIdx === -1) {
+        bestIdx = vendor.accounts.findIndex(a => (a.currency || 'KRW').toUpperCase() === upperCurr);
+    }
+    if (bestIdx === -1) {
+        bestIdx = vendor.accounts.findIndex(a => a.isDefault);
+    }
+    if (bestIdx === -1) bestIdx = 0;
+    if (fAccountSelect && fAccountSelect.options[bestIdx]) {
+        fAccountSelect.selectedIndex = bestIdx;
+    }
+}
+
 function handleCurrencyChange() {
     const curr = fCurrency.value;
     if (isForeignCurrency(curr)) {
@@ -778,6 +824,10 @@ function handleCurrencyChange() {
         fAmount.step = "1";
         vatGroup.style.display = 'block';
     }
+    if (fVendorId.value) {
+        const vendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
+        selectBestAccountForCurrency(vendor, curr);
+    }
 }
 
 function updateVendorDropdown(searchStr = '') {
@@ -785,8 +835,18 @@ function updateVendorDropdown(searchStr = '') {
     
     let filteredVendors = currentVendors;
     if (searchStr.trim() !== '') {
-        const s = searchStr.toLowerCase();
-        filteredVendors = currentVendors.filter(v => v.vendorName.toLowerCase().includes(s));
+        const s = searchStr.toLowerCase().trim();
+        filteredVendors = currentVendors.filter(v => {
+            const searchable = [
+                v.vendorName,
+                v.korName,
+                v.companyName,
+                v.companyNameEn,
+                v.bizRegNumber,
+                v.representative
+            ].filter(Boolean).join(' ').toLowerCase();
+            return searchable.includes(s);
+        });
     }
 
     if (filteredVendors.length === 0) {
@@ -801,7 +861,11 @@ function updateVendorDropdown(searchStr = '') {
 
     filteredVendors.forEach(v => {
         const li = document.createElement('li');
-        li.textContent = v.vendorName;
+        if (v.korName && v.korName !== v.vendorName) {
+            li.innerHTML = `<span>${v.vendorName}</span> <span style="color:#64748b; font-size:12px;">(${v.korName})</span>`;
+        } else {
+            li.textContent = v.vendorName;
+        }
         li.style.padding = '8px 12px';
         li.style.cursor = 'pointer';
         li.style.borderBottom = '1px solid #f1f5f9';
@@ -819,7 +883,7 @@ function updateVendorDropdown(searchStr = '') {
 
 function handleVendorSelect() {
     const vid = fVendorId.value;
-    const vendor = currentVendors.find(v => v.id === vid);
+    const vendor = findVendorByIdOrName(vid, fVendorSearch.value);
     
     if (!vendor) {
         vendorInfoDisplay.style.display = 'none';
@@ -858,15 +922,17 @@ function handleVendorSelect() {
         fAccountSelect.innerHTML = '';
         accounts.forEach(acc => {
             const val = `${acc.bankName}|${acc.accountNumber}|${acc.accountHolder}`;
-            const text = `${acc.bankName} | ${acc.accountNumber} | ${acc.accountHolder}`;
+            const currPrefix = acc.currency ? `[${acc.currency}] ` : '';
+            const text = `${currPrefix}${acc.bankName} | ${acc.accountNumber} | ${acc.accountHolder}`;
             const opt = new Option(text, val);
             fAccountSelect.appendChild(opt);
         });
+        selectBestAccountForCurrency(vendor, fCurrency ? fCurrency.value : 'KRW');
     }
 }
 
 // ==========================================
-// 거래처 프리셋 로직
+// 거래처 프리셋 & 통합 거래처(partners) 연동 로직
 // ==========================================
 
 function openVendorModal() {
@@ -879,21 +945,193 @@ function closeVendorModal() {
     // If expense form is open, update dropdown
     if (expenseEditModal.classList.contains('active')) {
         const currentSel = fVendorId.value;
-        const vendor = currentVendors.find(v => v.id === currentSel);
+        const vendor = findVendorByIdOrName(currentSel, fVendorSearch.value);
         updateVendorDropdown();
-        fVendorId.value = currentSel;
-        if (vendor) fVendorSearch.value = vendor.vendorName;
+        if (vendor) {
+            fVendorId.value = vendor.id;
+            fVendorSearch.value = vendor.vendorName;
+        }
         handleVendorSelect();
     }
 }
 
+function extractPartnerAccounts(p, fallbackHolder) {
+    const accs = [];
+    const seenKeys = new Set();
+    const addUniqueAcc = (bankName, accountNumber, accountHolder, currency = 'KRW', isDefault = false) => {
+        const b = (bankName || '').trim();
+        const n = (accountNumber || '').trim();
+        const h = (accountHolder || fallbackHolder || '').trim();
+        if (!b && !n) return;
+        const normKey = `${b.toLowerCase()}|${n.replace(/[\s\-]/g, '').toLowerCase()}`;
+        if (seenKeys.has(normKey)) return;
+        seenKeys.add(normKey);
+        accs.push({
+            bankName: b,
+            accountNumber: n,
+            accountHolder: h,
+            currency: (currency || 'KRW').toUpperCase(),
+            isDefault: !!isDefault
+        });
+    };
+
+    // 1) 국내 원화 계좌
+    if ((p.bank_name && p.bank_name.trim()) || (p.account_number && p.account_number.trim())) {
+        const korHolder = (p.account_holder || p.company_name || p.name || fallbackHolder || '').trim();
+        addUniqueAcc(p.bank_name, p.account_number, korHolder, 'KRW', false);
+    }
+
+    // 2) 외화 다중 계좌 (bank_accounts_json) - SWIFT 코드는 제외하고 은행명만 표기
+    let foreignList = [];
+    try {
+        if (p.bank_accounts_json) {
+            foreignList = typeof p.bank_accounts_json === 'string'
+                ? JSON.parse(p.bank_accounts_json)
+                : p.bank_accounts_json;
+        }
+    } catch (e) {
+        foreignList = [];
+    }
+
+    const engHolder = (p.company_name_en || p.company_name || p.name || fallbackHolder || '').trim();
+    if (Array.isArray(foreignList) && foreignList.length > 0) {
+        foreignList.forEach(fa => {
+            if (!fa) return;
+            addUniqueAcc(
+                fa.bankName,
+                fa.accountNumber,
+                fa.accountHolder || engHolder,
+                fa.currency || 'USD',
+                !!fa.isDefault
+            );
+        });
+    } else if ((p.bank_name_en && p.bank_name_en.trim()) || (p.account_number_en && p.account_number_en.trim())) {
+        // 하위 호환용 단일 외화 계좌 필드
+        addUniqueAcc(p.bank_name_en, p.account_number_en, engHolder, 'USD', true);
+    }
+
+    return accs;
+}
+
 async function loadVendors() {
     try {
-        const res = await authFetch(`${API_URL}/vendors`);
-        if (res.ok) {
-            currentVendors = await res.json();
-            renderVendorList();
+        const [presetsRes, partnersRes] = await Promise.allSettled([
+            authFetch(`${API_URL}/vendors`),
+            authFetch(PARTNERS_API_URL)
+        ]);
+
+        let presetRows = [];
+        if (presetsRes.status === 'fulfilled' && presetsRes.value.ok) {
+            const data = await presetsRes.value.json();
+            if (Array.isArray(data)) presetRows = data;
         }
+
+        let partnerRows = [];
+        if (partnersRes.status === 'fulfilled' && partnersRes.value.ok) {
+            const data = await partnersRes.value.json();
+            partnerRows = Array.isArray(data) ? data : (data.partners || []);
+        }
+
+        const normBiz = (s) => (s || '').replace(/[\s\-]/g, '').toLowerCase();
+        const normName = (s) => (s || '').trim().toLowerCase();
+
+        const usedPresetIds = new Set();
+        const mergedList = [];
+
+        // 1) 통합 거래처 관리(partners) 데이터 변환 및 기존 프리셋(vendor_presets)과 병합
+        partnerRows.forEach(p => {
+            const companyNameEn = (p.company_name_en || '').trim();
+            const korName = (p.name || p.company_name || '').trim();
+            const companyName = (p.company_name || p.name || '').trim();
+            // 해외 거래처(영문 상호명 존재 시) 영문 상호명을 우선 사용
+            const displayVendorName = companyNameEn || companyName || korName;
+            const rep = (p.ceo_name || p.ceoName || '').trim();
+            const bizNo = (p.business_number || '').trim();
+
+            // 매칭되는 기존 지출결의서 프리셋 찾기 (사업자번호 또는 국/영문 상호명 기준)
+            const matchedPresets = presetRows.filter(pr => {
+                if (usedPresetIds.has(pr.id)) return false;
+                if (bizNo && pr.bizRegNumber && normBiz(bizNo) === normBiz(pr.bizRegNumber)) {
+                    return true;
+                }
+                const prName = normName(pr.vendorName);
+                if (!prName) return false;
+                return (
+                    (companyNameEn && prName === normName(companyNameEn)) ||
+                    (korName && prName === normName(korName)) ||
+                    (companyName && prName === normName(companyName))
+                );
+            });
+
+            const accounts = extractPartnerAccounts(p, displayVendorName);
+            const seenAccKeys = new Set(
+                accounts.map(a => `${(a.bankName || '').toLowerCase()}|${(a.accountNumber || '').replace(/[\s\-]/g, '').toLowerCase()}`)
+            );
+
+            const aliasIds = [`PARTNER-${p.id}`, String(p.id)];
+            let primaryPresetId = null;
+
+            matchedPresets.forEach(pr => {
+                usedPresetIds.add(pr.id);
+                if (!primaryPresetId) primaryPresetId = pr.id;
+                aliasIds.push(String(pr.id));
+                if (Array.isArray(pr.accounts)) {
+                    pr.accounts.forEach(pa => {
+                        const b = (pa.bankName || '').trim();
+                        const n = (pa.accountNumber || '').trim();
+                        const h = (pa.accountHolder || displayVendorName).trim();
+                        if (!b && !n) return;
+                        const k = `${b.toLowerCase()}|${n.replace(/[\s\-]/g, '').toLowerCase()}`;
+                        if (!seenAccKeys.has(k)) {
+                            seenAccKeys.add(k);
+                            accounts.push({
+                                bankName: b,
+                                accountNumber: n,
+                                accountHolder: h,
+                                currency: pa.currency || 'KRW',
+                                isDefault: false
+                            });
+                        }
+                    });
+                }
+            });
+
+            mergedList.push({
+                id: primaryPresetId || `PARTNER-${p.id}`,
+                presetId: primaryPresetId,
+                partnerId: p.id,
+                aliasIds: aliasIds,
+                vendorName: displayVendorName,
+                korName: korName,
+                companyName: companyName,
+                companyNameEn: companyNameEn,
+                representative: rep || (matchedPresets[0]?.representative || ''),
+                bizRegNumber: bizNo || (matchedPresets[0]?.bizRegNumber || ''),
+                accounts: accounts
+            });
+        });
+
+        // 2) 통합 거래처 관리에 없는 지출결의서 전용 프리셋 추가
+        presetRows.forEach(pr => {
+            if (usedPresetIds.has(pr.id)) return;
+            mergedList.push({
+                id: pr.id,
+                presetId: pr.id,
+                partnerId: null,
+                aliasIds: [String(pr.id)],
+                vendorName: pr.vendorName || '',
+                korName: pr.vendorName || '',
+                companyName: pr.vendorName || '',
+                companyNameEn: '',
+                representative: pr.representative || '',
+                bizRegNumber: pr.bizRegNumber || '',
+                accounts: Array.isArray(pr.accounts) ? pr.accounts : []
+            });
+        });
+
+        mergedList.sort((a, b) => (a.vendorName || '').localeCompare(b.vendorName || '', 'ko'));
+        currentVendors = mergedList;
+        renderVendorList();
     } catch (e) {
         console.error("Failed to load vendors", e);
     }
@@ -908,9 +1146,12 @@ function renderVendorList() {
 
     currentVendors.forEach(v => {
         const accCount = (v.accounts || []).length;
+        const subKor = (v.korName && v.korName !== v.vendorName)
+            ? ` <span style="color:#64748b; font-size:12px; font-weight:normal;">(${v.korName})</span>`
+            : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${v.vendorName}</strong></td>
+            <td><strong>${v.vendorName}</strong>${subKor}</td>
             <td>${v.representative || '-'}</td>
             <td>${v.bizRegNumber || '-'}</td>
             <td>${accCount}개</td>
@@ -940,7 +1181,7 @@ function hideVendorForm() {
 }
 
 window.editVendor = function(id) {
-    const v = currentVendors.find(x => x.id === id);
+    const v = findVendorByIdOrName(id);
     if (!v) return;
     
     editingVendorId = v.id;
@@ -961,13 +1202,25 @@ window.editVendor = function(id) {
 };
 
 window.deleteVendor = async function(id) {
-    if(!confirm('이 거래처를 삭제하시겠습니까?')) return;
+    const v = findVendorByIdOrName(id);
+    if (!v) return;
+    if (!confirm('이 거래처를 삭제하시겠습니까?')) return;
     try {
-        const res = await authFetch(`${API_URL}/vendors/${id}`, { method: 'DELETE' });
-        if(res.ok) {
+        let deleted = false;
+        if (v.presetId) {
+            const res = await authFetch(`${API_URL}/vendors/${v.presetId}`, { method: 'DELETE' });
+            if (res.ok) deleted = true;
+        }
+        if (v.partnerId) {
+            const res2 = await authFetch(`${PARTNERS_API_URL}/${v.partnerId}`, { method: 'DELETE' });
+            if (res2.ok) deleted = true;
+        }
+        if (deleted) {
             showToast('거래처가 삭제되었습니다.', 'success');
             await loadVendors();
             hideVendorForm();
+        } else {
+            showToast('삭제 실패', 'error');
         }
     } catch(e) {
         showToast('삭제 실패', 'error');
@@ -1007,8 +1260,10 @@ async function saveVendor() {
         accounts: accounts
     };
 
-    const method = editingVendorId ? 'PUT' : 'POST';
-    const url = editingVendorId ? `${API_URL}/vendors/${editingVendorId}` : `${API_URL}/vendors`;
+    const existingVendor = editingVendorId ? findVendorByIdOrName(editingVendorId) : null;
+    const presetTargetId = existingVendor ? existingVendor.presetId : null;
+    const method = presetTargetId ? 'PUT' : 'POST';
+    const url = presetTargetId ? `${API_URL}/vendors/${presetTargetId}` : `${API_URL}/vendors`;
 
     try {
         const res = await authFetch(url, {
@@ -1110,7 +1365,7 @@ async function showPrintPreview() {
     const koreanAmt = getCurrencyKoreanText(curr, amount);
     
     // Vendor Info
-    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
+    const selectedVendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
     let vendorName = '', representative = '', bizRegNumber = '';
     let bankName = '', accountNumber = '', accountHolder = '';
 
