@@ -1600,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var existingTab = this.tabs.find(function(t) { return t.id === tabId; });
             if (existingTab) {
                 this.activateTab(tabId);
+                try { var ep = document.getElementById('pane-' + tabId); var ei = ep ? ep.querySelector('iframe') : null; if (ei && ei.contentWindow && typeof ei.contentWindow.checkTradeRemittancePrefill === 'function') ei.contentWindow.checkTradeRemittancePrefill(); } catch (e) {}
                 return;
             }
 

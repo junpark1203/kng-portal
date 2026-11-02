@@ -154,6 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnCloseEdit').addEventListener('click', closeExpenseModal);
     document.getElementById('btnSaveExpense').addEventListener('click', saveExpense);
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelectedExpenses);
+    const btnGoTradeRemittance = document.getElementById('btnGoTradeRemittance');
+    if (btnGoTradeRemittance) btnGoTradeRemittance.addEventListener('click', () => openTradeRemittanceModule(null));
+    const btnWriteTradeRemittance = document.getElementById('btnWriteTradeRemittance');
+    if (btnWriteTradeRemittance) btnWriteTradeRemittance.addEventListener('click', openTradeRemittanceFromCurrentForm);
     
     // Search & Sort Events
     const filterTitle = document.getElementById('filterTitle');
@@ -443,6 +447,7 @@ function renderExpenseList() {
             <td>${statusBadge}</td>
             <td class="col-action" onclick="event.stopPropagation()">
                 <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                    ${isForeignCurrency(exp.currency) ? `<button class="btn-outline btn-sm" style="border-color:#2563eb;color:#2563eb;" onclick="openTradeRemittanceFromExpenseId('${exp.id}')" title="이 내역으로 무역대금 송금 추가 확인서 작성">송금확인서</button>` : ''}
                     <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')">복사</button>
                     <button class="btn-outline btn-sm" onclick="editExpense('${exp.id}')">수정</button>
                 </div>
@@ -751,10 +756,30 @@ async function saveExpense() {
         });
         
         if (!res.ok) throw new Error('저장에 실패했습니다.');
+        let savedResData = {};
+        try { savedResData = await res.json(); } catch (e) {}
+        const savedExpenseId = editingExpenseId || savedResData.id || '';
         
         showToast('지출결의서가 저장되었습니다.', 'success');
         initialFormData = getFormDataString(); // 저장 성공 시 경고창 우회
         closeExpenseModal();
+
+        if (isForeignCurrency(payload.currency)) {
+            const preferredBeneficiary = (selectedVendor && selectedVendor.companyNameEn) || payload.accountHolder || payload.vendorName || '';
+            setTimeout(() => {
+                if (confirm('무역대금 송금 추가 확인서도 이어서 작성하시겠습니까?\n\n[확인]을 누르면 방금 작성한 신청일, 통화, 송금액, 수취인명이 확인서에 자동으로 입력됩니다.')) {
+                    openTradeRemittanceModule({
+                        expenseId: savedExpenseId,
+                        title: payload.title,
+                        remittanceDate: payload.paymentDate || payload.createdDate,
+                        currency: payload.currency,
+                        amount: payload.amount,
+                        beneficiaryName: preferredBeneficiary,
+                        submitDate: payload.createdDate
+                    });
+                }
+            }, 150);
+        }
     } catch(e) {
         showToast(e.message, 'error');
     }
@@ -816,19 +841,78 @@ function selectBestAccountForCurrency(vendor, curr) {
 
 function handleCurrencyChange() {
     const curr = fCurrency.value;
+    const btnWriteTR = document.getElementById('btnWriteTradeRemittance');
     if (isForeignCurrency(curr)) {
         fAmount.step = "0.01";
         vatGroup.style.display = 'none';
         fVatAmount.value = '';
+        if (btnWriteTR) btnWriteTR.style.display = 'inline-flex';
     } else {
         fAmount.step = "1";
         vatGroup.style.display = 'block';
+        if (btnWriteTR) btnWriteTR.style.display = 'none';
     }
     if (fVendorId.value) {
         const vendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
         selectBestAccountForCurrency(vendor, curr);
     }
 }
+
+function openTradeRemittanceModule(prefillData = null) {
+    if (prefillData) {
+        try {
+            localStorage.setItem('kngTradeRemittancePrefill', JSON.stringify(prefillData));
+        } catch (e) {}
+    }
+    const targetUrl = './05_Management/forms/trade_remittance.html';
+    try {
+        if (window.parent && window.parent.openPortalTab) {
+            window.parent.openPortalTab(targetUrl, '무역대금 송금 추가 확인서', 'bx bx-transfer-alt', 'iframe');
+            return;
+        }
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'KNG_PORTAL_OPEN_TAB',
+                url: targetUrl,
+                title: '무역대금 송금 추가 확인서',
+                icon: 'bx bx-transfer-alt',
+                navType: 'iframe'
+            }, '*');
+            return;
+        }
+    } catch (e) {}
+    window.location.href = 'trade_remittance.html';
+}
+
+function openTradeRemittanceFromCurrentForm() {
+    const selectedVendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
+    const beneficiary = (selectedVendor && selectedVendor.companyNameEn) || (fIsProxy && fIsProxy.checked ? fProxyAccountHolder.value : '') || fVendorSearch.value || '';
+    openTradeRemittanceModule({
+        expenseId: editingExpenseId || '',
+        title: fTitle.value.trim(),
+        remittanceDate: fPaymentDate.value || fCreatedDate.value,
+        currency: isForeignCurrency(fCurrency.value) ? fCurrency.value : 'USD',
+        amount: parseFloat(fAmount.value) || 0,
+        beneficiaryName: beneficiary,
+        submitDate: fCreatedDate.value
+    });
+}
+
+window.openTradeRemittanceFromExpenseId = function(expId) {
+    const exp = currentExpenses.find(e => String(e.id) === String(expId));
+    if (!exp) return;
+    const vendor = findVendorByIdOrName(exp.vendorId, exp.vendorName);
+    const beneficiary = (vendor && vendor.companyNameEn) || exp.accountHolder || exp.vendorName || '';
+    openTradeRemittanceModule({
+        expenseId: exp.id,
+        title: exp.title || '',
+        remittanceDate: exp.paymentDate || exp.createdDate,
+        currency: isForeignCurrency(exp.currency) ? exp.currency : 'USD',
+        amount: exp.amount || 0,
+        beneficiaryName: beneficiary,
+        submitDate: exp.createdDate
+    });
+};
 
 function updateVendorDropdown(searchStr = '') {
     fVendorList.innerHTML = '';

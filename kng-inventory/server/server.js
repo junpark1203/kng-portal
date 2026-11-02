@@ -99,6 +99,10 @@ const calendarRoutes = require('./routes/calendar');
 const leaveRequestRoutes = require('./routes/leave-request');
 const { initLeaveRequestTables } = leaveRequestRoutes;
 
+// 무역대금 송금 추가 확인서 모듈
+const tradeRemittanceRoutes = require('./routes/trade-remittance');
+const { initTradeRemittanceTables } = tradeRemittanceRoutes;
+
 // 마진 계산기 모듈
 const marginCalculatorRoutes = require('./routes/margin-calculator');
 const { initMarginCalculatorTables } = marginCalculatorRoutes;
@@ -394,6 +398,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             leaveRequestRoutes.setDb(db);
             console.log('leave_request API 준비 완료');
         });
+        // 무역대금 송금 추가 확인서 테이블 초기화 + 라우트에 DB 주입
+        initTradeRemittanceTables(db).then(() => {
+            tradeRemittanceRoutes.setDb(db);
+            console.log('trade_remittance API 준비 완료');
+        }).catch(err => console.error('trade_remittance 초기화 실패:', err));
         // 업무일지 테이블 초기화 + 라우터에 DB 주입
         initWorkLogsTables(db).then(() => {
             workLogsRoutes.setDb(db);
@@ -1482,6 +1491,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/report-builder', reportBuilderRoutes.router);
 app.use('/api/projects', projectsRoutes.router);
 app.use('/api/leave-request', leaveRequestRoutes.router);
+app.use('/api/trade-remittance', tradeRemittanceRoutes.router);
 app.use('/api/margin-calculator', marginCalculatorRoutes.router);
 app.use('/api/logistics', logisticsRoutes.router);
 // 정산 API 별칭 라우팅 (/api/settlement/:type 지원)

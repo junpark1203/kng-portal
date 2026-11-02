@@ -19,6 +19,7 @@
                         <div class="panel-header">
                             <h2><i class='bx bx-wallet'></i> 지출결의서 목록</h2>
                             <div class="header-actions">
+                                <button id="btnGoTradeRemittance" class="btn-outline" title="무역대금 송금 추가 확인서 모듈 열기"><i class='bx bx-transfer-alt'></i> 무역대금 송금 확인서</button>
                                 <button id="btnManageVendors" class="btn-outline"><i class='bx bx-buildings'></i> 거래처 관리</button>
                                 <button id="btnNewExpense" class="btn-primary"><i class='bx bx-plus'></i> 새 지출결의서</button>
                                 <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
@@ -86,6 +87,7 @@
                     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
                         <h2 id="editViewTitle" style="margin: 0;"><i class='bx bx-edit'></i> 지출결의서 작성</h2>
                         <div class="header-actions" style="display: flex; gap: 8px;">
+                            <button type="button" id="btnWriteTradeRemittance" class="btn-outline" style="display: none; border-color: #2563eb; color: #2563eb;"><i class='bx bx-transfer-alt'></i> 송금 추가 확인서 작성</button>
                             <button type="button" id="btnSaveExpense" class="btn-primary"><i class='bx bx-check'></i> 저장</button>
                             <button type="button" id="btnPrintPreview" class="btn-outline btn-outline-success"><i class='bx bx-download'></i> 엑셀 양식 다운로드</button>
                             <button type="button" id="btnCloseEdit" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
@@ -312,6 +314,6 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="expense.js?v=20261029_1"></script>
+    <script type="module" src="expense.js?v=20261102_1"></script>
 </body>
 </html>

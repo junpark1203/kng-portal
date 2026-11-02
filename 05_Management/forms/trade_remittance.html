@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>무역대금 송금 추가 확인서 - KNG ERP</title>
+    <!-- Web Fonts & Icons -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="trade_remittance.css?v=20261102_1">
+</head>
+<body>
+    <div class="remittance-container">
+        <!-- ═══ 1. Top ERP Header ═══ -->
+        <header class="app-header">
+            <div class="header-title">
+                <h1><i class='bx bx-globe'></i> 양식 관리 <span>무역대금 송금 추가 확인서</span></h1>
+                <span class="header-subtitle">농협은행 공식 서식(3100087) 1:1 정품 PDF 출력 및 외화 지출결의서 자동 연동</span>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="btnGoExpense" class="btn btn-outline" title="지출결의서 모듈로 이동">
+                    <i class='bx bx-wallet'></i> 지출결의서 바로가기
+                </button>
+                <button type="button" id="btnNewDoc" class="btn btn-primary">
+                    <i class='bx bx-plus'></i> 새 확인서 작성
+                </button>
+                <button type="button" id="btnDeleteSelected" class="btn btn-outline btn-danger">
+                    <i class='bx bx-trash'></i> 선택 삭제
+                </button>
+            </div>
+        </header>
+
+        <!-- ═══ 2. Top KPI Summary Cards ═══ -->
+        <section class="summary-container">
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-icon blue"><i class='bx bx-file'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>전체 작성 건수</span><span>누적</span></div>
+                        <div class="summary-val" id="kpiTotalCount">0 <small>건</small></div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon amber"><i class='bx bx-calendar-check'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>이번 달 송금 확인</span><span id="kpiCurrentMonthLabel">당월</span></div>
+                        <div class="summary-val" id="kpiMonthCount">0 <small>건</small></div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon green"><i class='bx bx-dollar-circle'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>USD 송금액 합계</span><span>누적</span></div>
+                        <div class="summary-val" id="kpiUsdTotal">$ 0.00</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon purple"><i class='bx bx-transfer-alt'></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label"><span>기타 외화 (CNY/EUR 등)</span><span>누적</span></div>
+                        <div class="summary-val" id="kpiOtherCount">0 <small>건</small></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 안내 배너 ═══ -->
+        <div class="print-warning">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <i class='bx bxs-file-pdf' style="font-size: 16px;"></i>
+                <span>농협은행 <b>「무역대금 송금 추가 확인서」 원본 1:1 정품 PDF</b> 위에 입력한 항목이 인쇄되며, 작성 문서는 서버에 안전하게 보관됩니다.</span>
+            </div>
+            <span style="font-size:11px; font-weight:600; color:#047857;">기본 설정: 사전 송금방식 (1년 이내) · 일반 수입</span>
+        </div>
+
+        <!-- ═══ 3. Toolbar & Filters ═══ -->
+        <section class="toolbar-container">
+            <div class="toolbar-card">
+                <div class="filter-group">
+                    <span class="filter-label"><i class='bx bx-filter-alt'></i> 필터:</span>
+                    <select id="filterStatus" class="erp-select">
+                        <option value="">모든 결재상태</option>
+                        <option value="결재요청">결재요청</option>
+                        <option value="결재진행중">결재진행중</option>
+                        <option value="결재완료">결재완료</option>
+                        <option value="결재보류">결재보류</option>
+                        <option value="임시작성">임시작성</option>
+                    </select>
+
+                    <select id="filterCurrency" class="erp-select">
+                        <option value="">모든 통화</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="CNY">CNY (¥)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="JPY">JPY (¥)</option>
+                    </select>
+
+                    <input type="text" id="filterKeyword" class="erp-input" placeholder="수취인명 / H.S. CODE / 계약번호 / 용도 검색..." style="width: 260px;">
+                    <button type="button" id="btnResetFilter" class="btn btn-outline" title="필터 초기화">
+                        <i class='bx bx-refresh'></i>
+                    </button>
+                </div>
+
+                <div class="filter-group">
+                    <button type="button" id="btnExportExcel" class="btn btn-outline">
+                        <i class='bx bx-download'></i> 엑셀 내보내기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 4. Compact ERP Data Grid ═══ -->
+        <main class="table-container">
+            <div class="erp-table-card">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAll"></th>
+                            <th style="width: 96px;">결재상태</th>
+                            <th style="width: 95px;">송금신청일</th>
+                            <th style="width: 65px; text-align: center;">통화</th>
+                            <th style="width: 115px; text-align: right;">송금액</th>
+                            <th>수취인명</th>
+                            <th style="width: 105px;">H.S. CODE</th>
+                            <th style="width: 130px;">L/C 또는 계약번호</th>
+                            <th style="width: 120px;">수출입신고번호</th>
+                            <th style="width: 75px; text-align: center;">가격조건</th>
+                            <th style="width: 100px;">수출입용도</th>
+                            <th style="width: 92px;">작성일자</th>
+                            <th style="width: 135px; text-align: center;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docListBody">
+                        <tr><td colspan="13" style="text-align: center; padding: 24px; color: var(--text-muted);">데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- ═══ 5. 무역대금 송금 추가 확인서 작성/수정 모달 ═══ -->
+    <div id="remittanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle"><i class='bx bx-edit'></i> 무역대금 송금 추가 확인서 작성</h2>
+                <button type="button" id="btnCloseModal" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- 지출결의서 연동 안내 배너 -->
+                <div id="prefillBanner" class="prefill-banner" style="display: none;">
+                    <div>
+                        <i class='bx bx-link'></i>
+                        <strong>지출결의서 연동됨:</strong>
+                        <span id="prefillBannerText">외화 지출결의서 정보가 자동으로 입력되었습니다. 물품 정보(H.S. CODE, 가격조건, 수출입용도)를 확인해 주세요.</span>
+                    </div>
+                    <button type="button" id="btnClearLink" class="btn btn-outline" style="height:22px; font-size:11px; padding:0 6px;">연동 해제</button>
+                </div>
+
+                <form id="remittanceForm" onsubmit="return false;" autocomplete="off">
+                    <input type="hidden" id="fExpenseId">
+                    <input type="hidden" id="fExpenseTitle">
+
+                    <!-- [대상건] 기본 송금 정보 -->
+                    <div class="form-section-card">
+                        <div class="form-section-title">
+                            <span><span class="num-badge">대상건</span> 농협은행 주식회사 앞 — 송금 신청 내역</span>
+                            <span style="font-size: 11px; font-weight: 500; color: var(--text-muted);">* 표시는 필수 입력 항목입니다</span>
+                        </div>
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="fRemittanceDate"><span>송금신청일 <span class="req-star">*</span></span></label>
+                                <input type="date" id="fRemittanceDate" class="erp-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fCurrency"><span>통화 <span class="req-star">*</span></span></label>
+                                <select id="fCurrency" class="erp-select" required>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="CNY">CNY (¥)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="SGD">SGD (S$)</option>
+                                    <option value="HKD">HKD (HK$)</option>
+                                    <option value="KRW">KRW (₩)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fAmount"><span>송금액 <span class="req-star">*</span></span></label>
+                                <input type="text" id="fAmount" class="erp-input" inputmode="decimal" placeholder="예: 15,000.00" required style="text-align: right; font-weight: 700;">
+                            </div>
+                        </div>
+
+                        <div class="form-group full" style="margin-top: 10px;">
+                            <label for="fBeneficiaryName">
+                                <span>수취인명 (Beneficiary Name) <span class="req-star">*</span></span>
+                                <span class="opt-tag">글자 길이에 맞춰 PDF 폰트 크기 자동 조절됨</span>
+                            </label>
+                            <input type="text" id="fBeneficiaryName" list="vendorSuggestions" class="erp-input" placeholder="예: SHANGHAI BAOSHAN INTERNATIONAL TRADING CO., LTD." required>
+                            <datalist id="vendorSuggestions"></datalist>
+                        </div>
+
+                        <!-- 미화 10만불 초과 안내 -->
+                        <div id="highAmountWarning" class="high-amount-warning">
+                            <i class='bx bx-error-circle' style="font-size: 16px;"></i>
+                            <span><b>참고:</b> 사전 송금방식으로 미화 10만불($100,000)을 초과하는 수입대금을 지급한 경우 대응수입을 이행해야 하며, 1년 초과 수령 시 한국은행 신고 대상입니다.</span>
+                        </div>
+                    </div>
+
+                    <!-- [1] 대금결제방식 및 대응수입예정일 (고정/선택불가) -->
+                    <div class="form-section-card">
+                        <div class="form-section-title">
+                            <span><span class="num-badge">1</span> 대금결제방식 및 대응수입예정일</span>
+                            <span class="fixed-lock-badge"><i class='bx bxs-lock-alt'></i> 기본 양식 고정 (선택 불가)</span>
+                        </div>
+                        <div class="fixed-options-grid">
+                            <!-- 사전 송금방식 (선택 고정됨) -->
+                            <div class="fixed-option-box selected-fixed" title="현재 양식 기본값으로 고정되어 있습니다.">
+                                <div class="fixed-option-header">
+                                    <input type="radio" name="fixedPaymentMethod" checked disabled>
+                                    <span class="chk-square checked">■</span>
+                                    <span>사전 송금방식 <small style="color:#2563eb; font-weight:700;">(적용됨)</small></span>
+                                </div>
+                                <div class="fixed-option-desc">: 국내 통관(물품 인수) 전 수입대금을 지급</div>
+                                <div class="fixed-sub-options">
+                                    <span style="font-weight:600; color:#334155; font-size:11px;">물품(선적서류)수령 예정일:</span>
+                                    <label style="display:inline-flex; align-items:center; gap:4px; font-weight:700; color:#0f172a; cursor:not-allowed;">
+                                        <input type="radio" name="fixedImportPeriod" checked disabled>
+                                        <span class="chk-square checked">■</span> 1년 이내
+                                    </label>
+                                    <label style="display:inline-flex; align-items:center; gap:4px; color:#94a3b8; cursor:not-allowed;">
+                                        <input type="radio" name="fixedImportPeriod" disabled>
+                                        <span class="chk-square"></span> 1년 초과
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- 사후 송금방식 (비활성) -->
+                            <div class="fixed-option-box" title="선택할 수 없는 항목입니다 (사전 송금방식 고정).">
+                                <div class="fixed-option-header" style="color:#64748b;">
+                                    <input type="radio" name="fixedPaymentMethod" disabled>
+                                    <span class="chk-square"></span>
+                                    <span>사후 송금방식</span>
+                                </div>
+                                <div class="fixed-option-desc">: 국내 통관(물품 인수) 후 수입 대금 지급</div>
+                                <div class="fixed-sub-options" style="border-top-color:#e2e8f0; color:#94a3b8;">
+                                    <span>→ [3. 수출입 물품 정보] 란만 작성</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [2] 무역거래 형태 (고정/선택불가) -->
+                    <div class="form-section-card">
+                        <div class="form-section-title">
+                            <span><span class="num-badge">2</span> 무역거래 형태</span>
+                            <span class="fixed-lock-badge"><i class='bx bxs-lock-alt'></i> 기본 양식 고정 (선택 불가)</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px;">
+                            <div class="fixed-option-box selected-fixed" title="현재 양식 기본값으로 고정되어 있습니다.">
+                                <div class="fixed-option-header">
+                                    <input type="radio" name="fixedTradeType" checked disabled>
+                                    <span class="chk-square checked">■</span>
+                                    <span>일반 수입 <small style="color:#2563eb; font-weight:700;">(적용됨)</small></span>
+                                </div>
+                                <div class="fixed-option-desc">: 수입물품을 국내에서 인수하는 경우</div>
+                            </div>
+                            <div class="fixed-option-box" title="선택할 수 없는 항목입니다 (일반 수입 고정).">
+                                <div class="fixed-option-header" style="color:#64748b;">
+                                    <input type="radio" name="fixedTradeType" disabled>
+                                    <span class="chk-square"></span>
+                                    <span>중계무역</span>
+                                </div>
+                                <div class="fixed-option-desc">: 국내반입 없이 제3국 수출</div>
+                            </div>
+                            <div class="fixed-option-box" title="선택할 수 없는 항목입니다 (일반 수입 고정).">
+                                <div class="fixed-option-header" style="color:#64748b;">
+                                    <input type="radio" name="fixedTradeType" disabled>
+                                    <span class="chk-square"></span>
+                                    <span>외국인수수입</span>
+                                </div>
+                                <div class="fixed-option-desc">: 국내반입 없이 해외에서 인수</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [3] 수출입 물품 정보 -->
+                    <div class="form-section-card">
+                        <div class="form-section-title">
+                            <span><span class="num-badge">3</span> 수출입 물품 정보</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">L/C·계약서 번호 및 수출입신고번호는 선택사항입니다</span>
+                        </div>
+
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="fHsCode">
+                                    <span>H.S. CODE <span class="req-star">*</span></span>
+                                    <span class="opt-tag" style="color:#2563eb; background:#eff6ff;">숫자만 입력</span>
+                                </label>
+                                <input type="text" id="fHsCode" class="erp-input" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="예: 2710197220 (숫자만)" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fLcOrContractNo">
+                                    <span>L/C 또는 계약서 번호</span>
+                                    <span class="opt-tag">선택</span>
+                                </label>
+                                <input type="text" id="fLcOrContractNo" class="erp-input" placeholder="미입력 시 공란 출력">
+                            </div>
+                            <div class="form-group">
+                                <label for="fImportDeclNo">
+                                    <span>수출입신고번호</span>
+                                    <span class="opt-tag">선택</span>
+                                </label>
+                                <input type="text" id="fImportDeclNo" class="erp-input" placeholder="미입력 시 공란 출력">
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 11px;">
+                            <div class="form-group">
+                                <label for="fPriceTerms">
+                                    <span>가격조건 (Incoterms) <span class="req-star">*</span></span>
+                                    <span class="opt-tag">클릭 또는 직접 입력</span>
+                                </label>
+                                <input type="text" id="fPriceTerms" class="erp-input" placeholder="예: FOB, CIF, EXW..." required>
+                                <div class="quick-chips" id="priceTermsChips">
+                                    <button type="button" class="quick-chip" data-val="FOB">FOB</button>
+                                    <button type="button" class="quick-chip" data-val="CIF">CIF</button>
+                                    <button type="button" class="quick-chip" data-val="CFR">CFR</button>
+                                    <button type="button" class="quick-chip" data-val="EXW">EXW</button>
+                                    <button type="button" class="quick-chip" data-val="DDP">DDP</button>
+                                    <button type="button" class="quick-chip" data-val="FCA">FCA</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fTradePurpose">
+                                    <span>수출입용도 <span class="req-star">*</span></span>
+                                    <span class="opt-tag">클릭 또는 직접 입력</span>
+                                </label>
+                                <input type="text" id="fTradePurpose" class="erp-input" placeholder="예: 판매용, 자사용, 원자재..." required>
+                                <div class="quick-chips" id="tradePurposeChips">
+                                    <button type="button" class="quick-chip" data-val="판매용">판매용</button>
+                                    <button type="button" class="quick-chip" data-val="국내판매용">국내판매용</button>
+                                    <button type="button" class="quick-chip" data-val="자사용">자사용</button>
+                                    <button type="button" class="quick-chip" data-val="원자재">원자재</button>
+                                    <button type="button" class="quick-chip" data-val="샘플">샘플</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [4] 작성일자 및 결재/관리 정보 -->
+                    <div class="form-section-card" style="margin-bottom: 0;">
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="fSubmitDate">
+                                    <span>작성일자 (하단 인쇄일) <span class="req-star">*</span></span>
+                                </label>
+                                <input type="date" id="fSubmitDate" class="erp-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fStatus"><span>결재 상태</span></label>
+                                <select id="fStatus" class="erp-select">
+                                    <option value="결재요청">결재요청</option>
+                                    <option value="결재진행중">결재진행중</option>
+                                    <option value="결재완료">결재완료</option>
+                                    <option value="임시작성">임시작성</option>
+                                    <option value="결재보류">결재보류</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fRemarks">
+                                    <span>내부 비고</span>
+                                    <span class="opt-tag">PDF 미출력 (웹 보관용)</span>
+                                </label>
+                                <input type="text" id="fRemarks" class="erp-input" placeholder="연동 지출결의서 제목 또는 메모">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <div style="font-size: 11px; color: var(--text-muted);">
+                    신청인: <b>주식회사 케앤지</b> (양식 하단 기본 인쇄)
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="btnPrintPdf" class="btn btn-outline btn-success" title="원본 1:1 양식 PDF 인쇄 및 미리보기">
+                        <i class='bx bx-printer'></i> 정품 PDF 인쇄 / 미리보기
+                    </button>
+                    <button type="button" id="btnSaveDoc" class="btn btn-primary">
+                        <i class='bx bx-check'></i> 서버 저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+    <script type="module" src="trade_remittance.js?v=20261102_1"></script>
+</body>
+</html>
