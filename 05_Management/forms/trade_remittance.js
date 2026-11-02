@@ -900,12 +900,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─────────────────────────────────────────────────────────
     function navigateToExpenseModule() {
         const targetUrl = './05_Management/forms/expense.html';
-        try {
-            if (window.parent && window.parent.openPortalTab) {
-                window.parent.openPortalTab(targetUrl, '지출결의서', 'bx bx-wallet', 'iframe');
-                return;
+        if (window.parent && window.parent !== window) {
+            try {
+                if (typeof window.parent.openPortalTab === 'function') {
+                    window.parent.openPortalTab(targetUrl, '지출결의서', 'bx bx-wallet', 'iframe');
+                    return;
+                }
+            } catch (e) {
+                console.warn('openPortalTab 호출 중 예외 발생, postMessage로 폴백:', e);
             }
-            if (window.parent && window.parent !== window) {
+            try {
                 window.parent.postMessage({
                     type: 'KNG_PORTAL_OPEN_TAB',
                     url: targetUrl,
@@ -913,9 +917,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon: 'bx bx-wallet',
                     navType: 'iframe'
                 }, '*');
-                return;
-            }
-        } catch (e) {}
+            } catch (e) {}
+            return;
+        }
         window.location.href = 'expense.html';
     }
 
@@ -1079,6 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 외부(포털 부모창 또는 지출결의서 탭)에서 호출 가능하도록 전역 등록
     window.checkTradeRemittancePrefill = consumePendingPrefill;
+    window.onPortalTabActivated = consumePendingPrefill;
     window.addEventListener('storage', (e) => {
         if (e.key === PREFILL_STORAGE_KEY && e.newValue) {
             consumePendingPrefill();

@@ -1034,12 +1034,16 @@ function openTradeRemittanceModule(prefillData = null) {
         } catch (e) {}
     }
     const targetUrl = './05_Management/forms/trade_remittance.html';
-    try {
-        if (window.parent && window.parent.openPortalTab) {
-            window.parent.openPortalTab(targetUrl, '무역대금 송금 추가 확인서', 'bx bx-transfer-alt', 'iframe');
-            return;
+    if (window.parent && window.parent !== window) {
+        try {
+            if (typeof window.parent.openPortalTab === 'function') {
+                window.parent.openPortalTab(targetUrl, '무역대금 송금 추가 확인서', 'bx bx-transfer-alt', 'iframe');
+                return;
+            }
+        } catch (e) {
+            console.warn('openPortalTab 호출 중 예외 발생, postMessage로 폴백:', e);
         }
-        if (window.parent && window.parent !== window) {
+        try {
             window.parent.postMessage({
                 type: 'KNG_PORTAL_OPEN_TAB',
                 url: targetUrl,
@@ -1047,9 +1051,9 @@ function openTradeRemittanceModule(prefillData = null) {
                 icon: 'bx bx-transfer-alt',
                 navType: 'iframe'
             }, '*');
-            return;
-        }
-    } catch (e) {}
+        } catch (e) {}
+        return;
+    }
     window.location.href = 'trade_remittance.html';
 }
 
@@ -1104,6 +1108,9 @@ window.addEventListener('storage', (e) => {
 window.addEventListener('focus', () => {
     loadTradeRemittances().then(() => renderExpenseList());
 });
+window.onPortalTabActivated = () => {
+    loadTradeRemittances().then(() => renderExpenseList());
+};
 
 function updateVendorDropdown(searchStr = '') {
     fVendorList.innerHTML = '';

@@ -1733,7 +1733,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 3. 뷰 전환
             if (tab.type === 'internal') {
                 if (iframeContainer) iframeContainer.classList.add('hidden');
-                document.querySelectorAll('.tab-iframe-pane').forEach(function(p) { p.classList.remove('active'); });
+                document.querySelectorAll('.tab-iframe-pane').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
 
                 if (internalPages) internalPages.style.display = '';
 
@@ -1762,12 +1762,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 document.querySelectorAll('.tab-iframe-pane').forEach(function(p) {
                     var isCurrent = (p.getAttribute('data-tab-id') === tabId);
-                    p.classList.toggle('active', isCurrent);
+                    p.classList.toggle('active', isCurrent); p.style.display = isCurrent ? 'flex' : 'none';
                 });
 
                 if (searchWrap) searchWrap.style.display = 'none';
                 if (globalVatBtn) globalVatBtn.style.display = 'none';
-                if (fab) fab.style.display = 'none';
+                var fabEl = document.getElementById('fab');
+                if (fabEl) fabEl.style.display = 'none';
+                try { var activePane = document.getElementById('pane-' + tabId); var activeIframe = activePane ? activePane.querySelector('iframe') : null; if (activeIframe && activeIframe.contentWindow && typeof activeIframe.contentWindow.onPortalTabActivated === 'function') activeIframe.contentWindow.onPortalTabActivated(); } catch (e) {}
             }
 
             // 4. 사이드바 활성 동기화
