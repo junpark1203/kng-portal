@@ -22,6 +22,9 @@
                 <button type="button" id="btnGoExpense" class="btn btn-outline" title="지출결의서 모듈로 이동">
                     <i class='bx bx-wallet'></i> 지출결의서 바로가기
                 </button>
+                <button type="button" id="btnOpenExpensePickerTop" class="btn btn-outline" style="border-color: var(--primary); color: var(--primary);" title="기작성된 지출결의서를 불러와 송금확인서를 작성합니다">
+                    <i class='bx bx-import'></i> 지출결의서 불러오기
+                </button>
                 <button type="button" id="btnNewDoc" class="btn btn-primary">
                     <i class='bx bx-plus'></i> 새 확인서 작성
                 </button>
@@ -144,7 +147,12 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle"><i class='bx bx-edit'></i> 무역대금 송금 추가 확인서 작성</h2>
-                <button type="button" id="btnCloseModal" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" id="btnOpenExpensePickerModal" class="btn btn-outline" style="height: 26px; font-size: 11.5px; border-color: var(--primary); color: var(--primary);">
+                        <i class='bx bx-import'></i> 기작성 지출결의서 불러오기
+                    </button>
+                    <button type="button" id="btnCloseModal" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+                </div>
             </div>
 
             <div class="modal-body">
@@ -396,10 +404,55 @@
         </div>
     </div>
 
+    <!-- ═══ 6. 기작성 지출결의서 불러오기 모달 ═══ -->
+    <div id="expensePickerModal" class="modal" style="z-index: 1100;">
+        <div class="modal-content" style="width: 820px; max-width: 96vw; max-height: 86vh;">
+            <div class="modal-header">
+                <h2><i class='bx bx-import'></i> 기작성 지출결의서 불러오기</h2>
+                <button type="button" id="btnCloseExpensePicker" class="btn-icon" style="border:none;"><i class='bx bx-x' style="font-size: 20px;"></i></button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg-header); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                        <i class='bx bx-search' style="color: var(--text-muted); font-size: 15px;"></i>
+                        <input type="text" id="pickerSearchInput" class="erp-input" placeholder="지출결의서 제목, 거래처명, 담당자 검색..." style="flex: 1; min-width: 200px;">
+                    </div>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 11.5px; color: var(--primary); cursor: pointer;">
+                        <input type="checkbox" id="pickerForeignOnly" checked>
+                        <span>외화(USD/CNY/EUR/JPY) 지출결의서만 보기</span>
+                    </label>
+                </div>
+
+                <div class="erp-table-card" style="max-height: 52vh; overflow-y: auto;">
+                    <table class="erp-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 90px;">지급요청일</th>
+                                <th>제목</th>
+                                <th style="width: 160px;">거래처 / 수취인</th>
+                                <th style="width: 60px; text-align: center;">통화</th>
+                                <th style="width: 110px; text-align: right;">금액</th>
+                                <th style="width: 90px; text-align: center;">확인서 상태</th>
+                                <th style="width: 85px; text-align: center;">선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensePickerBody">
+                            <tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">지출결의서 목록을 불러오는 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span style="font-size: 11px; color: var(--text-muted);">* 지출결의서를 선택하면 송금신청일, 통화, 송금액, 수취인명, 작성일자가 자동으로 입력됩니다.</span>
+                <button type="button" id="btnCancelExpensePicker" class="btn btn-outline">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
-    <script type="module" src="trade_remittance.js?v=20261102_1"></script>
+    <script type="module" src="trade_remittance.js?v=20261102_2"></script>
 </body>
 </html>

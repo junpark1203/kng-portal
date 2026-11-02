@@ -24,8 +24,12 @@ async function authFetch(url, options = {}) {
 
 const API_URL = 'https://kng.junparks.com/api/expense-resolution';
 const PARTNERS_API_URL = 'https://kng.junparks.com/api/partners';
+const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const TRADE_REMITTANCE_API_URL = isLocalHost ? 'http://localhost:3000/api/trade-remittance' : 'https://kng.junparks.com/api/trade-remittance';
+const TRADE_REMITTANCE_CACHE_KEY = 'kngTradeRemittanceRecords_v1';
 let currentExpenses = [];
 let currentVendors = [];
+let currentTradeRemittances = [];
 let editingExpenseId = null;
 let editingVendorId = null;
 
@@ -363,6 +367,7 @@ function getFormDataString() {
 async function loadExpenses() {
     try {
         expenseListBody.innerHTML = '<tr class="loading-row"><td colspan="9"><div class="skeleton"></div></td></tr>';
+        await loadTradeRemittances();
         const res = await authFetch(API_URL);
         if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
         
@@ -371,6 +376,39 @@ async function loadExpenses() {
     } catch (e) {
         showToast(e.message, 'error');
         expenseListBody.innerHTML = '<tr><td colspan="9" class="text-center">데이터를 불러오지 못했습니다.</td></tr>';
+    }
+}
+
+async function loadTradeRemittances() {
+    let list = [];
+    try {
+        const res = await authFetch(TRADE_REMITTANCE_API_URL);
+        if (res.ok) {
+            list = await res.json();
+        }
+    } catch (e) {}
+    try {
+        const localList = JSON.parse(localStorage.getItem(TRADE_REMITTANCE_CACHE_KEY) || '[]');
+        if (Array.isArray(localList) && localList.length > 0) {
+            const existingIds = new Set(list.map(d => d.id));
+            localList.forEach(d => {
+                if (!existingIds.has(d.id)) list.push(d);
+            });
+        }
+    } catch (e) {}
+    currentTradeRemittances = list;
+}
+
+function findTradeRemittanceForExpense(expId) {
+    if (!expId) return null;
+    const strId = String(expId);
+    const fromMem = currentTradeRemittances.find(d => String(d.expenseId) === strId);
+    if (fromMem) return fromMem;
+    try {
+        const localList = JSON.parse(localStorage.getItem(TRADE_REMITTANCE_CACHE_KEY) || '[]');
+        return localList.find(d => String(d.expenseId) === strId) || null;
+    } catch (e) {
+        return null;
     }
 }
 
@@ -447,7 +485,9 @@ function renderExpenseList() {
             <td>${statusBadge}</td>
             <td class="col-action" onclick="event.stopPropagation()">
                 <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
-                    ${isForeignCurrency(exp.currency) ? `<button class="btn-outline btn-sm" style="border-color:#2563eb;color:#2563eb;" onclick="openTradeRemittanceFromExpenseId('${exp.id}')" title="이 내역으로 무역대금 송금 추가 확인서 작성">송금확인서</button>` : ''}
+                    ${isForeignCurrency(exp.currency) ? (findTradeRemittanceForExpense(exp.id)
+                        ? `<button class="btn-outline btn-sm" style="border-color:#059669;color:#059669;background:#ecfdf5;font-weight:600;" onclick="openTradeRemittanceFromExpenseId('${exp.id}')" title="작성된 무역대금 송금 추가 확인서 PDF 미리보기"><i class='bx bxs-file-pdf'></i> 송금확인서</button>`
+                        : `<button class="btn-outline btn-sm" style="border-color:#2563eb;color:#2563eb;" onclick="openTradeRemittanceFromExpenseId('${exp.id}')" title="이 내역으로 무역대금 송금 추가 확인서 작성">송금확인서</button>`) : ''}
                     <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')">복사</button>
                     <button class="btn-outline btn-sm" onclick="editExpense('${exp.id}')">수정</button>
                 </div>
@@ -846,7 +886,19 @@ function handleCurrencyChange() {
         fAmount.step = "0.01";
         vatGroup.style.display = 'none';
         fVatAmount.value = '';
-        if (btnWriteTR) btnWriteTR.style.display = 'inline-flex';
+        if (btnWriteTR) {
+            btnWriteTR.style.display = 'inline-flex';
+            const existingDoc = editingExpenseId ? findTradeRemittanceForExpense(editingExpenseId) : null;
+            if (existingDoc) {
+                btnWriteTR.innerHTML = "<i class='bx bxs-file-pdf'></i> 송금 추가 확인서 PDF 보기";
+                btnWriteTR.style.borderColor = '#059669';
+                btnWriteTR.style.color = '#059669';
+            } else {
+                btnWriteTR.innerHTML = "<i class='bx bx-transfer-alt'></i> 송금 추가 확인서 작성";
+                btnWriteTR.style.borderColor = '#2563eb';
+                btnWriteTR.style.color = '#2563eb';
+            }
+        }
     } else {
         fAmount.step = "1";
         vatGroup.style.display = 'block';
@@ -855,6 +907,123 @@ function handleCurrencyChange() {
     if (fVendorId.value) {
         const vendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
         selectBestAccountForCurrency(vendor, curr);
+    }
+}
+
+let _trTemplateBytes = null;
+let _trFontBytes = null;
+
+async function generateTradeRemittancePdfBlobClient(data = {}) {
+    if (!window.PDFLib || !window.fontkit) {
+        throw new Error('PDF 라이브러리가 로드되지 않았습니다.');
+    }
+    const { PDFDocument, rgb } = window.PDFLib;
+    if (!_trTemplateBytes) {
+        const r = await fetch('./trade_remittance_bg.pdf');
+        if (!r.ok) throw new Error('배경 양식 PDF를 불러올 수 없습니다.');
+        _trTemplateBytes = await r.arrayBuffer();
+    }
+    if (!_trFontBytes) {
+        const r = await fetch('./Templates/NanumGothic.ttf');
+        if (!r.ok) throw new Error('한글 폰트를 불러올 수 없습니다.');
+        _trFontBytes = await r.arrayBuffer();
+    }
+    const pdfDoc = await PDFDocument.load(_trTemplateBytes);
+    pdfDoc.registerFontkit(window.fontkit);
+    const customFont = await pdfDoc.embedFont(_trFontBytes);
+    const firstPage = pdfDoc.getPages()[0];
+    const height = firstPage.getHeight();
+
+    function drawFittedCellText(text, opts) {
+        const str = String(text || '').trim();
+        if (!str) return;
+        const { xMin, xMax, pyCenterY, maxFontSize = 17, minFontSize = 9, align = 'center', paddingX = 6 } = opts;
+        const availWidth = Math.max(20, (xMax - xMin) - paddingX * 2);
+        let fontSize = maxFontSize;
+        while (fontSize > minFontSize) {
+            if (customFont.widthOfTextAtSize(str, fontSize) <= availWidth) break;
+            fontSize -= 0.5;
+        }
+        const finalWidth = customFont.widthOfTextAtSize(str, fontSize);
+        let x = xMin + paddingX;
+        if (align === 'center') {
+            x = xMin + ((xMax - xMin) - finalWidth) / 2;
+            if (x < xMin + 4) x = xMin + 4;
+        } else if (align === 'right') {
+            x = xMax - paddingX - finalWidth;
+            if (x < xMin + 4) x = xMin + 4;
+        }
+        const capOffset = fontSize * 0.34;
+        const y = height - (pyCenterY + capOffset);
+        firstPage.drawText(str, { x, y, size: fontSize, font: customFont, color: rgb(0, 0, 0) });
+    }
+
+    const curr = String(data.currency || 'USD').trim().toUpperCase();
+    const numAmt = parseFloat(String(data.amount ?? '0').replace(/,/g, '')) || 0;
+    const amtStr = (curr === 'KRW' || curr === 'JPY')
+        ? numAmt.toLocaleString('en-US', { maximumFractionDigits: 2 })
+        : numAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const topRowCenterY = 333;
+    drawFittedCellText(data.remittanceDate, { xMin: 251, xMax: 408, pyCenterY: topRowCenterY, maxFontSize: 17, minFontSize: 11 });
+    drawFittedCellText(curr, { xMin: 408, xMax: 496, pyCenterY: topRowCenterY, maxFontSize: 17, minFontSize: 11 });
+    drawFittedCellText(amtStr, { xMin: 496, xMax: 687, pyCenterY: topRowCenterY, maxFontSize: 17, minFontSize: 10, paddingX: 8 });
+    drawFittedCellText(data.beneficiaryName, { xMin: 687, xMax: 1085, pyCenterY: topRowCenterY, maxFontSize: 16, minFontSize: 9, paddingX: 10 });
+
+    const bottomRowCenterY = 1365;
+    drawFittedCellText(String(data.hsCode || '').replace(/[^0-9]/g, ''), { xMin: 152, xMax: 340, pyCenterY: bottomRowCenterY, maxFontSize: 17, minFontSize: 10 });
+    drawFittedCellText(data.lcOrContractNo, { xMin: 340, xMax: 543, pyCenterY: bottomRowCenterY, maxFontSize: 16, minFontSize: 9 });
+    drawFittedCellText(data.importDeclNo, { xMin: 543, xMax: 789, pyCenterY: bottomRowCenterY, maxFontSize: 16, minFontSize: 9 });
+    drawFittedCellText(data.priceTerms, { xMin: 789, xMax: 899, pyCenterY: bottomRowCenterY, maxFontSize: 17, minFontSize: 10 });
+    drawFittedCellText(data.tradePurpose, { xMin: 899, xMax: 1085, pyCenterY: bottomRowCenterY, maxFontSize: 16, minFontSize: 10 });
+
+    const submitStr = String(data.submitDate || '').trim();
+    if (submitStr) {
+        const parts = submitStr.split('-').map(Number);
+        if (parts.length >= 3 && !isNaN(parts[0])) {
+            const yy = String(parts[0]).slice(-2);
+            const mm = String(parts[1]).padStart(2, '0');
+            const dd = String(parts[2]).padStart(2, '0');
+            const dateCenterY = 1546.5;
+            drawFittedCellText(yy, { xMin: 517, xMax: 547, pyCenterY: dateCenterY, maxFontSize: 21, minFontSize: 16, align: 'left', paddingX: 1 });
+            drawFittedCellText(mm, { xMin: 571, xMax: 609, pyCenterY: dateCenterY, maxFontSize: 21, minFontSize: 16, align: 'center', paddingX: 2 });
+            drawFittedCellText(dd, { xMin: 629, xMax: 665, pyCenterY: dateCenterY, maxFontSize: 21, minFontSize: 16, align: 'center', paddingX: 2 });
+        }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    return new Blob([pdfBytes], { type: 'application/pdf' });
+}
+
+async function openTradeRemittancePdfPreview(doc) {
+    if (!doc) return;
+    const newWin = window.open('about:blank', '_blank');
+    if (newWin) {
+        newWin.document.write('<div style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;color:#333;"><p style="font-size:18px;font-weight:600;">무역대금 송금 추가 확인서 1:1 정품 PDF 불러오는 중...</p><p style="color:#666;">잠시만 기다려주세요.</p></div>');
+    }
+    try {
+        showToast('작성된 송금확인서 PDF 미리보기를 엽니다.', 'info');
+        let blob = null;
+        try {
+            const res = doc.id
+                ? await authFetch(`${TRADE_REMITTANCE_API_URL}/${doc.id}/pdf`)
+                : await authFetch(`${TRADE_REMITTANCE_API_URL}/preview-pdf`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(doc)
+                });
+            if (res.ok) blob = await res.blob();
+        } catch (e) {}
+
+        if (!blob) {
+            blob = await generateTradeRemittancePdfBlobClient(doc);
+        }
+        const blobUrl = URL.createObjectURL(blob);
+        if (newWin) newWin.location.href = blobUrl;
+        else window.open(blobUrl, '_blank');
+    } catch (err) {
+        if (newWin) newWin.close();
+        showToast('PDF 미리보기 생성 실패: ' + err.message, 'error');
     }
 }
 
@@ -884,7 +1053,14 @@ function openTradeRemittanceModule(prefillData = null) {
     window.location.href = 'trade_remittance.html';
 }
 
-function openTradeRemittanceFromCurrentForm() {
+async function openTradeRemittanceFromCurrentForm() {
+    if (editingExpenseId) {
+        await loadTradeRemittances();
+        const existingDoc = findTradeRemittanceForExpense(editingExpenseId);
+        if (existingDoc) {
+            return openTradeRemittancePdfPreview(existingDoc);
+        }
+    }
     const selectedVendor = findVendorByIdOrName(fVendorId.value, fVendorSearch.value);
     const beneficiary = (selectedVendor && selectedVendor.companyNameEn) || (fIsProxy && fIsProxy.checked ? fProxyAccountHolder.value : '') || fVendorSearch.value || '';
     openTradeRemittanceModule({
@@ -898,7 +1074,13 @@ function openTradeRemittanceFromCurrentForm() {
     });
 }
 
-window.openTradeRemittanceFromExpenseId = function(expId) {
+window.openTradeRemittanceFromExpenseId = async function(expId) {
+    await loadTradeRemittances();
+    const existingDoc = findTradeRemittanceForExpense(expId);
+    if (existingDoc) {
+        return openTradeRemittancePdfPreview(existingDoc);
+    }
+
     const exp = currentExpenses.find(e => String(e.id) === String(expId));
     if (!exp) return;
     const vendor = findVendorByIdOrName(exp.vendorId, exp.vendorName);
@@ -913,6 +1095,15 @@ window.openTradeRemittanceFromExpenseId = function(expId) {
         submitDate: exp.createdDate
     });
 };
+
+window.addEventListener('storage', (e) => {
+    if (e.key === TRADE_REMITTANCE_CACHE_KEY) {
+        loadTradeRemittances().then(() => renderExpenseList());
+    }
+});
+window.addEventListener('focus', () => {
+    loadTradeRemittances().then(() => renderExpenseList());
+});
 
 function updateVendorDropdown(searchStr = '') {
     fVendorList.innerHTML = '';

@@ -1,6 +1,7 @@
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API_URL = isLocal ? 'http://localhost:3000/api/trade-remittance' : 'https://kng.junparks.com/api/trade-remittance';
-const PARTNERS_API_URL = isLocal ? 'http://localhost:3000/api/partners' : 'https://kng.junparks.com/api/partners';
+const PARTNERS_API_URL = 'https://kng.junparks.com/api/partners';
+const EXPENSE_API_URL = 'https://kng.junparks.com/api/expense-resolution';
 const LOCAL_CACHE_KEY = 'kngTradeRemittanceRecords_v1';
 const PREFILL_STORAGE_KEY = 'kngTradeRemittancePrefill';
 
@@ -175,6 +176,8 @@ async function generateClientSidePdfBlob(data = {}) {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     let allDocuments = [];
+    let allVendors = [];
+    let allExpenses = [];
     let currentEditId = null;
 
     function getCurrentUser() {
@@ -255,7 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
         fStatus: document.getElementById('fStatus'),
         fRemarks: document.getElementById('fRemarks'),
         priceTermsChips: document.getElementById('priceTermsChips'),
-        tradePurposeChips: document.getElementById('tradePurposeChips')
+        tradePurposeChips: document.getElementById('tradePurposeChips'),
+
+        // Expense Picker Modal
+        btnOpenExpensePickerTop: document.getElementById('btnOpenExpensePickerTop'),
+        btnOpenExpensePickerModal: document.getElementById('btnOpenExpensePickerModal'),
+        expensePickerModal: document.getElementById('expensePickerModal'),
+        btnCloseExpensePicker: document.getElementById('btnCloseExpensePicker'),
+        btnCancelExpensePicker: document.getElementById('btnCancelExpensePicker'),
+        pickerSearchInput: document.getElementById('pickerSearchInput'),
+        pickerForeignOnly: document.getElementById('pickerForeignOnly'),
+        expensePickerBody: document.getElementById('expensePickerBody')
     };
 
     // ─────────────────────────────────────────────────────────
@@ -266,8 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await authFetch(PARTNERS_API_URL);
             if (!res.ok) return;
             const vendors = await res.json();
+            allVendors = Array.isArray(vendors) ? vendors : [];
             const names = new Set();
-            vendors.forEach(v => {
+            allVendors.forEach(v => {
                 if (v.companyNameEn) names.add(v.companyNameEn.trim());
                 if (v.vendorName) names.add(v.vendorName.trim());
                 if (v.companyName) names.add(v.companyName.trim());
@@ -282,6 +296,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 .map(n => `<option value="${escapeHtml(n)}">`)
                 .join('');
         } catch (e) {}
+    }
+
+    function resolveBeneficiaryFromExpense(exp) {
+        if (!exp) return '';
+        const vId = exp.vendorId ? String(exp.vendorId) : '';
+        const vName = (exp.vendorName || '').trim().toLowerCase();
+        const matchedVendor = allVendors.find(v =>
+            (vId && (String(v.id) === vId || (Array.isArray(v.aliasIds) && v.aliasIds.includes(vId)))) ||
+            (vName && (
+                (v.vendorName && v.vendorName.trim().toLowerCase() === vName) ||
+                (v.companyName && v.companyName.trim().toLowerCase() === vName) ||
+                (v.companyNameEn && v.companyNameEn.trim().toLowerCase() === vName)
+            ))
+        );
+        return (matchedVendor && matchedVendor.companyNameEn) || exp.accountHolder || exp.vendorName || '';
     }
 
     // ─────────────────────────────────────────────────────────
@@ -904,6 +933,150 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // 7-2. 기작성 지출결의서 불러오기 팝업 로직
+    // ─────────────────────────────────────────────────────────
+    async function openExpensePicker() {
+        els.expensePickerModal.classList.add('active');
+        els.expensePickerBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">지출결의서 목록을 불러오는 중...</td></tr>`;
+        try {
+            const res = await authFetch(EXPENSE_API_URL);
+            if (!res.ok) throw new Error('지출결의서 목록 조회 실패');
+            const list = await res.json();
+            allExpenses = Array.isArray(list) ? list : [];
+            renderExpensePickerTable();
+        } catch (err) {
+            console.error(err);
+            els.expensePickerBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--danger);">지출결의서 목록을 불러오지 못했습니다.</td></tr>`;
+        }
+    }
+
+    function closeExpensePicker() {
+        els.expensePickerModal.classList.remove('active');
+    }
+
+    function renderExpensePickerTable() {
+        const foreignOnly = els.pickerForeignOnly.checked;
+        const kw = els.pickerSearchInput.value.trim().toLowerCase();
+
+        const filtered = allExpenses.filter(exp => {
+            const curr = String(exp.currency || 'KRW').toUpperCase();
+            if (foreignOnly && curr === 'KRW') return false;
+            if (kw) {
+                const hay = [
+                    exp.title,
+                    exp.vendorName,
+                    exp.accountHolder,
+                    exp.personInCharge,
+                    exp.currency,
+                    exp.paymentDate,
+                    exp.createdDate
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (!hay.includes(kw)) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            els.expensePickerBody.innerHTML = `<tr><td colspan="7" class="empty-state"><i class='bx bx-search-alt'></i>조건에 일치하는 지출결의서가 없습니다.${foreignOnly ? ' (원화 포함 전체를 보려면 우측 상단 체크를 해제하세요)' : ''}</td></tr>`;
+            return;
+        }
+
+        els.expensePickerBody.innerHTML = filtered.map(exp => {
+            const curr = String(exp.currency || 'KRW').toUpperCase();
+            const sym = getCurrencySymbol(curr);
+            const amtStr = formatAmountDisplay(exp.amount, curr);
+            const beneficiary = resolveBeneficiaryFromExpense(exp) || exp.vendorName || '-';
+            const existingDoc = allDocuments.find(d => String(d.expenseId) === String(exp.id));
+
+            const statusBadge = existingDoc
+                ? `<span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;"><i class='bx bx-check'></i> 작성완료</span>`
+                : `<span class="badge" style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;">미작성</span>`;
+
+            return `
+                <tr data-exp-id="${escapeHtml(exp.id)}">
+                    <td style="font-weight: 600;">${escapeHtml(exp.paymentDate || exp.createdDate || '-')}</td>
+                    <td title="${escapeHtml(exp.title || '')}"><strong>${escapeHtml(exp.title || '-')}</strong></td>
+                    <td title="${escapeHtml(beneficiary)}">${escapeHtml(beneficiary)}</td>
+                    <td style="text-align: center;"><span class="badge badge-curr">${escapeHtml(curr)}</span></td>
+                    <td style="text-align: right; font-weight: 700; color: var(--primary);">${sym} ${escapeHtml(amtStr)}</td>
+                    <td style="text-align: center;">${statusBadge}</td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn btn-primary btn-pick-expense" data-exp-id="${escapeHtml(exp.id)}" style="height: 24px; padding: 0 8px; font-size: 11px;">
+                            <i class='bx bx-check'></i> 불러오기
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function handleSelectExpenseFromPicker(expId) {
+        const exp = allExpenses.find(e => String(e.id) === String(expId));
+        if (!exp) return;
+
+        const existingDoc = allDocuments.find(d => String(d.expenseId) === String(exp.id));
+        const beneficiary = resolveBeneficiaryFromExpense(exp);
+        const curr = String(exp.currency || 'USD').toUpperCase();
+        const prefillData = {
+            expenseId: String(exp.id),
+            title: exp.title || '',
+            remittanceDate: exp.paymentDate || exp.createdDate || new Date().toISOString().split('T')[0],
+            currency: curr === 'KRW' ? 'USD' : curr,
+            amount: exp.amount || 0,
+            beneficiaryName: beneficiary,
+            submitDate: exp.createdDate || new Date().toISOString().split('T')[0]
+        };
+
+        closeExpensePicker();
+
+        // 이미 해당 지출결의서로 작성된 확인서가 있고, 현재 다른 문서를 수정 중이 아니라면 안내
+        if (existingDoc && !currentEditId) {
+            Swal.fire({
+                title: '이미 작성된 송금확인서가 있습니다',
+                text: '이 지출결의서로 작성된 기존 송금확인서를 열까요, 아니면 값만 불러와 새로 작성할까요?',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '기존 확인서 열기(수정)',
+                denyButtonText: '새 확인서로 값만 불러오기',
+                cancelButtonText: '취소'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    openModal(existingDoc.id);
+                } else if (result.isDenied) {
+                    applyPrefillToOpenOrNewModal(prefillData);
+                }
+            });
+            return;
+        }
+
+        applyPrefillToOpenOrNewModal(prefillData);
+    }
+
+    function applyPrefillToOpenOrNewModal(prefillData) {
+        if (els.modal.classList.contains('active') && currentEditId) {
+            // 현재 수정 모달이 열려있는 상태에서 지출결의서를 불러온 경우 해당 폼에 값 반영
+            els.fExpenseId.value = prefillData.expenseId || '';
+            els.fExpenseTitle.value = prefillData.title || '';
+            els.fRemittanceDate.value = prefillData.remittanceDate || els.fRemittanceDate.value;
+            els.fCurrency.value = prefillData.currency || els.fCurrency.value;
+            els.fAmount.value = formatAmountDisplay(prefillData.amount, prefillData.currency);
+            els.fBeneficiaryName.value = prefillData.beneficiaryName || els.fBeneficiaryName.value;
+            els.fSubmitDate.value = prefillData.submitDate || els.fSubmitDate.value;
+            if (!els.fRemarks.value) {
+                els.fRemarks.value = prefillData.title ? `[지출결의서 연동] ${prefillData.title}` : '';
+            }
+            els.prefillBanner.style.display = 'flex';
+            els.prefillBannerText.textContent = `지출결의서 [${prefillData.title || '외화 송금'}]의 신청일·통화·송금액·수취인명이 반영되었습니다.`;
+            checkHighAmountWarning();
+            showToast('지출결의서 정보를 불러왔습니다.', 'success');
+        } else {
+            openModal(null, null, prefillData);
+            showToast('지출결의서 정보를 불러왔습니다.', 'success');
+        }
+    }
+
     // 외부(포털 부모창 또는 지출결의서 탭)에서 호출 가능하도록 전역 등록
     window.checkTradeRemittancePrefill = consumePendingPrefill;
     window.addEventListener('storage', (e) => {
@@ -926,6 +1099,21 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnDeleteSelected.addEventListener('click', deleteSelectedDocuments);
     els.btnExportExcel.addEventListener('click', exportToExcel);
     els.btnGoExpense.addEventListener('click', navigateToExpenseModule);
+
+    if (els.btnOpenExpensePickerTop) els.btnOpenExpensePickerTop.addEventListener('click', openExpensePicker);
+    if (els.btnOpenExpensePickerModal) els.btnOpenExpensePickerModal.addEventListener('click', openExpensePicker);
+    if (els.btnCloseExpensePicker) els.btnCloseExpensePicker.addEventListener('click', closeExpensePicker);
+    if (els.btnCancelExpensePicker) els.btnCancelExpensePicker.addEventListener('click', closeExpensePicker);
+    if (els.pickerSearchInput) els.pickerSearchInput.addEventListener('input', renderExpensePickerTable);
+    if (els.pickerForeignOnly) els.pickerForeignOnly.addEventListener('change', renderExpensePickerTable);
+    if (els.expensePickerBody) {
+        els.expensePickerBody.addEventListener('click', (e) => {
+            const btnPick = e.target.closest('.btn-pick-expense');
+            if (btnPick) {
+                handleSelectExpenseFromPicker(btnPick.dataset.expId);
+            }
+        });
+    }
 
     els.filterStatus.addEventListener('change', renderTable);
     els.filterCurrency.addEventListener('change', renderTable);
