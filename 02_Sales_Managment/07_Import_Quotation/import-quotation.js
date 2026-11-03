@@ -744,3 +744,14 @@ function exportExcel() {
     // TODO: SheetJS Excel Export
     showToast('엑셀 내보내기 기능은 준비 중입니다.', 'info');
 }
+
+window.hasUnsavedChanges = () => {
+    const editView = document.getElementById('editView');
+    return Boolean(editView && editView.classList.contains('active'));
+};
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

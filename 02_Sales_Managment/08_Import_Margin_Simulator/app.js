@@ -1221,6 +1221,9 @@ function exportToCsv() {
 }
 
 function resetToDefault() {
+    if (state.product.productName && !confirm('현재 입력된 시뮬레이션 데이터를 기본 샘플 파라미터로 초기화하시겠습니까?')) {
+        return;
+    }
     const d = JSON.parse(JSON.stringify(DEFAULT_STATE));
     currentSimulationId = null;
     currentSimulationTitle = d.product.productName;
@@ -1237,3 +1240,11 @@ function resetToDefault() {
     recalculateAndRender();
     showToast('기본 형광 안전조끼 OEM 파라미터로 초기화되었습니다.');
 }
+
+window.hasUnsavedChanges = () => Boolean(state.product && state.product.productName && !currentSimulationId);
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

@@ -1122,32 +1122,10 @@ window.openModal = function(id = null, isDuplicate = false) {
 };
 
 function confirmCloseModal() {
-    const isNew = !$('editId')?.value;
-    if (isNew) {
-        const itemName = $('inpItemName')?.value.trim();
-        const spec = $('inpSpec')?.value.trim();
-        const manufacturer = $('inpManufacturer')?.value.trim();
-        const remarks = $('inpRemarks')?.value.trim();
-        const price = parseFloat($('inpPrice')?.value) || 0;
-        const hasFiles = currentFiles.length > 0;
-        let hasCustomVal = false;
-        const container = $('modalCustomSectionsContainer');
-        if (container) {
-            container.querySelectorAll('.spec-field-val').forEach(inp => {
-                if (inp.value.trim()) hasCustomVal = true;
-            });
-        }
-        const hasEnteredData = itemName || spec || manufacturer || remarks || price > 0 || hasFiles || hasCustomVal;
-        if (!hasEnteredData) {
-            closeModal();
-            return;
-        }
-    } else {
-        const currentSnapshot = getFormSnapshot();
-        if (currentSnapshot === modalSnapshot) {
-            closeModal();
-            return;
-        }
+    const currentSnapshot = getFormSnapshot();
+    if (currentSnapshot === modalSnapshot) {
+        closeModal();
+        return;
     }
 
     if (confirm('변경된 내용이 있습니다. 저장하지 않고 모달을 닫으시겠습니까?')) {
@@ -1977,7 +1955,18 @@ function openPresetModal() {
 window.openPresetModal = openPresetModal;
 window.openPresetDrawer = openPresetModal; // 호환성 별칭
 
-function closePresetModal() {
+let initialPresetSnapshot = '';
+function isPresetModalDirty() {
+    const modal = $('presetModal');
+    if (!modal || !modal.classList.contains('active') || !selectedPresetId) return false;
+    return JSON.stringify(flattenSections()) !== initialPresetSnapshot;
+}
+
+function closePresetModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isPresetModalDirty()) {
+        if (!confirm('프리셋에 저장되지 않은 변경사항이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
     const modal = $('presetModal');
     if (modal) modal.classList.remove('active');
     document.body.style.overflow = '';
@@ -2050,6 +2039,7 @@ function selectPreset(id) {
     } else {
         sections.forEach(sec => renderSectionCard(sec));
     }
+    initialPresetSnapshot = JSON.stringify(flattenSections());
 }
 window.selectPreset = selectPreset;
 window.selectDrawerPreset = selectPreset; // 호환성 별칭
@@ -2549,3 +2539,16 @@ function exportCompare() {
     XLSX.writeFile(wb, `TBM_자재비교_${cat}_${new Date().toISOString().split('T')[0]}.xlsx`);
     showToast('비교표 엑셀 다운로드', 'success');
 }
+
+window.hasUnsavedChanges = () => {
+    const itemModalEl = $('itemModal');
+    if (itemModalEl && itemModalEl.classList.contains('active') && getFormSnapshot() !== modalSnapshot) return true;
+    if (typeof isPresetModalDirty === 'function' && isPresetModalDirty()) return true;
+    return false;
+};
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

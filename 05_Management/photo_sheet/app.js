@@ -346,9 +346,39 @@ function init() {
     loadSheetList();
 }
 
+let initialPhotoSheetSnapshot = '';
+
+function getPhotoSheetSnapshot() {
+    return JSON.stringify({
+        title: state.title || '',
+        content: serializeContentJson()
+    });
+}
+
+function isPhotoSheetDirty() {
+    if (!editorView || editorView.classList.contains('hidden')) return false;
+    return getPhotoSheetSnapshot() !== initialPhotoSheetSnapshot;
+}
+
+window.hasUnsavedChanges = function() {
+    return isPhotoSheetDirty();
+};
+
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 function bindEvents() {
     document.getElementById('createNewBtn').addEventListener('click', createNewSheet);
     document.getElementById('backToListBtn').addEventListener('click', () => {
+        if (isPhotoSheetDirty()) {
+            if (!confirm('작성/수정 중인 사진 대지 내용이 저장되지 않았습니다.\n목록으로 돌아가시겠습니까?')) {
+                return;
+            }
+        }
         editorView.classList.add('hidden');
         listView.classList.remove('hidden');
         loadSheetList();
@@ -573,6 +603,7 @@ function bindVideoExtractorEvents() {
     });
 
     document.getElementById('clearTrayBtn').addEventListener('click', () => {
+        if (extractedFrames.length > 0 && !confirm('추출된 장면을 모두 비우시겠습니까?')) return;
         extractedFrames = [];
         renderExtractedTray();
     });
@@ -600,8 +631,11 @@ function openVideoExtractorModal(videoFile) {
     videoExtractModal.classList.remove('hidden');
 }
 
-function closeVideoExtractorModal() {
+function closeVideoExtractorModal(force = false) {
     if (isExtractingSmart) return;
+    if (force !== true && extractedFrames.length > 0) {
+        if (!confirm('추출된 장면이 대지에 아직 반영되지 않았습니다.\n창을 닫으시겠습니까?')) return;
+    }
     extractVideoPlayer.pause();
     videoExtractModal.classList.add('hidden');
 }
@@ -1412,6 +1446,7 @@ function createNewSheet() {
     renderControlsState();
     renderPhotoList();
     renderPreviewSheet();
+    initialPhotoSheetSnapshot = getPhotoSheetSnapshot();
 }
 
 async function openSheet(id, autoPrint = false) {
@@ -1436,6 +1471,7 @@ async function openSheet(id, autoPrint = false) {
         renderControlsState();
         renderPhotoList();
         renderPreviewSheet();
+        initialPhotoSheetSnapshot = getPhotoSheetSnapshot();
 
         if (autoPrint) {
             setTimeout(() => {
@@ -1469,6 +1505,7 @@ async function saveSheet() {
         const data = await res.json();
         if (data.id) state.currentDocId = data.id;
         document.getElementById('saveCopyBtn').style.display = 'inline-flex';
+        initialPhotoSheetSnapshot = getPhotoSheetSnapshot();
         showToast('서버에 안전하게 저장되었습니다.');
     } catch (err) {
         console.error(err);
@@ -1731,9 +1768,10 @@ function renderConnectedVideoList() {
         });
 
         item.querySelector('.remove-single-video-btn').addEventListener('click', async () => {
+            if (!confirm('이 동영상을 목록에서 제거하시겠습니까?')) return;
             const removed = state.videos.splice(idx, 1)[0];
             if (removed && removed.url && removed.url.startsWith('/api/report-builder/uploads/')) {
-                deleteServerFileQuietly(removed.url);
+                deleteServerFileSilent(removed.url);
             }
             if (state.videos.length === 0 && !state.externalVideoUrl.trim()) {
                 state.showQr = false;
@@ -1772,6 +1810,7 @@ function renderPhotoList() {
         });
 
         item.querySelector('.ps-photo-remove-btn').addEventListener('click', async () => {
+            if (!confirm('이 사진을 삭제하시겠습니까?')) return;
             const removed = state.photos.splice(idx, 1)[0];
             renderPhotoList();
             renderPreviewSheet();

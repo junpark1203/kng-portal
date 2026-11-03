@@ -517,6 +517,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─────────────────────────────────────────────────────────
     // 4. 모달 열기 / 복사 / 지출결의서 프리필 적용 / 저장
     // ─────────────────────────────────────────────────────────
+    let initialRemittanceSnapshot = '';
+
+    function getRemittanceSnapshot() {
+        return JSON.stringify({
+            expenseId: els.fExpenseId?.value || '',
+            expenseTitle: els.fExpenseTitle?.value || '',
+            remittanceDate: els.fRemittanceDate?.value || '',
+            currency: els.fCurrency?.value || '',
+            amount: els.fAmount?.value || '',
+            beneficiaryName: els.fBeneficiaryName?.value || '',
+            hsCode: els.fHsCode?.value || '',
+            lcOrContractNo: els.fLcOrContractNo?.value || '',
+            importDeclNo: els.fImportDeclNo?.value || '',
+            priceTerms: els.fPriceTerms?.value || '',
+            tradePurpose: els.fTradePurpose?.value || '',
+            submitDate: els.fSubmitDate?.value || '',
+            status: els.fStatus?.value || '',
+            remarks: els.fRemarks?.value || ''
+        });
+    }
+
+    function isRemittanceModalDirty() {
+        if (!els.modal || !els.modal.classList.contains('active')) return false;
+        return getRemittanceSnapshot() !== initialRemittanceSnapshot;
+    }
+
     function openModal(id = null, copyFromId = null, prefillData = null) {
         currentEditId = id;
         const today = new Date().toISOString().split('T')[0];
@@ -609,15 +635,22 @@ document.addEventListener('DOMContentLoaded', () => {
         syncQuickChips();
         checkHighAmountWarning();
         els.modal.classList.add('active');
+        initialRemittanceSnapshot = (copyFromId || prefillData) ? '' : getRemittanceSnapshot();
 
         if (prefillData) {
             setTimeout(() => els.fHsCode.focus(), 150);
         }
     }
 
-    function closeModal() {
+    function closeModal(force = false) {
+        if (force !== true && isRemittanceModalDirty()) {
+            if (!confirm('작성/수정 중인 송금 추가 확인서 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?')) {
+                return;
+            }
+        }
         els.modal.classList.remove('active');
         currentEditId = null;
+        initialRemittanceSnapshot = '';
     }
 
     function collectFormPayload() {
@@ -704,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok) {
                 showToast(isEdit ? '확인서가 수정되었습니다.' : '확인서가 서버에 저장되었습니다.', 'success');
-                closeModal();
+                closeModal(true);
                 await loadDocuments();
                 return;
             }
@@ -731,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             writeLocalCache(cache);
             allDocuments = cache;
             showToast(isEdit ? '확인서가 수정되었습니다.' : '확인서가 저장되었습니다.', 'success');
-            closeModal();
+            closeModal(true);
             renderKpis();
             renderTable();
         }
@@ -1059,8 +1092,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyPrefillToOpenOrNewModal(prefillData) {
-        if (els.modal.classList.contains('active') && currentEditId) {
-            // 현재 수정 모달이 열려있는 상태에서 지출결의서를 불러온 경우 해당 폼에 값 반영
+        if (els.modal.classList.contains('active')) {
+            // 현재 모달이 열려있는 상태에서 지출결의서를 불러온 경우 기존 입력값 유지하며 해당 폼에 값 반영
             els.fExpenseId.value = prefillData.expenseId || '';
             els.fExpenseTitle.value = prefillData.title || '';
             els.fRemittanceDate.value = prefillData.remittanceDate || els.fRemittanceDate.value;
@@ -1098,8 +1131,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // 8. 이벤트 바인딩
     // ─────────────────────────────────────────────────────────
     els.btnNewDoc.addEventListener('click', () => openModal());
-    els.btnCloseModal.addEventListener('click', closeModal);
+    els.btnCloseModal.addEventListener('click', () => closeModal(false));
     els.btnSaveDoc.addEventListener('click', saveDocument);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (els.expensePickerModal && els.expensePickerModal.classList.contains('active')) {
+                e.preventDefault();
+                closeExpensePicker();
+            } else if (els.modal && els.modal.classList.contains('active')) {
+                e.preventDefault();
+                closeModal(false);
+            }
+        }
+    });
+
+    window.hasUnsavedChanges = function() {
+        return isRemittanceModalDirty();
+    };
+
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
     els.btnPrintPdf.addEventListener('click', handlePrintFromModal);
     els.btnDeleteSelected.addEventListener('click', deleteSelectedDocuments);
     els.btnExportExcel.addEventListener('click', exportToExcel);

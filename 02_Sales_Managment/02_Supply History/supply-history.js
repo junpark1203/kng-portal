@@ -316,9 +316,28 @@ window.openModal = function(id = null) {
     }
 
     itemModal.classList.add('active');
+    initialSupplySnapshot = getSupplySnapshot();
 };
 
-function closeModal() { itemModal.classList.remove('active'); }
+let initialSupplySnapshot = '';
+function getSupplySnapshot() {
+    if (!itemModal) return '';
+    return Array.from(itemModal.querySelectorAll('input, select, textarea'))
+        .map(el => `${el.id}:${el.value}`)
+        .join('|');
+}
+function isSupplyModalDirty() {
+    if (!itemModal || !itemModal.classList.contains('active')) return false;
+    return getSupplySnapshot() !== initialSupplySnapshot;
+}
+
+function closeModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isSupplyModalDirty()) {
+        if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
+    itemModal.classList.remove('active');
+}
 
 async function saveItem() {
     const id = $('editId').value;
@@ -342,7 +361,7 @@ async function saveItem() {
         });
         if (res.ok) {
             showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
-            closeModal();
+            closeModal(true);
             loadData();
         } else {
             const err = await res.json();
@@ -409,3 +428,16 @@ async function exportToExcel() {
         btn.disabled = false;
     }
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && itemModal && itemModal.classList.contains('active')) {
+        closeModal(false);
+    }
+});
+window.hasUnsavedChanges = () => isSupplyModalDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isSupplyModalDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

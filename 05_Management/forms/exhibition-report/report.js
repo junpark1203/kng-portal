@@ -22,9 +22,12 @@ async function authFetch(url, options = {}) {
     return fetch(url, options);
 }
 
-const API_URL = 'https://kng.junparks.com/api/exhibition-report';
+const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api/exhibition-report'
+    : 'https://kng.junparks.com/api/exhibition-report';
 let currentReports = [];
 let editingId = null;
+let initialReportSnapshot = '';
 
 // DOM Elements
 const listView = document.getElementById('listView');
@@ -38,13 +41,40 @@ const boothFormTemplate = document.getElementById('boothFormTemplate');
 const form = document.getElementById('reportForm');
 const exhibitionName = document.getElementById('exhibitionName');
 const visitDate = document.getElementById('visitDate');
+const reportStatus = document.getElementById('reportStatus');
+
+function getReportSnapshot() {
+    const booths = [];
+    boothsContainer.querySelectorAll('.booth-card').forEach(card => {
+        booths.push({
+            boothName: card.querySelector('.input-boothName')?.value || '',
+            location: card.querySelector('.input-location')?.value || '',
+            mainProducts: card.querySelector('.input-mainProducts')?.value || '',
+            photos: card.querySelector('.input-uploaded-urls')?.value || '[]',
+            applicability: card.querySelector('.input-applicability')?.value || '',
+            counselingContent: card.querySelector('.input-counselingContent')?.value || '',
+            remarks: card.querySelector('.input-remarks')?.value || ''
+        });
+    });
+    return JSON.stringify({
+        exhibitionName: exhibitionName?.value || '',
+        visitDate: visitDate?.value || '',
+        status: reportStatus?.value || '결재상신',
+        booths
+    });
+}
+
+function isReportModalDirty() {
+    if (!reportEditModal || !reportEditModal.classList.contains('active')) return false;
+    return getReportSnapshot() !== initialReportSnapshot;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     loadReports();
 
     // Event Listeners
     document.getElementById('btnNewReport').addEventListener('click', showNewForm);
-    document.getElementById('btnBackToList').addEventListener('click', closeReportModal);
+    document.getElementById('btnBackToList').addEventListener('click', () => closeReportModal(false));
     
     document.getElementById('btnSaveReport').addEventListener('click', () => saveReport(true));
     const btnTempSave = document.getElementById('btnTempSaveReport');
@@ -63,22 +93,53 @@ document.addEventListener('DOMContentLoaded', () => {
         printLayout.style.display = 'none';
         document.body.style.overflow = '';
     });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (printLayout && printLayout.style.display === 'block') {
+                e.preventDefault();
+                printLayout.style.display = 'none';
+                document.body.style.overflow = '';
+            } else if (reportEditModal && reportEditModal.classList.contains('active')) {
+                e.preventDefault();
+                closeReportModal(false);
+            }
+        }
+    });
+});
+
+window.hasUnsavedChanges = function() {
+    return isReportModalDirty();
+};
+
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
 });
 
 function openReportModal() {
     reportEditModal.classList.add('active');
     document.body.style.overflow = 'hidden'; // prevent body scroll behind modal
+    initialReportSnapshot = getReportSnapshot();
 }
 
-function closeReportModal() {
+function closeReportModal(force = false) {
+    if (force !== true && isReportModalDirty()) {
+        if (!confirm('작성/수정 중인 보고서 내용이 저장되지 않았습니다.\n창을 닫으시겠습니까?')) {
+            return;
+        }
+    }
     reportEditModal.classList.remove('active');
     document.body.style.overflow = '';
+    initialReportSnapshot = '';
     loadReports(); // refresh list
 }
 
 async function loadReports() {
     try {
-        reportListBody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>';
+        reportListBody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="skeleton"></div></td></tr>';
         const res = await authFetch(API_URL);
         if (!res.ok) { const txt = await res.text(); throw new Error(`서버 응답 오류 (${res.status}): ${txt}`); }
         
@@ -86,14 +147,14 @@ async function loadReports() {
         renderList();
     } catch (e) {
         showToast(e.message, 'error');
-        reportListBody.innerHTML = '<tr><td colspan="6" class="text-center">데이터를 불러오지 못했습니다.</td></tr>';
+        reportListBody.innerHTML = '<tr><td colspan="7" class="text-center">데이터를 불러오지 못했습니다.</td></tr>';
     }
 }
 
 function renderList() {
     reportListBody.innerHTML = '';
     if (currentReports.length === 0) {
-        reportListBody.innerHTML = '<tr><td colspan="6" class="text-center">등록된 보고서가 없습니다.</td></tr>';
+        reportListBody.innerHTML = '<tr><td colspan="7" class="text-center">등록된 보고서가 없습니다.</td></tr>';
         return;
     }
 
@@ -101,12 +162,22 @@ function renderList() {
         const tr = document.createElement('tr');
         const d = new Date(report.createdAt);
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const st = report.status || '임시작성';
         
         tr.innerHTML = `
             <td class="col-check"><input type="checkbox" class="check-row" value="${report.id}"></td>
             <td>${report.visitDate || '-'}</td>
             <td><strong>${report.exhibitionName || '-'}</strong></td>
             <td>${(report.booths || []).length} 개</td>
+            <td>
+                <select class="status-select" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: 600;" onchange="updateReportStatus('${report.id}', this.value)">
+                    <option value="임시작성" ${st === '임시작성' ? 'selected' : ''}>임시작성</option>
+                    <option value="결재상신" ${st === '결재상신' ? 'selected' : ''}>결재상신</option>
+                    <option value="결재대기" ${st === '결재대기' ? 'selected' : ''}>결재대기</option>
+                    <option value="결재보류" ${st === '결재보류' ? 'selected' : ''}>결재보류</option>
+                    <option value="결재완료" ${st === '결재완료' ? 'selected' : ''}>결재완료</option>
+                </select>
+            </td>
             <td>${dateStr}</td>
             <td class="col-action">
                 <button class="btn-outline btn-sm" onclick="editReport('${report.id}')">수정</button>
@@ -116,10 +187,27 @@ function renderList() {
     });
 }
 
+window.updateReportStatus = async function(id, status) {
+    try {
+        const res = await authFetch(`${API_URL}/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        if (!res.ok) throw new Error('상태 변경 실패');
+        showToast(`결재 상태가 [${status}](으)로 변경되었습니다.`, 'success');
+        loadReports();
+    } catch (e) {
+        showToast(e.message, 'error');
+        loadReports();
+    }
+};
+
 function showNewForm() {
     editingId = null;
     document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 보고서 작성";
     form.reset();
+    if (reportStatus) reportStatus.value = '결재상신';
     boothsContainer.innerHTML = '';
     addBoothForm(); // 기본 1개 폼 추가
     openReportModal();
@@ -136,6 +224,7 @@ async function editReport(id) {
         
         exhibitionName.value = report.exhibitionName;
         visitDate.value = report.visitDate;
+        if (reportStatus) reportStatus.value = report.status || '결재상신';
         
         boothsContainer.innerHTML = '';
         if (report.booths && report.booths.length > 0) {
@@ -160,6 +249,7 @@ function addBoothForm(data = null) {
     
     // 삭제 버튼
     card.querySelector('.btn-remove-booth').addEventListener('click', (e) => {
+        if (!confirm('이 업체 상담 기록을 삭제하시겠습니까?')) return;
         card.remove();
         updateBoothIndices();
     });
@@ -327,9 +417,19 @@ async function saveReport(exitAfterSave = true) {
         });
     });
     
+    let targetStatus = reportStatus ? reportStatus.value : (exitAfterSave ? '결재상신' : '임시작성');
+    if (!exitAfterSave) {
+        targetStatus = '임시작성';
+        if (reportStatus) reportStatus.value = '임시작성';
+    } else if (targetStatus === '임시작성') {
+        targetStatus = '결재상신';
+        if (reportStatus) reportStatus.value = '결재상신';
+    }
+
     const payload = {
         exhibitionName: exhibitionName.value,
         visitDate: visitDate.value,
+        status: targetStatus,
         booths: booths
     };
     
@@ -351,10 +451,11 @@ async function saveReport(exitAfterSave = true) {
             document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 보고서 수정";
         }
         
-        showToast('보고서가 저장되었습니다.', 'success');
+        initialReportSnapshot = getReportSnapshot();
+        showToast(exitAfterSave ? '보고서가 결재상신 및 저장되었습니다.' : '보고서가 임시저장되었습니다.', 'success');
         
         if (exitAfterSave) {
-            closeReportModal();
+            closeReportModal(true);
         }
     } catch(e) {
         showToast(e.message, 'error');

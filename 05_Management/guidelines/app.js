@@ -23,6 +23,33 @@ let currentDetailId = null;
 let editor = null;
 let detailEditorjs = null;
 let viewer = null;
+let _isGuidelineDirty = false;
+let _initialGuidelineInputs = '';
+
+function getGuidelineInputsSnapshot() {
+    return JSON.stringify({
+        category: document.getElementById('editCategory')?.value || '',
+        title: document.getElementById('editTitle')?.value || '',
+        tags: document.getElementById('editTags')?.value || ''
+    });
+}
+
+function isGuidelineEditorDirty() {
+    const editView = document.getElementById('editView');
+    if (!editView || !editView.classList.contains('active')) return false;
+    return _isGuidelineDirty || (getGuidelineInputsSnapshot() !== _initialGuidelineInputs);
+}
+
+window.hasUnsavedChanges = function() {
+    return isGuidelineEditorDirty();
+};
+
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     // Toast UI Viewer 초기화 (구버전 마크다운 데이터 호환용 뷰어)
@@ -35,13 +62,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 이벤트 리스너 등록
     document.getElementById('btnNewGuideline').addEventListener('click', () => openEditor());
-    document.getElementById('btnCancelEdit').addEventListener('click', () => showView('listView'));
+    document.getElementById('btnCancelEdit').addEventListener('click', () => {
+        if (isGuidelineEditorDirty()) {
+            if (!confirm('작성/수정 중인 지침 내용이 저장되지 않았습니다.\n작성을 취소하시겠습니까?')) {
+                return;
+            }
+        }
+        _isGuidelineDirty = false;
+        const editId = document.getElementById('editGuidelineId').value;
+        if (editId && currentDetailId) {
+            openDetail(currentDetailId);
+        } else {
+            showView('listView');
+        }
+    });
     document.getElementById('btnBackToList').addEventListener('click', () => showView('listView'));
     document.getElementById('btnSaveGuideline').addEventListener('click', saveGuideline);
     document.getElementById('btnEditGuideline').addEventListener('click', openEditorForEdit);
     
     // 뒤로 가기(popstate) 이벤트 처리
     window.addEventListener('popstate', (e) => {
+        if (isGuidelineEditorDirty()) {
+            if (!confirm('작성/수정 중인 지침 내용이 저장되지 않았습니다.\n이전 화면으로 이동하시겠습니까?')) {
+                const editId = document.getElementById('editGuidelineId').value;
+                history.pushState({ view: 'editView', id: editId || null }, '');
+                return;
+            }
+            _isGuidelineDirty = false;
+        }
         const state = e.state;
         if (state && state.view) {
             if (state.view === 'detailView' && state.id) {
@@ -368,6 +416,13 @@ async function openEditor(item = null, updateHistory = true) {
         }
         
         editor = initEditorjs('editor', false, initialData);
+        _isGuidelineDirty = false;
+        _initialGuidelineInputs = getGuidelineInputsSnapshot();
+        const editorHolder = document.getElementById('editor');
+        if (editorHolder) {
+            editorHolder.addEventListener('input', () => { _isGuidelineDirty = true; }, { passive: true });
+            editorHolder.addEventListener('paste', () => { _isGuidelineDirty = true; }, { passive: true });
+        }
 
         showView('editView', updateHistory);
     } catch(err) {
@@ -462,6 +517,8 @@ async function saveGuideline() {
             data.createdAt = serverTimestamp();
             await addDoc(collection(db, 'guidelines'), data);
         }
+        _isGuidelineDirty = false;
+        _initialGuidelineInputs = getGuidelineInputsSnapshot();
         await loadGuidelines(); // 새로고침
         showView('listView');
     } catch (error) {

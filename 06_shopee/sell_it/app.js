@@ -1818,14 +1818,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
+            const viewId = item.getAttribute('data-view');
+            const currentActiveView = document.querySelector('.view-section.active')?.id;
+            if (e.isTrusted && isFormDirty && currentActiveView === 'view-product-registration' && viewId !== 'view-product-registration') {
+                if (!confirm('작성 중인 상품 정보가 있습니다. 저장하지 않고 다른 메뉴로 이동하시겠습니까?')) {
+                    return;
+                }
+                isFormDirty = false;
+            }
             
             // Remove active from all nav items
             navItems.forEach(nav => nav.classList.remove('active'));
             // Add active to clicked nav item
             item.classList.add('active');
-
-            // Get target view id
-            const viewId = item.getAttribute('data-view');
             
             // Save to localStorage for persistence
             localStorage.setItem('activeViewId', viewId);
@@ -2420,21 +2425,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Korean Description Modal Logic
     const descKoModalOverlay = document.getElementById('desc-ko-modal-overlay');
     const descKoModal = document.getElementById('desc-ko-modal');
+    let initialDescKoSnap = '';
     
-    function closeDescKoModal() {
+    function closeDescKoModal(force) {
+        const isForce = force === true;
+        const descKoInput = document.getElementById('input-desc-ko');
+        if (!isForce && descKoModal && descKoModal.classList.contains('active') && descKoInput && descKoInput.value !== initialDescKoSnap) {
+            if (!confirm('수정 중인 상품 설명(한국어)이 있습니다. 변경사항을 취소하고 닫으시겠습니까?')) return;
+            descKoInput.value = initialDescKoSnap;
+        }
         if(descKoModal) descKoModal.classList.remove('active');
         if(descKoModalOverlay) descKoModalOverlay.style.display = 'none';
     }
 
     document.getElementById('btn-open-desc-ko')?.addEventListener('click', () => {
+        initialDescKoSnap = document.getElementById('input-desc-ko')?.value || '';
         if(descKoModal) descKoModal.classList.add('active');
         if(descKoModalOverlay) descKoModalOverlay.style.display = 'flex';
     });
     
-    document.getElementById('btn-close-desc-ko-modal')?.addEventListener('click', closeDescKoModal);
-    document.getElementById('btn-cancel-desc-ko')?.addEventListener('click', closeDescKoModal);
-    document.getElementById('btn-save-desc-ko')?.addEventListener('click', closeDescKoModal);
-    descKoModalOverlay?.addEventListener('click', closeDescKoModal);
+    document.getElementById('btn-close-desc-ko-modal')?.addEventListener('click', () => closeDescKoModal(false));
+    document.getElementById('btn-cancel-desc-ko')?.addEventListener('click', () => closeDescKoModal(false));
+    document.getElementById('btn-save-desc-ko')?.addEventListener('click', () => closeDescKoModal(true));
+    descKoModalOverlay?.addEventListener('click', () => closeDescKoModal(false));
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -5055,11 +5068,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         maDrawer.classList.add('active');
         maOverlay.classList.add('active');
         updateMAMarginDisplay();
+        initialMADrawerSnap = getMADrawerSnapshot();
     }
 
-    function closeMADrawer() {
+    let initialMADrawerSnap = null;
+    function getMADrawerSnapshot() {
+        if (!maDrawer) return '';
+        const vals = [];
+        maDrawer.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.type === 'file') return;
+            vals.push((el.id || el.className) + ':' + (el.type === 'checkbox' ? el.checked : el.value));
+        });
+        vals.push('imgs:' + JSON.stringify(currentMAImages));
+        vals.push('vid:' + (currentMAVideoUrl || ''));
+        return vals.join('|');
+    }
+
+    function closeMADrawer(force) {
+        const isForce = force === true;
+        if (!isForce && maDrawer && maDrawer.classList.contains('active') && initialMADrawerSnap !== null && getMADrawerSnapshot() !== initialMADrawerSnap) {
+            if (!confirm('작성 또는 수정 중인 마켓 분석 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        }
         maDrawer?.classList.remove('active');
         maOverlay?.classList.remove('active');
+        initialMADrawerSnap = null;
         const list = document.getElementById('ma-category-autocomplete-list');
         if (list) {
             list.classList.remove('active');
@@ -5281,7 +5313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (promises.length === 0) throw new Error('유효한 쇼피 옵션을 1개 이상 입력하세요.');
                 await Promise.all(promises);
             }
-            closeMADrawer();
+            closeMADrawer(true);
             loadMarketAnalysis();
         } catch (err) {
             alert('저장 실패: ' + err.message);
@@ -5295,7 +5327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!confirm('이 분석 데이터를 삭제하시겠습니까?')) return;
         try {
             await api.deleteMarketAnalysis(editId);
-            closeMADrawer();
+            closeMADrawer(true);
             loadMarketAnalysis();
         } catch (err) {
             alert('삭제 실패: ' + err.message);
@@ -6667,4 +6699,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    window.hasUnsavedChanges = () => Boolean(isFormDirty) || Boolean(maDrawer && maDrawer.classList.contains('active') && initialMADrawerSnap !== null && getMADrawerSnapshot() !== initialMADrawerSnap);
 });

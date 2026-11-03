@@ -851,6 +851,12 @@
         const item = state.archiveList.find(d => d.id === id);
         if (!item) return;
 
+        if ((els.inputSubject.value.trim() || els.inputBody.value.trim()) && state.currentDoc.id !== item.id) {
+            if (!confirm('현재 작성 중인 문서 내용이 있습니다.\n선택한 문서를 불러와 덮어쓰시겠습니까?')) {
+                return;
+            }
+        }
+
         els.inputDocTitle.value = item.docTitle || '공문서';
         els.inputTo.value = item.to || '';
         els.inputCc.value = item.cc || '';
@@ -916,6 +922,18 @@
         }
     }
 
+    let initialSettingsSnapshot = '';
+    function getSettingsSnapshot() {
+        return JSON.stringify({
+            nameKr: els.setCorpKr?.value || '',
+            nameEn: els.setCorpEn?.value || '',
+            address: els.setAddress?.value || '',
+            tel: els.setTel?.value || '',
+            fax: els.setFax?.value || '',
+            logoUrl: els.setLogoUrl?.value || ''
+        });
+    }
+
     function openSettingsModal() {
         els.setCorpKr.value = state.company.nameKr;
         els.setCorpEn.value = state.company.nameEn;
@@ -924,9 +942,15 @@
         els.setFax.value = state.company.fax;
         els.setLogoUrl.value = state.company.logoUrl;
         els.settingsModal.classList.add('active');
+        initialSettingsSnapshot = getSettingsSnapshot();
     }
 
-    function closeSettingsModal() {
+    function closeSettingsModal(force = false) {
+        if (force !== true && els.settingsModal.classList.contains('active') && getSettingsSnapshot() !== initialSettingsSnapshot) {
+            if (!confirm('수정 중인 회사 기본정보가 저장되지 않았습니다.\n창을 닫으시겠습니까?')) {
+                return;
+            }
+        }
         els.settingsModal.classList.remove('active');
     }
 
@@ -939,7 +963,7 @@
         state.company.logoUrl = els.setLogoUrl.value.trim();
 
         localStorage.setItem(STORAGE_KEY_COMPANY, JSON.stringify(state.company));
-        closeSettingsModal();
+        closeSettingsModal(true);
         renderPreview();
         alert('회사 기본 정보가 저장되었습니다.');
     }
@@ -1021,9 +1045,23 @@
 
         // Settings Modal
         els.btnSettings.addEventListener('click', openSettingsModal);
-        els.btnCloseSettings.addEventListener('click', closeSettingsModal);
-        els.btnCancelSettings.addEventListener('click', closeSettingsModal);
+        els.btnCloseSettings.addEventListener('click', () => closeSettingsModal(false));
+        els.btnCancelSettings.addEventListener('click', () => closeSettingsModal(false));
         els.btnSaveSettings.addEventListener('click', saveCompanySettings);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && els.settingsModal && els.settingsModal.classList.contains('active')) {
+                e.preventDefault();
+                closeSettingsModal(false);
+            }
+        });
+
+        window.hasUnsavedChanges = function() {
+            if (els.settingsModal && els.settingsModal.classList.contains('active') && getSettingsSnapshot() !== initialSettingsSnapshot) {
+                return true;
+            }
+            return false;
+        };
 
         // Archive search
         if (els.archiveSearchInput) {

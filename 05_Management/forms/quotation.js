@@ -463,7 +463,7 @@ const app = {
                 return;
             }
 
-            this.initNewQuotation();
+            if (this.initNewQuotation() === false) return;
             this.currentQuote.items = cartItems.map((item, idx) => ({
                 id: 'qi_' + Date.now() + '_' + idx,
                 seq: idx + 1,
@@ -500,7 +500,7 @@ const app = {
     initNewQuotation: function(force = false) {
         if (!force && this.hasUnsavedChanges()) {
             if (!confirm('현재 작성 중이거나 변경된 내용이 저장되지 않았습니다.\n입력 내용을 비우고 새로 작성하시겠습니까?')) {
-                return;
+                return false;
             }
         }
 
@@ -1850,6 +1850,7 @@ const app = {
 
     removeCurrentImage: function() {
         if (this.editingItemIndexForImage === null) return;
+        if (!confirm('이 품목에 등록된 모든 사진을 초기화하시겠습니까?')) return;
         this.modalMediaState.thumbs = [];
         this.modalMediaState.details = [];
         this.renderModalMediaLists();

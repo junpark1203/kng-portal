@@ -2009,4 +2009,73 @@ const app = {
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
+
+    // 모달 미저장 변경사항 보호 (Bootstrap Modal Guard)
+    let _userDismissing = false;
+    function getModalSnapshot(modalEl) {
+        if (!modalEl) return '';
+        const vals = [];
+        modalEl.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.type === 'file') return;
+            vals.push((el.id || el.name || el.className) + ':' + (el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value));
+        });
+        const drawImg = modalEl.querySelector('#drawingPreviewImg');
+        if (drawImg) vals.push('drawing:' + (drawImg.getAttribute('src') || ''));
+        return vals.join('|');
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-bs-dismiss="modal"]') || e.target.classList?.contains('modal')) {
+            _userDismissing = true;
+            setTimeout(() => { _userDismissing = false; }, 300);
+        }
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const openModal = document.querySelector('.modal.show');
+            if (openModal) {
+                e.preventDefault();
+                _userDismissing = true;
+                const inst = bootstrap.Modal.getInstance(openModal);
+                if (inst) inst.hide();
+                setTimeout(() => { _userDismissing = false; }, 300);
+            }
+        }
+    });
+
+    ['poFormModal', 'settingsModal'].forEach(id => {
+        const mEl = document.getElementById(id);
+        if (!mEl) return;
+        mEl.addEventListener('shown.bs.modal', () => {
+            mEl._initialSnapshot = getModalSnapshot(mEl);
+        });
+        mEl.addEventListener('hide.bs.modal', (e) => {
+            if (_userDismissing && mEl._initialSnapshot !== undefined) {
+                const curr = getModalSnapshot(mEl);
+                if (curr !== mEl._initialSnapshot) {
+                    if (!confirm('작성/수정 중인 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?')) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        return;
+                    }
+                }
+            }
+        });
+    });
+
+    window.hasUnsavedChanges = function() {
+        const mEl = document.getElementById('poFormModal');
+        if (mEl && mEl.classList.contains('show') && mEl._initialSnapshot !== undefined) {
+            return getModalSnapshot(mEl) !== mEl._initialSnapshot;
+        }
+        return false;
+    };
+
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 });

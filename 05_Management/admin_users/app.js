@@ -269,6 +269,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─────────────────────────────────────────────────────────
     // 3. 모달 열기 및 저장/삭제
     // ─────────────────────────────────────────────────────────
+    let initialAdminUserSnapshot = '';
+    function getAdminUserModalSnapshot() {
+        const checkedPerms = Array.from(els.permGrid.querySelectorAll('.menu-perm-chk:checked')).map(cb => cb.value).join(',');
+        return JSON.stringify({
+            email: els.fEmail?.value || '',
+            password: els.fPassword?.value || '',
+            name: els.fName?.value || '',
+            department: els.fDepartment?.value || '',
+            rank: els.fRank?.value || '',
+            role: els.fRole?.value || '',
+            status: els.fStatus?.value || '',
+            leaveDays: els.fLeaveDays?.value || '',
+            hireDate: els.fHireDate?.value || '',
+            memo: els.fMemo?.value || '',
+            allPerms: !!els.chkAllPerms?.checked,
+            checkedPerms
+        });
+    }
+
+    function isAdminUserModalDirty() {
+        if (!els.modal || !els.modal.classList.contains('active')) return false;
+        return getAdminUserModalSnapshot() !== initialAdminUserSnapshot;
+    }
+
+    window.hasUnsavedChanges = function() {
+        return isAdminUserModalDirty();
+    };
+
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && els.modal && els.modal.classList.contains('active')) {
+            e.preventDefault();
+            closeModal(false);
+        }
+    });
+
     function openModal(mode = 'create', email = null) {
         els.formMode.value = mode;
 
@@ -339,10 +381,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         els.modal.classList.add('active');
+        initialAdminUserSnapshot = getAdminUserModalSnapshot();
     }
 
-    function closeModal() {
+    function closeModal(force = false) {
+        if (force !== true && isAdminUserModalDirty()) {
+            if (!confirm('작성/수정 중인 계정 및 권한 정보가 있습니다.\n저장하지 않고 닫으시겠습니까?')) {
+                return;
+            }
+        }
         els.modal.classList.remove('active');
+        initialAdminUserSnapshot = '';
     }
 
     // 비밀번호 보기/숨기기 토글
@@ -439,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             showToast(successMsg, 'success');
-            closeModal();
+            closeModal(true);
             loadUsers();
         } catch (err) {
             Swal.fire('처리 실패', err.message, 'error');
@@ -483,8 +532,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─────────────────────────────────────────────────────────
     els.btnRefresh.addEventListener('click', loadUsers);
     els.btnNewUser.addEventListener('click', () => openModal('create'));
-    els.btnCloseModal.addEventListener('click', closeModal);
-    els.btnCancelModal.addEventListener('click', closeModal);
+    els.btnCloseModal.addEventListener('click', () => closeModal(false));
+    els.btnCancelModal.addEventListener('click', () => closeModal(false));
     els.btnSaveUser.addEventListener('click', handleSave);
 
     els.filterRole.addEventListener('change', renderTable);

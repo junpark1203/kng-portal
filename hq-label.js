@@ -1018,16 +1018,26 @@ document.addEventListener('DOMContentLoaded',async()=>{
     renderList();
     renderSpecs();
     ['fName','fLabelSpecId','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).onchange=$(id).oninput=updPv;});
-    $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
+    const hasLabelInput = () => Boolean(($('fName')?.value||'').trim() || ($('fProd')?.value||'').trim() || extraFields.length > 0 || historyStack.length > 0);
+    $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{
+        if(hasLabelInput() && !confirm('작성 또는 편집 중인 라벨 내용이 있습니다. 새로 만들기를 진행하시겠습니까?')) return;
+        reset();updPv();
+    };
     if($('btnDup'))$('btnDup').onclick=dupL;
     if($('lblSearch'))$('lblSearch').oninput=()=>renderList();
-    $('btnRst').onclick=()=>{layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();updPv();toast('초기화','info')};
+    $('btnRst').onclick=()=>{
+        if(!confirm('라벨 레이아웃 배치를 초기화하시겠습니까?')) return;
+        layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();updPv();toast('초기화','info');
+    };
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
     if($('pvZoom'))$('pvZoom').onchange=updPv;
     if($('chkTableMode'))$('chkTableMode').onchange=updPv;
     
     // Sheet Editor Toolbar
-    $('btnShCancel').onclick = () => $('sheetEditor').style.display='none';
+    $('btnShCancel').onclick = () => {
+        if(sheetHistoryStack.length > 0 && !confirm('시트 편집 내역이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        $('sheetEditor').style.display='none';
+    };
     $('btnShPrint').onclick = executePrint;
     $('btnShUndo').onclick = undoSh;
     if($('chkCutLines')) $('chkCutLines').onchange = () => renderSheet();
@@ -1287,9 +1297,15 @@ document.addEventListener('DOMContentLoaded',async()=>{
     $('selPaper').onchange=updCalc;
     $('btnPrint').onclick=openSheetEditor;
     $('btnAddSp').onclick=()=>openSM(null);
-    $('mSpX').onclick=$('mSpCancel').onclick=()=>$('mSpec').style.display='none';
+    const tryCloseSpecModal = () => {
+        const hasSpInput = Boolean(($('spName')?.value||'').trim());
+        if (hasSpInput && !confirm('입력 중인 라벨 규격 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        $('mSpec').style.display='none';
+    };
+    $('mSpX').onclick=$('mSpCancel').onclick=tryCloseSpecModal;
     $('mSpSave').onclick=saveSp;
-    $('mSpec').onclick=e=>{if(e.target===$('mSpec'))$('mSpec').style.display='none'};
+    $('mSpec').onclick=e=>{if(e.target===$('mSpec'))tryCloseSpecModal()};
+    window.hasUnsavedChanges = () => Boolean(historyStack.length > 0 || ($('sheetEditor')?.style.display === 'flex' && sheetHistoryStack.length > 0));
     updPv();updCalc()
 })
 })();

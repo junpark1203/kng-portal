@@ -399,9 +399,28 @@ window.openModal = function(id = null) {
 
     refreshCascade();
     itemModal.classList.add('active');
+    initialUnitPriceSnapshot = getUnitPriceSnapshot();
 };
 
-function closeModal() { itemModal.classList.remove('active'); }
+let initialUnitPriceSnapshot = '';
+function getUnitPriceSnapshot() {
+    if (!itemModal) return '';
+    return Array.from(itemModal.querySelectorAll('input, select, textarea'))
+        .map(el => `${el.id}:${el.value}`)
+        .join('|');
+}
+function isUnitPriceModalDirty() {
+    if (!itemModal || !itemModal.classList.contains('active')) return false;
+    return getUnitPriceSnapshot() !== initialUnitPriceSnapshot;
+}
+
+function closeModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isUnitPriceModalDirty()) {
+        if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
+    itemModal.classList.remove('active');
+}
 
 async function saveItem() {
     const id = $('editId').value;
@@ -427,7 +446,7 @@ async function saveItem() {
         });
         if (res.ok) {
             showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
-            closeModal();
+            closeModal(true);
             loadData();
         } else {
             const err = await res.json();
@@ -537,3 +556,17 @@ async function runMigration() {
         btn.innerHTML = "<i class='bx bx-cloud-upload'></i> 마이그레이션";
     }
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (historyModal && historyModal.classList.contains('active')) closeHistoryModal();
+        else if (itemModal && itemModal.classList.contains('active')) closeModal(false);
+    }
+});
+window.hasUnsavedChanges = () => isUnitPriceModalDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isUnitPriceModalDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

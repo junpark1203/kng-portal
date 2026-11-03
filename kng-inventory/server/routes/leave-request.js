@@ -336,9 +336,32 @@ router.put('/:id', async (req, res) => {
         const prev = await dbGet('SELECT * FROM leave_requests WHERE id = ?', [req.params.id]);
         if (!prev) return res.status(404).json({ error: '수정할 항목을 찾을 수 없습니다.' });
 
+        const nextStatus = p.status || prev.status || '결재요청';
+        let googleEventId = prev.googleEventId || null;
+
+        const updatedItemForCal = {
+            ...prev,
+            department: p.department || '',
+            rank: p.rank || '',
+            name: p.name || '',
+            leaveStart: p.leaveStart || '',
+            leaveEnd: p.leaveEnd || '',
+            leaveType: p.leaveType || '',
+            daysCount,
+            reason: p.reason || ''
+        };
+
+        if (nextStatus === '결재완료' && prev.status !== '결재완료') {
+            const eventId = await registerLeaveToGoogleCalendar(updatedItemForCal);
+            if (eventId) googleEventId = eventId;
+        } else if (nextStatus !== '결재완료' && prev.status === '결재완료' && googleEventId) {
+            await removeLeaveFromGoogleCalendar(googleEventId);
+            googleEventId = null;
+        }
+
         const sql = `
             UPDATE leave_requests SET 
-                department = ?, rank = ?, name = ?, leaveStart = ?, leaveEnd = ?, leaveType = ?, daysCount = ?, reason = ?, submitDate = ?, updatedAt = ?
+                department = ?, rank = ?, name = ?, leaveStart = ?, leaveEnd = ?, leaveType = ?, daysCount = ?, reason = ?, submitDate = ?, status = ?, googleEventId = ?, updatedAt = ?
             WHERE id = ?
         `;
         const params = [
@@ -351,6 +374,8 @@ router.put('/:id', async (req, res) => {
             daysCount,
             p.reason || '', 
             p.submitDate || '', 
+            nextStatus,
+            googleEventId,
             now,
             req.params.id
         ];

@@ -151,7 +151,7 @@ router.post('/', (req, res) => {
     const boothsJson = typeof p.booths === 'string' ? p.booths : JSON.stringify(p.booths || []);
     
     const params = [
-        id, p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || '임시작성', now, now
+        id, p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || '결재상신', now, now
     ];
     
     db.run(sql, params, function(err) {
@@ -167,14 +167,14 @@ router.put('/:id', (req, res) => {
     const now = new Date().toISOString();
     const sql = `
         UPDATE exhibition_reports SET
-            exhibitionName = ?, visitDate = ?, booths = ?, status = ?, updatedAt = ?
+            exhibitionName = ?, visitDate = ?, booths = ?, status = COALESCE(?, status, '결재상신'), updatedAt = ?
         WHERE id = ?
     `;
     
     const boothsJson = typeof p.booths === 'string' ? p.booths : JSON.stringify(p.booths || []);
     
     const params = [
-        p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || '임시작성', now, id
+        p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || null, now, id
     ];
     
     db.run(sql, params, function(err) {

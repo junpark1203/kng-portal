@@ -93,8 +93,32 @@
     // =============================================
     //  Toggle IN / OUT Mode
     // =============================================
-    function toggleEntryMode() {
+    let currentEntryMode = 'IN';
+    function hasEntryInput() {
+        const supplier = ($('fSupplier')?.value || '').trim();
+        const remarks = ($('txRemarks')?.value || '').trim();
+        if (supplier || remarks) return true;
+        const rows = document.querySelectorAll('#itemsBody tr');
+        for (const r of rows) {
+            const inputs = r.querySelectorAll('input:not([readonly])');
+            for (const inp of inputs) {
+                if ((inp.value || '').trim() !== '') return true;
+            }
+        }
+        return false;
+    }
+
+    function toggleEntryMode(force) {
+        const isForce = force === true;
         const type = getType();
+        if (!isForce && document.querySelectorAll('#itemsBody tr').length > 0 && hasEntryInput()) {
+            if (!confirm('모드를 변경하면 입력 중인 품목 내역이 초기화됩니다. 계속하시겠습니까?')) {
+                const prevRadio = document.querySelector(`input[name="txType"][value="${currentEntryMode}"]`);
+                if (prevRadio) prevRadio.checked = true;
+                return;
+            }
+        }
+        currentEntryMode = type;
         const header = $('headerBar');
         const indicator = $('modeIndicator');
         const submitBtn = $('submitBtn');
@@ -512,23 +536,32 @@
         $('txDate').value = new Date().toISOString().split('T')[0];
 
         document.querySelectorAll('input[name="txType"]').forEach(r => {
-            r.addEventListener('change', toggleEntryMode);
+            r.addEventListener('change', () => toggleEntryMode(false));
         });
 
         $('btnAddRow').addEventListener('click', addRow);
 
         $('resetEntry').addEventListener('click', () => {
+            if (hasEntryInput() && !confirm('입력 중인 품목 내역을 모두 초기화하시겠습니까?')) return;
             $('itemsBody').innerHTML = '';
             $('fSupplier').value = '';
             $('txRemarks').value = '';
             $('txDate').value = new Date().toISOString().split('T')[0];
             $('typeIn').checked = true;
-            toggleEntryMode();
+            toggleEntryMode(true);
         });
 
         $('entryForm').addEventListener('submit', handleEntry);
 
         // Init first load
-        toggleEntryMode();
+        toggleEntryMode(true);
+
+        window.hasUnsavedChanges = () => hasEntryInput();
+        window.addEventListener('beforeunload', e => {
+            if (window.hasUnsavedChanges()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
     });
 })();

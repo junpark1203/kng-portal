@@ -935,8 +935,11 @@ let initialDocSnapshot = null;
 
 function getDocFormSnapshot() {
     if (!els.docForm) return '';
-    const data = new FormData(els.docForm);
-    const obj = Object.fromEntries(data.entries());
+    const obj = {};
+    els.docForm.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+        if (el.id === 'editId') return;
+        obj[el.id] = el.type === 'checkbox' ? el.checked : (el.value || '');
+    });
     const invItems = [...els.itemLines.querySelectorAll('.item-row')].map(r => ({
         desc: r.querySelector('.i-desc')?.value || '',
         hs: r.querySelector('.i-hs')?.value || '',
@@ -1808,6 +1811,7 @@ window.addEventListener('keydown', (e) => {
         else if (els.docModal.classList.contains('active')) closeDocModal(false);
     }
 });
+window.hasUnsavedChanges = () => Boolean(els.docModal && els.docModal.classList.contains('active') && isDocDirty());
 window.addEventListener('beforeunload', (e) => {
     if (els.docModal.classList.contains('active') && isDocDirty()) {
         e.preventDefault();

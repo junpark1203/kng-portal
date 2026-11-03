@@ -348,7 +348,8 @@ body {
     grid-template-columns: repeat(2, 1fr);
     grid-template-areas:
         "exchange weather"
-        "bookmarks approvals"
+        "bookmarks bookmarks"
+        "calendar approvals"
         "worklogs inventory"
         "invoices sellerk";
     gap: var(--gap);

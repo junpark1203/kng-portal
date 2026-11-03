@@ -391,6 +391,10 @@ document.addEventListener('DOMContentLoaded', () => {
   fileInput.addEventListener('change',e=>{if(e.target.files.length)handleFile(e.target.files[0]);});
 
   function handleFile(file) {
+    if (globalSitesData.length > 0 && !confirm('현재 분류 중인 데이터가 있습니다. 새 엑셀 파일을 불러와 덮어쓰시겠습니까?')) {
+      fileInput.value = '';
+      return;
+    }
     const reader=new FileReader();
     reader.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});processData(wb);}catch(err){alert("엑셀 파싱 오류: "+err.message);}};
     reader.readAsArrayBuffer(file);
@@ -666,4 +670,11 @@ document.addEventListener('DOMContentLoaded', () => {
     var today=new Date();var dt=today.getFullYear()+''+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
     XLSX.writeFile(wb,'평생건산_납품내역_'+dt+'.xlsx');
   };
+  window.hasUnsavedChanges = () => Array.isArray(globalSitesData) && globalSitesData.length > 0;
+  window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 });

@@ -2351,5 +2351,85 @@ const app = {
 
 // DOM 로드 완료 후 앱 기동
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.modal').forEach(el => {
+        el.setAttribute('data-bs-backdrop', 'static');
+        el.setAttribute('data-bs-keyboard', 'false');
+    });
     app.init();
+
+    function getModalSnapshot(modalEl) {
+        if (!modalEl) return '';
+        const vals = [];
+        modalEl.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.type === 'button' || el.type === 'submit' || el.type === 'reset' || el.type === 'file') return;
+            vals.push(`${el.id || el.name || el.className}:${el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value}`);
+        });
+        return vals.join('|');
+    }
+    function isModalDirty(modalEl) {
+        if (!modalEl || !modalEl.classList.contains('show')) return false;
+        return modalEl._initialSnapshot !== undefined && getModalSnapshot(modalEl) !== modalEl._initialSnapshot;
+    }
+    document.addEventListener('show.bs.modal', (e) => {
+        const modalEl = e.target;
+        if (!modalEl) return;
+        modalEl.setAttribute('data-bs-backdrop', 'static');
+        modalEl.setAttribute('data-bs-keyboard', 'false');
+        const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getInstance(modalEl) : null;
+        if (inst && inst._config) {
+            inst._config.backdrop = 'static';
+            inst._config.keyboard = false;
+        }
+    });
+    document.addEventListener('shown.bs.modal', (e) => {
+        const modalEl = e.target;
+        if (modalEl) {
+            modalEl._initialSnapshot = getModalSnapshot(modalEl);
+            setTimeout(() => {
+                if (modalEl.classList.contains('show') && !modalEl._userEdited) {
+                    modalEl._initialSnapshot = getModalSnapshot(modalEl);
+                }
+            }, 80);
+            modalEl._userEdited = false;
+        }
+    });
+    document.addEventListener('input', (e) => {
+        const modalEl = e.target.closest && e.target.closest('.modal.show');
+        if (modalEl) modalEl._userEdited = true;
+    }, true);
+    document.addEventListener('change', (e) => {
+        const modalEl = e.target.closest && e.target.closest('.modal.show');
+        if (modalEl) modalEl._userEdited = true;
+    }, true);
+    document.addEventListener('hidePrevented.bs.modal', (e) => {
+        const modalEl = e.target;
+        if (!modalEl) return;
+        if (isModalDirty(modalEl)) {
+            if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        }
+        const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getInstance(modalEl) : null;
+        if (inst) inst.hide();
+    });
+    document.addEventListener('click', (e) => {
+        const dismissBtn = e.target.closest('[data-bs-dismiss="modal"], .btn-close');
+        if (!dismissBtn) return;
+        const modalEl = dismissBtn.closest('.modal');
+        if (modalEl && isModalDirty(modalEl)) {
+            if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        }
+    }, true);
+
+    window.hasUnsavedChanges = () => {
+        return Array.from(document.querySelectorAll('.modal.show')).some(m => isModalDirty(m));
+    };
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 });

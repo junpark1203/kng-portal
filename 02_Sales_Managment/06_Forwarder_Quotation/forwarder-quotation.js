@@ -497,11 +497,20 @@ function updateDefaultCostQuantities() {
     });
 }
 
+let initialForwarderDocSnapshot = '';
+function isForwarderQuoteDirty() {
+    if (state.view !== 'edit') return false;
+    return JSON.stringify(state.doc) !== initialForwarderDocSnapshot;
+}
+
 function switchView(view) {
     document.getElementById('listView').classList.remove('active');
     document.getElementById('editView').classList.remove('active');
     document.getElementById(view + 'View').classList.add('active');
     state.view = view;
+    if (view === 'edit') {
+        initialForwarderDocSnapshot = JSON.stringify(state.doc);
+    }
     document.body.style.overflow = 'auto';
     window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -782,8 +791,19 @@ function openNewQuote() {
 }
 
 function closeEdit() {
+    if (isForwarderQuoteDirty()) {
+        if (!confirm('작성 또는 수정 중인 견적 내용이 있습니다. 저장하지 않고 목록으로 돌아가시겠습니까?')) return;
+    }
     switchView('list');
 }
+
+window.hasUnsavedChanges = () => isForwarderQuoteDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isForwarderQuoteDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 // ─────────────────────────────────────────────────────────────
 // ECOUNT ERP 스타일 필터 & 검색 헬퍼

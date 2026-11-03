@@ -237,7 +237,43 @@ function handleRoute(pushState = true) {
     }
 }
 
+let initialWorkLogSnapshot = '';
+
+function getWorkLogSnapshot() {
+    return JSON.stringify({
+        date: inputDate ? inputDate.value : '',
+        authorName: inputAuthorName ? inputAuthorName.value : '',
+        logType: inputLogType ? inputLogType.value : '',
+        category: inputCategory ? inputCategory.value : '',
+        todayTasks: editorToday ? editorToday.value : '',
+        nextTasks: editorNext ? editorNext.value : '',
+        attachedImages: attachedImages || []
+    });
+}
+
+function isWorkLogDirty() {
+    if (!editView || !editView.classList.contains('active')) return false;
+    return getWorkLogSnapshot() !== initialWorkLogSnapshot;
+}
+
+window.hasUnsavedChanges = function() {
+    return isWorkLogDirty();
+};
+
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 window.addEventListener('popstate', () => {
+    if (isWorkLogDirty()) {
+        if (!confirm('작성/수정 중인 업무일지 내용이 저장되지 않았습니다.\n목록으로 돌아가시겠습니까?')) {
+            history.pushState(null, '', window.location.search + (currentEditingId ? `#edit=${currentEditingId}` : '#new'));
+            return;
+        }
+    }
     handleRoute(false);
 });
 
@@ -314,6 +350,7 @@ async function showEditor(id = null, pushState = true) {
         attachedImages = [];
         renderGallery();
     }
+    initialWorkLogSnapshot = getWorkLogSnapshot();
 }
 
 // ----------------------------------------------------
@@ -468,6 +505,7 @@ async function saveLog(isDraft) {
         });
         
         if (res.ok) {
+            initialWorkLogSnapshot = getWorkLogSnapshot();
             alert(isDraft ? '임시저장 되었습니다.' : '저장 되었습니다.');
             showList(true);
         } else {
@@ -513,7 +551,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 btnNewLog.addEventListener('click', () => showEditor(null, true));
 btnBack.addEventListener('click', () => {
-    // Check if dirty could go here
+    if (isWorkLogDirty()) {
+        if (!confirm('작성/수정 중인 업무일지 내용이 저장되지 않았습니다.\n목록으로 돌아가시겠습니까?')) {
+            return;
+        }
+    }
     showList(true);
 });
 

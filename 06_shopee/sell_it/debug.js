@@ -8,7 +8,7 @@ dom.window.document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         console.log('App loaded. Checking error...');
         const errorCell = dom.window.document.querySelector('#pc-table tbody td');
-        if (errorCell && errorCell.textContent.includes('µ¥ÀÌÅÍ ·Îµå ½ÇÆÐ')) {
+        if (errorCell && errorCell.textContent.includes('ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ ï¿½ï¿½ï¿½ï¿½')) {
             console.error('ERROR FOUND IN DOM:', errorCell.textContent);
         } else {
             console.log('NO ERROR FOUND in DOM');

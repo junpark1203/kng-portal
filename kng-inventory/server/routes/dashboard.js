@@ -18,7 +18,7 @@ function dbAll(sql, params = []) {
 
 // 계정 이메일 -> 표시 이름(작성자명) 고정값 매핑
 const USER_NAME_MAP = {
-    'jpark120325@gmail.com': '박준용',
+    'jpark120325@gmail.com': '박준영',
     // 필요 시 아래에 '이메일': '작성자명' 을 추가하세요
 };
 
@@ -27,24 +27,31 @@ router.get('/summary', async (req, res) => {
         const userEmail = req.user ? req.user.email : null;
         const authorName = userEmail ? (USER_NAME_MAP[userEmail] || userEmail) : null;
 
-        // 1. 진행중인 지출결의서 (본인 작성분만 필터링)
+        // 1. 진행중인 지출결의서 (전체 결재대기/상신 내역 조회)
         let pendingExpenses = [];
-        if (authorName) {
+        try {
             pendingExpenses = await dbAll(`
-                SELECT id, title, amount, currency, status, createdAt, personInCharge 
+                SELECT id, title, amount, vatAmount, currency, vendorName, createdDate, status, createdAt, personInCharge 
                 FROM expense_resolutions 
-                WHERE status NOT IN ('결재보류', '결재완료') AND (personInCharge = ? OR personInCharge = ?)
+                WHERE status NOT IN ('결재보류', '결재완료')
                 ORDER BY createdAt DESC
-            `, [userEmail, authorName]);
+            `);
+        } catch (e) {
+            console.warn('[Dashboard] expense_resolutions 조회 건너뜀:', e.message);
         }
 
         // 2. 진행중인 전시회 참관 보고서
-        const pendingExhibitions = await dbAll(`
-            SELECT id, exhibitionName, visitDate, status, createdAt 
-            FROM exhibition_reports 
-            WHERE status NOT IN ('결재보류', '결재완료')
-            ORDER BY createdAt DESC
-        `);
+        let pendingExhibitions = [];
+        try {
+            pendingExhibitions = await dbAll(`
+                SELECT id, exhibitionName, visitDate, status, createdAt 
+                FROM exhibition_reports 
+                WHERE status NOT IN ('결재보류', '결재완료')
+                ORDER BY createdAt DESC
+            `);
+        } catch (e) {
+            console.warn('[Dashboard] exhibition_reports 조회 건너뜀:', e.message);
+        }
 
         // 3. 진행중인 인보이스/팩킹리스트
         const pendingInvoices = await dbAll(`
@@ -80,7 +87,7 @@ router.get('/summary', async (req, res) => {
             const logs = await dbAll(`
                 SELECT id, date, todayTasks, nextTasks, createdAt 
                 FROM work_logs 
-                WHERE (authorId = ? OR authorId = ?) AND isDraft = 0 
+                WHERE (authorId = ? OR authorId = ? OR authorId = '박준용') AND isDraft = 0 
                 ORDER BY date DESC 
                 LIMIT 1
             `, [userEmail, authorName]);
@@ -93,7 +100,7 @@ router.get('/summary', async (req, res) => {
         let pendingLeaves = [];
         try {
             pendingLeaves = await dbAll(`
-                SELECT id, name, department, rank, leaveType, leaveStart, leaveEnd, daysCount, status, createdAt, userEmail 
+                SELECT id, name, department, rank, leaveType, leaveStart, leaveEnd, daysCount, reason, submitDate, status, createdAt, userEmail 
                 FROM leave_requests 
                 WHERE status NOT IN ('결재보류', '결재완료')
                 ORDER BY createdAt DESC
@@ -102,10 +109,24 @@ router.get('/summary', async (req, res) => {
             console.warn('[Dashboard] leave_requests 조회 건너뜀:', e.message);
         }
 
+        // 2-2. 진행중인 무역대금 송금 추가 확인서 (대시보드 결재대기함 연동)
+        let pendingRemittances = [];
+        try {
+            pendingRemittances = await dbAll(`
+                SELECT id, remittanceDate, currency, amount, beneficiaryName, hsCode, priceTerms, tradePurpose, submitDate, status, author, expenseId, expenseTitle, createdAt
+                FROM trade_remittance_confirmations
+                WHERE status NOT IN ('결재보류', '결재완료')
+                ORDER BY createdAt DESC
+            `);
+        } catch (e) {
+            console.warn('[Dashboard] trade_remittance_confirmations 조회 건너뜀:', e.message);
+        }
+
         res.json({
             pendingExpenses,
             pendingExhibitions,
             pendingLeaves,
+            pendingRemittances,
             pendingInvoices: pendingInvoices.map(inv => {
                 try { inv.shipper = JSON.parse(inv.shipper || '{}'); } catch(e) { inv.shipper = {}; }
                 try { inv.consignee = JSON.parse(inv.consignee || '{}'); } catch(e) { inv.consignee = {}; }

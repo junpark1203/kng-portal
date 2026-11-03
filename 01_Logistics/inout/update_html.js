@@ -5,19 +5,19 @@ let c = fs.readFileSync('index.html', 'utf8');
 const old_buttons =         <div class="d-flex gap-2">
             <div class="btn-group shadow-sm">
                 <button class="btn btn-warning" onclick="app.openDrawer('direct_create')">
-                    <i class='bx bx-shuffle'></i> Á÷Ãâ°í µî·Ï
+                    <i class='bx bx-shuffle'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
                 </button>
                 <button class="btn btn-outline-warning text-dark fw-bold" onclick="app.openDirectExcelModal()">
-                    <i class='bx bx-table'></i> ¿¢¼¿ ÀÏ°ý µî·Ï
+                    <i class='bx bx-table'></i> ï¿½ï¿½ï¿½ï¿½ ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½
                 </button>
             </div>;
 
 const new_buttons =         <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary shadow-sm fw-bold text-dark bg-white" onclick="app.openExcelMenuModal()">
-                <i class='bx bx-table'></i> ¿¢¼¿µî·Ï
+                <i class='bx bx-table'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             </button>
             <button class="btn btn-warning shadow-sm" onclick="app.openDrawer('direct_create')">
-                <i class='bx bx-shuffle'></i> Á÷Ãâ°í µî·Ï
+                <i class='bx bx-shuffle'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             </button>;
 
 if (c.includes(old_buttons)) {
@@ -27,27 +27,27 @@ if (c.includes(old_buttons)) {
     // Just replace the inner group if it's slightly different formatting
     const regex = /<div class="btn-group shadow-sm">[\s\S]*?<\/div>/;
     c = c.replace(regex, <button class="btn btn-outline-secondary shadow-sm fw-bold text-dark bg-white" onclick="app.openExcelMenuModal()">
-                <i class='bx bx-table'></i> ¿¢¼¿µî·Ï
+                <i class='bx bx-table'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             </button>
             <button class="btn btn-warning shadow-sm" onclick="app.openDrawer('direct_create')">
-                <i class='bx bx-shuffle'></i> Á÷Ãâ°í µî·Ï
+                <i class='bx bx-shuffle'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             </button>);
 }
 
-const new_modal = <!-- ¿¢¼¿ µî·Ï ¸Þ´º ¸ð´Þ -->
+const new_modal = <!-- ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Þ´ï¿½ ï¿½ï¿½ï¿½ -->
 <div class="modal fade" id="excelMenuModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
             <div class="modal-header bg-light">
-                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> ¿¢¼¿ ÀÏ°ý µî·Ï</h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> ï¿½ï¿½ï¿½ï¿½ ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center py-4">
                 <button class="btn btn-warning w-100 py-3 fw-bold fs-6 shadow-sm" onclick="app.closeExcelMenuAndOpenDirect()">
-                    <i class='bx bx-shuffle'></i> Á÷Ãâ°í ÀÏ°ýµî·Ï
+                    <i class='bx bx-shuffle'></i> ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï°ï¿½ï¿½ï¿½ï¿½
                 </button>
                 <div class="mt-4 text-muted small text-start">
-                    <i class='bx bx-info-circle'></i> ÀÔ°í ¹× Ãâ°í ÀÏ°ýµî·ÏÀº ÃßÈÄ Áö¿ø ¿¹Á¤ÀÔ´Ï´Ù.
+                    <i class='bx bx-info-circle'></i> ï¿½Ô°ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ï°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Ï´ï¿½.
                 </div>
             </div>
         </div>
@@ -56,7 +56,7 @@ const new_modal = <!-- ¿¢¼¿ µî·Ï ¸Þ´º ¸ð´Þ -->
 
 ;
 
-const idx = c.indexOf('<!-- Á÷Ãâ°í ¿¢¼¿ ¾÷·Îµå ¸ð´Þ -->');
+const idx = c.indexOf('<!-- ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½ ï¿½ï¿½ï¿½ -->');
 if (idx !== -1 && !c.includes('excelMenuModal')) {
     c = c.substring(0, idx) + new_modal + c.substring(idx);
 }

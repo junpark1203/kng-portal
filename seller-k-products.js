@@ -944,16 +944,60 @@ function openModal(id) {
     }
 
     modal.style.display = 'block';
+    initialSkModalSnap = getSkModalSnapshot();
     setTimeout(function() {
         var input = document.getElementById('skSupplier');
         if (input) input.focus();
     }, 50);
 }
 
-function closeModal() {
+var initialSkModalSnap = null;
+function getSkModalSnapshot() {
+    var form = document.getElementById('skForm');
+    if (!form) return '';
+    var vals = [];
+    form.querySelectorAll('input, select, textarea').forEach(function(el) {
+        if (el.readOnly) return;
+        vals.push(el.id + ':' + (el.type === 'checkbox' ? el.checked : el.value));
+    });
+    return vals.join('|');
+}
+
+function isSkModalDirty() {
+    var modal = document.getElementById('skModal');
+    if (!modal || modal.style.display !== 'block' || initialSkModalSnap === null) return false;
+    return getSkModalSnapshot() !== initialSkModalSnap;
+}
+
+function closeModal(force) {
+    var isForce = force === true;
+    if (!isForce && isSkModalDirty()) {
+        if (!confirm('작성 또는 수정 중인 상품 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
     var modal = document.getElementById('skModal');
     if (modal) modal.style.display = 'none';
     editingId = null;
+    initialSkModalSnap = null;
+}
+
+function isBulkModalDirty() {
+    var bulkEditModal = document.getElementById('bulkEditSkModal');
+    if (!bulkEditModal || (bulkEditModal.style.display !== 'block' && bulkEditModal.style.display !== 'flex')) return false;
+    return Boolean(
+        (document.getElementById('bulkSkDate') && document.getElementById('bulkSkDate').value) ||
+        (document.getElementById('bulkSkSupplier') && document.getElementById('bulkSkSupplier').value.trim()) ||
+        (document.getElementById('bulkSkBrand') && document.getElementById('bulkSkBrand').value.trim()) ||
+        (document.getElementById('bulkSkShippingBasis') && document.getElementById('bulkSkShippingBasis').value)
+    );
+}
+
+function closeBulkModal(force) {
+    var isForce = force === true;
+    if (!isForce && isBulkModalDirty()) {
+        if (!confirm('입력 중인 일괄 수정 항목이 있습니다. 취소하고 닫으시겠습니까?')) return;
+    }
+    var bulkEditModal = document.getElementById('bulkEditSkModal');
+    if (bulkEditModal) bulkEditModal.style.display = 'none';
 }
 
 function toggleShippingQty() {
@@ -1232,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(function(res) { return res.json(); })
                 .then(function() {
                     showToast('상품 정보가 수정되었습니다.', 'success');
-                    closeModal();
+                    closeModal(true);
                     loadProducts();
                 })
                 .catch(function(err) {
@@ -1248,7 +1292,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(function(res) { return res.json(); })
                 .then(function() {
                     showToast('새 상품이 등록되었습니다.', 'success');
-                    closeModal();
+                    closeModal(true);
                     loadProducts();
                 })
                 .catch(function(err) {
@@ -1296,9 +1340,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeImageGallery();
                 return;
             }
-            if (skModal && skModal.style.display === 'block') closeModal();
+            if (skModal && skModal.style.display === 'block') closeModal(false);
             if (bulkModal && (bulkModal.style.display === 'block' || bulkModal.style.display === 'flex')) {
-                bulkModal.style.display = 'none';
+                closeBulkModal(false);
             }
         }
     });
@@ -1463,8 +1507,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (closeBulkBtn) closeBulkBtn.addEventListener('click', function() { if (bulkEditModal) bulkEditModal.style.display = 'none'; });
-    if (cancelBulkBtn) cancelBulkBtn.addEventListener('click', function() { if (bulkEditModal) bulkEditModal.style.display = 'none'; });
+    if (closeBulkBtn) closeBulkBtn.addEventListener('click', function() { closeBulkModal(false); });
+    if (cancelBulkBtn) cancelBulkBtn.addEventListener('click', function() { closeBulkModal(false); });
 
     if (bulkBasisEl) {
         bulkBasisEl.addEventListener('change', function() {
@@ -1733,4 +1777,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 전역 새로고침 함수 노출
     window.refreshData = loadProducts;
+    window.hasUnsavedChanges = function() {
+        return isSkModalDirty() || isBulkModalDirty();
+    };
+    window.addEventListener('beforeunload', function(e) {
+        if (window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 });

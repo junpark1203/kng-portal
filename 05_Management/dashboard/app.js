@@ -103,8 +103,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 이벤트 모달 처리
     const modal = document.getElementById('eventModal');
-    document.getElementById('addEventBtn').addEventListener('click', () => modal.classList.remove('hidden'));
-    document.getElementById('closeEventModal').addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('addEventBtn').addEventListener('click', () => {
+        document.getElementById('eventForm').reset();
+        modal.classList.remove('hidden');
+    });
+    document.getElementById('closeEventModal').addEventListener('click', () => {
+        const hasVal = document.getElementById('eventSummary').value.trim() || document.getElementById('eventStartDate').value;
+        if (hasVal && !confirm('작성 중인 일정 내용이 있습니다. 닫으시겠습니까?')) return;
+        document.getElementById('eventForm').reset();
+        modal.classList.add('hidden');
+    });
 
     const allDayCheckbox = document.getElementById('eventAllDay');
     const startTimeInput = document.getElementById('eventStartTime');
@@ -226,26 +234,24 @@ async function loadAll() {
     
     const isAdmin = await waitForAdminStatus();
     
-    // 레이아웃 변경 (관리자 vs 일반)
+    // 레이아웃 적용 (주요 증시 + 이번달 일정 + 결재 대기함 기본 표시)
     const grid = document.querySelector('.dashboard-grid');
     if (grid) {
-        if (isAdmin) {
-            grid.classList.add('admin-layout');
-        } else {
-            grid.classList.remove('admin-layout');
-        }
+        grid.classList.add('admin-layout');
     }
 
-    if (isAdmin) {
-        loadCalendarEvents();
-    } else {
-        const calSec = document.getElementById('calendarSection');
-        if (calSec) calSec.style.display = 'none';
-    }
+    const calSec = document.getElementById('calendarSection');
+    if (calSec) calSec.style.display = '';
+    loadCalendarEvents();
 
     // 즐겨찾기 로드
     loadBookmarks();
 }
+
+window.onPortalTabActivated = function() {
+    loadDashboardData();
+    loadCalendarEvents();
+};
 
 async function loadMarketIndices() {
     const container = document.getElementById('customMarketWidget');
@@ -444,7 +450,7 @@ async function loadDashboardData() {
         if (!res.ok) throw new Error('데이터 불러오기 실패');
         const data = await res.json();
 
-        renderApprovals(data.pendingExpenses, data.pendingExhibitions, data.pendingLeaves);
+        renderApprovals(data.pendingExpenses, data.pendingExhibitions, data.pendingLeaves, data.pendingRemittances);
         renderInvoices(data.pendingInvoices);
         renderLowStock(data.lowStockHqProducts);
         renderRecentSellerK(data.recentSellerKProducts);
@@ -539,14 +545,30 @@ async function loadCalendarEvents() {
 /* ════════════════════════════════
    결재 대기함
    ════════════════════════════════ */
-function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
+function openApprovalModule(url, title, icon) {
+    if (window.parent && window.parent !== window && typeof window.parent.openPortalTab === 'function') {
+        window.parent.openPortalTab(url, title, icon || 'bx bx-file', 'iframe');
+    } else {
+        window.location.href = '../../' + url.replace(/^\.\//, '');
+    }
+}
+
+function renderApprovals(expenses = [], exhibitions = [], leaves = [], remittances = []) {
     const container = document.getElementById('approvalWidget');
     let html = '';
 
-    if (expenses.length === 0 && exhibitions.length === 0 && leaves.length === 0) {
+    if (expenses.length === 0 && exhibitions.length === 0 && leaves.length === 0 && remittances.length === 0) {
         container.innerHTML = '<div class="empty-state"><i class="bx bx-check-circle"></i> 대기 중인 결재 문서가 없습니다.</div>';
         return;
     }
+
+    const getCurrencySymbol = (c) => {
+        if (c === 'USD') return '$';
+        if (c === 'EUR') return '€';
+        if (c === 'JPY') return '¥';
+        if (c === 'CNY') return '¥';
+        return '₩';
+    };
 
     // 1. 휴가원 결재 대기 목록
     leaves.forEach(doc => {
@@ -554,10 +576,11 @@ function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
         html += `
             <div class="list-item">
                 <div class="item-header">
-                    <span class="item-title"><i class='bx bx-calendar-event' style='color:#059669;margin-right:4px;'></i>[휴가원] ${doc.name || '신청자'} (${doc.leaveType || '연차'} ${doc.daysCount || 1}일)</span>
+                    <span class="item-title" style="cursor:pointer;" title="클릭하여 휴가원 모듈 열기" onclick="openApprovalModule('./05_Management/forms/leave.html', '휴가원', 'bx bx-calendar-heart')"><i class='bx bx-calendar-event' style='color:#059669;margin-right:4px;'></i>[휴가원] ${doc.name || '신청자'} (${doc.leaveType || '연차'} ${doc.daysCount || 1}일)</span>
                     <select class="status-select" onchange="updateStatus('leave-request', '${doc.id}', this.value)">
                         <option value="임시작성" ${doc.status === '임시작성' ? 'selected' : ''}>임시작성</option>
                         <option value="결재대기" ${doc.status === '결재대기' ? 'selected' : ''}>결재대기</option>
+                        <option value="결재상신" ${doc.status === '결재상신' ? 'selected' : ''}>결재상신</option>
                         <option value="결재요청" ${doc.status === '결재요청' ? 'selected' : ''}>결재요청</option>
                         <option value="결재진행중" ${doc.status === '결재진행중' ? 'selected' : ''}>결재진행중</option>
                         <option value="결재보류">결재보류</option>
@@ -567,7 +590,7 @@ function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
                 <div class="item-meta">
                     <span>기간: ${period}</span>
                     <span>사유: ${doc.reason || '-'}</span>
-                    <span>${(doc.createdAt || '').split('T')[0]}</span>
+                    <span>${(doc.submitDate || doc.createdAt || '').split('T')[0]}</span>
                 </div>
             </div>
         `;
@@ -575,26 +598,24 @@ function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
 
     // 2. 지출결의서 목록
     expenses.forEach(doc => {
-        const getCurrencySymbol = (c) => {
-            if (c === 'USD') return '$';
-            if (c === 'EUR') return '€';
-            if (c === 'JPY') return '¥';
-            if (c === 'CNY') return '¥';
-            return '₩';
-        };
         const curSym = getCurrencySymbol(doc.currency);
-        const amtText = Number(doc.amount || 0).toLocaleString(undefined, {
+        const totalAmt = (doc.currency === 'KRW' || !doc.currency)
+            ? (Number(doc.amount || 0) + Number(doc.vatAmount || 0))
+            : Number(doc.amount || 0);
+        const amtText = totalAmt.toLocaleString(undefined, {
             minimumFractionDigits: (doc.currency === 'KRW' || !doc.currency) ? 0 : 2
         });
 
         html += `
             <div class="list-item">
                 <div class="item-header">
-                    <span class="item-title">[지출결의] ${doc.title || '제목없음'}</span>
+                    <span class="item-title" style="cursor:pointer;" title="클릭하여 지출결의서 모듈 열기" onclick="openApprovalModule('./05_Management/forms/expense.html', '지출결의서', 'bx bx-receipt')"><i class='bx bx-receipt' style='color:#2563eb;margin-right:4px;'></i>[지출결의] ${doc.title || '제목없음'}</span>
                     <select class="status-select" onchange="updateStatus('expense-resolution', '${doc.id}', this.value)">
                         <option value="임시작성" ${doc.status === '임시작성' ? 'selected' : ''}>임시작성</option>
                         <option value="결재대기" ${doc.status === '결재대기' ? 'selected' : ''}>결재대기</option>
                         <option value="결재상신" ${doc.status === '결재상신' ? 'selected' : ''}>결재상신</option>
+                        <option value="결재요청" ${doc.status === '결재요청' ? 'selected' : ''}>결재요청</option>
+                        <option value="결재진행중" ${doc.status === '결재진행중' ? 'selected' : ''}>결재진행중</option>
                         <option value="결재보류">결재보류</option>
                         <option value="결재완료">결재완료</option>
                     </select>
@@ -602,18 +623,51 @@ function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
                 <div class="item-meta">
                     <span>기안: ${doc.personInCharge || '-'}</span>
                     <span>${curSym} ${amtText}</span>
-                    <span>${doc.createdAt.split('T')[0]}</span>
+                    <span>${(doc.createdDate || doc.createdAt || '').split('T')[0]}</span>
                 </div>
             </div>
         `;
     });
 
-    // 3. 전시회 참관 보고서 목록
+    // 3. 무역대금 송금 추가 확인서 목록
+    remittances.forEach(doc => {
+        const curSym = getCurrencySymbol(doc.currency);
+        const amtText = Number(doc.amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: (doc.currency === 'KRW') ? 0 : 2
+        });
+        const titleText = doc.beneficiaryName
+            ? `${doc.beneficiaryName}${doc.expenseTitle ? ' (' + doc.expenseTitle + ')' : ''}`
+            : (doc.expenseTitle || '수취인 미지정');
+
+        html += `
+            <div class="list-item">
+                <div class="item-header">
+                    <span class="item-title" style="cursor:pointer;" title="클릭하여 무역대금 송금 추가 확인서 모듈 열기" onclick="openApprovalModule('./05_Management/forms/trade_remittance.html', '무역대금 송금 추가 확인서', 'bx bx-globe')"><i class='bx bx-globe' style='color:#7c3aed;margin-right:4px;'></i>[송금확인서] ${titleText}</span>
+                    <select class="status-select" onchange="updateStatus('trade-remittance', '${doc.id}', this.value)">
+                        <option value="임시작성" ${doc.status === '임시작성' ? 'selected' : ''}>임시작성</option>
+                        <option value="결재대기" ${doc.status === '결재대기' ? 'selected' : ''}>결재대기</option>
+                        <option value="결재상신" ${doc.status === '결재상신' ? 'selected' : ''}>결재상신</option>
+                        <option value="결재요청" ${doc.status === '결재요청' ? 'selected' : ''}>결재요청</option>
+                        <option value="결재진행중" ${doc.status === '결재진행중' ? 'selected' : ''}>결재진행중</option>
+                        <option value="결재보류">결재보류</option>
+                        <option value="결재완료">결재완료</option>
+                    </select>
+                </div>
+                <div class="item-meta">
+                    <span>작성: ${doc.author || '-'}</span>
+                    <span>${curSym} ${amtText}</span>
+                    <span>${(doc.remittanceDate || doc.submitDate || doc.createdAt || '').split('T')[0]}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // 4. 전시회 참관 보고서 목록
     exhibitions.forEach(doc => {
         html += `
             <div class="list-item">
                 <div class="item-header">
-                    <span class="item-title">[참관보고] ${doc.exhibitionName || '전시회명 없음'}</span>
+                    <span class="item-title" style="cursor:pointer;" title="클릭하여 전시회 참관 보고서 모듈 열기" onclick="openApprovalModule('./05_Management/forms/exhibition-report/index.html', '전시회 참관 보고서', 'bx bx-buildings')"><i class='bx bx-buildings' style='color:#d97706;margin-right:4px;'></i>[참관보고] ${doc.exhibitionName || '전시회명 없음'}</span>
                     <select class="status-select" onchange="updateStatus('exhibition-report', '${doc.id}', this.value)">
                         <option value="임시작성" ${doc.status === '임시작성' ? 'selected' : ''}>임시작성</option>
                         <option value="결재대기" ${doc.status === '결재대기' ? 'selected' : ''}>결재대기</option>
@@ -624,7 +678,7 @@ function renderApprovals(expenses = [], exhibitions = [], leaves = []) {
                 </div>
                 <div class="item-meta">
                     <span>방문: ${doc.visitDate || '-'}</span>
-                    <span>${doc.createdAt.split('T')[0]}</span>
+                    <span>${(doc.createdAt || '').split('T')[0]}</span>
                 </div>
             </div>
         `;
@@ -781,8 +835,9 @@ async function updateStatus(apiEndpoint, id, newStatus) {
             body: JSON.stringify({ status: newStatus })
         });
         if (!res.ok) throw new Error('상태 변경 실패');
-        if (newStatus === '결재완료' || newStatus === '결재보류' || newStatus === '완료') {
-            loadDashboardData();
+        loadDashboardData();
+        if (apiEndpoint === 'leave-request' && (newStatus === '결재완료' || newStatus === '결재보류')) {
+            loadCalendarEvents();
         }
     } catch (err) {
         alert(err.message);
@@ -977,6 +1032,7 @@ function openBookmarkModal(index, isEdit = false) {
     
     toggleBookmarkType();
     modal.classList.remove('hidden');
+    initialBookmarkSnapshot = getBookmarkSnapshot();
 }
 
 function toggleBookmarkType() {
@@ -998,12 +1054,28 @@ document.querySelectorAll('input[name="bmType"]').forEach(radio => {
     radio.addEventListener('change', toggleBookmarkType);
 });
 
-document.getElementById('closeBookmarkModal')?.addEventListener('click', () => {
-    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
-});
-document.getElementById('btnCancelBookmark')?.addEventListener('click', () => {
-    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
-});
+let initialBookmarkSnapshot = '';
+function getBookmarkSnapshot() {
+    const typeEl = document.querySelector('input[name="bmType"]:checked');
+    return JSON.stringify({
+        type: typeEl ? typeEl.value : 'internal',
+        internal: document.getElementById('bmInternalSelect')?.value || '',
+        externalUrl: document.getElementById('bmExternalUrl')?.value || '',
+        externalTitle: document.getElementById('bmExternalTitle')?.value || ''
+    });
+}
+
+function closeBookmarkModalWithConfirm() {
+    const modal = document.getElementById('bookmarkModalOverlay');
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (getBookmarkSnapshot() !== initialBookmarkSnapshot) {
+        if (!confirm('변경 중인 즐겨찾기 내용이 있습니다. 닫으시겠습니까?')) return;
+    }
+    modal.classList.add('hidden');
+}
+
+document.getElementById('closeBookmarkModal')?.addEventListener('click', closeBookmarkModalWithConfirm);
+document.getElementById('btnCancelBookmark')?.addEventListener('click', closeBookmarkModalWithConfirm);
 
 document.getElementById('bookmarkForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1032,6 +1104,7 @@ document.getElementById('bookmarkForm')?.addEventListener('submit', async (e) =>
 });
 
 document.getElementById('btnDeleteBookmark')?.addEventListener('click', async () => {
+    if (!confirm('이 즐겨찾기를 삭제하시겠습니까?')) return;
     const index = parseInt(document.getElementById('bmSlotIndex').value);
     userBookmarks[index] = null;
     await saveBookmarks();

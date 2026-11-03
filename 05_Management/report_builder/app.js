@@ -72,10 +72,38 @@ async function init() {
     await loadReportList();
 }
 
+let initialReportBuilderSnapshot = '';
+function getReportBuilderSnapshot() {
+    return JSON.stringify({
+        title: reportTitleInput ? reportTitleInput.value : '',
+        columns: state.columns,
+        rows: state.rows
+    });
+}
+function isReportBuilderDirty() {
+    if (!editorView || editorView.classList.contains('hidden')) return false;
+    return getReportBuilderSnapshot() !== initialReportBuilderSnapshot;
+}
+
+window.hasUnsavedChanges = function() {
+    return isReportBuilderDirty();
+};
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 function bindEvents() {
     // 뷰 전환 버튼
     document.getElementById('createNewBtn').addEventListener('click', createNewReport);
     document.getElementById('backToListBtn').addEventListener('click', () => {
+        if (isReportBuilderDirty()) {
+            if (!confirm('작성/수정 중인 보고서 내용이 저장되지 않았습니다.\n목록으로 돌아가시겠습니까?')) {
+                return;
+            }
+        }
         editorView.classList.add('hidden');
         listView.classList.remove('hidden');
         loadReportList();
@@ -182,6 +210,7 @@ function createNewReport() {
     
     renderColumnSettings();
     renderForm();
+    initialReportBuilderSnapshot = getReportBuilderSnapshot();
 }
 
 // API: 열기
@@ -206,6 +235,7 @@ async function openReport(id) {
         
         renderColumnSettings();
         renderForm();
+        initialReportBuilderSnapshot = getReportBuilderSnapshot();
     } catch (err) {
         alert('보고서를 불러올 수 없습니다.');
     } finally {
@@ -232,6 +262,7 @@ async function saveReport() {
         const data = await res.json();
         if (data.id) state.currentDocId = data.id;
         document.getElementById('saveCopyBtn').style.display = 'inline-flex'; // 저장 후엔 복사 가능
+        initialReportBuilderSnapshot = getReportBuilderSnapshot();
         alert('저장되었습니다.');
     } catch (err) {
         alert('저장 중 오류가 발생했습니다.');
@@ -554,6 +585,7 @@ function renderForm() {
     });
 }
 window.deleteRow = function(rowId) {
+    if (!confirm('이 행을 삭제하시겠습니까?')) return;
     state.rows = state.rows.filter(r => r.id !== rowId);
     renderForm();
 };

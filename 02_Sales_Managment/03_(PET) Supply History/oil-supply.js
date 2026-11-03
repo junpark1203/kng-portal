@@ -685,9 +685,28 @@ window.openModal = function(id = null) {
     }
 
     itemModal.classList.add('active');
+    initialOilSupplySnapshot = getOilSupplySnapshot();
 };
 
-function closeModal() { itemModal.classList.remove('active'); }
+let initialOilSupplySnapshot = '';
+function getOilSupplySnapshot() {
+    if (!itemModal) return '';
+    return Array.from(itemModal.querySelectorAll('input, select, textarea'))
+        .map(el => `${el.id || el.className}:${el.value}`)
+        .join('|');
+}
+function isOilSupplyDirty() {
+    if (!itemModal || !itemModal.classList.contains('active')) return false;
+    return getOilSupplySnapshot() !== initialOilSupplySnapshot;
+}
+
+function closeModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isOilSupplyDirty()) {
+        if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
+    itemModal.classList.remove('active');
+}
 
 async function saveItem() {
     const editId = $('editId').value;
@@ -717,7 +736,7 @@ async function saveItem() {
             });
             if (res.ok) {
                 showToast('수정되었습니다.', 'success');
-                closeModal();
+                closeModal(true);
                 loadData();
             } else {
                 const err = await res.json();
@@ -735,7 +754,7 @@ async function saveItem() {
                 });
                 if (res.ok) {
                     showToast('등록되었습니다.', 'success');
-                    closeModal();
+                    closeModal(true);
                     loadData();
                 } else {
                     const err = await res.json();
@@ -756,7 +775,7 @@ async function saveItem() {
                 if (res.ok) {
                     const result = await res.json();
                     showToast(`${result.insertedCount || lines.length}건이 등록되었습니다.`, 'success');
-                    closeModal();
+                    closeModal(true);
                     loadData();
                 } else {
                     const err = await res.json();
@@ -883,3 +902,16 @@ async function exportToExcel() {
         btn.disabled = false;
     }
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && itemModal && itemModal.classList.contains('active')) {
+        closeModal(false);
+    }
+});
+window.hasUnsavedChanges = () => isOilSupplyDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isOilSupplyDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

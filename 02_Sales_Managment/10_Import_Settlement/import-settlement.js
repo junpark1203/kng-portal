@@ -158,8 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initEvents() {
     document.getElementById('btnNewSettlement').addEventListener('click', openQuoteModal);
-    document.getElementById('btnCancelEdit').addEventListener('click', () => switchView('list'));
-    document.getElementById('btnCancelEditBottom').addEventListener('click', () => switchView('list'));
+    document.getElementById('btnCancelEdit').addEventListener('click', cancelEditSettlement);
+    document.getElementById('btnCancelEditBottom').addEventListener('click', cancelEditSettlement);
     
     document.getElementById('btnSaveSettlement').addEventListener('click', saveSettlement);
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
@@ -243,14 +243,37 @@ function initEvents() {
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
 }
 
+let initialSettlementSnapshot = '';
+function isSettlementDirty() {
+    if (state.view !== 'edit') return false;
+    return JSON.stringify(state.doc) !== initialSettlementSnapshot;
+}
+function cancelEditSettlement() {
+    if (isSettlementDirty()) {
+        if (!confirm('작성 또는 수정 중인 정산 내역이 있습니다. 저장하지 않고 목록으로 돌아가시겠습니까?')) return;
+    }
+    switchView('list');
+}
+
 function switchView(view) {
     document.getElementById('listView').classList.remove('active');
     document.getElementById('editView').classList.remove('active');
     document.getElementById(view + 'View').classList.add('active');
     state.view = view;
+    if (view === 'edit') {
+        initialSettlementSnapshot = JSON.stringify(state.doc);
+    }
     document.body.style.overflow = 'auto';
     window.scrollTo({ top: 0, behavior: 'instant' });
 }
+
+window.hasUnsavedChanges = () => isSettlementDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isSettlementDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 // ─────────────────────────────────────────────────────────────
 // 목록 관리

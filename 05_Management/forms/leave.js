@@ -315,6 +315,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // ─────────────────────────────────────────────────────────
     // 4. 모달 열기 / 저장 / 상태 변경
     // ─────────────────────────────────────────────────────────
+    let initialLeaveSnapshot = '';
+
+    function getLeaveFormSnapshot() {
+        return JSON.stringify({
+            department: els.fDepartment?.value || '',
+            rank: els.fRank?.value || '',
+            name: els.fName?.value || '',
+            leaveType: els.fLeaveType?.value || '',
+            leaveStart: els.fLeaveStart?.value || '',
+            leaveEnd: els.fLeaveEnd?.value || '',
+            daysCount: els.fDaysCount?.value || '',
+            submitDate: els.fSubmitDate?.value || '',
+            status: els.fStatus?.value || '',
+            reason: els.fReason?.value || ''
+        });
+    }
+
+    function isLeaveModalDirty() {
+        if (!els.modal || !els.modal.classList.contains('active')) return false;
+        return getLeaveFormSnapshot() !== initialLeaveSnapshot;
+    }
+
     function openModal(id = null) {
         currentEditId = id;
         const user = getCurrentUser();
@@ -359,11 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         els.modal.classList.add('active');
+        initialLeaveSnapshot = getLeaveFormSnapshot();
     }
 
-    function closeModal() {
+    function closeModal(force = false) {
+        if (force !== true && isLeaveModalDirty()) {
+            if (!confirm('작성/수정 중인 휴가원 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?')) {
+                return;
+            }
+        }
         els.modal.classList.remove('active');
         currentEditId = null;
+        initialLeaveSnapshot = '';
     }
 
     async function saveLeave() {
@@ -408,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error('저장 실패');
 
             showToast(isEdit ? '휴가원이 수정되었습니다.' : '휴가원이 신청(상신)되었습니다.', 'success');
-            closeModal();
+            closeModal(true);
             loadLeaveRequests();
             loadMySummary();
         } catch (err) {
@@ -683,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 이벤트 바인딩
     // ─────────────────────────────────────────────────────────
     els.btnNewLeave.addEventListener('click', () => openModal());
-    els.btnCloseEdit.addEventListener('click', closeModal);
+    els.btnCloseEdit.addEventListener('click', () => closeModal(false));
     els.btnSaveLeave.addEventListener('click', saveLeave);
     els.btnPrintLeave.addEventListener('click', printLeave);
     els.btnDeleteSelected.addEventListener('click', deleteSelected);
@@ -748,9 +777,40 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAllowances();
         els.allowanceModal.classList.add('active');
     });
-    els.btnCloseAllowance.addEventListener('click', () => els.allowanceModal.classList.remove('active'));
-    els.btnDoneAllowance.addEventListener('click', () => els.allowanceModal.classList.remove('active'));
+    function closeAllowanceModalWithConfirm() {
+        const newEmail = document.getElementById('newAllowEmail')?.value?.trim();
+        const newName = document.getElementById('newAllowName')?.value?.trim();
+        if ((newEmail || newName) && !confirm('추가 중인 임직원 연차 입력값이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+            return;
+        }
+        els.allowanceModal.classList.remove('active');
+    }
+    els.btnCloseAllowance.addEventListener('click', closeAllowanceModalWithConfirm);
+    els.btnDoneAllowance.addEventListener('click', closeAllowanceModalWithConfirm);
     els.btnAddAllowance.addEventListener('click', addNewAllowance);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (els.modal && els.modal.classList.contains('active')) {
+                e.preventDefault();
+                closeModal(false);
+            } else if (els.allowanceModal && els.allowanceModal.classList.contains('active')) {
+                e.preventDefault();
+                closeAllowanceModalWithConfirm();
+            }
+        }
+    });
+
+    window.hasUnsavedChanges = function() {
+        return isLeaveModalDirty();
+    };
+
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 
     els.allowanceTableBody.addEventListener('click', (e) => {
         const btnSave = e.target.closest('.btn-save-allow');

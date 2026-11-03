@@ -47,12 +47,31 @@
     }
 
     // ── Drawer Open / Close ──
+    let currentDrawerMode = 'IN';
+    function hasDrawerInput() {
+        const supplier = ($('dSupplier')?.value || '').trim();
+        const remarks = ($('dRemarks')?.value || '').trim();
+        if (supplier || remarks) return true;
+        const cards = document.querySelectorAll('#dItemsBody .drawer-card');
+        for (const c of cards) {
+            const inputs = c.querySelectorAll('input:not([readonly])');
+            for (const inp of inputs) {
+                if ((inp.value || '').trim() !== '') return true;
+            }
+        }
+        return false;
+    }
+
     function openDrawer() {
         $('drawerBackdrop').classList.add('active');
         $('drawerPanel').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-    function closeDrawer() {
+    function closeDrawer(force) {
+        const isForce = force === true;
+        if (!isForce && $('drawerPanel')?.classList.contains('active') && hasDrawerInput()) {
+            if (!confirm('입력 중인 품목 내역이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        }
         $('drawerBackdrop').classList.remove('active');
         $('drawerPanel').classList.remove('active');
         document.body.style.overflow = '';
@@ -78,8 +97,17 @@
     }
 
     // ── Toggle Mode ──
-    function toggleDrawerMode() {
+    function toggleDrawerMode(force) {
+        const isForce = force === true;
         const type = getDrawerType();
+        if (!isForce && document.querySelectorAll('#dItemsBody .drawer-card').length > 0 && hasDrawerInput()) {
+            if (!confirm('모드를 변경하면 입력 중인 품목 내역이 초기화됩니다. 계속하시겠습니까?')) {
+                const prevRadio = document.querySelector(`input[name="dTxType"][value="${currentDrawerMode}"]`);
+                if (prevRadio) prevRadio.checked = true;
+                return;
+            }
+        }
+        currentDrawerMode = type;
         const header = $('drawerHeader');
         const submitBtn = $('dSubmitBtn');
         $('dItemsBody').innerHTML = '';
@@ -346,7 +374,7 @@
             await fetchProducts(); addDrawerRow(); updateDrawerSummary();
             // Refresh transaction list
             if (window._refreshTransactions) window._refreshTransactions();
-            closeDrawer();
+            closeDrawer(true);
         } catch(e) { showToast('등록 실패: ' + e.message, 'error');
         } finally { btn.disabled = false; btn.innerHTML = origHtml; }
     }
@@ -358,18 +386,19 @@
 
         // Open/close drawer
         $('newEntryBtn').addEventListener('click', () => { openDrawer(); });
-        $('drawerCloseBtn').addEventListener('click', closeDrawer);
-        $('drawerBackdrop').addEventListener('click', closeDrawer);
+        $('drawerCloseBtn').addEventListener('click', () => closeDrawer(false));
+        $('drawerBackdrop').addEventListener('click', () => closeDrawer(false));
 
         // Mode toggle
-        document.querySelectorAll('input[name="dTxType"]').forEach(r => r.addEventListener('change', toggleDrawerMode));
+        document.querySelectorAll('input[name="dTxType"]').forEach(r => r.addEventListener('change', () => toggleDrawerMode(false)));
 
         // Add row / reset / submit
         $('dBtnAddRow').addEventListener('click', addDrawerRow);
         $('dResetBtn').addEventListener('click', () => {
+            if (hasDrawerInput() && !confirm('입력 중인 품목 내역을 모두 초기화하시겠습니까?')) return;
             $('dItemsBody').innerHTML = ''; $('dSupplier').value = ''; $('dRemarks').value = '';
             $('dTxDate').value = new Date().toISOString().split('T')[0];
-            $('dTypeIn').checked = true; toggleDrawerMode();
+            $('dTypeIn').checked = true; toggleDrawerMode(true);
         });
         $('dSubmitBtn').addEventListener('click', handleDrawerSubmit);
 
@@ -382,10 +411,10 @@
 
         // Keyboard: Escape to close drawer
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape' && $('drawerPanel').classList.contains('active')) closeDrawer();
+            if (e.key === 'Escape' && $('drawerPanel').classList.contains('active')) closeDrawer(false);
         });
 
         // Init first load
-        toggleDrawerMode();
+        toggleDrawerMode(true);
     });
 })();

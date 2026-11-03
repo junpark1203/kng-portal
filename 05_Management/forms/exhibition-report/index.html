@@ -31,13 +31,14 @@
                                         <th>방문 일자</th>
                                         <th>전시회명</th>
                                         <th>등록된 업체 수</th>
+                                        <th>결재상태</th>
                                         <th>작성 일시</th>
                                         <th class="col-action">관리</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reportListBody">
                                     <!-- 동적 렌더링 -->
-                                    <tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="7"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -50,9 +51,16 @@
                 <div class="modal-content" style="width: 95%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; padding: 20px;">
                     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
                         <h2 id="editViewTitle" style="margin: 0;"><i class='bx bx-edit'></i> 보고서 작성</h2>
-                        <div class="header-actions" style="display: flex; gap: 8px;">
+                        <div class="header-actions" style="display: flex; gap: 8px; align-items: center;">
+                            <select id="reportStatus" style="height: 36px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                                <option value="임시작성">임시작성</option>
+                                <option value="결재상신" selected>결재상신</option>
+                                <option value="결재대기">결재대기</option>
+                                <option value="결재보류">결재보류</option>
+                                <option value="결재완료">결재완료</option>
+                            </select>
                             <button id="btnTempSaveReport" class="btn-outline" style="color: #4f46e5; border-color: #4f46e5;"><i class='bx bx-save'></i> 임시저장</button>
-                            <button id="btnSaveReport" class="btn-primary"><i class='bx bx-check'></i> 저장 및 닫기</button>
+                            <button id="btnSaveReport" class="btn-primary"><i class='bx bx-send'></i> 결재상신 및 저장</button>
                             <button id="btnPrintPreview" class="btn-outline btn-outline-success"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
                             <button id="btnBackToList" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
                         </div>

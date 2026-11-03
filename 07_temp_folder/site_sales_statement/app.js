@@ -964,6 +964,7 @@ const app = {
     },
 
     deletePreviewRow(idx) {
+        if (!confirm('이 행을 미리보기 목록에서 삭제하시겠습니까?')) return;
         this.parsedItems.splice(idx, 1);
         this.renderPreviewTable();
     },
@@ -1070,6 +1071,13 @@ const app = {
 };
 
 window.app = app;
+window.hasUnsavedChanges = () => Array.isArray(app.parsedItems) && app.parsedItems.length > 0;
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
     app.init();

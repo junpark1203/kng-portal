@@ -2434,6 +2434,18 @@ ${itemLines}
             els.textRemarks.value = initialRemarks;
             state.data.remarks = initialRemarks;
         }
+        window._initialSalesSimSnapshot = JSON.stringify(state.data);
+    });
+
+    window.hasUnsavedChanges = () => {
+        if (!window._initialSalesSimSnapshot) return false;
+        return JSON.stringify(state.data) !== window._initialSalesSimSnapshot;
+    };
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
     });
 
 })();

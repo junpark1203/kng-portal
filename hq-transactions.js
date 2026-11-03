@@ -1789,10 +1789,55 @@
     // DOM Ready
     document.addEventListener('DOMContentLoaded', () => {
         const vModalEl = $('voucherModal');
-        if (vModalEl && window.bootstrap) voucherModal = new bootstrap.Modal(vModalEl, { keyboard: true });
+        if (vModalEl && window.bootstrap) voucherModal = new bootstrap.Modal(vModalEl, { backdrop: 'static', keyboard: false });
 
         const eModalEl = $('editModal');
-        if (eModalEl && window.bootstrap) editModal = new bootstrap.Modal(eModalEl, { keyboard: true });
+        if (eModalEl && window.bootstrap) editModal = new bootstrap.Modal(eModalEl, { backdrop: 'static', keyboard: false });
+
+        function getModalSnapshot(modalEl) {
+            if (!modalEl) return '';
+            const vals = [];
+            modalEl.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'button' || el.type === 'submit' || el.type === 'reset') return;
+                vals.push(`${el.id || el.name || el.className}:${el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value}`);
+            });
+            return vals.join('|');
+        }
+        function isModalDirty(modalEl) {
+            if (!modalEl || !modalEl.classList.contains('show')) return false;
+            return modalEl._initialSnapshot !== undefined && getModalSnapshot(modalEl) !== modalEl._initialSnapshot;
+        }
+        document.addEventListener('shown.bs.modal', (e) => {
+            if (e.target) e.target._initialSnapshot = getModalSnapshot(e.target);
+        });
+        document.addEventListener('hidePrevented.bs.modal', (e) => {
+            const modalEl = e.target;
+            if (!modalEl) return;
+            if (isModalDirty(modalEl)) {
+                if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+            }
+            const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getInstance(modalEl) : null;
+            if (inst) inst.hide();
+        });
+        document.addEventListener('click', (e) => {
+            const dismissBtn = e.target.closest('[data-bs-dismiss="modal"], .btn-close');
+            if (!dismissBtn) return;
+            const modalEl = dismissBtn.closest('.modal');
+            if (modalEl && isModalDirty(modalEl)) {
+                if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }
+            }
+        }, true);
+        window.hasUnsavedChanges = () => Array.from(document.querySelectorAll('.modal.show')).some(m => isModalDirty(m));
+        window.addEventListener('beforeunload', (e) => {
+            if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
 
         // 정렬 클릭
         document.querySelectorAll('#txTable thead th.sortable').forEach(th => {

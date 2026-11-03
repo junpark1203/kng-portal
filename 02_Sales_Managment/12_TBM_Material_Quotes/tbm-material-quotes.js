@@ -88,7 +88,27 @@ function escapeHtml(str) {
     }[tag] || tag));
 }
 
-function showListView() {
+let initialTbmQuoteSnapshot = '';
+function getTbmQuoteSnapshot() {
+    saveCurrentInputValues();
+    return JSON.stringify({
+        title: document.getElementById('documentTitle')?.value || '',
+        suppliers,
+        items
+    });
+}
+function isTbmQuoteDirty() {
+    const detailView = document.getElementById('detailView');
+    if (!detailView || detailView.style.display === 'none') return false;
+    return initialTbmQuoteSnapshot !== '' && getTbmQuoteSnapshot() !== initialTbmQuoteSnapshot;
+}
+
+function showListView(force = false) {
+    const isForce = force === true;
+    if (!isForce && isTbmQuoteDirty()) {
+        if (!confirm('작성 또는 수정 중인 단가 비교표 내용이 있습니다. 저장하지 않고 목록으로 이동하시겠습니까?')) return;
+    }
+    initialTbmQuoteSnapshot = '';
     document.getElementById('detailView').style.display = 'none';
     document.getElementById('listView').style.display = 'flex';
     loadDocumentList();
@@ -97,6 +117,7 @@ function showListView() {
 function showDetailView() {
     document.getElementById('listView').style.display = 'none';
     document.getElementById('detailView').style.display = 'flex';
+    initialTbmQuoteSnapshot = getTbmQuoteSnapshot();
 }
 
 function createNewDocument() {
@@ -460,6 +481,7 @@ async function saveDocument(status) {
         if (!currentDocumentId && result.id) {
             currentDocumentId = result.id;
         }
+        initialTbmQuoteSnapshot = getTbmQuoteSnapshot();
         
         Swal.fire('성공', '견적서가 저장되었습니다.', 'success');
     } catch(err) {
@@ -633,3 +655,11 @@ function prepareAndPrint() {
         }, 500);
     }, 100);
 }
+
+window.hasUnsavedChanges = () => isTbmQuoteDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isTbmQuoteDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

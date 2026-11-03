@@ -142,10 +142,34 @@ document.getElementById('checkAll').addEventListener('change', e => {
 });
 
 // ── Modal Open/Close ──
-function openModal() { document.getElementById('contractModal').classList.add('active'); }
-function closeModal() { document.getElementById('contractModal').classList.remove('active'); currentContractId = null; }
-document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+let initialContractSnapshot = '';
+function getContractSnapshot() {
+    const modal = document.getElementById('contractModal');
+    if (!modal) return '';
+    return Array.from(modal.querySelectorAll('input, select, textarea'))
+        .filter(el => el.id !== 'inpContractNo' && el.type !== 'file')
+        .map(el => `${el.id || el.className}:${el.value}`)
+        .join('|');
+}
+function isContractModalDirty() {
+    const modal = document.getElementById('contractModal');
+    if (!modal || !modal.classList.contains('active')) return false;
+    return getContractSnapshot() !== initialContractSnapshot;
+}
+function openModal() {
+    document.getElementById('contractModal').classList.add('active');
+    initialContractSnapshot = getContractSnapshot();
+}
+function closeModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isContractModalDirty()) {
+        if (!confirm('작성 또는 수정 중인 계약 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
+    document.getElementById('contractModal').classList.remove('active');
+    currentContractId = null;
+}
+document.getElementById('closeModalBtn').addEventListener('click', () => closeModal(false));
+document.getElementById('cancelModalBtn').addEventListener('click', () => closeModal(false));
 
 // ── New Contract ──
 document.getElementById('btnNewContract').addEventListener('click', async () => {
@@ -250,7 +274,7 @@ document.getElementById('saveContractBtn').addEventListener('click', async () =>
             document.getElementById('editId').value = result.id;
             document.getElementById('fileSaveNotice').style.display = 'none';
         }
-        closeModal();
+        closeModal(true);
         loadContracts();
     } catch(err) { showToast('저장 실패: '+err.message, 'error'); }
 });
@@ -570,3 +594,17 @@ window.selectPartner = function(name) {
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', () => { loadPartners(); loadContracts(); });
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('partnerPickerModal')?.classList.contains('active')) closePartnerPicker();
+        else if (document.getElementById('previewOverlay')?.classList.contains('active')) document.getElementById('previewOverlay').classList.remove('active');
+        else if (document.getElementById('contractModal')?.classList.contains('active')) closeModal(false);
+    }
+});
+window.hasUnsavedChanges = () => isContractModalDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (isContractModalDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

@@ -224,6 +224,17 @@ function renderProjectsList() {
 }
 
 function selectProject(id) {
+    if (currentProjectId && currentProjectId !== id) {
+        const hasDraftLog = (logInput && logInput.value.trim().length > 0) || (selectedFiles && selectedFiles.length > 0);
+        if (hasDraftLog) {
+            if (!confirm('하단에 작성 중인 로그 내용이나 첨부파일이 있습니다.\n다른 프로젝트로 이동하시겠습니까?')) {
+                return;
+            }
+            if (logInput) logInput.value = '';
+            selectedFiles = [];
+            renderSelectedFiles();
+        }
+    }
     currentProjectId = id;
     renderProjectsList(); // Update active state
     renderProjectView(id);
@@ -532,15 +543,47 @@ function bindEvents() {
         });
     }
 
-    // New Project Modal
+    // New / Edit Project Modal
+    let initialProjectModalSnapshot = '';
+    function getProjectModalSnapshot() {
+        return JSON.stringify({
+            title: document.getElementById('projectTitle')?.value || '',
+            category: document.getElementById('projectCategory')?.value || '',
+            manager: document.getElementById('projectManager')?.value || ''
+        });
+    }
+
     btnNewProject.addEventListener('click', () => {
         projectForm.reset();
         document.getElementById('projectId').value = '';
+        const modalTitleEl = projectModal.querySelector('h2, h3');
+        if (modalTitleEl) modalTitleEl.textContent = '새 프로젝트 생성';
         projectModal.classList.remove('hidden');
+        initialProjectModalSnapshot = getProjectModalSnapshot();
     });
+
+    const btnEditProject = document.getElementById('btnEditProject');
+    if (btnEditProject) {
+        btnEditProject.addEventListener('click', () => {
+            if (!currentProjectId) return;
+            const project = projects.find(p => p.id === currentProjectId);
+            if (!project) return;
+            document.getElementById('projectId').value = project.id;
+            document.getElementById('projectTitle').value = project.title || '';
+            document.getElementById('projectCategory').value = project.category || '';
+            document.getElementById('projectManager').value = project.manager || '';
+            const modalTitleEl = projectModal.querySelector('h2, h3');
+            if (modalTitleEl) modalTitleEl.textContent = '프로젝트 수정';
+            projectModal.classList.remove('hidden');
+            initialProjectModalSnapshot = getProjectModalSnapshot();
+        });
+    }
 
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (getProjectModalSnapshot() !== initialProjectModalSnapshot) {
+                if (!confirm('작성/수정 중인 프로젝트 정보가 있습니다.\n저장하지 않고 닫으시겠습니까?')) return;
+            }
             projectModal.classList.add('hidden');
         });
     });
@@ -548,6 +591,9 @@ function bindEvents() {
     // Edit Log Modal Close
     document.querySelectorAll('.close-edit-modal').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (window._initialEditLogSnapshot !== undefined && window.getEditLogModalSnapshot && window.getEditLogModalSnapshot() !== window._initialEditLogSnapshot) {
+                if (!confirm('수정 중인 로그 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?')) return;
+            }
             document.getElementById('editLogModal').classList.add('hidden');
         });
     });
@@ -808,6 +854,17 @@ window.openEditLogModal = function(logId) {
     currentEditNewFiles = [];
     document.getElementById('editLogNewFiles').value = '';
     document.getElementById('editLogNewFilesCount').textContent = '';
+
+    window.getEditLogModalSnapshot = function() {
+        return JSON.stringify({
+            type: document.getElementById('editLogType')?.value || '',
+            content: document.getElementById('editLogContent')?.value || '',
+            date: document.getElementById('editLogDate')?.value || '',
+            retained: currentEditRetainedAttachments,
+            newCount: currentEditNewFiles.length
+        });
+    };
+    window._initialEditLogSnapshot = window.getEditLogModalSnapshot();
 
     renderEditModalAttachments();
     

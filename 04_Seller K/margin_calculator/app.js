@@ -281,6 +281,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const id = parseInt(this.getAttribute('data-id'));
                 const item = data.find(d => d.id === id);
                 if (item) {
+                    if (fldProductName.value.trim() && !confirm('현재 작성 중인 상품 정보가 있습니다. 선택한 내역을 불러와 덮어쓰시겠습니까?')) {
+                        return;
+                    }
                     fldProductName.value = item.productName || '';
                     fldBuyPrice.value = item.buyPrice || 0;
                     fldBuyShipping.value = item.buyShipping || 0;

@@ -2060,4 +2060,15 @@ const app = {
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
+    document.addEventListener('input', (e) => {
+        const row = e.target.closest && e.target.closest('tr.settle-input-row');
+        if (row) row.dataset.dirty = '1';
+    });
+    window.hasUnsavedChanges = () => Boolean(document.querySelector('tr.settle-input-row[data-dirty="1"]'));
+    window.addEventListener('beforeunload', (e) => {
+        if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 });

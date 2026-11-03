@@ -484,7 +484,10 @@ function ensureProductCode() {
     return _codePromise;
 }
 
-function startNewProduct() {
+function startNewProduct(force) {
+    if (!force && _isDirty && !confirm('작성 중인 상품 정보가 있습니다. 초기화하고 새 상품을 등록하시겠습니까?')) {
+        return;
+    }
     _isDirty = false;
     _editMode = false;  // 신규 등록 모드
     _codePromise = null;  // 코드 생성 캐시 리셋
@@ -1460,3 +1463,5 @@ function selectOrigin(code, path) {
     document.getElementById('fldOriginSearch').value = '';
     if (currentProduct) { currentProduct.originCode = code; currentProduct.originName = path; }
 }
+
+window.hasUnsavedChanges = function() { return Boolean(_isDirty); };

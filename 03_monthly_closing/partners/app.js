@@ -56,6 +56,8 @@ const app = {
             intermediaryBankEn: (document.getElementById('intermediaryBankEn')?.value || '').trim(),
             bankAddressEn: (document.getElementById('bankAddressEn')?.value || '').trim(),
             bankAccountsJson: (document.getElementById('bankAccountsJson')?.value || '').trim(),
+            bankAccBankName: (document.getElementById('bankAccBankName')?.value || '').trim(),
+            bankAccAccountNo: (document.getElementById('bankAccAccountNo')?.value || '').trim(),
             partnerNote: (document.getElementById('partnerNote')?.value || '').trim()
         };
     },
@@ -973,6 +975,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
+window.hasUnsavedChanges = () => app.isDirty();
 window.addEventListener('beforeunload', (e) => {
     if (app.isDirty()) {
         e.preventDefault();
@@ -982,4 +985,9 @@ window.addEventListener('beforeunload', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
+    document.addEventListener('hidePrevented.bs.modal', (e) => {
+        if (e.target && e.target.id === 'partnerModal') {
+            app.closeModalWithConfirm();
+        }
+    });
 });

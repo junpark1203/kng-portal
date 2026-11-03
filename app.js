@@ -1526,26 +1526,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
         init: function() {
             var self = this;
-            // 1. 기본 고정 탭: 대시보드
+            // 1. 기본 고정 탭: 대시보드 (주요 증시 및 이번달 일정 포함 메인 대시보드)
             this.tabs = [
                 {
                     id: 'tab_dashboard',
                     title: '대시보드',
-                    icon: 'bx-grid-alt',
-                    url: '#dashboard',
-                    type: 'internal',
-                    internalTarget: 'dashboard',
+                    icon: 'bx bx-grid-alt',
+                    url: './05_Management/dashboard/index.html',
+                    type: 'iframe',
+                    internalTarget: null,
                     pinned: true
                 }
             ];
             this.activeTabId = 'tab_dashboard';
 
+            this.createIframePane(this.tabs[0]);
             this.renderTabBar();
             this.bindEvents();
 
             // 2. 이전에 접속했던 페이지 복원 (sessionStorage)
             var lastNav = sessionStorage.getItem('lastNavHref');
-            if (lastNav && lastNav !== '#dashboard' && lastNav !== '#quickmenu') {
+            if (lastNav && lastNav !== '#dashboard' && lastNav !== '#quickmenu' && this.generateTabId(lastNav) !== 'tab_dashboard') {
                 var matchLink = document.querySelector(`.sidebar .menu a[href="${lastNav}"], .sidebar .menu a[href^="${lastNav.split('?')[0]}"]`);
                 if (matchLink) {
                     var label = matchLink.querySelector('span') ? matchLink.querySelector('span').textContent.trim() : '';
@@ -1582,11 +1583,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         generateTabId: function(href) {
             if (!href) return 'tab_' + Date.now();
+            if (href === '#dashboard' || href === '#quickmenu') {
+                return 'tab_dashboard';
+            }
             if (href.startsWith('#')) {
                 return 'tab_internal_' + href.replace('#', '');
             }
             var normalized = this.normalizeUrl(href);
             var clean = normalized.split('?')[0].split('#')[0];
+            if (clean === './05_Management/dashboard/index.html' || clean.endsWith('05_Management/dashboard/index.html')) {
+                return 'tab_dashboard';
+            }
             return 'tab_' + clean.replace(/[^a-zA-Z0-9]/g, '_');
         },
 
@@ -1823,9 +1830,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
 
+        isTabDirty: function(tabId) {
+            var pane = document.getElementById('pane-' + tabId);
+            if (!pane) return false;
+            var iframe = pane.querySelector('iframe');
+            if (iframe && iframe.contentWindow && typeof iframe.contentWindow.hasUnsavedChanges === 'function') {
+                try {
+                    return !!iframe.contentWindow.hasUnsavedChanges();
+                } catch(e) {}
+            }
+            return false;
+        },
+
         closeOtherTabs: function(tabId) {
+            var self = this;
             var keepTabs = this.tabs.filter(function(t) { return t.id === tabId || t.pinned; });
             var tabsToClose = this.tabs.filter(function(t) { return t.id !== tabId && !t.pinned; });
+
+            var dirtyTabs = tabsToClose.filter(function(t) { return self.isTabDirty(t.id); });
+            if (dirtyTabs.length > 0) {
+                var names = dirtyTabs.map(function(t) { return t.title; }).join(', ');
+                if (!confirm(`작성 중인 내용이 저장되지 않은 탭(${names})이 있습니다.\n정말 다른 탭을 모두 닫으시겠습니까?`)) {
+                    return;
+                }
+            }
 
             tabsToClose.forEach(function(t) {
                 var pane = document.getElementById('pane-' + t.id);
@@ -1838,8 +1866,17 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         closeAllTabs: function() {
+            var self = this;
             var keepTabs = this.tabs.filter(function(t) { return t.pinned; });
             var tabsToClose = this.tabs.filter(function(t) { return !t.pinned; });
+
+            var dirtyTabs = tabsToClose.filter(function(t) { return self.isTabDirty(t.id); });
+            if (dirtyTabs.length > 0) {
+                var names = dirtyTabs.map(function(t) { return t.title; }).join(', ');
+                if (!confirm(`작성 중인 내용이 저장되지 않은 탭(${names})이 있습니다.\n정말 전체 탭을 닫으시겠습니까?`)) {
+                    return;
+                }
+            }
 
             tabsToClose.forEach(function(t) {
                 var pane = document.getElementById('pane-' + t.id);
@@ -1859,6 +1896,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!tab) return;
 
             if (tab.type === 'iframe') {
+                if (this.isTabDirty(tab.id)) {
+                    if (!confirm(`[${tab.title}] 탭에 저장하지 않은 작성/수정 중인 내용이 있습니다.\n새로고침하시겠습니까?`)) {
+                        return;
+                    }
+                }
                 var pane = document.getElementById('pane-' + tab.id);
                 if (pane) {
                     var iframe = pane.querySelector('iframe');
@@ -2196,6 +2238,24 @@ window.addEventListener('drop', function(e) {
 // ==========================================
 // 트랜잭션 수정 팝업 기능
 // ==========================================
+var initialTxEditSnapshot = '';
+
+function getTxEditSnapshot() {
+    var form = document.getElementById('txEditForm');
+    if (!form) return '';
+    var data = {};
+    form.querySelectorAll('input[id], select[id], textarea[id]').forEach(function(el) {
+        data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return JSON.stringify(data);
+}
+
+function isTxEditDirty() {
+    var modal = document.getElementById('txEditModal');
+    if (!modal || !modal.classList.contains('active')) return false;
+    return getTxEditSnapshot() !== initialTxEditSnapshot;
+}
+
 window.openTxEditModal = async function(txId) {
     var t = transactions.find(function(item) { return item.id === txId; });
     if (!t) return;
@@ -2238,14 +2298,21 @@ window.openTxEditModal = async function(txId) {
     document.getElementById('eRemarks').value = t.remarks || '';
     
     document.getElementById('txEditModal').classList.add('active');
+    initialTxEditSnapshot = getTxEditSnapshot();
 };
 
-document.getElementById('closeTxEditModalBtn').addEventListener('click', closeTxEditModal);
-document.getElementById('cancelTxEditBtn').addEventListener('click', closeTxEditModal);
+document.getElementById('closeTxEditModalBtn').addEventListener('click', function() { closeTxEditModal(false); });
+document.getElementById('cancelTxEditBtn').addEventListener('click', function() { closeTxEditModal(false); });
 
-function closeTxEditModal() {
+function closeTxEditModal(force) {
+    if (force !== true && isTxEditDirty()) {
+        if (!confirm('수정 중인 내용이 저장되지 않았습니다.\n창을 닫으시겠습니까?')) {
+            return;
+        }
+    }
     document.getElementById('txEditForm').reset();
     document.getElementById('txEditModal').classList.remove('active');
+    initialTxEditSnapshot = '';
 }
 
 // 자동완성 붙이기 (모달)
@@ -2445,12 +2512,39 @@ document.getElementById('txEditForm').addEventListener('submit', async function(
         });
         
         showToast('내역 업데이트 완료', 'success');
-        closeTxEditModal();
+        closeTxEditModal(true);
     } catch(err) {
         showToast('내역 갱신 실패: ' + err, 'error');
         console.error(err);
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "<i class='bx bx-save'></i> 내역 수정하기";
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var txModal = document.getElementById('txEditModal');
+        if (txModal && txModal.classList.contains('active')) {
+            e.preventDefault();
+            closeTxEditModal(false);
+        }
+    }
+});
+
+window.hasUnsavedChanges = function() {
+    if (isTxEditDirty()) return true;
+    if (window.portalTabManager && Array.isArray(window.portalTabManager.tabs)) {
+        return window.portalTabManager.tabs.some(function(t) {
+            return window.portalTabManager.isTabDirty(t.id);
+        });
+    }
+    return false;
+};
+
+window.addEventListener('beforeunload', function(e) {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
     }
 });

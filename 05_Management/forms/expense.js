@@ -347,6 +347,7 @@ function closeExpenseModal() {
 
 function getFormDataString() {
     return JSON.stringify({
+        status: fStatus ? fStatus.value : '',
         createdDate: fCreatedDate.value,
         paymentDate: fPaymentDate.value,
         currency: fCurrency.value,
@@ -354,15 +355,46 @@ function getFormDataString() {
         vatAmount: fVatAmount.value,
         vendorSelect: fVendorId.value,
         accountSelect: fAccountSelect.value,
+        isProxy: fIsProxy ? fIsProxy.checked : false,
+        proxyBankName: fProxyBankName ? fProxyBankName.value : '',
+        proxyAccountNumber: fProxyAccountNumber ? fProxyAccountNumber.value : '',
+        proxyAccountHolder: fProxyAccountHolder ? fProxyAccountHolder.value : '',
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value,
         title: fTitle.value,
         taxInvoiceDate: fTaxInvoiceDate.value,
         content: fContent.value,
         remarks: fRemarks.value,
         attachments: JSON.stringify(currentAttachments),
+        newFilesCount: Array.isArray(newFiles) ? newFiles.length : 0,
         personInCharge: fPersonInCharge.value
     });
 }
+
+window.hasUnsavedChanges = function() {
+    if (expenseEditModal && expenseEditModal.classList.contains('active')) {
+        return getFormDataString() !== initialFormData;
+    }
+    return false;
+};
+
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (vendorModal && vendorModal.classList.contains('active')) {
+            e.preventDefault();
+            closeVendorModal();
+        } else if (expenseEditModal && expenseEditModal.classList.contains('active')) {
+            e.preventDefault();
+            closeExpenseModal();
+        }
+    }
+});
 
 async function loadExpenses() {
     try {
@@ -503,7 +535,7 @@ function showNewExpenseForm() {
     expenseForm.reset();
     
     // Default values
-    fStatus.value = '임시작성';
+    fStatus.value = '결재상신';
     fCreatedDate.value = new Date().toISOString().split('T')[0];
     fPaymentDate.value = new Date().toISOString().split('T')[0];
     fCurrency.value = 'KRW';
@@ -691,7 +723,8 @@ async function duplicateExpense(id) {
             }
         }
         
-        initialFormData = getFormDataString();
+        fStatus.value = '결재상신';
+        initialFormData = '';
         openExpenseModal();
     } catch (e) {
         showToast(e.message, 'error');
@@ -1223,6 +1256,14 @@ function openVendorModal() {
 }
 
 function closeVendorModal() {
+    const formArea = document.getElementById('vendorFormArea');
+    if (formArea && formArea.style.display !== 'none') {
+        const vName = document.getElementById('vName')?.value?.trim();
+        const vBiz = document.getElementById('vBizNum')?.value?.trim();
+        if ((vName || vBiz) && !confirm('작성 중인 거래처 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+            return;
+        }
+    }
     vendorModal.classList.remove('active');
     // If expense form is open, update dropdown
     if (expenseEditModal.classList.contains('active')) {

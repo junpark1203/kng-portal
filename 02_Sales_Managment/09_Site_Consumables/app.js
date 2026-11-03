@@ -126,6 +126,28 @@ function initDashboardFilters() {
     });
 }
 
+let initialSiteSnapshot = '';
+let initialConsumableSnapshot = '';
+function getSiteSnapshot() {
+    const form = document.getElementById('siteForm');
+    if (!form) return '';
+    return Array.from(form.querySelectorAll('input, select, textarea')).map(el => `${el.id}:${el.value}`).join('|');
+}
+function getConsumableSnapshot() {
+    const form = document.getElementById('consumableForm');
+    if (!form) return '';
+    const fCount = document.getElementById('cFiles')?.files?.length || 0;
+    return Array.from(form.querySelectorAll('input:not([type="file"]), select, textarea')).map(el => `${el.id}:${el.value}`).join('|') + `|files:${fCount}`;
+}
+function isSiteModalDirty() {
+    const m = document.getElementById('siteModal');
+    return Boolean(m && m.classList.contains('active') && getSiteSnapshot() !== initialSiteSnapshot);
+}
+function isConsumableModalDirty() {
+    const m = document.getElementById('consumableModal');
+    return Boolean(m && m.classList.contains('active') && getConsumableSnapshot() !== initialConsumableSnapshot);
+}
+
 // ── Modals ──
 function setupModals() {
     window.openSiteModal = (id = null) => {
@@ -147,9 +169,16 @@ function setupModals() {
             }
         }
         m.classList.add('active');
+        initialSiteSnapshot = getSiteSnapshot();
     };
 
-    window.closeSiteModal = () => document.getElementById('siteModal').classList.remove('active');
+    window.closeSiteModal = (force = false) => {
+        const isForce = force === true;
+        if (!isForce && isSiteModalDirty()) {
+            if (!confirm('작성 또는 수정 중인 현장 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        }
+        document.getElementById('siteModal').classList.remove('active');
+    };
 
     window.openConsumableModal = (id = null) => {
         if (!currentSiteId) return showToast('현장을 먼저 선택해주세요.', 'error');
@@ -178,9 +207,16 @@ function setupModals() {
             }
         }
         m.classList.add('active');
+        initialConsumableSnapshot = getConsumableSnapshot();
     };
 
-    window.closeConsumableModal = () => document.getElementById('consumableModal').classList.remove('active');
+    window.closeConsumableModal = (force = false) => {
+        const isForce = force === true;
+        if (!isForce && isConsumableModalDirty()) {
+            if (!confirm('작성 또는 수정 중인 소모품 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+        }
+        document.getElementById('consumableModal').classList.remove('active');
+    };
 
     window.closeFileModal = () => document.getElementById('fileModal').classList.remove('active');
     window.closePreviewModal = () => {
@@ -318,7 +354,7 @@ document.getElementById('siteForm').addEventListener('submit', async (e) => {
             const res = await authFetch('/api/site-consumables/sites', { method: 'POST', body: JSON.stringify(body) });
             currentSiteId = res.id;
         }
-        closeSiteModal();
+        closeSiteModal(true);
         await loadSites();
         if (currentSiteId) selectSite(currentSiteId);
     } catch(err) {
@@ -717,7 +753,7 @@ document.getElementById('consumableForm').addEventListener('submit', async (e) =
         }
         
         showToast(document.getElementById('consumableId').value ? '소모품 정보가 수정되었습니다.' : '소모품이 추가되었습니다.');
-        closeConsumableModal();
+        closeConsumableModal(true);
         await loadConsumables();
     } catch(err) {
         showToast(err.message, 'error');
@@ -1014,3 +1050,19 @@ window.exportToQuoteCompare = () => {
     
     showToast(checkedBoxes.length + '개의 품목을 비교 모듈로 내보냈습니다.');
 };
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('previewModal')?.classList.contains('active')) closePreviewModal();
+        else if (document.getElementById('fileModal')?.classList.contains('active')) closeFileModal();
+        else if (document.getElementById('consumableModal')?.classList.contains('active')) closeConsumableModal(false);
+        else if (document.getElementById('siteModal')?.classList.contains('active')) closeSiteModal(false);
+    }
+});
+window.hasUnsavedChanges = () => isSiteModalDirty() || isConsumableModalDirty();
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

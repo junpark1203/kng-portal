@@ -656,9 +656,27 @@ function openItemModal(item = null) {
     initSortable();
     document.getElementById('itemModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    initialItemModalSnap = getModalInputsSnap('itemModal');
 }
 
-function closeItemModal() {
+let initialItemModalSnap = '';
+let initialVariantModalSnap = '';
+let initialQuoteModalSnap = '';
+function getModalInputsSnap(modalId) {
+    const m = document.getElementById(modalId);
+    if (!m) return '';
+    return Array.from(m.querySelectorAll('input, select, textarea')).map(el => `${el.id || el.className}:${el.type === 'checkbox' ? el.checked : el.value}`).join('|');
+}
+function isMatQuoteModalDirty(modalId, initialSnap) {
+    const m = document.getElementById(modalId);
+    return Boolean(m && m.classList.contains('active') && getModalInputsSnap(modalId) !== initialSnap);
+}
+
+function closeItemModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isMatQuoteModalDirty('itemModal', initialItemModalSnap)) {
+        if (!confirm('작성 또는 수정 중인 품목 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
     document.getElementById('itemModal').classList.remove('active');
     document.body.style.overflow = '';
 }
@@ -749,7 +767,7 @@ async function saveItem() {
                 }
             }
         }
-        closeItemModal();
+        closeItemModal(true);
         await loadCategories();
         await loadItems();
         if(!id && selectedItemId) openPDP(selectedItemId);
@@ -781,9 +799,14 @@ function openVariantModal(itemId, variant = null) {
     
     document.getElementById('variantModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    initialVariantModalSnap = getModalInputsSnap('variantModal');
 }
 
-function closeVariantModal() {
+function closeVariantModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isMatQuoteModalDirty('variantModal', initialVariantModalSnap)) {
+        if (!confirm('작성 또는 수정 중인 규격 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
     document.getElementById('variantModal').classList.remove('active');
     document.body.style.overflow = '';
 }
@@ -811,7 +834,7 @@ async function saveVariant() {
                 body: JSON.stringify(payload)
             });
         }
-        closeVariantModal();
+        closeVariantModal(true);
         await loadItems();
     } catch(err) {
         Swal.fire('실패', err.message, 'error');
@@ -843,9 +866,14 @@ function openQuoteModal(variantId, quote = null) {
     
     document.getElementById('quoteModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    initialQuoteModalSnap = getModalInputsSnap('quoteModal');
 }
 
-function closeQuoteModal() {
+function closeQuoteModal(force = false) {
+    const isForce = force === true;
+    if (!isForce && isMatQuoteModalDirty('quoteModal', initialQuoteModalSnap)) {
+        if (!confirm('작성 또는 수정 중인 견적 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+    }
     document.getElementById('quoteModal').classList.remove('active');
     document.body.style.overflow = '';
 }
@@ -879,7 +907,7 @@ async function saveQuote() {
                 body: JSON.stringify(payload)
             });
         }
-        closeQuoteModal();
+        closeQuoteModal(true);
         await loadItems();
     } catch(err) {
         Swal.fire('실패', err.message, 'error');
@@ -935,3 +963,25 @@ function initSortable() {
         });
     }
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('imgViewerOverlay')?.classList.contains('active')) {
+            document.getElementById('imgViewerOverlay').classList.remove('active');
+            document.body.style.overflow = '';
+        } else if (document.getElementById('quoteModal')?.classList.contains('active')) closeQuoteModal(false);
+        else if (document.getElementById('variantModal')?.classList.contains('active')) closeVariantModal(false);
+        else if (document.getElementById('itemModal')?.classList.contains('active')) closeItemModal(false);
+    }
+});
+window.hasUnsavedChanges = () => {
+    return isMatQuoteModalDirty('itemModal', initialItemModalSnap) ||
+           isMatQuoteModalDirty('variantModal', initialVariantModalSnap) ||
+           isMatQuoteModalDirty('quoteModal', initialQuoteModalSnap);
+};
+window.addEventListener('beforeunload', (e) => {
+    if (window.hasUnsavedChanges && window.hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});

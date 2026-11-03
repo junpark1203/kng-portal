@@ -187,8 +187,12 @@ function showUrlInputModal(title, multiline, callback) {
     var input = overlay.querySelector('.url-modal-input');
     input.focus();
 
-    overlay.querySelector('.url-modal-cancel').addEventListener('click', function() { overlay.remove(); });
-    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    function tryCloseUrlModal() {
+        if (input.value.trim() && !confirm('입력 중인 이미지 URL이 있습니다. 닫으시겠습니까?')) return;
+        overlay.remove();
+    }
+    overlay.querySelector('.url-modal-cancel').addEventListener('click', tryCloseUrlModal);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) tryCloseUrlModal(); });
     overlay.querySelector('.url-modal-confirm').addEventListener('click', function() {
         var value = input.value.trim();
         if (!value) { overlay.remove(); return; }
