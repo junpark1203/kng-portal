@@ -234,13 +234,28 @@ const app = {
                     locationSummary = `${locNames[0]} 외 ${locNames.length - 1}곳`;
                 }
 
+                // 4. 매입처 요약 및 재고자산 금액(매입원가 기준) 계산
+                const supplierNames = [...new Set(lots.map(l => l.supplier).filter(Boolean))];
+                const totalQty = Number(row.total_qty) || 0;
+                const stockAmount = Math.round(lots.reduce((sum, l) => {
+                    const q = Number(l.qty_remaining) || 0;
+                    const p = Number(l.unit_price) || 0;
+                    return sum + (q * p);
+                }, 0));
+                const avgUnitPrice = totalQty > 0
+                    ? Math.round(stockAmount / totalQty)
+                    : (lots.length > 0 ? Math.round(Number(lots[lots.length - 1].unit_price) || 0) : 0);
+
                 return {
                     ...row,
                     category: category,
                     latest_date: latestDate,
                     location_summary: locationSummary,
                     locations: locNames,
-                    lot_count: lots.length
+                    suppliers: supplierNames,
+                    lot_count: lots.length,
+                    avg_unit_price: avgUnitPrice,
+                    stock_amount: stockAmount
                 };
             });
 
@@ -865,7 +880,517 @@ const app = {
     },
 
     printPage: function() {
-        window.print();
+        const modalEl = document.getElementById('printInventoryModal');
+        if (!modalEl) {
+            this.executePrintInventory();
+            return;
+        }
+
+        const updateModalSummary = () => {
+            const excludeZero = $('printExcludeZero') ? $('printExcludeZero').checked : true;
+            const list = (this.currentFilteredData || []).filter(r => !excludeZero || Number(r.total_qty || 0) > 0);
+            const totalQty = list.reduce((acc, cur) => acc + (Number(cur.total_qty) || 0), 0);
+            const totalAmt = list.reduce((acc, cur) => acc + (Number(cur.stock_amount) || 0), 0);
+            const summaryEl = $('printTargetSummaryText');
+            if (summaryEl) {
+                summaryEl.innerHTML = `출력 대상: <strong>총 ${list.length.toLocaleString()}개 품목</strong> (수량 합계: <strong>${totalQty.toLocaleString()}</strong> / 재고금액: <strong>${totalAmt.toLocaleString()}원</strong>)`;
+            }
+        };
+
+        const excludeZeroChk = $('printExcludeZero');
+        if (excludeZeroChk && !excludeZeroChk._boundSummary) {
+            excludeZeroChk.addEventListener('change', updateModalSummary);
+            excludeZeroChk._boundSummary = true;
+        }
+
+        updateModalSummary();
+
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    },
+
+    executePrintInventory: function() {
+        const docTitle = ($('printDocTitle') && $('printDocTitle').value.trim()) ? $('printDocTitle').value.trim() : '실시간 재고 현황표';
+        const detailMode = (document.querySelector('input[name="printDetailMode"]:checked')?.value) || 'summary';
+        const includePrice = $('printIncludePrice') ? $('printIncludePrice').checked : true;
+        const includeCheckCol = $('printIncludeCheckCol') ? $('printIncludeCheckCol').checked : true;
+        const excludeZero = $('printExcludeZero') ? $('printExcludeZero').checked : true;
+        const includeSignBox = $('printIncludeSignBox') ? $('printIncludeSignBox').checked : true;
+
+        const rowsData = (this.currentFilteredData || []).filter(r => !excludeZero || Number(r.total_qty || 0) > 0);
+        if (rowsData.length === 0) {
+            alert('출력할 재고 내역이 없습니다.');
+            return;
+        }
+
+        const modalEl = document.getElementById('printInventoryModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('팝업 차단이 활성화되어 있어 인쇄 창을 열 수 없습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+            return;
+        }
+
+        const escapeHtml = (str) => {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+        // 필터 설명 조합
+        const filterParts = [];
+        filterParts.push(`자재분류: ${this.activeCategory || '전체'}`);
+        if (this.searchKeyword) {
+            const targetMap = { item: '품목명', spec: '규격', location: '보관위치', supplier: '매입처' };
+            const targetLabel = targetMap[this.searchTarget] || '전체';
+            filterParts.push(`검색(${targetLabel}): "${this.searchKeyword}"`);
+        }
+        if (this.subSearchKeyword) {
+            filterParts.push(`결과내 재검색: "${this.subSearchKeyword}"`);
+        }
+        filterParts.push(detailMode === 'lots' ? '양식: Lot별 상세 포함' : '양식: 품목별 요약');
+
+        // 전체 집계
+        const totalSku = rowsData.length;
+        let grandTotalQty = 0;
+        let grandTotalAmt = 0;
+        const warehouseSet = new Set();
+
+        rowsData.forEach(r => {
+            grandTotalQty += Number(r.total_qty || 0);
+            grandTotalAmt += Number(r.stock_amount || 0);
+            (r.locations || []).forEach(loc => warehouseSet.add(loc));
+        });
+
+        // 컬럼 구성 계산
+        let colCount = 7; // No, 분류, 품목명, 규격, 단위, 보관위치, 최종입고일, 현재고수량 -> 기본 8개
+        colCount = 8;
+        if (includePrice) colCount += 2; // 평균단가, 재고금액
+        if (includeCheckCol) colCount += 1; // 실사수량 / 비고
+
+        // 본문 행 생성
+        let tbodyHtml = '';
+        rowsData.forEach((row, idx) => {
+            const qty = Number(row.total_qty || 0);
+            const avgPrice = Number(row.avg_unit_price || 0);
+            const stockAmt = Number(row.stock_amount || 0);
+            const allLocations = (row.locations && row.locations.length > 0)
+                ? row.locations.join(', ')
+                : (row.location_summary || '-');
+
+            tbodyHtml += `
+                <tr class="main-item-row ${detailMode === 'lots' ? 'has-lots-parent' : ''}">
+                    <td class="text-center col-no">${idx + 1}</td>
+                    <td class="text-center col-cat">${escapeHtml(row.category || '-')}</td>
+                    <td class="text-start col-item fw-bold">${escapeHtml(row.item || '-')}</td>
+                    <td class="text-start col-spec">${escapeHtml(row.spec || '-')}</td>
+                    <td class="text-center col-unit">${escapeHtml(row.unit || '-')}</td>
+                    <td class="text-start col-loc">${escapeHtml(allLocations)}</td>
+                    <td class="text-center col-date">${escapeHtml(row.latest_date || '-')}</td>
+                    <td class="text-end col-qty fw-bold">${qty.toLocaleString()}</td>
+                    ${includePrice ? `
+                        <td class="text-end col-price">${avgPrice > 0 ? avgPrice.toLocaleString() : '-'}</td>
+                        <td class="text-end col-amt fw-bold">${stockAmt > 0 ? stockAmt.toLocaleString() : '0'}</td>
+                    ` : ''}
+                    ${includeCheckCol ? `<td class="col-check"></td>` : ''}
+                </tr>
+            `;
+
+            if (detailMode === 'lots' && row.lots && row.lots.length > 0) {
+                const activeLots = row.lots.filter(l => !excludeZero || Number(l.qty_remaining || 0) > 0);
+                activeLots.forEach((lot, lIdx) => {
+                    const lQty = Number(lot.qty_remaining || 0);
+                    const lPrice = Number(lot.unit_price || 0);
+                    const lAmt = Math.round(lQty * lPrice);
+                    const lotDesc = `└ [Lot ${lIdx + 1}] 매입처: ${escapeHtml(lot.supplier || '-')}${lot.note ? ` · 비고: ${escapeHtml(lot.note)}` : ''}`;
+
+                    tbodyHtml += `
+                        <tr class="lot-detail-row">
+                            <td class="text-center text-muted">-</td>
+                            <td class="text-center text-muted" style="font-size: 9px;">Lot상세</td>
+                            <td colspan="2" class="text-start ps-2 text-muted" style="font-size: 9.5px;">${lotDesc}</td>
+                            <td class="text-center text-muted">${escapeHtml(row.unit || '-')}</td>
+                            <td class="text-start text-muted">${escapeHtml(lot.location_name || '-')}</td>
+                            <td class="text-center text-muted">${escapeHtml(lot.date || '-')}</td>
+                            <td class="text-end text-dark">${lQty.toLocaleString()}</td>
+                            ${includePrice ? `
+                                <td class="text-end text-muted">${lPrice > 0 ? lPrice.toLocaleString() : '-'}</td>
+                                <td class="text-end text-muted">${lAmt > 0 ? lAmt.toLocaleString() : '0'}</td>
+                            ` : ''}
+                            ${includeCheckCol ? `<td class="col-check"></td>` : ''}
+                        </tr>
+                    `;
+                });
+            }
+        });
+
+        const signBoxHtml = includeSignBox ? `
+            <table class="sign-table">
+                <tr>
+                    <th rowspan="2" class="sign-label">확<br>인</th>
+                    <th>담 당</th>
+                    <th>검 토</th>
+                    <th>승 인</th>
+                </tr>
+                <tr>
+                    <td class="sign-space"></td>
+                    <td class="sign-space"></td>
+                    <td class="sign-space"></td>
+                </tr>
+            </table>
+        ` : '';
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>${escapeHtml(docTitle)} (${timestampStr})</title>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
+                <style>
+                    * { box-sizing: border-box; }
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm 9mm 12mm 9mm;
+                    }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: #ffffff;
+                        color: #0f172a;
+                        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+                        font-size: 10px;
+                        line-height: 1.3;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .print-page {
+                        width: 100%;
+                        max-width: 100%;
+                        margin: 0 auto;
+                    }
+
+                    /* 상단 화면용 툴바 (인쇄 시 숨김) */
+                    .screen-toolbar {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        background: #1e293b;
+                        color: #ffffff;
+                        padding: 8px 16px;
+                        margin-bottom: 14px;
+                        border-radius: 6px;
+                    }
+                    .screen-toolbar button {
+                        background: #2563eb;
+                        color: #ffffff;
+                        border: none;
+                        padding: 6px 14px;
+                        border-radius: 4px;
+                        font-weight: 700;
+                        font-size: 12px;
+                        cursor: pointer;
+                    }
+                    .screen-toolbar button.btn-close-win {
+                        background: #475569;
+                        margin-left: 6px;
+                    }
+                    @media print {
+                        .screen-toolbar { display: none !important; }
+                    }
+
+                    /* 문서 헤더 */
+                    .doc-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-end;
+                        border-bottom: 2px solid #0f172a;
+                        padding-bottom: 8px;
+                        margin-bottom: 8px;
+                    }
+                    .doc-title-area {
+                        flex: 1;
+                    }
+                    .doc-title {
+                        font-size: 21px;
+                        font-weight: 800;
+                        letter-spacing: 2px;
+                        margin: 0 0 6px 0;
+                        color: #000000;
+                    }
+                    .doc-meta {
+                        font-size: 10.5px;
+                        color: #334155;
+                        line-height: 1.45;
+                    }
+                    .doc-meta strong {
+                        color: #0f172a;
+                    }
+
+                    /* 결재란 */
+                    .sign-table {
+                        border-collapse: collapse;
+                        border: 1.5px solid #0f172a;
+                        font-size: 10px;
+                        margin-left: 12px;
+                    }
+                    .sign-table th, .sign-table td {
+                        border: 1px solid #334155;
+                        text-align: center;
+                        vertical-align: middle;
+                    }
+                    .sign-table th {
+                        background: #f1f5f9;
+                        font-weight: 700;
+                        height: 18px;
+                        width: 52px;
+                    }
+                    .sign-table .sign-label {
+                        width: 22px;
+                        padding: 2px;
+                    }
+                    .sign-table .sign-space {
+                        height: 38px;
+                        width: 52px;
+                    }
+
+                    /* 상단 KPI 요약 바 */
+                    .summary-strip {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border: 1.5px solid #0f172a;
+                        background: #f8fafc;
+                        padding: 6px 12px;
+                        margin-bottom: 8px;
+                        font-size: 11px;
+                    }
+                    .summary-item {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                    }
+                    .summary-label {
+                        color: #475569;
+                        font-weight: 600;
+                    }
+                    .summary-val {
+                        color: #0f172a;
+                        font-weight: 800;
+                        font-variant-numeric: tabular-nums;
+                        font-size: 12px;
+                    }
+                    .summary-val.highlight {
+                        color: #1d4ed8;
+                    }
+
+                    /* 본문 테이블 */
+                    .inv-print-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        border: 1.5px solid #0f172a;
+                        table-layout: auto;
+                    }
+                    .inv-print-table thead {
+                        display: table-header-group;
+                    }
+                    .inv-print-table tfoot {
+                        display: table-row-group;
+                    }
+                    .inv-print-table tr {
+                        page-break-inside: avoid;
+                    }
+                    .inv-print-table th {
+                        background: #e2e8f0;
+                        color: #0f172a;
+                        font-weight: 800;
+                        font-size: 10px;
+                        padding: 5px 4px;
+                        border: 1px solid #475569;
+                        text-align: center;
+                        vertical-align: middle;
+                        white-space: nowrap;
+                    }
+                    .inv-print-table td {
+                        padding: 4px 5px;
+                        border: 1px solid #94a3b8;
+                        font-size: 10px;
+                        vertical-align: middle;
+                        word-break: keep-all;
+                        overflow-wrap: break-word;
+                    }
+                    .inv-print-table .main-item-row.has-lots-parent td {
+                        background: #f8fafc;
+                        border-top: 1.2px solid #475569;
+                    }
+                    .inv-print-table .lot-detail-row td {
+                        background: #ffffff;
+                        border-top: 1px dashed #cbd5e1;
+                        padding-top: 2.5px;
+                        padding-bottom: 2.5px;
+                    }
+                    .inv-print-table .total-row td {
+                        background: #f1f5f9;
+                        border-top: 1.5px solid #0f172a;
+                        border-bottom: 1.5px solid #0f172a;
+                        font-weight: 800;
+                        font-size: 10.5px;
+                        padding: 6px 5px;
+                    }
+
+                    /* 정렬 및 컬럼별 폭 가이드 */
+                    .text-center { text-align: center !important; }
+                    .text-start  { text-align: left !important; }
+                    .text-end    { text-align: right !important; font-variant-numeric: tabular-nums; }
+                    .text-muted  { color: #64748b !important; }
+                    .text-dark   { color: #0f172a !important; }
+                    .fw-bold     { font-weight: 700 !important; }
+                    .ps-2        { padding-left: 10px !important; }
+
+                    .col-no    { width: 28px; white-space: nowrap; }
+                    .col-cat   { width: 62px; white-space: nowrap; }
+                    .col-item  { min-width: 130px; }
+                    .col-spec  { min-width: 90px; }
+                    .col-unit  { width: 38px; white-space: nowrap; }
+                    .col-loc   { width: 78px; }
+                    .col-date  { width: 68px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+                    .col-qty   { width: 64px; white-space: nowrap; }
+                    .col-price { width: 68px; white-space: nowrap; }
+                    .col-amt   { width: 82px; white-space: nowrap; }
+                    .col-check { width: 82px; }
+
+                    /* 하단 확인란 */
+                    .doc-footer {
+                        margin-top: 12px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 10.5px;
+                        color: #334155;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="screen-toolbar">
+                    <div>
+                        <strong>${escapeHtml(docTitle)}</strong> · 총 ${totalSku.toLocaleString()}개 품목 (A4 세로 최적화 양식)
+                    </div>
+                    <div>
+                        <button type="button" onclick="window.print()">인쇄하기 (Ctrl+P)</button>
+                        <button type="button" class="btn-close-win" onclick="window.close()">창 닫기</button>
+                    </div>
+                </div>
+
+                <div class="print-page">
+                    <!-- 상단 문서 헤더 -->
+                    <div class="doc-header">
+                        <div class="doc-title-area">
+                            <h1 class="doc-title">${escapeHtml(docTitle)}</h1>
+                            <div class="doc-meta">
+                                <div><strong>출력 기준일시:</strong> ${timestampStr} 기준</div>
+                                <div><strong>조회 조건:</strong> ${escapeHtml(filterParts.join('  |  '))}</div>
+                            </div>
+                        </div>
+                        ${signBoxHtml}
+                    </div>
+
+                    <!-- 상단 핵심 요약 박스 -->
+                    <div class="summary-strip">
+                        <div class="summary-item">
+                            <span class="summary-label">총 관리 품목:</span>
+                            <span class="summary-val">${totalSku.toLocaleString()} 종 (SKU)</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">보관 창고:</span>
+                            <span class="summary-val">${warehouseSet.size > 0 ? warehouseSet.size + ' 개소' : '-'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">총 재고 수량:</span>
+                            <span class="summary-val highlight">${grandTotalQty.toLocaleString()}</span>
+                        </div>
+                        ${includePrice ? `
+                            <div class="summary-item">
+                                <span class="summary-label">총 재고 자산금액(매입가 기준):</span>
+                                <span class="summary-val highlight">₩ ${grandTotalAmt.toLocaleString()} 원</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- 본문 재고 현황 테이블 -->
+                    <table class="inv-print-table">
+                        <thead>
+                            <tr>
+                                <th class="col-no">No.</th>
+                                <th class="col-cat">분류</th>
+                                <th class="col-item">품목명</th>
+                                <th class="col-spec">규격</th>
+                                <th class="col-unit">단위</th>
+                                <th class="col-loc">보관 위치</th>
+                                <th class="col-date">최종입고일</th>
+                                <th class="col-qty">현재고 수량</th>
+                                ${includePrice ? `
+                                    <th class="col-price">평균단가</th>
+                                    <th class="col-amt">재고금액</th>
+                                ` : ''}
+                                ${includeCheckCol ? `<th class="col-check">실사수량 / 비고</th>` : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tbodyHtml}
+                            <tr class="total-row">
+                                <td colspan="7" class="text-center">[ 합 계 : 총 ${totalSku.toLocaleString()}개 품목 ]</td>
+                                <td class="text-end">${grandTotalQty.toLocaleString()}</td>
+                                ${includePrice ? `
+                                    <td></td>
+                                    <td class="text-end">${grandTotalAmt.toLocaleString()}</td>
+                                ` : ''}
+                                ${includeCheckCol ? `<td></td>` : ''}
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="doc-footer">
+                        <div>※ 본 문서는 통합 물류 시스템의 실시간 전산 재고(${timestampStr} 기준)로 출력되었습니다.</div>
+                        <div>실사 점검자 : _____________________ (서명/인)</div>
+                    </div>
+                </div>
+
+                <script>
+                    window.addEventListener('afterprint', function() {
+                        window.close();
+                    });
+                    function triggerPrint() {
+                        setTimeout(function() {
+                            window.focus();
+                            window.print();
+                        }, 250);
+                    }
+                    if (document.readyState === 'complete') {
+                        triggerPrint();
+                    } else {
+                        window.addEventListener('load', triggerPrint);
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     }
 };
 

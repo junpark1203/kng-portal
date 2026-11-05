@@ -464,13 +464,19 @@ body {
     }
 
     .no-print,
+    .mobile-inventory-header,
+    .inventory-cards-container,
+    .mobile-filter-backdrop,
+    .mobile-filter-drawer,
     .erp-top-toolbar .btn-erp,
+    .erp-top-toolbar .erp-tab-group,
     .erp-filter-ribbon,
     .col-resizer {
         display: none !important;
     }
 
     .erp-top-toolbar {
+        display: flex !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 0 6px 0 !important;
@@ -479,25 +485,41 @@ body {
     }
 
     .erp-title-tag {
-        font-size: 15px !important;
+        font-size: 16px !important;
         border-right: none !important;
     }
 
     .erp-grid-wrapper {
+        display: block !important;
         border: none !important;
         overflow: visible !important;
         max-height: none !important;
+        box-shadow: none !important;
     }
 
     .erp-sheet-table {
-        border: 1px solid #94a3b8 !important;
+        width: 100% !important;
+        table-layout: auto !important;
+        border: 1.5px solid #0f172a !important;
+    }
+
+    .erp-sheet-table colgroup col {
+        width: auto !important;
     }
 
     .erp-sheet-table th,
     .erp-sheet-table td {
-        border: 1px solid #cbd5e1 !important;
-        height: 22px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        border: 1px solid #64748b !important;
+        height: auto !important;
+        padding: 4px 5px !important;
         font-size: 9.5px !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        word-break: keep-all !important;
+        position: static !important;
     }
 
     .th-toggle, .td-toggle {
