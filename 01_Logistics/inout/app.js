@@ -2136,7 +2136,7 @@ const app = {
 
             return `
             <tr id="row_${r.id}" class="history-main-row ${isReturn ? 'erp-row-return' : ''}" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
-                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)"></td>
+                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked, '${r.type}')"></td>
                 <td class="d-print-none user-select-none text-nowrap" style="font-size: 11.5px; color: #475569;">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
                     <span>${txIdDisplay}</span>
@@ -2543,6 +2543,19 @@ const app = {
         }
     },
 
+    // 데스크톱 테이블(#historyTbody)과 모바일 카드(#historyCardsContainer)에 동일 항목의 .history-checkbox가
+    // 각각 존재하므로, 중복 집계/중복 인쇄를 방지하기 위해(type + id 기준) 고유하게 체크된 체크박스만 반환
+    getUniqueCheckedHistoryBoxes() {
+        const rawChecked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        const seen = new Set();
+        return rawChecked.filter(cb => {
+            const key = `${cb.dataset.type || ''}_${cb.value}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    },
+
     toggleSelectAllHistory() {
         const isChecked = $('selectAllHistory').checked;
         document.querySelectorAll('.history-checkbox').forEach(cb => {
@@ -2561,11 +2574,14 @@ const app = {
     },
 
     updateSelectionSummary() {
-        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
-        const allBoxes = document.querySelectorAll('.history-checkbox');
+        const checked = this.getUniqueCheckedHistoryBoxes();
+        const tableBoxes = document.querySelectorAll('#historyTbody .history-checkbox');
+        const totalBoxCount = tableBoxes.length > 0
+            ? tableBoxes.length
+            : document.querySelectorAll('#historyCardsContainer .history-checkbox').length;
         const selectAll = $('selectAllHistory');
         if (selectAll) {
-            selectAll.checked = allBoxes.length > 0 && checked.length === allBoxes.length;
+            selectAll.checked = totalBoxCount > 0 && checked.length === totalBoxCount;
         }
 
         if ($('bottomSelectedCount')) {
@@ -2624,7 +2640,7 @@ const app = {
     },
 
     openBulkUpdateModal() {
-        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const checkboxes = this.getUniqueCheckedHistoryBoxes();
         if (checkboxes.length === 0) {
             alert('일괄 수정할 항목을 체크해주세요.');
             return;
@@ -2639,7 +2655,7 @@ const app = {
     },
 
     async submitBulkUpdate() {
-        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const checkboxes = this.getUniqueCheckedHistoryBoxes();
         const inboundIds = [];
         const outboundIds = [];
         
@@ -2676,7 +2692,7 @@ const app = {
     },
 
     deleteSelectedHistory: async function() {
-        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        const checked = this.getUniqueCheckedHistoryBoxes();
         if (checked.length === 0) return alert('삭제할 항목을 선택하세요.');
         if (!confirm(`선택한 ${checked.length}개의 내역을 일괄 삭제하시겠습니까?\n(출고 내역 삭제 시 입고 잔여수량이 복구되며, 직출고의 경우 입출고 모두 함께 삭제됩니다.)`)) return;
         
@@ -2714,7 +2730,7 @@ const app = {
     },
 
     printSelectedHistory: function() {
-        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        const checked = this.getUniqueCheckedHistoryBoxes();
         if (checked.length === 0) {
             alert('출력할 내역을 선택해주세요.');
             return;
@@ -6782,7 +6798,7 @@ const app = {
             <div class="mobile-tx-card" id="mobile_card_${r.id}" ${isReturn ? 'style="border-left: 3px solid #7c3aed;"' : ''}>
                 <div class="mobile-tx-card-header">
                     <div class="d-flex align-items-center gap-2 min-w-0" style="overflow: hidden;">
-                        <input type="checkbox" class="form-check-input history-checkbox m-0 flex-shrink-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked)">
+                        <input type="checkbox" class="form-check-input history-checkbox m-0 flex-shrink-0" value="${r.id}" data-type="${r.type}" onchange="app.syncCardSelection(${r.id}, this.checked, '${r.type}')">
                         ${badge}
                         <span class="mobile-tx-date text-truncate"><i class='bx bx-calendar me-1'></i>${dateStr}</span>
                     </div>
@@ -6848,15 +6864,15 @@ const app = {
         }).join('');
     },
 
-    syncCardSelection: function(id, isChecked) {
-        const tableCb = document.querySelector(`#row_${id} .history-checkbox`);
-        if (tableCb && tableCb.checked !== isChecked) {
-            tableCb.checked = isChecked;
-        }
-        const cardCb = document.querySelector(`#mobile_card_${id} .history-checkbox`);
-        if (cardCb && cardCb.checked !== isChecked) {
-            cardCb.checked = isChecked;
-        }
+    syncCardSelection: function(id, isChecked, type = null) {
+        const selector = type
+            ? `.history-checkbox[value="${id}"][data-type="${type}"]`
+            : `.history-checkbox[value="${id}"]`;
+        document.querySelectorAll(selector).forEach(cb => {
+            if (cb.checked !== isChecked) {
+                cb.checked = isChecked;
+            }
+        });
         this.updateSelectionSummary();
     },
 
