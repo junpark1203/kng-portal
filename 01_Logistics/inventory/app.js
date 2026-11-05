@@ -1271,16 +1271,6 @@ const app = {
                     .col-price { width: 68px; white-space: nowrap; }
                     .col-amt   { width: 82px; white-space: nowrap; }
                     .col-check { width: 82px; }
-
-                    /* 하단 확인란 */
-                    .doc-footer {
-                        margin-top: 12px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        font-size: 10.5px;
-                        color: #334155;
-                    }
                 </style>
             </head>
             <body>
@@ -1361,11 +1351,6 @@ const app = {
                             </tr>
                         </tbody>
                     </table>
-
-                    <div class="doc-footer">
-                        <div>※ 본 문서는 통합 물류 시스템의 실시간 전산 재고(${timestampStr} 기준)로 출력되었습니다.</div>
-                        <div>실사 점검자 : _____________________ (서명/인)</div>
-                    </div>
                 </div>
 
                 <script>
