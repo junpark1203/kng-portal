@@ -160,31 +160,31 @@ const app = {
             window.ErpGridResizer.init('priceTable');
         }
         if ($('addToQuoteModal') && window.bootstrap) {
-            this.addToQuoteModalInstance = new bootstrap.Modal($('addToQuoteModal'));
+            this.addToQuoteModalInstance = bootstrap.Modal.getOrCreateInstance($('addToQuoteModal'));
         }
         if ($('newSectionModal') && window.bootstrap) {
-            this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
+            this.newSectionModalInstance = bootstrap.Modal.getOrCreateInstance($('newSectionModal'));
         }
         if ($('editSectionNameModal') && window.bootstrap) {
-            this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
+            this.editSectionNameModalInstance = bootstrap.Modal.getOrCreateInstance($('editSectionNameModal'));
         }
         if ($('saveToArchiveModal') && window.bootstrap) {
-            this.saveToArchiveModalInstance = new bootstrap.Modal($('saveToArchiveModal'));
+            this.saveToArchiveModalInstance = bootstrap.Modal.getOrCreateInstance($('saveToArchiveModal'));
         }
         if ($('quoteArchiveModal') && window.bootstrap) {
-            this.quoteArchiveModalInstance = new bootstrap.Modal($('quoteArchiveModal'));
+            this.quoteArchiveModalInstance = bootstrap.Modal.getOrCreateInstance($('quoteArchiveModal'));
         }
         if ($('archiveDetailModal') && window.bootstrap) {
-            this.archiveDetailModalInstance = new bootstrap.Modal($('archiveDetailModal'));
+            this.archiveDetailModalInstance = bootstrap.Modal.getOrCreateInstance($('archiveDetailModal'));
         }
         if ($('sectionQuickAddItemModal') && window.bootstrap) {
-            this.sectionQuickAddItemModalInstance = new bootstrap.Modal($('sectionQuickAddItemModal'));
+            this.sectionQuickAddItemModalInstance = bootstrap.Modal.getOrCreateInstance($('sectionQuickAddItemModal'));
         }
         if ($('editRateModal') && window.bootstrap) {
-            this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
+            this.editRateModalInstance = bootstrap.Modal.getOrCreateInstance($('editRateModal'));
         }
         if ($('batchEditModal') && window.bootstrap) {
-            this.batchEditModalInstance = new bootstrap.Modal($('batchEditModal'));
+            this.batchEditModalInstance = bootstrap.Modal.getOrCreateInstance($('batchEditModal'));
         }
     },
 
@@ -2067,7 +2067,7 @@ const app = {
         this.renderModalGrid();
         this.populateMobileModalFields(null, this.modalRows[0]);
 
-        const modal = new bootstrap.Modal($('priceModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance($('priceModal'));
         modal.show();
 
         setTimeout(() => {
@@ -2164,7 +2164,7 @@ const app = {
         this.updateModalItemDatalist();
         this.renderModalGrid();
         this.populateMobileModalFields(item, this.modalRows[0]);
-        const modal = new bootstrap.Modal($('priceModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance($('priceModal'));
         modal.show();
     },
 
@@ -3128,7 +3128,7 @@ const app = {
             }).join('');
         }
 
-        const modal = new bootstrap.Modal($('historyModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance($('historyModal'));
         modal.show();
     },
 
@@ -6562,6 +6562,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('shown.bs.modal', (e) => {
         const modalEl = e.target;
         if (modalEl) {
+            modalEl._isForceHiding = false;
+            modalEl._confirmingHide = false;
             modalEl._initialSnapshot = getModalSnapshot(modalEl);
             setTimeout(() => {
                 if (modalEl.classList.contains('show') && !modalEl._userEdited) {
@@ -6569,6 +6571,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 80);
             modalEl._userEdited = false;
+        }
+    });
+    document.addEventListener('hidden.bs.modal', (e) => {
+        const modalEl = e.target;
+        if (modalEl) {
+            modalEl._isForceHiding = false;
+            modalEl._confirmingHide = false;
         }
     });
     document.addEventListener('input', (e) => {
@@ -6582,22 +6591,41 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('hidePrevented.bs.modal', (e) => {
         const modalEl = e.target;
         if (!modalEl) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (modalEl._confirmingHide || modalEl._isForceHiding) return;
         if (isModalDirty(modalEl)) {
-            if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+            modalEl._confirmingHide = true;
+            const ok = confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?');
+            setTimeout(() => { modalEl._confirmingHide = false; }, 400);
+            if (!ok) return;
         }
-        const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getInstance(modalEl) : null;
+        modalEl._isForceHiding = true;
+        const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null;
         if (inst) inst.hide();
     });
     document.addEventListener('click', (e) => {
         const dismissBtn = e.target.closest('[data-bs-dismiss="modal"], .btn-close');
         if (!dismissBtn) return;
         const modalEl = dismissBtn.closest('.modal');
-        if (modalEl && isModalDirty(modalEl)) {
-            if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+        if (!modalEl) return;
+        if (modalEl._confirmingHide) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return;
+        }
+        if (!modalEl._isForceHiding && isModalDirty(modalEl)) {
+            modalEl._confirmingHide = true;
+            const ok = confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?');
+            setTimeout(() => { modalEl._confirmingHide = false; }, 400);
+            if (!ok) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
+                return;
             }
+            modalEl._isForceHiding = true;
         }
     }, true);
 

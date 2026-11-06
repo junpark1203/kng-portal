@@ -1808,27 +1808,56 @@
             return modalEl._initialSnapshot !== undefined && getModalSnapshot(modalEl) !== modalEl._initialSnapshot;
         }
         document.addEventListener('shown.bs.modal', (e) => {
-            if (e.target) e.target._initialSnapshot = getModalSnapshot(e.target);
+            if (e.target) {
+                e.target._isForceHiding = false;
+                e.target._confirmingHide = false;
+                e.target._initialSnapshot = getModalSnapshot(e.target);
+            }
+        });
+        document.addEventListener('hidden.bs.modal', (e) => {
+            if (e.target) {
+                e.target._isForceHiding = false;
+                e.target._confirmingHide = false;
+            }
         });
         document.addEventListener('hidePrevented.bs.modal', (e) => {
             const modalEl = e.target;
             if (!modalEl) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (modalEl._confirmingHide || modalEl._isForceHiding) return;
             if (isModalDirty(modalEl)) {
-                if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) return;
+                modalEl._confirmingHide = true;
+                const ok = confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?');
+                setTimeout(() => { modalEl._confirmingHide = false; }, 400);
+                if (!ok) return;
             }
-            const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getInstance(modalEl) : null;
+            modalEl._isForceHiding = true;
+            const inst = window.bootstrap && window.bootstrap.Modal ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null;
             if (inst) inst.hide();
         });
         document.addEventListener('click', (e) => {
             const dismissBtn = e.target.closest('[data-bs-dismiss="modal"], .btn-close');
             if (!dismissBtn) return;
             const modalEl = dismissBtn.closest('.modal');
-            if (modalEl && isModalDirty(modalEl)) {
-                if (!confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+            if (!modalEl) return;
+            if (modalEl._confirmingHide) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return;
+            }
+            if (!modalEl._isForceHiding && isModalDirty(modalEl)) {
+                modalEl._confirmingHide = true;
+                const ok = confirm('작성 또는 수정 중인 내용이 있습니다. 저장하지 않고 닫으시겠습니까?');
+                setTimeout(() => { modalEl._confirmingHide = false; }, 400);
+                if (!ok) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
+                    return;
                 }
+                modalEl._isForceHiding = true;
             }
         }, true);
         window.hasUnsavedChanges = () => Array.from(document.querySelectorAll('.modal.show')).some(m => isModalDirty(m));
