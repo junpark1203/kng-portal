@@ -10,7 +10,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
     <div id="app-container">
@@ -105,12 +105,12 @@
         <!-- EditView / DetailView (Shared Form) -->
         <div id="editView" class="view-section">
             <div class="editor-header">
-                <button class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> 목록으로</button>
+                <button type="button" class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> <span>목록으로</span></button>
                 <div class="editor-actions">
-                    <button class="btn-outline" id="btnToggleHistory"><i class="fa-solid fa-clock-rotate-left"></i> 과거 내역</button>
-                    <button class="btn-secondary desktop-only-btn" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
-                    <button class="btn-primary desktop-only-btn" id="btnSave"><i class="fa-solid fa-check"></i> 저장완료</button>
-                    <button class="btn-danger" id="btnDelete" style="display: none;"><i class="fa-solid fa-trash"></i> 삭제</button>
+                    <button type="button" class="btn-outline" id="btnToggleHistory"><i class="fa-solid fa-clock-rotate-left"></i> <span>과거 내역</span></button>
+                    <button type="button" class="btn-danger" id="btnDelete" style="display: none;"><i class="fa-solid fa-trash"></i> <span>삭제</span></button>
+                    <button type="button" class="btn-secondary" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> <span>임시저장</span></button>
+                    <button type="button" class="btn-primary" id="btnSave"><i class="fa-solid fa-check"></i> <span id="btnSaveLabel">저장완료</span></button>
                 </div>
             </div>
 
@@ -189,7 +189,7 @@
             <!-- 모바일 에디터 하단 고정 액션 바 -->
             <div class="mobile-editor-bottom-bar" id="mobileEditorBottomBar">
                 <button type="button" class="btn-mobile-draft" id="btnMobileDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
-                <button type="button" class="btn-mobile-save" id="btnMobileSave"><i class="fa-solid fa-check"></i> 저장완료</button>
+                <button type="button" class="btn-mobile-save" id="btnMobileSave"><i class="fa-solid fa-check"></i> <span id="btnMobileSaveLabel">저장완료</span></button>
             </div>
         </div>
 
@@ -210,6 +210,6 @@
     </div>
 
     <!-- Script Entry -->
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>

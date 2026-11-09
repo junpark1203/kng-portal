@@ -291,14 +291,20 @@ async function showEditor(id = null, pushState = true) {
     
     listView.classList.remove('active');
     editView.classList.add('active');
+    window.scrollTo(0, 0);
     const fab = document.getElementById('mobileFabNewLog');
     if (fab) fab.style.display = 'none';
     
     currentEditingId = id;
+    const btnSaveLabel = document.getElementById('btnSaveLabel');
+    const btnMobileSaveLabel = document.getElementById('btnMobileSaveLabel');
+    const saveText = id ? '수정저장' : '저장완료';
+    if (btnSaveLabel) btnSaveLabel.textContent = saveText;
+    if (btnMobileSaveLabel) btnMobileSaveLabel.textContent = saveText;
     
     if (id) {
         // Load existing
-        btnDelete.style.display = 'block';
+        btnDelete.style.display = 'inline-flex';
         try {
             const res = await authFetch(`${API_BASE}/${id}`);
             if (res.ok) {
@@ -449,8 +455,9 @@ function renderList() {
                     <span class="meta-date">${log.date}</span>
                     <span class="meta-author"><i class="fa-solid fa-user"></i> ${highlightedAuthor !== '-' ? highlightedAuthor : log.authorName}</span>
                 </div>
-                <div class="log-meta" style="color: var(--text-muted); font-size: 12px;">
-                    작성: ${new Date(log.createdAt).toLocaleString()}
+                <div class="log-meta log-meta-right" style="color: var(--text-muted); font-size: 12px;">
+                    <span>작성: ${new Date(log.createdAt).toLocaleString()}</span>
+                    <span class="btn-card-edit"><i class="fa-solid fa-pen-to-square"></i> 수정</span>
                 </div>
             </div>
             <div class="log-card-body">

@@ -850,10 +850,11 @@ body:has(#editView.active) .mobile-fab-newlog {
 
 /* Mobile Sticky Bottom Action Bar for Editor */
 .mobile-editor-bottom-bar {
-    position: fixed;
+    position: sticky;
     bottom: 0;
     left: 0;
     right: 0;
+    margin: 0 -14px;
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -864,6 +865,26 @@ body:has(#editView.active) .mobile-fab-newlog {
     gap: 10px;
     z-index: 1100;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.btn-card-edit {
+    background: #EEF2FF;
+    color: var(--primary-color);
+    border: 1px solid #C7D2FE;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-card-edit:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
 }
 .btn-mobile-draft {
     flex: 1;
@@ -1066,6 +1087,10 @@ body:has(#editView.active) .mobile-fab-newlog {
         gap: 6px 8px;
         font-size: 12.5px;
     }
+    .log-meta-right {
+        width: 100%;
+        justify-content: space-between;
+    }
     .log-card-body {
         padding: 14px;
         gap: 14px;
@@ -1085,32 +1110,48 @@ body:has(#editView.active) .mobile-fab-newlog {
 
     /* Editor View */
     .editor-header {
-        margin-bottom: 16px;
+        position: sticky;
+        top: 0;
+        z-index: 950;
+        background: rgba(243, 244, 246, 0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 8px 0;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
     }
-    .editor-header .desktop-only-btn {
-        display: none !important; /* Handled by sticky bottom bar on mobile */
+    .editor-header .btn-back {
+        padding: 6px 8px;
+        font-size: 13px;
     }
     .editor-header .editor-actions {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
+        justify-content: flex-end;
         gap: 6px;
+        margin-left: auto;
     }
     .editor-header .btn-outline,
-    .editor-header .btn-danger {
+    .editor-header .btn-danger,
+    .editor-header .btn-secondary,
+    .editor-header .btn-primary {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 7px 11px;
+        gap: 4px;
+        padding: 7px 10px;
         font-size: 12.5px;
-        border-radius: var(--radius-sm);
+        border-radius: 8px;
+        white-space: nowrap;
     }
     .editor-form {
         padding: 14px;
-        margin-bottom: 75px; /* Space for sticky bottom bar */
+        margin-bottom: 16px;
     }
     .form-grid-2 {
         grid-template-columns: 1fr;
