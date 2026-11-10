@@ -173,44 +173,61 @@ router.post('/allowances', async (req, res) => {
     }
 });
 
-// 1-3. 내 연차 요약 정보 조회 (로그인 계정 기준 실시간 계산)
+// 1-3. 내 연차 요약 정보 조회 (로그인 계정 또는 지정 사원 기준 실시간 계산)
 router.get('/my-summary', async (req, res) => {
     if (!_db) return res.status(500).json({ error: 'DB not initialized' });
-    const userEmail = (req.query.email || (req.user ? req.user.email : null) || '').trim().toLowerCase();
+    const queryEmail = (req.query.email || (req.user ? req.user.email : null) || '').trim().toLowerCase();
+    const queryName = (req.query.name || '').trim();
     const currentYear = Number(req.query.year) || new Date().getFullYear();
 
     try {
         // 기준 연차 정보 조회 (portal_users 우선 조회)
         let allowance = null;
-        if (userEmail) {
+        if (queryEmail) {
             try {
-                const u = await dbGet(`SELECT email as userEmail, name as userName, department, rank, leaveDays as totalDays FROM portal_users WHERE email = ?`, [userEmail]);
-                if (u) {
-                    allowance = u;
-                }
+                const u = await dbGet(`SELECT email as userEmail, name as userName, department, rank, leaveDays as totalDays FROM portal_users WHERE LOWER(email) = ?`, [queryEmail]);
+                if (u) allowance = u;
             } catch (e) {}
 
             if (!allowance) {
-                allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ? AND year = ?`, [userEmail, currentYear]);
+                allowance = await dbGet(`SELECT * FROM leave_allowances WHERE LOWER(userEmail) = ? AND year = ?`, [queryEmail, currentYear]);
                 if (!allowance) {
-                    allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userEmail = ?`, [userEmail]);
+                    allowance = await dbGet(`SELECT * FROM leave_allowances WHERE LOWER(userEmail) = ?`, [queryEmail]);
                 }
             }
         }
 
-        const totalDays = allowance ? Number(allowance.totalDays) : 15.0;
-        const userName = allowance ? allowance.userName : '';
-        const department = allowance ? allowance.department : '주식회사 케앤지';
+        if (!allowance && queryName) {
+            try {
+                const u = await dbGet(`SELECT email as userEmail, name as userName, department, rank, leaveDays as totalDays FROM portal_users WHERE name = ?`, [queryName]);
+                if (u) allowance = u;
+            } catch (e) {}
 
-        // 올해 사용한 연차 계산 (결재보류/반려 건 제외)
-        // userEmail 또는 userName으로 매칭
+            if (!allowance) {
+                allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userName = ? AND year = ?`, [queryName, currentYear]);
+                if (!allowance) {
+                    allowance = await dbGet(`SELECT * FROM leave_allowances WHERE userName = ?`, [queryName]);
+                }
+            }
+        }
+
+        const userEmail = allowance && allowance.userEmail ? String(allowance.userEmail).trim().toLowerCase() : queryEmail;
+        const totalDays = (allowance && allowance.totalDays !== undefined && allowance.totalDays !== null) ? Number(allowance.totalDays) : 15.0;
+        const userName = (allowance && allowance.userName) ? allowance.userName : queryName;
+        const department = (allowance && allowance.department) ? allowance.department : '주식회사 케앤지';
+        const rank = (allowance && allowance.rank) ? allowance.rank : '';
+
+        // 해당 연도 사용한 연차 계산 (휴가 시작일 leaveStart 연도 우선 기준, 결재보류/임시작성 제외)
         const yearPrefix = `${currentYear}%`;
         const leaves = await dbAll(`
             SELECT daysCount, status, leaveType, leaveStart
             FROM leave_requests
-            WHERE (leaveStart LIKE ? OR submitDate LIKE ?)
-              AND (userEmail = ? OR (userEmail IS NULL AND name = ?))
-        `, [yearPrefix, yearPrefix, userEmail, userName]);
+            WHERE COALESCE(NULLIF(leaveStart, ''), submitDate) LIKE ?
+              AND (
+                  (? != '' AND LOWER(userEmail) = ?)
+                  OR (? != '' AND name = ?)
+              )
+        `, [yearPrefix, userEmail, userEmail, userName, userName]);
 
         let usedDays = 0;
         let approvedDays = 0;
@@ -233,6 +250,7 @@ router.get('/my-summary', async (req, res) => {
             userEmail,
             userName,
             department,
+            rank,
             currentYear,
             totalDays,
             usedDays: Number(usedDays.toFixed(2)),
@@ -253,7 +271,7 @@ router.get('/my-summary', async (req, res) => {
 router.get('/', async (req, res) => {
     if (!_db) return res.status(500).json({ error: 'DB not initialized' });
     try {
-        const rows = await dbAll(`SELECT * FROM leave_requests ORDER BY createdAt DESC`);
+        const rows = await dbAll(`SELECT * FROM leave_requests ORDER BY leaveStart DESC, createdAt DESC`);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -354,6 +372,24 @@ router.put('/:id', async (req, res) => {
         if (nextStatus === '결재완료' && prev.status !== '결재완료') {
             const eventId = await registerLeaveToGoogleCalendar(updatedItemForCal);
             if (eventId) googleEventId = eventId;
+        } else if (nextStatus === '결재완료' && prev.status === '결재완료') {
+            const calChanged =
+                (prev.leaveStart || '') !== updatedItemForCal.leaveStart ||
+                (prev.leaveEnd || '') !== updatedItemForCal.leaveEnd ||
+                (prev.leaveType || '') !== updatedItemForCal.leaveType ||
+                (prev.name || '') !== updatedItemForCal.name ||
+                (prev.department || '') !== updatedItemForCal.department ||
+                (prev.rank || '') !== updatedItemForCal.rank ||
+                Number(prev.daysCount ?? 1.0) !== Number(updatedItemForCal.daysCount) ||
+                (prev.reason || '') !== updatedItemForCal.reason ||
+                !googleEventId;
+            if (calChanged) {
+                if (googleEventId) {
+                    await removeLeaveFromGoogleCalendar(googleEventId);
+                }
+                const eventId = await registerLeaveToGoogleCalendar(updatedItemForCal);
+                googleEventId = eventId || null;
+            }
         } else if (nextStatus !== '결재완료' && prev.status === '결재완료' && googleEventId) {
             await removeLeaveFromGoogleCalendar(googleEventId);
             googleEventId = null;

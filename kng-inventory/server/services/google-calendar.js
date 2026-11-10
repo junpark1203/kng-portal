@@ -22,8 +22,13 @@ function getCalendarClient() {
 function getNextDay(dateStr) {
     if (!dateStr) return dateStr;
     try {
+        const parts = dateStr.split('-').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0])) {
+            const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
+            return dt.toISOString().split('T')[0];
+        }
         const d = new Date(dateStr);
-        d.setDate(d.getDate() + 1);
+        d.setUTCDate(d.getUTCDate() + 1);
         return d.toISOString().split('T')[0];
     } catch (e) {
         return dateStr;

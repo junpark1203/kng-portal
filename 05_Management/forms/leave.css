@@ -334,6 +334,28 @@ html, body {
 }
 .erp-table th:last-child { border-right: none; }
 
+.erp-table th.sortable-th {
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+.erp-table th.sortable-th:hover {
+    background-color: #e2e8f0;
+    color: var(--primary);
+}
+.erp-table th.sortable-th.sort-active {
+    color: var(--primary);
+    background-color: #eff6ff;
+}
+.erp-table th .sort-icon {
+    font-size: 10px;
+    margin-left: 3px;
+    color: #94a3b8;
+    display: inline-block;
+}
+.erp-table th.sort-active .sort-icon {
+    color: var(--primary);
+}
+
 .erp-table tbody tr {
     border-bottom: 1px solid var(--border-light);
     height: var(--erp-row-height);

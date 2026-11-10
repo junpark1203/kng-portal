@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- Standalone Leave ERP Stylesheet (Isolate from root styles.css) -->
-    <link rel="stylesheet" href="leave.css?v=20261014_1">
+    <link rel="stylesheet" href="leave.css?v=20261110_1">
 </head>
 <body>
     <div class="leave-container">
@@ -93,6 +93,24 @@
             <div class="toolbar-card">
                 <div class="filter-group">
                     <span class="filter-label"><i class='bx bx-filter-alt'></i> 필터:</span>
+                    <select id="filterYear" class="erp-select" title="연도 필터">
+                        <option value="">전체 연도</option>
+                    </select>
+                    <select id="filterMonth" class="erp-select" title="월 필터">
+                        <option value="">전체 월</option>
+                        <option value="01">1월</option>
+                        <option value="02">2월</option>
+                        <option value="03">3월</option>
+                        <option value="04">4월</option>
+                        <option value="05">5월</option>
+                        <option value="06">6월</option>
+                        <option value="07">7월</option>
+                        <option value="08">8월</option>
+                        <option value="09">9월</option>
+                        <option value="10">10월</option>
+                        <option value="11">11월</option>
+                        <option value="12">12월</option>
+                    </select>
                     <select id="filterStatus" class="erp-select">
                         <option value="">모든 결재상태</option>
                         <option value="결재요청">결재요청</option>
@@ -108,6 +126,7 @@
                         <option value="반차">반차(오전/오후)</option>
                         <option value="공가">공가</option>
                         <option value="병가">병가</option>
+                        <option value="경조휴가">경조휴가</option>
                     </select>
 
                     <input type="text" id="filterKeyword" class="erp-input" placeholder="사원명 / 소속 / 사유 검색..." style="width: 200px;">
@@ -117,6 +136,7 @@
                 </div>
 
                 <div class="filter-group">
+                    <span id="filteredCountBadge" style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-right: 4px;">총 0건</span>
                     <button type="button" id="btnExportExcel" class="btn btn-outline">
                         <i class='bx bx-download'></i> 엑셀 내보내기
                     </button>
@@ -131,13 +151,13 @@
                     <thead>
                         <tr>
                             <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAll"></th>
-                            <th style="width: 100px;">결재상태</th>
-                            <th style="width: 80px;">구분</th>
-                            <th style="width: 80px;">신청자</th>
-                            <th style="width: 130px;">소속 / 직급</th>
-                            <th style="width: 190px;">휴가 기간</th>
-                            <th style="width: 70px; text-align: center;">사용일수</th>
-                            <th style="width: 95px;">작성일자</th>
+                            <th class="sortable-th" data-sort="status" style="width: 100px;">결재상태 <span class="sort-icon"></span></th>
+                            <th class="sortable-th" data-sort="leaveType" style="width: 80px;">구분 <span class="sort-icon"></span></th>
+                            <th class="sortable-th" data-sort="name" style="width: 80px;">신청자 <span class="sort-icon"></span></th>
+                            <th class="sortable-th" data-sort="department" style="width: 130px;">소속 / 직급 <span class="sort-icon"></span></th>
+                            <th class="sortable-th sort-active" data-sort="leaveStart" style="width: 190px;">휴가 기간 <span class="sort-icon">▼</span></th>
+                            <th class="sortable-th" data-sort="daysCount" style="width: 70px; text-align: center;">사용일수 <span class="sort-icon"></span></th>
+                            <th class="sortable-th" data-sort="submitDate" style="width: 95px;">작성일자 <span class="sort-icon"></span></th>
                             <th>휴가 사유</th>
                             <th style="width: 120px; text-align: center;">관리</th>
                         </tr>
@@ -163,7 +183,7 @@
                 <div class="notice-box" id="formAllowanceNotice">
                     <i class='bx bx-info-circle'></i>
                     <div>
-                        <span id="formNoticeUser">박준영 님</span>의 2026년 기준 연차: 
+                        <span id="formNoticeUser">박준영 님</span>의 <span id="formNoticeYear">2026</span>년 기준 연차: 
                         총 <b id="formNoticeTotal">13.0</b>일 중 <b id="formNoticeUsed">6.5</b>일 사용 
                         (신청 가능 잔여: <b id="formNoticeRemain" style="color:#2563eb;">6.5일</b>)
                     </div>
@@ -211,7 +231,7 @@
                                 <span class="calc-text">
                                     <i class='bx bx-calculator'></i> 계산된 실제 소진 일수: 
                                     <span class="calc-highlight" id="calcDaysDisplay">1.0 일</span>
-                                    <small style="color:var(--text-muted); margin-left:4px;">(주말 제외)</small>
+                                    <small id="calcHolidayNote" style="color:var(--text-muted); margin-left:4px;">(주말·공휴일 제외)</small>
                                 </span>
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span style="font-size:11px; color:var(--text-muted);">일수 직접조정:</span>
@@ -228,8 +248,10 @@
                             <label for="fStatus">결재 상태</label>
                             <select id="fStatus" class="erp-select">
                                 <option value="결재요청">결재요청 (대시보드 상신)</option>
+                                <option value="결재진행중">결재진행중</option>
                                 <option value="임시작성">임시작성 (내부 보관)</option>
                                 <option value="결재완료">결재완료 (구글 캘린더 자동 등록)</option>
+                                <option value="결재보류">결재보류</option>
                             </select>
                         </div>
 
@@ -299,6 +321,6 @@
 
     <!-- ═══ Scripts ═══ -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script type="module" src="leave.js?v=20261014_2"></script>
+    <script type="module" src="leave.js?v=20261110_1"></script>
 </body>
 </html>
