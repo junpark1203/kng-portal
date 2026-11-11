@@ -477,6 +477,7 @@ function initDb() {
             remarks TEXT,
             thumbnail TEXT,
             additionalImages TEXT,
+            detailImages TEXT,
             createdAt TEXT,
             updatedAt TEXT
         )
@@ -489,6 +490,7 @@ function initDb() {
             db.run('ALTER TABLE seller_k_products ADD COLUMN remarks TEXT', () => {});
             db.run('ALTER TABLE seller_k_products ADD COLUMN thumbnail TEXT', () => {});
             db.run('ALTER TABLE seller_k_products ADD COLUMN additionalImages TEXT', () => {});
+            db.run('ALTER TABLE seller_k_products ADD COLUMN detailImages TEXT', () => {});
         }
     });
 
@@ -757,14 +759,14 @@ app.post('/api/seller-k/products', (req, res) => {
     const sql = `
         INSERT INTO seller_k_products (
             id, supplier, brand, name, color, size, uploadDate, 
-            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, thumbnail, additionalImages, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, thumbnail, additionalImages, detailImages, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
         p.id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
         p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
         p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '',
-        p.thumbnail || '', p.additionalImages || '', p.createdAt || now, p.updatedAt || now
+        p.thumbnail || '', p.additionalImages || '', p.detailImages || '', p.createdAt || now, p.updatedAt || now
     ];
     
     db.run(sql, params, function(err) {
@@ -803,7 +805,7 @@ app.put('/api/seller-k/products/:id', (req, res) => {
                 supplier = ?, brand = ?, name = ?, color = ?, size = ?, uploadDate = ?,
                 buyPrice = ?, buyShipping = ?, shippingBasis = ?, shippingQty = ?, 
                 sellPrice = ?, sellShipping = ?, isLowestPrice = ?, isSoldOut = ?, remarks = ?,
-                thumbnail = ?, additionalImages = ?, updatedAt = ?
+                thumbnail = ?, additionalImages = ?, detailImages = ?, updatedAt = ?
             WHERE id = ?
         `;
         const params = [
@@ -812,6 +814,7 @@ app.put('/api/seller-k/products/:id', (req, res) => {
             p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '',
             p.thumbnail !== undefined ? p.thumbnail : (oldRow.thumbnail || ''),
             p.additionalImages !== undefined ? p.additionalImages : (oldRow.additionalImages || ''),
+            p.detailImages !== undefined ? p.detailImages : (oldRow.detailImages || ''),
             now, id
         ];
 
@@ -879,8 +882,8 @@ app.post('/api/seller-k/products/bulk', (req, res) => {
     const sql = `
         INSERT OR IGNORE INTO seller_k_products (
             id, supplier, brand, name, color, size, uploadDate, 
-            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, thumbnail, additionalImages, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, thumbnail, additionalImages, detailImages, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     let inserted = 0;
@@ -892,7 +895,7 @@ app.post('/api/seller-k/products/bulk', (req, res) => {
             id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
             p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
             p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '',
-            p.thumbnail || '', p.additionalImages || '', now, now
+            p.thumbnail || '', p.additionalImages || '', p.detailImages || '', now, now
         ], function(err) {
             if (!err && this.changes > 0) inserted++;
         });

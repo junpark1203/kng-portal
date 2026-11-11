@@ -99,6 +99,58 @@ const API_BASE = (location.hostname === 'localhost' || location.hostname === '12
     ? 'http://localhost:3000/api/seller-k/products'
     : 'https://kng.junparks.com/api/seller-k/products';
 
+const MU_API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api/mass-upload'
+    : 'https://kng.junparks.com/api/mass-upload';
+
+function parseJsonArraySafe(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+    if (typeof val === 'string') {
+        try {
+            var parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+        } catch (e) {}
+    }
+    return [];
+}
+
+function parseSkMediaFromProduct(p) {
+    var rawThumb = String((p && p.thumbnail) || '').trim();
+    var cleanThumb = rawThumb;
+    var hashDetails = [];
+    var hashIdx = rawThumb.indexOf('#kng_detail=');
+    if (hashIdx !== -1) {
+        cleanThumb = rawThumb.substring(0, hashIdx);
+        var encoded = rawThumb.substring(hashIdx + '#kng_detail='.length);
+        try {
+            var decoded = JSON.parse(decodeURIComponent(encoded));
+            if (Array.isArray(decoded)) {
+                hashDetails = decoded.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+            }
+        } catch (e) {}
+    }
+    var addImgs = parseJsonArraySafe(p && p.additionalImages);
+    var detailImgs = parseJsonArraySafe(p && p.detailImages);
+    if (detailImgs.length === 0 && hashDetails.length > 0) {
+        detailImgs = hashDetails;
+    }
+    return {
+        cleanThumbnail: cleanThumb,
+        additionalImages: addImgs,
+        detailImages: detailImgs
+    };
+}
+
+function buildStoredThumbnail(cleanThumb, detailImgs) {
+    var base = String(cleanThumb || '').split('#kng_detail=')[0].trim();
+    var details = Array.isArray(detailImgs) ? detailImgs.filter(Boolean) : [];
+    if (base && details.length > 0) {
+        return base + '#kng_detail=' + encodeURIComponent(JSON.stringify(details));
+    }
+    return base;
+}
+
 // ==========================================
 // 애플리케이션 상태
 // ==========================================
@@ -246,15 +298,8 @@ function enrichProduct(p) {
         p.remarks || ''
     ].join(' ').toLowerCase();
 
-    // 추가이미지 JSON 파싱
-    var addImgs = [];
-    if (p.additionalImages) {
-        if (typeof p.additionalImages === 'string') {
-            try { addImgs = JSON.parse(p.additionalImages) || []; } catch(e) { addImgs = []; }
-        } else if (Array.isArray(p.additionalImages)) {
-            addImgs = p.additionalImages;
-        }
-    }
+    // 썸네일 / 추가이미지 / 상세이미지 파싱
+    var media = parseSkMediaFromProduct(p);
 
     return Object.assign({}, p, {
         buyPrice: bp,
@@ -274,8 +319,177 @@ function enrichProduct(p) {
         _shortUpdateDate: modified ? formatShortDate(p.updatedAt) : '-',
         _fullUpdateDate: modified ? formatDateTime(p.updatedAt) : '',
         _searchIndex: searchIndex,
-        _additionalImages: addImgs
+        _cleanThumbnail: media.cleanThumbnail,
+        _additionalImages: media.additionalImages,
+        _detailImages: media.detailImages
     });
+}
+
+function normalizeMuImgUrl(img) {
+    var u = '';
+    if (typeof img === 'string') u = img;
+    else if (img) u = img.url || img.autoName || img.dataUrl || img.filename || '';
+    u = String(u || '').trim();
+    if (u && !u.startsWith('http') && !u.startsWith('data:') && !u.startsWith('/')) {
+        u = MU_API_BASE + '/uploads/' + u;
+    }
+    return u;
+}
+
+function extractMuProductMedia(muP) {
+    var images = (muP && (muP._images || muP.images)) || { main: null, additional: [], detail: [] };
+    var mainUrl = normalizeMuImgUrl(images.main);
+    var addUrls = Array.isArray(images.additional) ? images.additional.map(normalizeMuImgUrl).filter(Boolean) : [];
+    var detailUrls = Array.isArray(images.detail) ? images.detail.map(normalizeMuImgUrl).filter(Boolean) : [];
+    return {
+        main: mainUrl ? mainUrl.split('#kng_detail=')[0] : '',
+        additional: addUrls,
+        detail: detailUrls
+    };
+}
+
+function normProductName(str) {
+    return String(str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function compactProductName(str) {
+    return String(str || '').toLowerCase().replace(/[\s\-_()[\]/·.,]+/g, '');
+}
+
+var _muMediaSyncRunning = false;
+async function syncMissingMediaFromMassUpload() {
+    if (_muMediaSyncRunning || !Array.isArray(products) || products.length === 0) return;
+    var candidates = products.filter(function(p) {
+        return !p._cleanThumbnail ||
+               !p._additionalImages || p._additionalImages.length === 0 ||
+               !p._detailImages || p._detailImages.length === 0;
+    });
+    if (candidates.length === 0) return;
+
+    _muMediaSyncRunning = true;
+    try {
+        var res = await authFetch(MU_API_BASE + '/products');
+        if (!res.ok) return;
+        var muProducts = await res.json();
+        if (!Array.isArray(muProducts) || muProducts.length === 0) return;
+
+        var byCode = new Map();
+        var byExactName = new Map();
+        var byCompactName = new Map();
+        var muMediaList = [];
+
+        muProducts.forEach(function(muP) {
+            var media = extractMuProductMedia(muP);
+            if (!media.main && media.additional.length === 0 && media.detail.length === 0) return;
+
+            var code = String(muP.code || '').trim();
+            if (code) byCode.set(code, media);
+
+            var n1 = normProductName(muP.internalName);
+            var n2 = normProductName(muP.productName);
+            if (n1 && !byExactName.has(n1)) byExactName.set(n1, media);
+            if (n2 && !byExactName.has(n2)) byExactName.set(n2, media);
+
+            var c1 = compactProductName(muP.internalName);
+            var c2 = compactProductName(muP.productName);
+            if (c1 && !byCompactName.has(c1)) byCompactName.set(c1, media);
+            if (c2 && !byCompactName.has(c2)) byCompactName.set(c2, media);
+
+            muMediaList.push({
+                c1: c1,
+                c2: c2,
+                media: media
+            });
+        });
+
+        var toPersist = [];
+        var updatedMap = new Map();
+
+        products.forEach(function(p) {
+            var matchedMedia = null;
+
+            // 1. 기존 썸네일/추가사진 파일명에서 KNG 상품코드 추출 매칭
+            var sampleUrl = p._cleanThumbnail || (p._additionalImages && p._additionalImages[0]) || '';
+            var codeMatch = sampleUrl.match(/(KNG-\d{8}-\d{3,4})/i);
+            if (codeMatch && byCode.has(codeMatch[1])) {
+                matchedMedia = byCode.get(codeMatch[1]);
+            }
+
+            // 2. 상품명 정확 일치 / 공백제거 일치 매칭
+            if (!matchedMedia && p.name) {
+                var nName = normProductName(p.name);
+                var cName = compactProductName(p.name);
+                var cBrandName = compactProductName((p.brand || '') + ' ' + (p.name || ''));
+                matchedMedia = byExactName.get(nName) ||
+                               byCompactName.get(cName) ||
+                               byCompactName.get(cBrandName) ||
+                               null;
+
+                // 3. 부분 일치 폴백 (옵션/색상이 뒤에 붙은 경우 등)
+                if (!matchedMedia && cName.length >= 4) {
+                    for (var i = 0; i < muMediaList.length; i++) {
+                        var item = muMediaList[i];
+                        if ((item.c1 && item.c1.length >= 4 && (cName.indexOf(item.c1) !== -1 || item.c1.indexOf(cName) !== -1)) ||
+                            (item.c2 && item.c2.length >= 4 && (cName.indexOf(item.c2) !== -1 || item.c2.indexOf(cName) !== -1))) {
+                            matchedMedia = item.media;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!matchedMedia) return;
+
+            var nextCleanThumb = p._cleanThumbnail || matchedMedia.main || '';
+            var nextAddImgs = (p._additionalImages && p._additionalImages.length > 0)
+                ? p._additionalImages
+                : (matchedMedia.additional || []);
+            var nextDetailImgs = (p._detailImages && p._detailImages.length > 0)
+                ? p._detailImages
+                : (matchedMedia.detail || []);
+
+            var thumbChanged = (!p._cleanThumbnail && Boolean(nextCleanThumb));
+            var addChanged = ((!p._additionalImages || p._additionalImages.length === 0) && nextAddImgs.length > 0);
+            var detailChanged = ((!p._detailImages || p._detailImages.length === 0) && nextDetailImgs.length > 0);
+
+            if (thumbChanged || addChanged || detailChanged) {
+                var storedThumb = buildStoredThumbnail(nextCleanThumb, nextDetailImgs);
+                var updatedRaw = Object.assign({}, p, {
+                    thumbnail: storedThumb,
+                    additionalImages: JSON.stringify(nextAddImgs),
+                    detailImages: JSON.stringify(nextDetailImgs)
+                });
+                updatedMap.set(p.id, updatedRaw);
+                toPersist.push(updatedRaw);
+            }
+        });
+
+        if (toPersist.length > 0) {
+            rawProducts = rawProducts.map(function(rp) {
+                return updatedMap.has(rp.id) ? updatedMap.get(rp.id) : rp;
+            });
+            products = rawProducts.map(enrichProduct);
+            applyFilterAndRender();
+
+            // 백그라운드로 DB에 영구 반영 (변경 이력 로그를 남기지 않는 이미지 전용 필드만 변경됨)
+            var chunkSize = 5;
+            for (var c = 0; c < toPersist.length; c += chunkSize) {
+                var chunk = toPersist.slice(c, c + chunkSize);
+                await Promise.all(chunk.map(function(item) {
+                    return authFetch(API_BASE + '/' + encodeURIComponent(item.id), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    }).catch(function() {});
+                }));
+            }
+            showToast('원본 등록 상품에서 누락된 사진/상세이미지 ' + toPersist.length + '건을 자동 연동했습니다.', 'success');
+        }
+    } catch (err) {
+        console.warn('[SellerK Media Sync] 자동 이미지 매칭 건너뜀:', err);
+    } finally {
+        _muMediaSyncRunning = false;
+    }
 }
 
 // ==========================================
@@ -298,6 +512,9 @@ function loadProducts() {
             // 필터링 및 렌더링
             applyFilterAndRender();
             updateConnectionStatus(true);
+
+            // 누락된 제품 사진 및 상세 이미지 자동 매칭 & 동기화
+            syncMissingMediaFromMassUpload();
         })
         .catch(function(err) {
             console.error('API Error:', err);
@@ -517,13 +734,19 @@ function renderTable() {
         if (p.isSoldOut) nameBadges += '<span class="badge-soldout">품절</span>';
         if (p.isLowestPrice) nameBadges += '<span class="badge-lowest">최저가</span>';
 
-        // 사진 썸네일 및 추가이미지 뱃지
+        // 사진 썸네일 및 추가이미지/상세이미지 뱃지
         var imgHtml = '';
-        if (p.thumbnail) {
+        var cleanThumb = p._cleanThumbnail || '';
+        if (cleanThumb) {
             var addCount = (p._additionalImages && p._additionalImages.length > 0) ? p._additionalImages.length : 0;
-            var badge = addCount > 0 ? '<span class="sk-thumb-badge" title="추가이미지 ' + addCount + '장">+' + addCount + '</span>' : '';
-            imgHtml = '<div class="sk-thumb-wrap" data-id="' + escapeHtml(p.id) + '" title="클릭하여 사진 크게보기">' +
-                          '<img src="' + escapeHtml(p.thumbnail) + '" class="sk-thumb-img" alt="' + escapeHtml(p.name) + '" loading="lazy" onerror="this.onerror=null;this.parentElement.className=\'sk-thumb-empty\';this.parentElement.innerHTML=\'<i class=\\\'bx bx-image\\\'></i>\';">' +
+            var detailCount = (p._detailImages && p._detailImages.length > 0) ? p._detailImages.length : 0;
+            var totalExtra = addCount + detailCount;
+            var badgeTitle = [];
+            if (addCount > 0) badgeTitle.push('추가사진 ' + addCount + '장');
+            if (detailCount > 0) badgeTitle.push('상세이미지 ' + detailCount + '장');
+            var badge = totalExtra > 0 ? '<span class="sk-thumb-badge" title="' + badgeTitle.join(', ') + '">+' + totalExtra + '</span>' : '';
+            imgHtml = '<div class="sk-thumb-wrap" data-id="' + escapeHtml(p.id) + '" title="클릭하여 사진 크게보기' + (badgeTitle.length ? ' (' + badgeTitle.join(', ') + ')' : '') + '">' +
+                          '<img src="' + escapeHtml(cleanThumb) + '" class="sk-thumb-img" alt="' + escapeHtml(p.name) + '" loading="lazy" onerror="this.onerror=null;this.parentElement.className=\'sk-thumb-empty\';this.parentElement.innerHTML=\'<i class=\\\'bx bx-image\\\'></i>\';">' +
                           badge +
                       '</div>';
         } else {
@@ -682,12 +905,17 @@ function openImageGallery(productId) {
     if (!galleryModal) return;
 
     var list = [];
-    if (p.thumbnail) {
-        list.push({ type: 'main', label: '대표 썸네일', url: p.thumbnail });
+    if (p._cleanThumbnail) {
+        list.push({ type: 'main', label: '대표 썸네일', url: p._cleanThumbnail });
     }
     if (p._additionalImages && Array.isArray(p._additionalImages)) {
         p._additionalImages.forEach(function(u, idx) {
             if (u) list.push({ type: 'add', label: '추가이미지 ' + (idx + 1), url: u });
+        });
+    }
+    if (p._detailImages && Array.isArray(p._detailImages)) {
+        p._detailImages.forEach(function(u, idx) {
+            if (u) list.push({ type: 'detail', label: '상세이미지 ' + (idx + 1), url: u });
         });
     }
 
@@ -713,7 +941,7 @@ function openImageGallery(productId) {
             mainImg.alt = item.label;
         }
         if (caption) {
-            var badgeCls = item.type === 'main' ? 'bg-primary' : 'bg-secondary';
+            var badgeCls = item.type === 'main' ? 'bg-primary' : (item.type === 'detail' ? 'bg-info text-dark' : 'bg-secondary');
             caption.innerHTML = '<span class="badge ' + badgeCls + ' me-1">' + item.label + '</span> (' + (idx + 1) + ' / ' + activeGalleryImages.length + ')';
         }
         if (openBtn) {
@@ -764,13 +992,20 @@ function setupHoverPreview() {
         if (!wrap) return;
         var pid = wrap.getAttribute('data-id');
         var p = products.find(function(item) { return item.id === pid; });
-        if (!p || !p.thumbnail) return;
+        if (!p || !p._cleanThumbnail) return;
 
-        tooltipImg.src = p.thumbnail;
+        tooltipImg.src = p._cleanThumbnail;
         tooltipTitle.textContent = p.name || '';
         var metaText = [p.supplier, p.brand, p.color, p.size].filter(Boolean).join(' · ');
+        var extraParts = [];
         if (p._additionalImages && p._additionalImages.length > 0) {
-            metaText += ' (추가사진 ' + p._additionalImages.length + '장)';
+            extraParts.push('추가사진 ' + p._additionalImages.length + '장');
+        }
+        if (p._detailImages && p._detailImages.length > 0) {
+            extraParts.push('상세 ' + p._detailImages.length + '장');
+        }
+        if (extraParts.length > 0) {
+            metaText += ' (' + extraParts.join(', ') + ')';
         }
         tooltipMeta.textContent = metaText;
         tooltip.style.display = 'block';
@@ -853,11 +1088,18 @@ function openModal(id) {
             document.getElementById('skIsLowestPrice').checked = (p.isLowestPrice === 1);
             if (document.getElementById('skIsSoldOut')) document.getElementById('skIsSoldOut').checked = (p.isSoldOut === 1);
             if (document.getElementById('skRemarks')) document.getElementById('skRemarks').value = p.remarks || '';
-            if (thumbInput) thumbInput.value = p.thumbnail || '';
-            updateModalThumbPreview(p.thumbnail || '');
-            if (galleryBtn && p._additionalImages && p._additionalImages.length > 0) {
+            if (thumbInput) thumbInput.value = p._cleanThumbnail || '';
+            updateModalThumbPreview(p._cleanThumbnail || '');
+            var addLen = (p._additionalImages && p._additionalImages.length) ? p._additionalImages.length : 0;
+            var detLen = (p._detailImages && p._detailImages.length) ? p._detailImages.length : 0;
+            if (galleryBtn && (addLen > 0 || detLen > 0)) {
                 galleryBtn.style.display = 'inline-flex';
-                if (addCountSpan) addCountSpan.textContent = p._additionalImages.length + '장';
+                if (addCountSpan) {
+                    var cntParts = [];
+                    if (addLen > 0) cntParts.push('추가 ' + addLen + '장');
+                    if (detLen > 0) cntParts.push('상세 ' + detLen + '장');
+                    addCountSpan.textContent = cntParts.join(' / ');
+                }
                 galleryBtn.onclick = function() { openImageGallery(p.id); };
             }
 
@@ -1246,6 +1488,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            var existingProd = editingId ? products.find(function(i) { return i.id === editingId; }) : null;
+            var cleanThumbVal = document.getElementById('skThumbnail') ? document.getElementById('skThumbnail').value.trim() : '';
+            var existingAddImgs = (existingProd && Array.isArray(existingProd._additionalImages)) ? existingProd._additionalImages : [];
+            var existingDetailImgs = (existingProd && Array.isArray(existingProd._detailImages)) ? existingProd._detailImages : [];
+            var storedThumbVal = buildStoredThumbnail(cleanThumbVal, existingDetailImgs);
+
             var data = {
                 supplier: supplier,
                 brand: document.getElementById('skBrand').value.trim(),
@@ -1262,7 +1510,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 isLowestPrice: document.getElementById('skIsLowestPrice').checked ? 1 : 0,
                 isSoldOut: (document.getElementById('skIsSoldOut') && document.getElementById('skIsSoldOut').checked) ? 1 : 0,
                 remarks: document.getElementById('skRemarks') ? document.getElementById('skRemarks').value.trim() : '',
-                thumbnail: document.getElementById('skThumbnail') ? document.getElementById('skThumbnail').value.trim() : '',
+                thumbnail: storedThumbVal,
+                additionalImages: JSON.stringify(existingAddImgs),
+                detailImages: JSON.stringify(existingDetailImgs),
                 author: getCurrentAuthor()
             };
 
@@ -1456,8 +1706,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     return c.source_module === 'seller-k' && String(c.source_id) === String(p.id);
                 });
 
+                var thumbImgs = [];
+                if (p._cleanThumbnail) thumbImgs.push(p._cleanThumbnail);
+                if (Array.isArray(p._additionalImages)) {
+                    p._additionalImages.forEach(function(u) {
+                        if (u && thumbImgs.indexOf(u) === -1) thumbImgs.push(u);
+                    });
+                }
+                var detailImgs = Array.isArray(p._detailImages) ? p._detailImages.filter(Boolean) : [];
+
                 if (existing) {
                     existing.qty = (Number(existing.qty) || 1) + 1;
+                    if (!existing.image_url && thumbImgs[0]) existing.image_url = thumbImgs[0];
+                    if ((!existing.thumbnail_images || existing.thumbnail_images.length === 0) && thumbImgs.length > 0) {
+                        existing.thumbnail_images = thumbImgs;
+                    }
+                    if ((!existing.detail_images || existing.detail_images.length === 0) && detailImgs.length > 0) {
+                        existing.detail_images = detailImgs;
+                    }
                 } else {
                     cart.push({
                         source_module: 'seller-k',
@@ -1469,7 +1735,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         qty: 1,
                         cost_price: Number(p._buyTotal || p.buyPrice || 0),
                         unit_price: Number(p._sellTotal || p.sellPrice || 0),
-                        image_url: p.imageUrl || p.image_url || p.product_image || '',
+                        image_url: thumbImgs[0] || p.imageUrl || p.image_url || p.product_image || '',
+                        thumbnail_images: thumbImgs,
+                        detail_images: detailImgs,
                         remarks: p.supplier ? '[매입처: ' + p.supplier + ']' : ''
                     });
                 }

@@ -137,7 +137,147 @@ function calcUnitFromGrossMargin(costPrice, marginRate) {
 // ── 품목 이미지 / 다중 썸네일 / 상세페이지 헬퍼 ──
 function cleanImgUrl(url) {
     if (!url) return '';
-    return String(url).split('#kng_media=')[0];
+    return String(url).split('#kng_media=')[0].split('#kng_detail=')[0];
+}
+
+function parseJsonStrArray(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(v => String(v || '').trim()).filter(Boolean);
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed.map(v => String(v || '').trim()).filter(Boolean);
+        } catch (e) {}
+    }
+    return [];
+}
+
+function normalizeMuUploadUrl(img) {
+    let u = '';
+    if (typeof img === 'string') u = img;
+    else if (img) u = img.url || img.autoName || img.dataUrl || img.filename || '';
+    u = String(u || '').trim();
+    if (u && !u.startsWith('http') && !u.startsWith('data:') && !u.startsWith('/')) {
+        u = `${SERVER_URL}/api/mass-upload/uploads/${u}`;
+    } else if (u && u.startsWith('/api/')) {
+        u = `${SERVER_URL}${u}`;
+    }
+    return cleanImgUrl(u);
+}
+
+function buildMassUploadMediaIndex(muProducts) {
+    const byCode = new Map();
+    const byExact = new Map();
+    const byCompact = new Map();
+    const list = [];
+    const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const compact = s => String(s || '').toLowerCase().replace(/[\s\-_()[\]/·.,]+/g, '');
+
+    if (!Array.isArray(muProducts)) return { byCode, byExact, byCompact, list };
+
+    muProducts.forEach(muP => {
+        const imgs = (muP && (muP._images || muP.images)) || { main: null, additional: [], detail: [] };
+        const main = normalizeMuUploadUrl(imgs.main);
+        const additional = Array.isArray(imgs.additional) ? imgs.additional.map(normalizeMuUploadUrl).filter(Boolean) : [];
+        const detail = Array.isArray(imgs.detail) ? imgs.detail.map(normalizeMuUploadUrl).filter(Boolean) : [];
+        if (!main && additional.length === 0 && detail.length === 0) return;
+
+        const media = { main, additional, detail };
+        const code = String(muP.code || '').trim();
+        if (code) byCode.set(code, media);
+
+        const n1 = norm(muP.internalName);
+        const n2 = norm(muP.productName);
+        if (n1 && !byExact.has(n1)) byExact.set(n1, media);
+        if (n2 && !byExact.has(n2)) byExact.set(n2, media);
+
+        const c1 = compact(muP.internalName);
+        const c2 = compact(muP.productName);
+        if (c1 && !byCompact.has(c1)) byCompact.set(c1, media);
+        if (c2 && !byCompact.has(c2)) byCompact.set(c2, media);
+
+        list.push({ c1, c2, media });
+    });
+
+    return { byCode, byExact, byCompact, list };
+}
+
+function extractSellerKProductMedia(p, muIndex) {
+    const rawThumb = String((p && p.thumbnail) || '').trim();
+    let mainThumb = cleanImgUrl(rawThumb);
+    let hashDetails = [];
+    if (rawThumb.includes('#kng_detail=')) {
+        try {
+            const encoded = rawThumb.split('#kng_detail=')[1].split('#')[0];
+            const decoded = JSON.parse(decodeURIComponent(encoded));
+            if (Array.isArray(decoded)) {
+                hashDetails = decoded.map(cleanImgUrl).filter(Boolean);
+            }
+        } catch (e) {}
+    }
+
+    let addImgs = parseJsonStrArray(p && p.additionalImages).map(cleanImgUrl).filter(Boolean);
+    let detailImgs = parseJsonStrArray(p && p.detailImages).map(cleanImgUrl).filter(Boolean);
+    if (detailImgs.length === 0 && hashDetails.length > 0) {
+        detailImgs = hashDetails;
+    }
+
+    // 누락된 이미지가 있을 경우 스마트스토어 등록 원본(mu_products)에서 자동 보완
+    if (muIndex && (!mainThumb || addImgs.length === 0 || detailImgs.length === 0)) {
+        let matched = null;
+        const sampleUrl = mainThumb || addImgs[0] || '';
+        const codeMatch = sampleUrl.match(/(KNG-\d{8}-\d{3,4})/i);
+        if (codeMatch && muIndex.byCode.has(codeMatch[1])) {
+            matched = muIndex.byCode.get(codeMatch[1]);
+        }
+        if (!matched && p && p.name) {
+            const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const compact = s => String(s || '').toLowerCase().replace(/[\s\-_()[\]/·.,]+/g, '');
+            const nName = norm(p.name);
+            const cName = compact(p.name);
+            const cBrandName = compact((p.brand || '') + ' ' + (p.name || ''));
+            matched = muIndex.byExact.get(nName) ||
+                      muIndex.byCompact.get(cName) ||
+                      muIndex.byCompact.get(cBrandName) ||
+                      null;
+            if (!matched && cName.length >= 4) {
+                for (let i = 0; i < muIndex.list.length; i++) {
+                    const item = muIndex.list[i];
+                    if ((item.c1 && item.c1.length >= 4 && (cName.includes(item.c1) || item.c1.includes(cName))) ||
+                        (item.c2 && item.c2.length >= 4 && (cName.includes(item.c2) || item.c2.includes(cName)))) {
+                        matched = item.media;
+                        break;
+                    }
+                }
+            }
+        }
+        if (matched) {
+            if (!mainThumb && matched.main) mainThumb = matched.main;
+            if (addImgs.length === 0 && matched.additional.length > 0) addImgs = matched.additional.slice();
+            if (detailImgs.length === 0 && matched.detail.length > 0) detailImgs = matched.detail.slice();
+        }
+    }
+
+    const thumbs = [];
+    if (mainThumb) thumbs.push(mainThumb);
+    addImgs.forEach(u => {
+        if (u && !thumbs.includes(u)) thumbs.push(u);
+    });
+    const fallbackSingle = cleanImgUrl(p && (p.image_url || p.imageUrl || p.product_image || ''));
+    if (thumbs.length === 0 && fallbackSingle) {
+        thumbs.push(fallbackSingle);
+    }
+
+    const details = [];
+    detailImgs.forEach(u => {
+        if (u && !details.includes(u)) details.push(u);
+    });
+
+    return {
+        image_url: thumbs[0] || '',
+        thumbnail_images: thumbs,
+        detail_images: details
+    };
 }
 
 function extractItemMedia(it) {
@@ -464,24 +604,30 @@ const app = {
             }
 
             if (this.initNewQuotation() === false) return;
-            this.currentQuote.items = cartItems.map((item, idx) => ({
-                id: 'qi_' + Date.now() + '_' + idx,
-                seq: idx + 1,
-                source_module: item.source_module || 'cart',
-                source_id: item.source_id || '',
-                product_name: item.product_name || '',
-                spec: item.spec || '',
-                color: item.color || '',
-                unit: item.unit || 'EA',
-                qty: Number(item.qty) || 1,
-                cost_price: Number(item.cost_price) || 0,
-                unit_price: Number(item.unit_price) || 0,
-                supply_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
-                vat: 0,
-                total_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
-                image_url: item.image_url || '',
-                remarks: item.remarks || ''
-            }));
+            this.currentQuote.items = cartItems.map((item, idx) => {
+                const newItem = {
+                    id: 'qi_' + Date.now() + '_' + idx,
+                    seq: idx + 1,
+                    source_module: item.source_module || 'cart',
+                    source_id: item.source_id || '',
+                    product_name: item.product_name || '',
+                    spec: item.spec || '',
+                    color: item.color || '',
+                    unit: item.unit || 'EA',
+                    qty: Number(item.qty) || 1,
+                    cost_price: Number(item.cost_price) || 0,
+                    unit_price: Number(item.unit_price) || 0,
+                    supply_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
+                    vat: 0,
+                    total_price: (Number(item.qty) || 1) * (Number(item.unit_price) || 0),
+                    image_url: item.image_url || '',
+                    thumbnail_images: Array.isArray(item.thumbnail_images) ? item.thumbnail_images.slice() : [],
+                    detail_images: Array.isArray(item.detail_images) ? item.detail_images.slice() : [],
+                    remarks: item.remarks || ''
+                };
+                syncItemMediaFields(newItem, this.currentQuote.catalog_url || '');
+                return newItem;
+            });
 
             // 바구니 비우기
             localStorage.removeItem('kng_quote_cart');
@@ -1886,33 +2032,57 @@ const app = {
         });
 
         const tbody = document.getElementById('importItemsTbody');
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 조회하는 중...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 조회하는 중...</td></tr>`;
 
         let url = '';
         if (source === 'hq') url = `${API_BASE_HQ}/products`;
         else if (source === 'seller-k') url = API_BASE_SELLER_K;
         else if (source === 'tx') url = `${API_BASE_HQ}/transactions`;
 
-        authFetch(url)
-            .then(res => res.json())
-            .then(data => {
-                this.importData.items = (data || []).map(p => ({
-                    id: p.id,
-                    supplier: p.supplier || '',
-                    brand: p.brand || '',
-                    name: p.name || p.product_name || '',
-                    color: p.color || '',
-                    size: p.size || p.spec || '',
-                    buyPrice: p.buyPrice || p.price || 0,
-                    sellPrice: p.sellPrice || p.discountPrice || p.buyPrice || 0,
-                    stock: p.stock !== undefined ? p.stock : (p.isSoldOut ? 0 : 99),
-                    image_url: p.image_url || p.imageUrl || '',
-                    checked: false
-                }));
+        const mainPromise = authFetch(url).then(res => res.json());
+        const muPromise = (source === 'seller-k')
+            ? authFetch(`${SERVER_URL}/api/mass-upload/products`).then(r => r.ok ? r.json() : []).catch(() => [])
+            : Promise.resolve([]);
+
+        Promise.all([mainPromise, muPromise])
+            .then(([data, muProducts]) => {
+                const muIndex = (source === 'seller-k') ? buildMassUploadMediaIndex(muProducts) : null;
+                this.importData.items = (data || []).map(p => {
+                    const media = (source === 'seller-k')
+                        ? extractSellerKProductMedia(p, muIndex)
+                        : {
+                            image_url: cleanImgUrl(p.image_url || p.imageUrl || p.thumbnail || ''),
+                            thumbnail_images: cleanImgUrl(p.image_url || p.imageUrl || p.thumbnail || '') ? [cleanImgUrl(p.image_url || p.imageUrl || p.thumbnail || '')] : [],
+                            detail_images: []
+                        };
+                    // 셀러K는 운임 포함 매입총액/판매총액 기준도 반영
+                    const buyCost = (source === 'seller-k')
+                        ? ((Number(p.buyPrice) || 0) + (Number(p.buyShipping) || 0))
+                        : (p.buyPrice || p.price || 0);
+                    const sellBase = (source === 'seller-k')
+                        ? ((Number(p.sellPrice) || 0) + (p.shippingBasis === '무료' ? 0 : (Number(p.sellShipping) || 0)))
+                        : (p.sellPrice || p.discountPrice || p.buyPrice || 0);
+
+                    return {
+                        id: p.id,
+                        supplier: p.supplier || '',
+                        brand: p.brand || '',
+                        name: p.name || p.product_name || '',
+                        color: p.color || '',
+                        size: p.size || p.spec || '',
+                        buyPrice: buyCost,
+                        sellPrice: sellBase,
+                        stock: p.stock !== undefined ? p.stock : (p.isSoldOut ? 0 : 99),
+                        image_url: media.image_url,
+                        thumbnail_images: media.thumbnail_images,
+                        detail_images: media.detail_images,
+                        checked: false
+                    };
+                });
                 this.renderImportTable();
             })
             .catch(err => {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다 (${err.message})</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다 (${err.message})</td></tr>`;
             });
     },
 
@@ -1932,25 +2102,43 @@ const app = {
         document.getElementById('importCountBadge').textContent = `조회 ${filtered.length}건`;
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">일치하는 품목이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">일치하는 품목이 없습니다.</td></tr>`;
             return;
         }
 
-        const rows = filtered.map((it, idx) => `
-            <tr>
-                <td class="text-center">
-                    <input type="checkbox" class="form-check-input m-0 import-item-check" data-id="${escHtml(it.id)}" ${it.checked ? 'checked' : ''} onchange="app.onImportCheckChange('${escHtml(it.id)}', this.checked)">
-                </td>
-                <td class="text-center">${escHtml(it.supplier || '-')}</td>
-                <td class="text-center">${escHtml(it.brand || '-')}</td>
-                <td class="text-start ps-2 fw-semibold">${escHtml(it.name)}</td>
-                <td class="text-center">${escHtml(it.color || '-')}</td>
-                <td class="text-center">${escHtml(it.size || '-')}</td>
-                <td class="text-end pe-2 text-muted">${fmtWon(it.buyPrice)}</td>
-                <td class="text-end pe-2 fw-bold text-primary">${fmtWon(it.sellPrice)}</td>
-                <td class="text-center">${fmtNum(it.stock)}</td>
-            </tr>
-        `);
+        const rows = filtered.map((it) => {
+            const thumbCnt = Array.isArray(it.thumbnail_images) ? it.thumbnail_images.length : 0;
+            const detailCnt = Array.isArray(it.detail_images) ? it.detail_images.length : 0;
+            let imgCellHtml = `<span class="text-muted" style="font-size:11px;">-</span>`;
+            if (it.image_url) {
+                const tipParts = [];
+                if (thumbCnt > 0) tipParts.push(`제품사진 ${thumbCnt}장`);
+                if (detailCnt > 0) tipParts.push(`상세이미지 ${detailCnt}장`);
+                const badgeText = detailCnt > 0 ? `${thumbCnt}+상세${detailCnt}` : (thumbCnt > 1 ? `+${thumbCnt - 1}` : '');
+                imgCellHtml = `
+                    <div class="d-inline-flex align-items-center justify-content-center position-relative" title="${escHtml(tipParts.join(' / '))}">
+                        <img src="${escHtml(it.image_url)}" alt="썸네일" style="width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid #cbd5e1;" onerror="this.style.display='none'">
+                        ${badgeText ? `<span class="badge bg-primary" style="position:absolute;bottom:-4px;right:-6px;font-size:8.5px;padding:1px 3px;line-height:1.1;">${escHtml(badgeText)}</span>` : ''}
+                    </div>
+                `;
+            }
+            return `
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input m-0 import-item-check" data-id="${escHtml(it.id)}" ${it.checked ? 'checked' : ''} onchange="app.onImportCheckChange('${escHtml(it.id)}', this.checked)">
+                    </td>
+                    <td class="text-center">${imgCellHtml}</td>
+                    <td class="text-center">${escHtml(it.supplier || '-')}</td>
+                    <td class="text-center">${escHtml(it.brand || '-')}</td>
+                    <td class="text-start ps-2 fw-semibold">${escHtml(it.name)}</td>
+                    <td class="text-center">${escHtml(it.color || '-')}</td>
+                    <td class="text-center">${escHtml(it.size || '-')}</td>
+                    <td class="text-end pe-2 text-muted">${fmtWon(it.buyPrice)}</td>
+                    <td class="text-end pe-2 fw-bold text-primary">${fmtWon(it.sellPrice)}</td>
+                    <td class="text-center">${fmtNum(it.stock)}</td>
+                </tr>
+            `;
+        });
 
         tbody.innerHTML = rows.join('');
         this.updateImportSelectedCount();
@@ -2009,7 +2197,7 @@ const app = {
                 total = baseAmount;
             }
 
-            this.currentQuote.items.push({
+            const newItem = {
                 id: 'qi_' + Date.now() + '_' + (startSeq + idx),
                 seq: startSeq + idx,
                 source_module: this.importData.source,
@@ -2025,8 +2213,12 @@ const app = {
                 vat: vat,
                 total_price: total,
                 image_url: p.image_url || '',
+                thumbnail_images: Array.isArray(p.thumbnail_images) ? p.thumbnail_images.slice() : (p.image_url ? [p.image_url] : []),
+                detail_images: Array.isArray(p.detail_images) ? p.detail_images.slice() : [],
                 remarks: p.supplier ? `[공급사: ${p.supplier}]` : ''
-            });
+            };
+            syncItemMediaFields(newItem, this.currentQuote.catalog_url || '');
+            this.currentQuote.items.push(newItem);
         });
 
         this.closeItemImportModal();

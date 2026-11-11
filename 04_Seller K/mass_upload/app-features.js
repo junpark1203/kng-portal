@@ -2477,6 +2477,22 @@ function exportToInventory() {
                 return u;
             }).filter(Boolean);
 
+            var detailUrls = (images.detail || []).map(function(img) {
+                var u = '';
+                if (typeof img === 'string') u = img;
+                else if (img) u = img.url || img.autoName || img.filename || '';
+                if (u && !u.startsWith('http') && !u.startsWith('data:') && !u.startsWith('/')) {
+                    u = STORAGE_API + '/uploads/' + u;
+                }
+                return u;
+            }).filter(Boolean);
+
+            var cleanMain = mainUrl ? String(mainUrl).split('#kng_detail=')[0] : '';
+            var thumbWithDetail = cleanMain;
+            if (detailUrls.length > 0 && cleanMain) {
+                thumbWithDetail = cleanMain + '#kng_detail=' + encodeURIComponent(JSON.stringify(detailUrls));
+            }
+
             exportPayload.push({
                 supplier: supplier,
                 brand: p.brand || '',
@@ -2493,8 +2509,9 @@ function exportToInventory() {
                 isLowestPrice: p.isLowestPrice ? 1 : 0,
                 isSoldOut: 0,
                 remarks: '',
-                thumbnail: mainUrl || '',
-                additionalImages: JSON.stringify(addUrls)
+                thumbnail: thumbWithDetail || '',
+                additionalImages: JSON.stringify(addUrls),
+                detailImages: JSON.stringify(detailUrls)
             });
         }
     });
