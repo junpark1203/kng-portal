@@ -858,14 +858,14 @@ const app = {
             <td><input type="number" class="item-qty form-control text-end" value="${qty}" min="0" step="any" oninput="app.recalcRow(this)"></td>
             <td><input type="number" class="item-buy form-control text-end" value="${buyPrice}" min="0" oninput="app.recalcRow(this, 'buy')"></td>
             <td><input type="number" class="item-margin form-control text-end" value="${marginRate}" step="0.5" oninput="app.recalcRow(this, 'margin')"></td>
-            <td><input type="number" class="item-settlement form-control text-end bg-light" value="${settlementPrice}" min="0" oninput="app.recalcRow(this, 'settlement')"></td>
-            <td><input type="number" class="item-fee form-control text-end text-danger bg-light" value="${fee}" readonly></td>
-            <td><input type="number" class="item-delivery form-control text-end text-primary fw-bold bg-light" value="${deliveryPrice}" min="0" oninput="app.recalcRow(this, 'delivery')"></td>
-            <td class="text-end fw-bold item-profit-cell text-success">${Number(profit).toLocaleString()}원</td>
+            <td class="bg-light"><input type="number" class="item-settlement form-control text-end" value="${settlementPrice}" min="0" oninput="app.recalcRow(this, 'settlement')"></td>
+            <td class="bg-light"><input type="number" class="item-fee form-control text-end text-danger" value="${fee}" readonly></td>
+            <td class="bg-light"><input type="number" class="item-delivery form-control text-end text-primary fw-bold" value="${deliveryPrice}" min="0" oninput="app.recalcRow(this, 'delivery')"></td>
+            <td class="text-end fw-bold item-profit-cell text-success bg-light">${Number(profit).toLocaleString()}원</td>
             <td><input type="text" class="item-note form-control" value="${data.item_note || data.origin_brand || ''}" placeholder="비고"></td>
             <td class="text-center">
-                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="app.removeItemRow(this)" title="행 삭제">
-                    <i class='bx bx-x fs-5'></i>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 lh-1" onclick="app.removeItemRow(this)" title="행 삭제">
+                    <i class='bx bx-x' style="font-size: 15px; line-height: 1;"></i>
                 </button>
             </td>
         `;

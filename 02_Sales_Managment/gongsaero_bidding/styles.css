@@ -535,6 +535,73 @@ body {
     z-index: 5;
 }
 
+.erp-form-table input[type="number"],
+#itemsInputTable input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.erp-form-table input[type="number"]::-webkit-outer-spin-button,
+.erp-form-table input[type="number"]::-webkit-inner-spin-button,
+#itemsInputTable input[type="number"]::-webkit-outer-spin-button,
+#itemsInputTable input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ── 6-1. 투찰 품목 인라인 시트 그리드 (#itemsInputTable) ── */
+#itemsInputTable thead th {
+    font-size: 11px;
+    padding: 3px 6px;
+    height: 26px;
+}
+
+#itemsInputTable tbody td {
+    padding: 0;
+    height: 26px;
+    vertical-align: middle;
+}
+
+#itemsInputTable tbody td.row-num,
+#itemsInputTable tbody td.item-profit-cell,
+#itemsInputTable tbody td:last-child {
+    padding: 2px 6px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+#itemsInputTable tbody td.bg-light {
+    background-color: #f8fafc;
+}
+
+#itemsInputTable .form-control {
+    width: 100%;
+    height: 26px !important;
+    min-height: 26px !important;
+    font-size: 11.5px !important;
+    line-height: 1.2 !important;
+    padding: 2px 6px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #1e293b;
+    font-variant-numeric: tabular-nums;
+}
+
+#itemsInputTable .form-control::placeholder {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+#itemsInputTable tbody td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--primary) !important;
+    background-color: #eff6ff !important;
+    position: relative;
+    z-index: 5;
+}
+
 /* ── 7. What-If Result Analysis Ribbon in Modal ── */
 .erp-result-panel {
     background: #f0fdf4;
