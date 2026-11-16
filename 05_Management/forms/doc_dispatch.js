@@ -323,8 +323,8 @@
             'archiveCountBadge', 'vaultCountBadge', 'storageModeBadge',
             'btnSettings', 'btnNewPackage', 'btnSavePackage', 'btnBuildMergedPdf',
             'presetSelect', 'btnLoadPreset', 'btnSaveAsPreset',
-            'inputDocNo', 'inputStatus', 'inputSubmitDate', 'inputCoverTitle', 'inputSubmitMethod',
-            'inputTitle', 'inputRecipient', 'partnerSuggestions', 'inputPurpose', 'inputAuthor', 'inputContact', 'inputRemarks',
+            'inputDocNo', 'inputStatus', 'inputSubmitDate', 'inputSubmitMethod',
+            'inputTitle', 'inputRecipient', 'partnerSuggestions', 'inputAuthor', 'inputContact', 'inputRemarks',
             'chkShowApprovalBox', 'btnAutoMatchVault', 'btnCheckAllItems', 'btnUncheckAllItems', 'btnAddDocItem',
             'batchDropZone', 'batchFileInput', 'checklistContainer',
             'printScopeAll', 'printScopeSubmitOnly', 'optShowNumbering', 'numberingSubOptions',
@@ -551,9 +551,10 @@
                 return;
             }
         }
-        els.inputPurpose.value = template.purpose || els.inputPurpose.value || '';
         if (template.remarks) els.inputRemarks.value = template.remarks;
-        if (!els.inputTitle.value.trim() && template.purpose) {
+        const curTitle = els.inputTitle.value.trim();
+        const isAutoTitle = !curTitle || state.templates.some(t => (t.purpose || '').trim() === curTitle);
+        if (isAutoTitle && template.purpose) {
             els.inputTitle.value = template.purpose;
         }
 
@@ -579,11 +580,9 @@
         els.inputDocNo.value = generateDefaultDocNo();
         els.inputStatus.value = '준비중';
         els.inputSubmitDate.value = getLocalTodayStr();
-        els.inputCoverTitle.value = '구 비 서 류 제 출 목 록 표';
         els.inputSubmitMethod.value = '방문제출';
         els.inputTitle.value = '';
         els.inputRecipient.value = '';
-        els.inputPurpose.value = '';
         els.inputRemarks.value = '';
 
         const authorStr = state.currentUser.name
@@ -952,10 +951,8 @@
         syncPrintOptionsFromDom();
 
         const docNo = (els.inputDocNo?.value || '').trim() || '-';
-        const coverTitle = (els.inputCoverTitle?.value || '').trim() || '구 비 서 류 제 출 목 록 표';
-        const title = (els.inputTitle?.value || '').trim() || '(제출 건명 미입력)';
+        const title = (els.inputTitle?.value || '').trim() || '(문서명 미입력)';
         const recipient = (els.inputRecipient?.value || '').trim() || '(제출처 미입력)';
-        const purpose = (els.inputPurpose?.value || '').trim() || '-';
         const submitDate = (els.inputSubmitDate?.value || '').trim() || getLocalTodayStr();
         const submitMethod = (els.inputSubmitMethod?.value || '').trim() || '방문제출';
         const author = (els.inputAuthor?.value || '').trim() || '-';
@@ -964,7 +961,6 @@
 
         const totalDocs = state.items.length;
         const preparedDocs = state.items.filter(it => it.prepared).length;
-        const totalCopies = state.items.reduce((acc, it) => acc + (parseInt(it.copies, 10) || 1), 0);
         const totalFiles = state.items.reduce((acc, it) => acc + (it.attachments ? it.attachments.length : 0), 0);
 
         if (els.previewSummaryBadge) {
@@ -995,7 +991,8 @@
                 ${buildLetterheadHtml()}
                 <div class="cover-title-approval-row ${showAppr ? '' : 'no-approval'}">
                     <div class="cover-title-block">
-                        <h1 class="cover-main-title">${escapeHtml(coverTitle)}</h1>
+                        <div class="cover-sub-caption">제출서류 목록</div>
+                        <h1 class="cover-main-title">${escapeHtml(title)}</h1>
                         <div class="cover-docno-line">관리번호: ${escapeHtml(docNo)} &nbsp;|&nbsp; 제출일자: ${escapeHtml(submitDate)}</div>
                     </div>
                     ${buildApprovalBoxHtml()}
@@ -1009,27 +1006,17 @@
                             <td>${escapeHtml(submitMethod)} (${escapeHtml(submitDate)})</td>
                         </tr>
                         <tr>
-                            <th>제출 건명</th>
-                            <td colspan="3" class="meta-strong">${escapeHtml(title)}</td>
-                        </tr>
-                        <tr>
-                            <th>제출 목적</th>
-                            <td>${escapeHtml(purpose)}</td>
-                            <th>담당자 (연락처)</th>
-                            <td>${escapeHtml(author)} ${contact !== '-' ? `(${escapeHtml(contact)})` : ''}</td>
-                        </tr>
-                        <tr>
-                            <th>구비 현황 요약</th>
-                            <td colspan="3" class="cover-summary-highlight">
-                                총 ${totalDocs}종 (총 ${totalCopies}부) — 준비완료 ${preparedDocs}종 / 미비 ${Math.max(0, totalDocs - preparedDocs)}종 &nbsp;|&nbsp; 서버 첨부파일 ${totalFiles}건
-                            </td>
+                            <th>담당자 (제출자)</th>
+                            <td>${escapeHtml(author)}</td>
+                            <th>연락처 / 이메일</th>
+                            <td>${escapeHtml(contact)}</td>
                         </tr>
                     </tbody>
                 </table>
             ` : `
                 ${buildLetterheadHtml()}
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #cbd5e1;">
-                    <strong style="font-size:12px;">${escapeHtml(coverTitle)} (계속)</strong>
+                    <strong style="font-size:12px;">${escapeHtml(title)} (계속)</strong>
                     <span style="font-size:10px; color:#475569;">관리번호: ${escapeHtml(docNo)} | 제출처: ${escapeHtml(recipient)}</span>
                 </div>
             `;
@@ -1189,13 +1176,14 @@
     // ── 임시저장 & 패키지 저장 ──
     function collectCurrentPackagePayload() {
         syncPrintOptionsFromDom();
+        const title = (els.inputTitle.value || '').trim();
         return {
             id: state.currentPackageId,
             docNo: (els.inputDocNo.value || '').trim() || generateDefaultDocNo(),
-            coverTitle: (els.inputCoverTitle.value || '').trim() || '구 비 서 류 제 출 목 록 표',
-            title: (els.inputTitle.value || '').trim(),
+            coverTitle: title || '제출서류 목록',
+            title,
             recipient: (els.inputRecipient.value || '').trim(),
-            purpose: (els.inputPurpose.value || '').trim(),
+            purpose: title,
             submitDate: (els.inputSubmitDate.value || '').trim() || getLocalTodayStr(),
             submitMethod: (els.inputSubmitMethod.value || '').trim() || '방문제출',
             author: (els.inputAuthor.value || '').trim(),
@@ -1232,11 +1220,9 @@
         els.inputDocNo.value = pkg.docNo || generateDefaultDocNo();
         els.inputStatus.value = pkg.status || '준비중';
         els.inputSubmitDate.value = pkg.submitDate || getLocalTodayStr();
-        els.inputCoverTitle.value = pkg.coverTitle || '구 비 서 류 제 출 목 록 표';
         els.inputSubmitMethod.value = pkg.submitMethod || '방문제출';
-        els.inputTitle.value = pkg.title || '';
+        els.inputTitle.value = pkg.title || pkg.purpose || '';
         els.inputRecipient.value = pkg.recipient || '';
-        els.inputPurpose.value = pkg.purpose || '';
         els.inputAuthor.value = pkg.author || '';
         els.inputContact.value = pkg.contact || '';
         els.inputRemarks.value = pkg.remarks || '';
@@ -1267,7 +1253,7 @@
     async function savePackageToServer() {
         const payload = collectCurrentPackagePayload();
         if (!payload.title) {
-            showToast('제출 건명(패키지 제목)을 입력해 주세요.', 'warning');
+            showToast('문서명을 입력해 주세요.', 'warning');
             els.inputTitle.focus();
             return;
         }
@@ -1806,8 +1792,8 @@
                     <td>${escapeHtml(pkg.submitDate || '-')}</td>
                     <td><strong>${escapeHtml(pkg.recipient || '-')}</strong></td>
                     <td>
-                        <div style="font-weight:700; color:var(--slate-900);">${escapeHtml(pkg.title || '(제목 없음)')}</div>
-                        <div style="font-size:11px; color:var(--slate-500);">${escapeHtml(pkg.purpose || '')}</div>
+                        <div style="font-weight:700; color:var(--slate-900);">${escapeHtml(pkg.title || '(문서명 없음)')}</div>
+                        ${pkg.purpose && pkg.purpose !== pkg.title ? `<div style="font-size:11px; color:var(--slate-500);">${escapeHtml(pkg.purpose)}</div>` : ''}
                     </td>
                     <td>
                         <span class="badge-tag">${prepCnt}/${items.length}종 완료</span>
@@ -2124,7 +2110,7 @@
         const payload = {
             name,
             category,
-            purpose: (els.inputPurpose.value || '').trim(),
+            purpose: (els.inputTitle.value || '').trim(),
             remarks: (els.inputRemarks.value || '').trim(),
             items
         };
@@ -2249,8 +2235,8 @@
 
         // 기본 입력 실시간 프리뷰 반영
         const liveFields = [
-            els.inputDocNo, els.inputStatus, els.inputSubmitDate, els.inputCoverTitle,
-            els.inputSubmitMethod, els.inputTitle, els.inputRecipient, els.inputPurpose,
+            els.inputDocNo, els.inputStatus, els.inputSubmitDate,
+            els.inputSubmitMethod, els.inputTitle, els.inputRecipient,
             els.inputAuthor, els.inputContact, els.inputRemarks
         ];
         liveFields.forEach(el => {
