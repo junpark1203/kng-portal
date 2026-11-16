@@ -8,7 +8,7 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="./doc_dispatch.css?v=20261116_10">
+    <link rel="stylesheet" href="./doc_dispatch.css?v=20261116_11">
 </head>
 <body>
 
@@ -151,6 +151,9 @@
                     <div class="form-section-title" style="margin-top: 16px; justify-content: space-between;">
                         <span><i class='bx bx-check-square'></i> 3. 필요 서류 목록 및 파일 첨부</span>
                         <div class="checklist-bulk-actions">
+                            <button type="button" class="btn-custom btn-outline-custom btn-xs" id="btnOpenPoaModal" title="커버페이지와 동일한 공식 양식으로 위임장을 작성해 PDF로 자동 첨부합니다">
+                                <i class='bx bx-edit text-primary'></i> 위임장 작성·첨부
+                            </button>
                             <button type="button" class="btn-custom btn-outline-custom btn-xs" id="btnAutoMatchVault" title="상용서류함에 등록된 사업자등록증 등을 서류명과 대조하여 자동 첨부합니다">
                                 <i class='bx bx-bolt-circle text-primary'></i> 상용서류함 자동매칭
                             </button>
@@ -623,11 +626,129 @@
         </form>
     </dialog>
 
+    <!-- Modal 6: Power of Attorney (위임장 작성 및 자동 첨부) -->
+    <dialog id="poaModal" class="erp-dialog dialog-xl poa-dialog" aria-labelledby="poaModalTitle" closedby="any">
+        <div class="dialog-header">
+            <div>
+                <h2 id="poaModalTitle"><i class='bx bx-file-find text-primary'></i> 위임장 작성 및 자동 첨부</h2>
+                <p class="dialog-subtitle">커버페이지와 동일한 공식 헤더·푸터가 적용된 A4 위임장을 생성하여 서류 목록에 바로 첨부합니다.</p>
+            </div>
+            <div class="dialog-header-actions">
+                <button type="button" class="btn-custom btn-outline-custom btn-icon-only" id="btnClosePoaModal" aria-label="닫기">
+                    <i class='bx bx-x'></i>
+                </button>
+            </div>
+        </div>
+        <div class="dialog-body poa-modal-body">
+            <form id="poaForm" class="poa-form-pane">
+                <!-- 수임인(대리인) 정보 -->
+                <div class="poa-section-card">
+                    <div class="poa-section-head">
+                        <span><i class='bx bx-user-check text-primary'></i> 수임인 (대리인)</span>
+                        <div style="display:flex; gap:4px;">
+                            <button type="button" class="btn-custom btn-outline-custom btn-xs" id="btnPoaNewAgent" title="새 대리인 입력">+ 신규</button>
+                            <button type="button" class="btn-custom btn-outline-custom btn-xs" id="btnPoaSaveAgent" title="현재 수임인 정보를 프리셋으로 저장">프리셋 저장</button>
+                            <button type="button" class="btn-custom btn-outline-custom btn-xs danger-outline" id="btnPoaDeleteAgent" title="선택된 수임인 프리셋 삭제">삭제</button>
+                        </div>
+                    </div>
+                    <div class="poa-preset-bar">
+                        <select id="poaAgentPresetSelect" class="form-control-custom" aria-label="수임인 프리셋 선택"></select>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="poaAgentName">성 명</label>
+                            <input type="text" id="poaAgentName" class="form-control-custom" placeholder="예: 박준영" autofocus>
+                        </div>
+                        <div class="form-group">
+                            <label for="poaAgentSsn">주민등록번호</label>
+                            <input type="text" id="poaAgentSsn" class="form-control-custom" placeholder="예: 871203-1201313">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="poaAgentAddress">주 소</label>
+                        <input type="text" id="poaAgentAddress" class="form-control-custom" placeholder="예: 서울시 강서구 양천로67길 32, 102동 304호">
+                    </div>
+                </div>
+
+                <!-- 위임 내용 및 작성일자 -->
+                <div class="poa-section-card">
+                    <div class="poa-section-head">
+                        <span><i class='bx bx-detail text-primary'></i> 위임 내용 · 작성일</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="poaPurposeText">위임 문구 <span class="text-muted-sm">(문서 제목 자동 반영 · 수정 가능)</span></label>
+                        <textarea id="poaPurposeText" class="form-control-custom" rows="3" placeholder="위의 사람을 법인의 대리인으로 정하여 ..."></textarea>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="poaDateMode">작성일 표기 방식</label>
+                            <select id="poaDateMode" class="form-control-custom">
+                                <option value="full">날짜 전체 표기 (YYYY년 M월 D일)</option>
+                                <option value="year_blank">연도만 표기 (YYYY년   월   일)</option>
+                                <option value="all_blank">작성일 전체 공란 (   년   월   일)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="poaDateValue">기준 날짜</label>
+                            <input type="date" id="poaDateValue" class="form-control-custom">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 위임인(당사) 정보 -->
+                <div class="poa-section-card">
+                    <div class="poa-section-head">
+                        <span><i class='bx bx-buildings text-primary'></i> 위임인 (법인 정보)</span>
+                        <button type="button" class="btn-custom btn-outline-custom btn-xs" id="btnPoaSaveGrantor" title="현재 위임인 정보를 기본값으로 저장">기본값 저장</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="poaGrantorName">성 명 (법인명 · 대표자)</label>
+                        <input type="text" id="poaGrantorName" class="form-control-custom" placeholder="예: ㈜케앤지 대표 윤종">
+                    </div>
+                    <div class="form-group">
+                        <label for="poaGrantorAddress">주 소</label>
+                        <input type="text" id="poaGrantorAddress" class="form-control-custom" placeholder="예: 서울시 강동구 구천면로 159, 1층 102호">
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="poaCorpRegNo">법인등록번호</label>
+                            <input type="text" id="poaCorpRegNo" class="form-control-custom" placeholder="예: 110111-6260775">
+                        </div>
+                        <div class="form-group">
+                            <label for="poaBizRegNo">사업자등록번호</label>
+                            <input type="text" id="poaBizRegNo" class="form-control-custom" placeholder="예: 845-88-00551">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="poa-form-footer">
+                    <button type="button" class="btn-custom btn-outline-custom" id="btnPoaCancel">취소</button>
+                    <button type="button" class="btn-custom btn-outline-custom" id="btnPoaDownloadPdf">
+                        <i class='bx bx-download'></i> PDF만 저장
+                    </button>
+                    <button type="submit" class="btn-custom btn-primary-custom" id="btnPoaGenerateAndAttach">
+                        <i class='bx bx-check-double'></i> 위임장 PDF 생성 및 목록에 자동첨부
+                    </button>
+                </div>
+            </form>
+
+            <div class="poa-preview-pane">
+                <div class="poa-preview-toolbar">
+                    <span><i class='bx bx-show text-primary'></i> 실시간 A4 위임장 미리보기 (커버페이지 헤더·푸터 통일 양식)</span>
+                    <span style="font-size:11px; color:var(--slate-500);">A4 세로 · 1페이지</span>
+                </div>
+                <div class="poa-preview-viewport" id="poaPreviewViewport">
+                    <!-- Rendered dynamically by JS -->
+                </div>
+            </div>
+        </div>
+    </dialog>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="./doc_dispatch.js?v=20261116_10"></script>
+    <script src="./doc_dispatch.js?v=20261116_11"></script>
 </body>
 </html>

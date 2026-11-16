@@ -1713,6 +1713,270 @@ dialog.erp-dialog::backdrop {
     background: #ffffff;
 }
 
+/* ── 7b. Power of Attorney (위임장) Modal & Unified A4 Sheet ── */
+.checklist-bulk-actions {
+    flex-wrap: wrap;
+}
+
+.attach-btn-mini.poa-btn {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.attach-btn-mini.poa-btn:hover {
+    background: #dbeafe;
+    border-color: #60a5fa;
+}
+
+.file-chip.generated-chip {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #065f46;
+}
+
+.poa-dialog {
+    width: min(1240px, 95vw);
+    height: min(92vh, 920px);
+}
+
+.poa-modal-body {
+    padding: 0;
+    display: grid;
+    grid-template-columns: 440px 1fr;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.poa-form-pane {
+    padding: 14px 16px;
+    overflow-y: auto;
+    border-right: 1px solid var(--slate-200);
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+}
+
+.poa-section-card {
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    padding: 11px 12px;
+    background: var(--slate-50);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.poa-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--slate-900);
+}
+
+.poa-preset-bar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.poa-form-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--slate-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #ffffff;
+}
+
+.poa-preview-pane {
+    background: #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.poa-preview-toolbar {
+    padding: 8px 14px;
+    background: var(--slate-100);
+    border-bottom: 1px solid var(--slate-300);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--slate-700);
+    flex-shrink: 0;
+}
+
+.poa-preview-viewport {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.poa-scale-box {
+    --poa-scale: 0.62;
+    width: calc(210mm * var(--poa-scale));
+    height: calc(297mm * var(--poa-scale));
+    flex-shrink: 0;
+}
+
+.poa-zoom-wrapper {
+    width: 210mm;
+    height: 297mm;
+    transform: scale(var(--poa-scale));
+    transform-origin: top left;
+}
+
+/* Unified A4 Power of Attorney Sheet (matches cover sheet header & footer) */
+.poa-sheet .poa-main-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.poa-title-section {
+    text-align: center;
+    padding: 26px 0 24px;
+}
+
+.poa-main-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 12px;
+    text-indent: 12px;
+    color: #0f172a;
+}
+
+.poa-main-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: 2px solid #0f172a;
+    border-bottom: 2px solid #0f172a;
+    table-layout: fixed;
+}
+
+.poa-main-table th,
+.poa-main-table td {
+    border: 1px solid #cbd5e1;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #0f172a;
+    vertical-align: middle;
+    line-height: 1.5;
+}
+
+.poa-main-table tr th:first-child {
+    border-left: none;
+}
+
+.poa-main-table tr td:last-child {
+    border-right: none;
+}
+
+.poa-group-th {
+    background: #f1f5f9;
+    font-weight: 800;
+    font-size: 12.5px;
+    text-align: center;
+    letter-spacing: 3px;
+    color: #0f172a;
+    border-right: 1px solid #94a3b8 !important;
+}
+
+.poa-field-th {
+    background: #f8fafc;
+    font-weight: 700;
+    font-size: 11.5px;
+    text-align: center;
+    color: #334155;
+}
+
+.poa-value-td {
+    background: #ffffff;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #0f172a;
+    word-break: keep-all;
+}
+
+.poa-name-row-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.poa-seal-mark {
+    color: #475569;
+    font-weight: 700;
+    letter-spacing: 3px;
+    white-space: nowrap;
+    padding-right: 10px;
+}
+
+.poa-body-cell {
+    border-left: none !important;
+    border-right: none !important;
+    background: #ffffff;
+    padding: 42px 30px 34px !important;
+}
+
+.poa-purpose-text {
+    font-size: 13.5px;
+    line-height: 1.95;
+    color: #0f172a;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    margin: 0;
+}
+
+.poa-date-line {
+    margin-top: 44px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #0f172a;
+}
+
+.poa-section-divider td,
+.poa-section-divider th {
+    border-top: 1.5px solid #475569 !important;
+}
+
+@media (max-width: 960px) {
+    .poa-modal-body {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+    }
+    .poa-form-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--slate-200);
+        overflow: visible;
+    }
+    .poa-preview-pane {
+        min-height: 480px;
+    }
+    .poa-scale-box {
+        --poa-scale: 0.48;
+    }
+}
+
 /* ── 8. Print Styles (Cover-only Direct Print) ── */
 @media print {
     @page {

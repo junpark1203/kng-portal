@@ -20,6 +20,31 @@
     const STORAGE_KEY_PACKAGES = 'kng_doc_dispatch_packages_fallback_v1';
     const STORAGE_KEY_TEMPLATES = 'kng_doc_dispatch_templates_fallback_v1';
     const STORAGE_KEY_VAULT = 'kng_doc_dispatch_vault_fallback_v1';
+    const STORAGE_KEY_POA_AGENTS = 'kng_doc_dispatch_poa_agents_v1';
+    const STORAGE_KEY_POA_GRANTOR = 'kng_doc_dispatch_poa_grantor_v1';
+
+    const DEFAULT_POA_AGENTS = [
+        {
+            id: 'AGT-DEFAULT-1',
+            name: '박준영',
+            ssn: '871203-1201313',
+            address: '서울시 강서구 양천로67길 32, 102동 304호'
+        }
+    ];
+
+    const DEFAULT_POA_GRANTOR = {
+        name: '㈜케앤지 대표 윤종',
+        address: '서울시 강동구 구천면로 159, 1층 102호',
+        corpRegNo: '110111-6260775',
+        bizRegNo: '845-88-00551'
+    };
+
+    const poaState = {
+        agents: [],
+        grantor: { ...DEFAULT_POA_GRANTOR },
+        selectedAgentId: '',
+        targetRowIdx: null
+    };
 
     const APPROVAL_RANKS = ['담당', '대리', '과장', '차장', '부장', '이사', '상무', '전무', '사장'];
 
@@ -354,7 +379,13 @@
             'filePreviewModal', 'filePreviewTitle', 'btnOpenFileNewTab', 'btnCloseFilePreview', 'filePreviewContainer',
             'presetSaveModal', 'btnClosePresetSave', 'presetSaveForm', 'newPresetName', 'newPresetCategory', 'btnCancelPresetSave',
             'settingsModal', 'btnCloseSettings', 'settingsForm', 'setCorpKr', 'setCorpEn', 'setBizNum',
-            'setLogoUrl', 'setAddress', 'setTel', 'setFax', 'btnCancelSettings'
+            'setLogoUrl', 'setAddress', 'setTel', 'setFax', 'btnCancelSettings',
+            'btnOpenPoaModal', 'poaModal', 'btnClosePoaModal', 'poaForm',
+            'poaAgentPresetSelect', 'btnPoaNewAgent', 'btnPoaSaveAgent', 'btnPoaDeleteAgent',
+            'poaAgentName', 'poaAgentSsn', 'poaAgentAddress',
+            'poaPurposeText', 'poaDateMode', 'poaDateValue',
+            'poaGrantorName', 'poaGrantorAddress', 'poaCorpRegNo', 'poaBizRegNo', 'btnPoaSaveGrantor',
+            'poaPreviewViewport', 'btnPoaCancel', 'btnPoaDownloadPdf', 'btnPoaGenerateAndAttach'
         ];
         ids.forEach(id => {
             els[id] = document.getElementById(id);
@@ -660,15 +691,25 @@
             const chipsHtml = (item.attachments || []).map((att, aIdx) => {
                 const isPdf = isPdfFile(att);
                 const iconClass = isPdf ? 'bxs-file-pdf' : 'bxs-image';
-                const scanCls = item.submitType === 'original_scan' ? 'scan-chip' : '';
+                const scanCls = item.submitType === 'original_scan' && !att.isGeneratedForm ? 'scan-chip' : '';
+                const genCls = att.isGeneratedForm ? 'generated-chip' : '';
+                const genTag = att.isGeneratedForm ? '<span style="font-size:10px; font-weight:800;">[작성]</span>' : '';
                 return `
-                    <span class="file-chip ${scanCls}" title="${escapeHtml(att.originalName || '첨부파일')}">
+                    <span class="file-chip ${scanCls} ${genCls}" title="${escapeHtml(att.originalName || '첨부파일')}">
                         <i class='bx ${iconClass}'></i>
+                        ${genTag}
                         <span class="file-chip-name" data-action="preview-file" data-row="${idx}" data-att="${aIdx}">${escapeHtml(att.originalName || '파일')}</span>
                         <button type="button" class="file-chip-remove" data-action="remove-file" data-row="${idx}" data-att="${aIdx}" aria-label="첨부파일 제거">&times;</button>
                     </span>
                 `;
             }).join('');
+
+            const isPoaItem = normalizeText(item.name).includes('위임장');
+            const poaBtnHtml = isPoaItem ? `
+                        <button type="button" class="attach-btn-mini poa-btn" data-action="open-poa" data-row="${idx}" title="커버페이지와 통일된 양식으로 위임장을 작성해 자동 첨부합니다">
+                            <i class='bx bx-edit'></i> 위임장 작성
+                        </button>
+            ` : '';
 
             return `
                 <div class="doc-item-card ${isPrepared ? 'prepared' : 'unprepared'}" data-row="${idx}">
@@ -712,6 +753,7 @@
                         <button type="button" class="attach-btn-mini" data-action="open-vault-picker" data-row="${idx}">
                             <i class='bx bx-folder-open'></i> 상용서류함
                         </button>
+                        ${poaBtnHtml}
                         ${statusTag}
                         ${validityBadge}
                         ${chipsHtml}
@@ -908,12 +950,15 @@
         `;
     }
 
-    function buildCorporateFooterHtml(pageNum, totalPages) {
+    function buildCorporateFooterHtml(pageNum, totalPages, customRightText = null) {
         // 사용자 요청 반영: 법인 직인(도장) 이미지 없이 깔끔한 텍스트 공식 푸터만 출력
+        const rightText = customRightText !== null
+            ? customRightText
+            : `- Cover ${pageNum} / ${totalPages} -`;
         return `
             <footer class="a4-footer">
                 <span>${escapeHtml(state.company.nameKr)} (${escapeHtml(state.company.nameEn)}) &nbsp;|&nbsp; 사업자등록번호: ${escapeHtml(state.company.bizNum)} &nbsp;|&nbsp; ${escapeHtml(state.company.address)} &nbsp;|&nbsp; TEL ${escapeHtml(state.company.tel)}</span>
-                <span class="footer-page-num">- Cover ${pageNum} / ${totalPages} -</span>
+                ${rightText ? `<span class="footer-page-num">${escapeHtml(rightText)}</span>` : ''}
             </footer>
         `;
     }
@@ -1113,16 +1158,19 @@
         state.items.forEach((item, idx) => {
             const no = idx + 1;
             const hasFiles = item.attachments && item.attachments.length > 0;
-            const shouldPrintFile = hasFiles && (opts.printScope === 'all' || item.submitType === 'file_print');
+            const printableFiles = (opts.printScope === 'all' || item.submitType === 'file_print')
+                ? (item.attachments || [])
+                : (item.attachments || []).filter(a => a.isGeneratedForm);
+            const shouldPrintFile = printableFiles.length > 0;
 
             if (shouldPrintFile) {
-                const stamp = formatStampLabel(no, item.name || '서류', item.submitType, 1, item.attachments.length);
+                const stamp = formatStampLabel(no, item.name || '서류', item.submitType, 1, printableFiles.length);
                 const stampHtml = opts.showNumbering
                     ? `<span class="queue-stamp-preview ${stamp.isScan ? 'is-scan' : ''}">${escapeHtml(stamp.mainText)}${stamp.isScan ? ' · 스캔본' : ''}</span>`
                     : `<span style="font-size:10.5px; color: var(--slate-500);">번호 표기 OFF</span>`;
                 rows.push(`
                     <div class="queue-item-row">
-                        <span><strong>${no}. ${escapeHtml(item.name || '(미입력)')}</strong> — 첨부 ${item.attachments.length}개 파일 (${item.attachments.map(a => escapeHtml(a.originalName)).join(', ')})</span>
+                        <span><strong>${no}. ${escapeHtml(item.name || '(미입력)')}</strong> — 첨부 ${printableFiles.length}개 파일 (${printableFiles.map(a => escapeHtml(a.originalName)).join(', ')})</span>
                         ${stampHtml}
                     </div>
                 `);
@@ -1573,8 +1621,10 @@
                 const item = state.items[i];
                 const itemNo = i + 1;
                 const itemName = item.name || `서류_${itemNo}`;
-                const hasFiles = Array.isArray(item.attachments) && item.attachments.length > 0;
-                const shouldInclude = hasFiles && (opts.printScope === 'all' || item.submitType === 'file_print');
+                const attachmentsToPrint = (opts.printScope === 'all' || item.submitType === 'file_print')
+                    ? (item.attachments || [])
+                    : (item.attachments || []).filter(a => a.isGeneratedForm);
+                const shouldInclude = attachmentsToPrint.length > 0;
 
                 if (!shouldInclude) {
                     if (opts.includeDivider) {
@@ -1590,7 +1640,7 @@
                 const loadedSources = [];
                 let totalItemPages = 0;
 
-                for (const att of item.attachments) {
+                for (const att of attachmentsToPrint) {
                     try {
                         const bytes = await getAttachmentBytes(att);
                         if (isPdfFile(att)) {
@@ -2401,6 +2451,8 @@
                 card?.querySelector('.row-file-input')?.click();
             } else if (action === 'open-vault-picker') {
                 openVaultPickerForRow(rowIdx);
+            } else if (action === 'open-poa') {
+                openPoaModal(rowIdx);
             } else if (action === 'preview-file') {
                 await openFilePreviewModal(item.attachments[attIdx]);
             } else if (action === 'remove-file') {
@@ -2630,6 +2682,8 @@
             showToast('회사 정보가 저장되었습니다.');
         });
 
+        bindPoaEvents();
+
         // Dialog returnValue reset & Safari closedby="any" light-dismiss fallback
         document.querySelectorAll('dialog.erp-dialog').forEach(dlg => {
             dlg.addEventListener('close', () => { dlg.returnValue = ''; });
@@ -2654,10 +2708,478 @@
         });
     }
 
+    // ── 위임장 (Power of Attorney) 작성 · 프리셋 · PDF 생성 · 자동 첨부 ──
+    function loadPoaSettings() {
+        try {
+            const rawAgents = localStorage.getItem(STORAGE_KEY_POA_AGENTS);
+            if (rawAgents !== null) {
+                const parsed = JSON.parse(rawAgents);
+                if (Array.isArray(parsed)) {
+                    poaState.agents = parsed.map(a => ({
+                        id: a.id || generateUid('AGT'),
+                        name: String(a.name || ''),
+                        ssn: String(a.ssn || ''),
+                        address: String(a.address || '')
+                    }));
+                } else {
+                    poaState.agents = DEFAULT_POA_AGENTS.map(a => ({ ...a }));
+                }
+            } else {
+                poaState.agents = DEFAULT_POA_AGENTS.map(a => ({ ...a }));
+            }
+        } catch (e) {
+            poaState.agents = DEFAULT_POA_AGENTS.map(a => ({ ...a }));
+        }
+
+        try {
+            const rawGrantor = localStorage.getItem(STORAGE_KEY_POA_GRANTOR);
+            if (rawGrantor) {
+                poaState.grantor = { ...DEFAULT_POA_GRANTOR, ...JSON.parse(rawGrantor) };
+            } else {
+                poaState.grantor = { ...DEFAULT_POA_GRANTOR };
+            }
+        } catch (e) {
+            poaState.grantor = { ...DEFAULT_POA_GRANTOR };
+        }
+
+        poaState.selectedAgentId = poaState.agents[0]?.id || '__new__';
+    }
+
+    function savePoaAgentsToStorage() {
+        try {
+            localStorage.setItem(STORAGE_KEY_POA_AGENTS, JSON.stringify(poaState.agents));
+        } catch (e) {}
+    }
+
+    function savePoaGrantorToStorage() {
+        try {
+            localStorage.setItem(STORAGE_KEY_POA_GRANTOR, JSON.stringify(poaState.grantor));
+        } catch (e) {}
+    }
+
+    function appendWithParticle(word, withBatchim = '과', withoutBatchim = '와') {
+        const trimmed = String(word || '').trim();
+        if (!trimmed) return '';
+        const lastChar = trimmed.charCodeAt(trimmed.length - 1);
+        if (lastChar >= 0xAC00 && lastChar <= 0xD7A3) {
+            const hasBatchim = ((lastChar - 0xAC00) % 28) !== 0;
+            return `${trimmed}${hasBatchim ? withBatchim : withoutBatchim}`;
+        }
+        return `${trimmed}${withBatchim}`;
+    }
+
+    function buildDefaultPoaPurpose(docTitle) {
+        const title = String(docTitle || '').trim();
+        if (!title) {
+            return '위의 사람을 법인의 대리인으로 정하여 아래 위임 업무와 관련 일체의 권한을 위임합니다.';
+        }
+        return `위의 사람을 법인의 대리인으로 정하여 ${appendWithParticle(title, '과', '와')} 관련 일체의 권한을 위임합니다.`;
+    }
+
+    function formatPoaDateHtml(mode, dateStr) {
+        const raw = String(dateStr || '').trim() || getLocalTodayStr();
+        const parts = raw.split('-');
+        const year = /^\d{4}$/.test(parts[0] || '') ? parts[0] : String(new Date().getFullYear());
+        const month = parts[1] ? String(parseInt(parts[1], 10)) : '';
+        const day = parts[2] ? String(parseInt(parts[2], 10)) : '';
+
+        if (mode === 'all_blank') {
+            return '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일';
+        }
+        if (mode === 'year_blank') {
+            return `${escapeHtml(year)}년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일`;
+        }
+        return `${escapeHtml(year)}년 ${escapeHtml(month)}월 ${escapeHtml(day)}일`;
+    }
+
+    function collectPoaFormData() {
+        return {
+            agentName: (els.poaAgentName?.value || '').trim(),
+            agentSsn: (els.poaAgentSsn?.value || '').trim(),
+            agentAddress: (els.poaAgentAddress?.value || '').trim(),
+            purposeText: (els.poaPurposeText?.value || '').trim(),
+            dateMode: els.poaDateMode?.value || 'full',
+            dateValue: els.poaDateValue?.value || getLocalTodayStr(),
+            grantorName: (els.poaGrantorName?.value || '').trim(),
+            grantorAddress: (els.poaGrantorAddress?.value || '').trim(),
+            corpRegNo: (els.poaCorpRegNo?.value || '').trim(),
+            bizRegNo: (els.poaBizRegNo?.value || '').trim()
+        };
+    }
+
+    function buildPoaSheetHtml() {
+        const data = collectPoaFormData();
+        const docNo = (els.inputDocNo?.value || '').trim() || '-';
+        const draftDate = (els.inputDraftDate?.value || '').trim() || getLocalTodayStr();
+        const dateHtml = formatPoaDateHtml(data.dateMode, data.dateValue);
+
+        return `
+            <div class="a4-sheet poa-sheet">
+                ${buildTopHeaderBandHtml(docNo, draftDate)}
+                <div class="poa-main-body">
+                    <div class="poa-title-section">
+                        <h1 class="poa-main-title">위&nbsp;임&nbsp;장</h1>
+                    </div>
+                    <table class="poa-main-table">
+                        <colgroup>
+                            <col style="width: 88px;">
+                            <col style="width: 124px;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th class="poa-group-th" rowspan="3">수 임 인</th>
+                                <th class="poa-field-th">성 명</th>
+                                <td class="poa-value-td">
+                                    <div class="poa-name-row-wrap">
+                                        <span>${escapeHtml(data.agentName)}</span>
+                                        <span class="poa-seal-mark">(인)</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="poa-field-th">주민등록번호</th>
+                                <td class="poa-value-td">${escapeHtml(data.agentSsn)}</td>
+                            </tr>
+                            <tr>
+                                <th class="poa-field-th">주 소</th>
+                                <td class="poa-value-td">${escapeHtml(data.agentAddress)}</td>
+                            </tr>
+                            <tr class="poa-section-divider">
+                                <td colspan="3" class="poa-body-cell">
+                                    <p class="poa-purpose-text">${escapeHtml(data.purposeText)}</p>
+                                    <div class="poa-date-line">${dateHtml}</div>
+                                </td>
+                            </tr>
+                            <tr class="poa-section-divider">
+                                <th class="poa-group-th" rowspan="4">위 임 인</th>
+                                <th class="poa-field-th">성 명</th>
+                                <td class="poa-value-td">
+                                    <div class="poa-name-row-wrap">
+                                        <span>${escapeHtml(data.grantorName)}</span>
+                                        <span class="poa-seal-mark">(인)</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="poa-field-th">주 소</th>
+                                <td class="poa-value-td">${escapeHtml(data.grantorAddress)}</td>
+                            </tr>
+                            <tr>
+                                <th class="poa-field-th">법인등록번호</th>
+                                <td class="poa-value-td">${escapeHtml(data.corpRegNo)}</td>
+                            </tr>
+                            <tr>
+                                <th class="poa-field-th">사업자등록번호</th>
+                                <td class="poa-value-td">${escapeHtml(data.bizRegNo)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                ${buildCorporateFooterHtml(1, 1, '- Power of Attorney -')}
+            </div>
+        `;
+    }
+
+    function renderPoaPreview() {
+        if (!els.poaPreviewViewport) return;
+        els.poaPreviewViewport.innerHTML = `
+            <div class="poa-scale-box">
+                <div class="poa-zoom-wrapper">
+                    ${buildPoaSheetHtml()}
+                </div>
+            </div>
+        `;
+    }
+
+    function populatePoaAgentSelect() {
+        if (!els.poaAgentPresetSelect) return;
+        const options = poaState.agents.map(a => {
+            const label = a.ssn ? `${a.name} (${a.ssn})` : a.name;
+            return `<option value="${escapeHtml(a.id)}">${escapeHtml(label)}</option>`;
+        });
+        options.push('<option value="__new__">+ 새 수임인 직접 입력</option>');
+        els.poaAgentPresetSelect.innerHTML = options.join('');
+
+        const hasSelected = poaState.agents.some(a => a.id === poaState.selectedAgentId);
+        if (!hasSelected && poaState.selectedAgentId !== '__new__') {
+            poaState.selectedAgentId = poaState.agents[0]?.id || '__new__';
+        }
+        els.poaAgentPresetSelect.value = poaState.selectedAgentId;
+    }
+
+    function applyPoaAgentToInputs(agentId) {
+        const found = poaState.agents.find(a => a.id === agentId);
+        if (found) {
+            els.poaAgentName.value = found.name || '';
+            els.poaAgentSsn.value = found.ssn || '';
+            els.poaAgentAddress.value = found.address || '';
+        } else {
+            els.poaAgentName.value = '';
+            els.poaAgentSsn.value = '';
+            els.poaAgentAddress.value = '';
+        }
+    }
+
+    function applyPoaGrantorToInputs() {
+        els.poaGrantorName.value = poaState.grantor.name || '';
+        els.poaGrantorAddress.value = poaState.grantor.address || '';
+        els.poaCorpRegNo.value = poaState.grantor.corpRegNo || '';
+        els.poaBizRegNo.value = poaState.grantor.bizRegNo || '';
+    }
+
+    function openPoaModal(targetRowIdx = null) {
+        if (!els.poaModal) return;
+        poaState.targetRowIdx = (typeof targetRowIdx === 'number' && !isNaN(targetRowIdx)) ? targetRowIdx : null;
+
+        populatePoaAgentSelect();
+        applyPoaAgentToInputs(poaState.selectedAgentId);
+        applyPoaGrantorToInputs();
+
+        els.poaPurposeText.value = buildDefaultPoaPurpose(els.inputTitle?.value || '');
+        els.poaDateMode.value = 'full';
+        els.poaDateValue.value = els.inputDraftDate?.value || getLocalTodayStr();
+
+        renderPoaPreview();
+        els.poaModal.showModal();
+    }
+
+    function buildPoaPdfFilename() {
+        const docTitle = (els.inputTitle?.value || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+        const agentName = (els.poaAgentName?.value || '대리인').trim().replace(/[<>:"/\\|?*]/g, '_');
+        const suffix = docTitle ? `_${docTitle.slice(0, 40)}` : '';
+        return `위임장_${agentName}${suffix}.pdf`;
+    }
+
+    async function generatePoaPdfBytes() {
+        if (!window.PDFLib || !window.html2canvas) {
+            throw new Error('PDF 생성 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도하세요.');
+        }
+
+        const { PDFDocument } = window.PDFLib;
+        const pdfDoc = await PDFDocument.create();
+
+        const offscreen = document.createElement('div');
+        offscreen.style.cssText = 'position:fixed; left:-9999px; top:0; width:210mm; background:#ffffff; z-index:-1;';
+        document.body.appendChild(offscreen);
+
+        try {
+            offscreen.innerHTML = buildPoaSheetHtml();
+            const sheetEl = offscreen.querySelector('.a4-sheet');
+            if (sheetEl) {
+                sheetEl.style.boxShadow = 'none';
+                sheetEl.style.margin = '0';
+            }
+
+            const imgs = Array.from(offscreen.querySelectorAll('img'));
+            await Promise.all(imgs.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(res => {
+                    img.addEventListener('load', res, { once: true });
+                    img.addEventListener('error', res, { once: true });
+                });
+            }));
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+
+            const canvas = await window.html2canvas(sheetEl || offscreen, {
+                scale: 2.1,
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                logging: false
+            });
+            const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const pngBytes = await pngBlob.arrayBuffer();
+            const pngImage = await pdfDoc.embedPng(pngBytes);
+            const page = pdfDoc.addPage([595.28, 841.89]);
+            page.drawImage(pngImage, {
+                x: 0,
+                y: 0,
+                width: 595.28,
+                height: 841.89
+            });
+            return await pdfDoc.save();
+        } finally {
+            offscreen.remove();
+        }
+    }
+
+    async function handlePoaDownloadOnly() {
+        const btn = els.btnPoaDownloadPdf;
+        if (!btn || btn.disabled) return;
+        const prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 생성 중...";
+
+        try {
+            const pdfBytes = await generatePoaPdfBytes();
+            downloadBlobBytes(pdfBytes, buildPoaPdfFilename());
+            showToast('위임장 PDF 파일을 다운로드했습니다.');
+        } catch (err) {
+            showToast(err.message || '위임장 PDF 생성에 실패했습니다.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = prevHtml;
+        }
+    }
+
+    async function handlePoaGenerateAndAttach() {
+        const btn = els.btnPoaGenerateAndAttach;
+        if (!btn || btn.disabled) return;
+        const prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 생성·첨부 중...";
+
+        try {
+            const pdfBytes = await generatePoaPdfBytes();
+            const filename = buildPoaPdfFilename();
+            const fileObj = new File([pdfBytes], filename, { type: 'application/pdf' });
+            const uploaded = await uploadFiles([fileObj]);
+            if (!uploaded || uploaded.length === 0) {
+                throw new Error('생성된 위임장 파일 저장에 실패했습니다.');
+            }
+
+            const attachedMeta = {
+                ...uploaded[0],
+                isGeneratedForm: true,
+                generatedFormType: 'poa'
+            };
+
+            let targetIdx = (poaState.targetRowIdx !== null && state.items[poaState.targetRowIdx])
+                ? poaState.targetRowIdx
+                : -1;
+            if (targetIdx < 0) {
+                targetIdx = state.items.findIndex(it => normalizeText(it.name).includes('위임장'));
+            }
+            if (targetIdx < 0) {
+                state.items.push(createEmptyItem({
+                    name: '위임장',
+                    required: true,
+                    copies: 1,
+                    submitType: 'file_print',
+                    prepared: true,
+                    attachments: []
+                }));
+                targetIdx = state.items.length - 1;
+            }
+
+            const targetItem = state.items[targetIdx];
+            const prevAttachments = Array.isArray(targetItem.attachments) ? targetItem.attachments : [];
+            targetItem.attachments = prevAttachments.filter(
+                att => !(att.isGeneratedForm && (!att.generatedFormType || att.generatedFormType === 'poa'))
+            );
+            targetItem.attachments.push(attachedMeta);
+            targetItem.prepared = true;
+
+            renderChecklist();
+            renderPreview();
+            saveDraft();
+            els.poaModal.close();
+            showToast('위임장 PDF가 생성되어 서류 목록에 자동 첨부되었습니다.');
+        } catch (err) {
+            showToast(err.message || '위임장 PDF 첨부 중 오류가 발생했습니다.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = prevHtml;
+        }
+    }
+
+    function bindPoaEvents() {
+        if (!els.poaModal) return;
+
+        els.btnOpenPoaModal?.addEventListener('click', () => openPoaModal(null));
+        els.btnClosePoaModal?.addEventListener('click', () => els.poaModal.close());
+        els.btnPoaCancel?.addEventListener('click', () => els.poaModal.close());
+
+        els.poaAgentPresetSelect?.addEventListener('change', (e) => {
+            poaState.selectedAgentId = e.target.value;
+            applyPoaAgentToInputs(poaState.selectedAgentId);
+            renderPoaPreview();
+        });
+
+        els.btnPoaNewAgent?.addEventListener('click', () => {
+            poaState.selectedAgentId = '__new__';
+            if (els.poaAgentPresetSelect) els.poaAgentPresetSelect.value = '__new__';
+            applyPoaAgentToInputs('__new__');
+            renderPoaPreview();
+            els.poaAgentName?.focus();
+        });
+
+        els.btnPoaSaveAgent?.addEventListener('click', () => {
+            const name = (els.poaAgentName?.value || '').trim();
+            const ssn = (els.poaAgentSsn?.value || '').trim();
+            const address = (els.poaAgentAddress?.value || '').trim();
+            if (!name) {
+                showToast('수임인 성명을 입력하세요.', 'error');
+                els.poaAgentName?.focus();
+                return;
+            }
+
+            const existing = poaState.selectedAgentId !== '__new__'
+                ? poaState.agents.find(a => a.id === poaState.selectedAgentId)
+                : null;
+            if (existing) {
+                existing.name = name;
+                existing.ssn = ssn;
+                existing.address = address;
+            } else {
+                const newId = generateUid('AGT');
+                poaState.agents.push({ id: newId, name, ssn, address });
+                poaState.selectedAgentId = newId;
+            }
+            savePoaAgentsToStorage();
+            populatePoaAgentSelect();
+            showToast('수임인 프리셋이 저장되었습니다.');
+        });
+
+        els.btnPoaDeleteAgent?.addEventListener('click', () => {
+            if (!poaState.selectedAgentId || poaState.selectedAgentId === '__new__') {
+                showToast('삭제할 저장된 수임인 프리셋을 선택하세요.', 'info');
+                return;
+            }
+            poaState.agents = poaState.agents.filter(a => a.id !== poaState.selectedAgentId);
+            poaState.selectedAgentId = poaState.agents[0]?.id || '__new__';
+            savePoaAgentsToStorage();
+            populatePoaAgentSelect();
+            applyPoaAgentToInputs(poaState.selectedAgentId);
+            renderPoaPreview();
+            showToast('선택한 수임인 프리셋이 삭제되었습니다.');
+        });
+
+        els.btnPoaSaveGrantor?.addEventListener('click', () => {
+            poaState.grantor = {
+                name: (els.poaGrantorName?.value || '').trim() || DEFAULT_POA_GRANTOR.name,
+                address: (els.poaGrantorAddress?.value || '').trim() || DEFAULT_POA_GRANTOR.address,
+                corpRegNo: (els.poaCorpRegNo?.value || '').trim() || DEFAULT_POA_GRANTOR.corpRegNo,
+                bizRegNo: (els.poaBizRegNo?.value || '').trim() || DEFAULT_POA_GRANTOR.bizRegNo
+            };
+            savePoaGrantorToStorage();
+            showToast('위임인(법인) 기본 정보가 저장되었습니다.');
+        });
+
+        els.btnPoaDownloadPdf?.addEventListener('click', handlePoaDownloadOnly);
+        els.poaForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handlePoaGenerateAndAttach();
+        });
+
+        const liveInputs = [
+            els.poaAgentName, els.poaAgentSsn, els.poaAgentAddress,
+            els.poaPurposeText, els.poaDateMode, els.poaDateValue,
+            els.poaGrantorName, els.poaGrantorAddress, els.poaCorpRegNo, els.poaBizRegNo
+        ];
+        liveInputs.forEach(el => {
+            el?.addEventListener('input', renderPoaPreview);
+            el?.addEventListener('change', renderPoaPreview);
+        });
+    }
+
     // ── 초기화 ──
     async function init() {
         initElements();
         loadCompanySettings();
+        loadPoaSettings();
         setZoom(0.75);
         await Promise.all([
             detectCurrentUser(),
