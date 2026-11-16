@@ -162,7 +162,6 @@
         individualPdfs: []
     };
 
-    let cachedFontBytes = null;
     let initialSettingsSnapshot = '';
     let submitDateManuallyEdited = false;
     const els = {};
@@ -1027,16 +1026,15 @@
     }
 
     function buildCoverItemRowHtml(item, idx) {
-        const hasFiles = Array.isArray(item.attachments) && item.attachments.length > 0;
         const statusHtml = `<span class="cover-check-box ${item.prepared ? 'checked' : ''}" aria-label="${item.prepared ? '준비 완료' : '미체크'}">${item.prepared ? '✓' : ''}</span>`;
 
         let typeText = '';
         if (item.submitType === 'original_scan') {
-            typeText = hasFiles ? '원본 제출 (스캔보관)' : '원본 제출';
+            typeText = '원본 제출';
         } else if (item.submitType === 'original_hardcopy') {
-            typeText = hasFiles ? '실물 지참 (스캔보관)' : '실물 지참';
+            typeText = '실물 지참';
         } else {
-            typeText = hasFiles ? '사본 제출 (첨부완료)' : '사본 제출';
+            typeText = '사본 제출';
         }
 
         const noteParts = [];
@@ -1194,7 +1192,7 @@
         renderAttachmentQueuePreview();
     }
 
-    function formatStampLabel(itemNo, itemName, submitType, subPage, totalSubPages) {
+    function formatStampLabel(itemNo, itemName, submitType, subPage, totalSubPages, isGeneratedForm = false) {
         const opts = state.printOptions;
         let mainText = '';
         if (opts.numberingStyle === 'simple') {
@@ -1209,7 +1207,7 @@
             mainText += ` (${subPage}/${totalSubPages})`;
         }
 
-        const isScan = opts.showScanBadge && submitType === 'original_scan';
+        const isScan = opts.showScanBadge && submitType === 'original_scan' && !isGeneratedForm;
         return { mainText, isScan };
     }
 
@@ -1227,7 +1225,8 @@
             const shouldPrintFile = printableFiles.length > 0;
 
             if (shouldPrintFile) {
-                const stamp = formatStampLabel(no, item.name || '서류', item.submitType, 1, printableFiles.length);
+                const allGenerated = printableFiles.every(a => !!a.isGeneratedForm);
+                const stamp = formatStampLabel(no, item.name || '서류', item.submitType, 1, printableFiles.length, allGenerated);
                 const stampHtml = opts.showNumbering
                     ? `<span class="queue-stamp-preview ${stamp.isScan ? 'is-scan' : ''}">${escapeHtml(stamp.mainText)}${stamp.isScan ? ' · 스캔본' : ''}</span>`
                     : `<span style="font-size:10.5px; color: var(--slate-500);">번호 표기 OFF</span>`;
@@ -1436,14 +1435,6 @@
             .trim();
     }
 
-    async function getKoreanFontBytes() {
-        if (cachedFontBytes) return cachedFontBytes;
-        const res = await fetch('./Templates/NanumGothic.ttf');
-        if (!res.ok) throw new Error('한글 폰트(./Templates/NanumGothic.ttf)를 불러올 수 없습니다.');
-        cachedFontBytes = await res.arrayBuffer();
-        return cachedFontBytes;
-    }
-
     async function embedAnyImage(pdfDoc, bytes, att = {}) {
         const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
         if (u8.length === 0) {
@@ -1527,71 +1518,100 @@
         }
     }
 
-    function drawStampOnPage(page, font, { mainText, isScan }, position, rgb) {
+    function fillFittedCanvasText(ctx, text, x, y, maxWidth, fontWeight, startSize, minSize, fontFamily, color) {
+        let size = startSize;
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        while (size > minSize) {
+            ctx.font = `${fontWeight} ${size}px ${fontFamily}`;
+            if (ctx.measureText(text).width <= maxWidth) break;
+            size -= 1;
+        }
+        ctx.font = `${fontWeight} ${size}px ${fontFamily}`;
+        ctx.fillText(text, x, y, maxWidth);
+    }
+
+    async function drawStampOnPage(pdfDoc, page, { mainText, isScan }, position) {
         const safeMainText = sanitizePdfText(mainText) || '1';
         const pageW = page.getWidth();
         const pageH = page.getHeight();
-        const fontSize = 11;
-        const padX = 8;
+        const fontFamily = '"Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+        const mainFont = `700 11px ${fontFamily}`;
+        const scanFont = `700 10px ${fontFamily}`;
+        const padX = 9;
         const boxH = 20;
-        const textW = font.widthOfTextAtSize(safeMainText, fontSize);
-        const mainBoxW = textW + padX * 2;
+        const scale = 3;
 
-        let scanBoxW = 0;
+        const measureCanvas = document.createElement('canvas');
+        const mCtx = measureCanvas.getContext('2d');
+        mCtx.font = mainFont;
+        const mainTextW = Math.ceil(mCtx.measureText(safeMainText).width);
+        const mainBoxW = mainTextW + padX * 2;
+
         const scanText = '스캔본';
         const gap = isScan ? 5 : 0;
+        let scanBoxW = 0;
         if (isScan) {
-            scanBoxW = font.widthOfTextAtSize(scanText, 10) + 12;
+            mCtx.font = scanFont;
+            scanBoxW = Math.ceil(mCtx.measureText(scanText).width) + 12;
         }
         const totalW = mainBoxW + gap + scanBoxW;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(totalW * scale);
+        canvas.height = Math.ceil(boxH * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+
+        // 메인 넘버링 배지
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0.6, 0.6, mainBoxW - 1.2, boxH - 1.2);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(0.6, 0.6, mainBoxW - 1.2, boxH - 1.2);
+
+        ctx.font = mainFont;
+        ctx.fillStyle = '#0f172a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(safeMainText, mainBoxW / 2, boxH / 2 + 0.5);
+
+        // 스캔본 배지
+        if (isScan) {
+            const scanX = mainBoxW + gap;
+            ctx.fillStyle = '#eff6ff';
+            ctx.fillRect(scanX + 0.6, 0.6, scanBoxW - 1.2, boxH - 1.2);
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(scanX + 0.6, 0.6, scanBoxW - 1.2, boxH - 1.2);
+
+            ctx.font = scanFont;
+            ctx.fillStyle = '#1d4ed8';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(scanText, scanX + scanBoxW / 2, boxH / 2 + 0.5);
+        }
+
+        const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!pngBlob) return;
+        const pngBytes = await pngBlob.arrayBuffer();
+        const stampImg = await pdfDoc.embedPng(pngBytes);
 
         let startX = pageW - 18 - totalW;
         if (position === 'top-left') startX = 18;
         else if (position === 'top-center') startX = (pageW - totalW) / 2;
-
         const boxY = pageH - 28;
 
-        // 메인 넘버링 배지
-        page.drawRectangle({
+        page.drawImage(stampImg, {
             x: startX,
             y: boxY,
-            width: mainBoxW,
-            height: boxH,
-            color: rgb(1, 1, 1),
-            borderColor: rgb(0.12, 0.16, 0.24),
-            borderWidth: 1.2
+            width: totalW,
+            height: boxH
         });
-        page.drawText(safeMainText, {
-            x: startX + padX,
-            y: boxY + 6,
-            size: fontSize,
-            font,
-            color: rgb(0.06, 0.09, 0.16)
-        });
-
-        // 스캔본 배지
-        if (isScan) {
-            const scanX = startX + mainBoxW + gap;
-            page.drawRectangle({
-                x: scanX,
-                y: boxY,
-                width: scanBoxW,
-                height: boxH,
-                color: rgb(0.93, 0.95, 1),
-                borderColor: rgb(0.15, 0.39, 0.92),
-                borderWidth: 1.2
-            });
-            page.drawText(scanText, {
-                x: scanX + 6,
-                y: boxY + 6.5,
-                size: 10,
-                font,
-                color: rgb(0.11, 0.30, 0.85)
-            });
-        }
     }
 
-    async function captureCoverSheetsToPdf(mergedPdf, rgb) {
+    async function captureCoverSheetsToPdf(mergedPdf) {
         const sheets = Array.from(els.a4PagesContainer.querySelectorAll('.a4-sheet'));
         const offscreen = document.createElement('div');
         offscreen.style.cssText = 'position:fixed; left:-9999px; top:0; width:210mm; background:#ffffff; z-index:-1;';
@@ -1627,71 +1647,69 @@
         }
     }
 
-    async function appendDividerPage(targetPdf, font, item, itemNo, opts, rgb) {
+    async function appendDividerPage(targetPdf, item, itemNo, opts) {
         const page = targetPdf.addPage([595.28, 841.89]);
         const w = 595.28;
         const h = 841.89;
+        const scale = 2.5;
+        const fontFamily = '"Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
 
         // 테두리 박스
-        page.drawRectangle({
-            x: 65,
-            y: 260,
-            width: w - 130,
-            height: 300,
-            color: rgb(0.98, 0.99, 1),
-            borderColor: rgb(0.2, 0.25, 0.33),
-            borderWidth: 1.5
-        });
+        const cardX = 65;
+        const cardY = 260;
+        const cardW = w - 130;
+        const cardH = 300;
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(cardX, cardY, cardW, cardH);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(cardX, cardY, cardW, cardH);
 
-        const badgeTitle = `No. ${itemNo}  원본(실물) 끼워넣기 안내 간지`;
-        const bW = font.widthOfTextAtSize(badgeTitle, 14);
-        page.drawText(badgeTitle, {
-            x: (w - bW) / 2,
-            y: 505,
-            size: 14,
-            font,
-            color: rgb(0.15, 0.39, 0.92)
-        });
-
+        const cx = w / 2;
+        const maxTextW = cardW - 44;
         const docName = sanitizePdfText(item.name) || '(서류명 미입력)';
-        const nW = font.widthOfTextAtSize(docName, 22);
-        page.drawText(docName, {
-            x: (w - nW) / 2,
-            y: 440,
-            size: 22,
-            font,
-            color: rgb(0.06, 0.09, 0.16)
-        });
-
-        const guideText = `이 위치에 [ ${itemNo}. ${docName} ] 실물 원본을 끼워 넣어주세요.`;
-        const gW = font.widthOfTextAtSize(guideText, 12.5);
-        page.drawText(guideText, {
-            x: (w - gW) / 2,
-            y: 380,
-            size: 12.5,
-            font,
-            color: rgb(0.2, 0.25, 0.33)
-        });
-
         const safeMemo = sanitizePdfText(item.memo);
-        const metaText = `구분: ${SUBMIT_TYPE_LABELS[item.submitType] || '실물지참'}   |   부수: ${item.copies || 1}부${safeMemo ? '   |   비고: ' + safeMemo : ''}`;
-        const mW = font.widthOfTextAtSize(metaText, 10.5);
-        page.drawText(metaText, {
-            x: (w - mW) / 2,
-            y: 325,
-            size: 10.5,
-            font,
-            color: rgb(0.39, 0.45, 0.55)
-        });
+
+        fillFittedCanvasText(ctx, `No. ${itemNo}  원본(실물) 끼워넣기 안내 간지`, cx, cardY + 56, maxTextW, 700, 14, 11, fontFamily, '#2563eb');
+        fillFittedCanvasText(ctx, docName, cx, cardY + 124, maxTextW, 800, 22, 13, fontFamily, '#0f172a');
+        fillFittedCanvasText(ctx, `이 위치에 [ ${itemNo}. ${docName} ] 실물 원본을 끼워 넣어주세요.`, cx, cardY + 186, maxTextW, 600, 12.5, 9.5, fontFamily, '#334155');
+        fillFittedCanvasText(
+            ctx,
+            `구분: ${SUBMIT_TYPE_LABELS[item.submitType] || '실물지참'}   |   부수: ${item.copies || 1}부${safeMemo ? '   |   비고: ' + safeMemo : ''}`,
+            cx,
+            cardY + 242,
+            maxTextW,
+            500,
+            10.5,
+            8.5,
+            fontFamily,
+            '#64748b'
+        );
+
+        const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (pngBlob) {
+            const pngBytes = await pngBlob.arrayBuffer();
+            const pngImage = await targetPdf.embedPng(pngBytes);
+            page.drawImage(pngImage, { x: 0, y: 0, width: w, height: h });
+        }
 
         if (opts.showNumbering) {
-            const stamp = formatStampLabel(itemNo, docName, item.submitType, 1, 1);
-            drawStampOnPage(page, font, { mainText: stamp.mainText, isScan: false }, opts.stampPosition, rgb);
+            const stamp = formatStampLabel(itemNo, docName, item.submitType, 1, 1, false);
+            await drawStampOnPage(targetPdf, page, { mainText: stamp.mainText, isScan: false }, opts.stampPosition);
         }
     }
 
     async function buildMergedPdfAndOpenModal() {
-        if (!window.PDFLib || !window.fontkit || !window.html2canvas) {
+        if (!window.PDFLib || !window.html2canvas) {
             showToast('PDF 병합 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도하세요.', 'error');
             return;
         }
@@ -1711,15 +1729,14 @@
         }
 
         try {
-            const { PDFDocument, rgb, degrees } = window.PDFLib;
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+            const { PDFDocument, degrees } = window.PDFLib;
             const mergedPdf = await PDFDocument.create();
-            mergedPdf.registerFontkit(window.fontkit);
-
-            const fontBytes = await getKoreanFontBytes();
-            const customFont = await mergedPdf.embedFont(fontBytes, { subset: true });
 
             // 1) 커버페이지 캡처 삽입
-            await captureCoverSheetsToPdf(mergedPdf, rgb);
+            await captureCoverSheetsToPdf(mergedPdf);
             const coverPagesCount = mergedPdf.getPageCount();
 
             // 2) 첨부 서류 병합 준비
@@ -1739,7 +1756,7 @@
 
                 if (!shouldInclude) {
                     if (opts.includeDivider) {
-                        await appendDividerPage(mergedPdf, customFont, item, itemNo, opts, rgb);
+                        await appendDividerPage(mergedPdf, item, itemNo, opts);
                         dividerPagesCount++;
                     }
                     continue;
@@ -1770,8 +1787,6 @@
 
                 // 개별 넘버링 저장용 PDF도 병렬 생성
                 const singleDoc = await PDFDocument.create();
-                singleDoc.registerFontkit(window.fontkit);
-                const singleFont = await singleDoc.embedFont(fontBytes, { subset: true });
 
                 let curSubPage = 0;
                 for (const src of loadedSources) {
@@ -1789,7 +1804,7 @@
                                 const isLandscape = visSrcW > visSrcH * 1.15;
                                 const targetSize = isLandscape ? [841.89, 595.28] : [595.28, 841.89];
 
-                                const drawIntoTarget = (pageObj, embObj, fnt) => {
+                                const drawIntoTarget = async (targetPdf, pageObj, embObj) => {
                                     const pW = pageObj.getWidth();
                                     const pH = pageObj.getHeight();
                                     const topMargin = (opts.showNumbering && opts.safeShrink) ? 36 : 0;
@@ -1829,13 +1844,13 @@
                                         rotate: degrees(rotDeg)
                                     });
                                     if (opts.showNumbering) {
-                                        const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages);
-                                        drawStampOnPage(pageObj, fnt, stamp, opts.stampPosition, rgb);
+                                        const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages, !!src.att?.isGeneratedForm);
+                                        await drawStampOnPage(targetPdf, pageObj, stamp, opts.stampPosition);
                                     }
                                 };
 
-                                drawIntoTarget(mergedPdf.addPage(targetSize), embedded, customFont);
-                                drawIntoTarget(singleDoc.addPage(targetSize), embeddedSingle, singleFont);
+                                await drawIntoTarget(mergedPdf, mergedPdf.addPage(targetSize), embedded);
+                                await drawIntoTarget(singleDoc, singleDoc.addPage(targetSize), embeddedSingle);
                                 attachedPagesCount++;
                             }
                         } else {
@@ -1845,7 +1860,7 @@
                             const isLandscape = embImg.width > embImg.height * 1.15;
                             const targetSize = isLandscape ? [841.89, 595.28] : [595.28, 841.89];
 
-                            const drawImgIntoTarget = (pageObj, imgObj, fnt) => {
+                            const drawImgIntoTarget = async (targetPdf, pageObj, imgObj) => {
                                 const pW = pageObj.getWidth();
                                 const pH = pageObj.getHeight();
                                 const topMargin = (opts.showNumbering && opts.safeShrink) ? 38 : 16;
@@ -1861,13 +1876,13 @@
 
                                 pageObj.drawImage(imgObj, { x: drawX, y: drawY, width: drawW, height: drawH });
                                 if (opts.showNumbering) {
-                                    const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages);
-                                    drawStampOnPage(pageObj, fnt, stamp, opts.stampPosition, rgb);
+                                    const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages, !!src.att?.isGeneratedForm);
+                                    await drawStampOnPage(targetPdf, pageObj, stamp, opts.stampPosition);
                                 }
                             };
 
-                            drawImgIntoTarget(mergedPdf.addPage(targetSize), embImg, customFont);
-                            drawImgIntoTarget(singleDoc.addPage(targetSize), embImgSingle, singleFont);
+                            await drawImgIntoTarget(mergedPdf, mergedPdf.addPage(targetSize), embImg);
+                            await drawImgIntoTarget(singleDoc, singleDoc.addPage(targetSize), embImgSingle);
                             attachedPagesCount++;
                         }
                     } catch (err) {
