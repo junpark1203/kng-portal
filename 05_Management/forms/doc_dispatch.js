@@ -311,6 +311,58 @@
         return mime.includes('pdf') || name.endsWith('.pdf');
     }
 
+    function isPdfBytes(bytes) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+        const scanLen = Math.min(u8.length, 1024);
+        for (let i = 0; i <= scanLen - 5; i++) {
+            if (u8[i] === 0x25 && u8[i + 1] === 0x50 && u8[i + 2] === 0x44 && u8[i + 3] === 0x46 && u8[i + 4] === 0x2D) {
+                return true; // %PDF-
+            }
+        }
+        return false;
+    }
+
+    function inferImageMimeType(bytes, att = {}) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+        if (u8.length >= 4 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) return 'image/png';
+        if (u8.length >= 3 && u8[0] === 0xFF && u8[1] === 0xD8 && u8[2] === 0xFF) return 'image/jpeg';
+        if (u8.length >= 3 && u8[0] === 0x47 && u8[1] === 0x49 && u8[2] === 0x46) return 'image/gif';
+        if (u8.length >= 2 && u8[0] === 0x42 && u8[1] === 0x4D) return 'image/bmp';
+        if (u8.length >= 12 &&
+            u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46 &&
+            u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50) {
+            return 'image/webp';
+        }
+        const declared = String(att?.mimeType || '').toLowerCase();
+        return declared.startsWith('image/') ? declared : '';
+    }
+
+    function diagnoseNonDecodableBytes(bytes, att = {}) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+        const name = att?.originalName || att?.name || '첨부파일';
+        if (u8.length === 0) {
+            return `'${name}' 파일 데이터가 비어 있습니다 (0 bytes).`;
+        }
+
+        const headAscii = String.fromCharCode(...u8.slice(0, Math.min(64, u8.length)));
+        const headTrimmed = headAscii.trimStart();
+        if (headTrimmed.startsWith('<!DOCTYPE') || headTrimmed.startsWith('<html') || headTrimmed.startsWith('<HTML') || headTrimmed.startsWith('{')) {
+            return `'${name}' 파일을 불러오지 못했습니다 (서버 오류 응답 또는 만료된 파일 경로). 다시 첨부해 주세요.`;
+        }
+        if ((u8[0] === 0x49 && u8[1] === 0x49 && u8[2] === 0x2A && u8[3] === 0x00) ||
+            (u8[0] === 0x4D && u8[1] === 0x4D && u8[2] === 0x00 && u8[3] === 0x2A)) {
+            return `'${name}'은(는) TIFF 스캔 이미지입니다. 브라우저 병합이 지원되지 않으니 PDF, JPG 또는 PNG로 변환해 주세요.`;
+        }
+        if (headAscii.includes('ftypheic') || headAscii.includes('ftypmif1') || headAscii.includes('ftypheix') || headAscii.includes('ftyphevc')) {
+            return `'${name}'은(는) 아이폰 HEIC/HEIF 이미지입니다. JPG, PNG 또는 PDF로 변환해 첨부해 주세요.`;
+        }
+        if ((u8[0] === 0x50 && u8[1] === 0x4B && u8[2] === 0x03 && u8[3] === 0x04) ||
+            (u8[0] === 0xD0 && u8[1] === 0xCF && u8[2] === 0x11 && u8[3] === 0xE0)) {
+            return `'${name}'은(는) 한글(HWP)·오피스 문서 포맷입니다. PDF로 변환 후 첨부해 주세요.`;
+        }
+        return `'${name}' 이미지 디코딩 실패 — 손상되었거나 확장자만 다른 비표준 파일입니다 (PDF, JPG, PNG 권장).`;
+    }
+
     function computeValidityInfo(issueDate, validityDays) {
         const days = parseInt(validityDays, 10) || 0;
         if (!issueDate) {
@@ -509,6 +561,22 @@
         const files = Array.from(fileList || []);
         if (files.length === 0) return [];
 
+        // 0. 현재 세션에서 즉시 읽을 수 있도록 IndexedDB에 바이너리 선저장
+        const cachedBlobs = [];
+        for (const f of files) {
+            const buf = await f.arrayBuffer();
+            const localId = generateUid('LOCALFIL');
+            try {
+                await saveLocalBlob(localId, buf);
+            } catch (e) {}
+            cachedBlobs.push({
+                localBlobId: localId,
+                originalName: f.name,
+                mimeType: f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+                size: f.size
+            });
+        }
+
         // 1. 서버 업로드 시도
         if (state.serverOnline) {
             try {
@@ -521,7 +589,10 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data.success && Array.isArray(data.files)) {
-                        return data.files;
+                        return data.files.map((srvFile, i) => ({
+                            ...srvFile,
+                            localBlobId: cachedBlobs[i]?.localBlobId || ''
+                        }));
                     }
                 } else {
                     const errJson = await res.json().catch(() => ({}));
@@ -532,25 +603,17 @@
             }
         }
 
-        // 2. 로컬 IndexedDB 폴백 저장
-        const results = [];
-        for (const f of files) {
-            const buf = await f.arrayBuffer();
-            const localId = generateUid('LOCALFIL');
-            try {
-                await saveLocalBlob(localId, buf);
-            } catch (e) {}
-            results.push({
-                id: localId,
-                localBlobId: localId,
-                url: '',
-                originalName: f.name,
-                mimeType: f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png'),
-                size: f.size,
-                uploadedAt: new Date().toISOString()
-            });
-        }
-        return results;
+        // 2. 로컬 IndexedDB 폴백 반환
+        const now = new Date().toISOString();
+        return cachedBlobs.map(c => ({
+            id: c.localBlobId,
+            localBlobId: c.localBlobId,
+            url: '',
+            originalName: c.originalName,
+            mimeType: c.mimeType,
+            size: c.size,
+            uploadedAt: now
+        }));
     }
 
     async function getAttachmentBytes(att) {
@@ -1381,38 +1444,86 @@
         return cachedFontBytes;
     }
 
-    async function embedAnyImage(pdfDoc, bytes) {
-        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-        // PNG magic: 89 50 4E 47
+    async function embedAnyImage(pdfDoc, bytes, att = {}) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+        if (u8.length === 0) {
+            throw new Error(diagnoseNonDecodableBytes(u8, att));
+        }
+
+        // PNG magic: 89 50 4E 47 (실패 시 예: 16-bit PNG 등은 캔버스 변환 폴백)
         if (u8.length >= 4 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) {
-            return await pdfDoc.embedPng(u8);
+            try {
+                return await pdfDoc.embedPng(u8);
+            } catch (err) {
+                console.warn('[DocDispatch] embedPng 직접 임베드 실패, 캔버스 변환 폴백:', err.message);
+            }
         }
-        // JPEG magic: FF D8 FF
+        // JPEG magic: FF D8 FF (실패 시 예: CMYK JPEG 등은 캔버스 변환 폴백)
         if (u8.length >= 3 && u8[0] === 0xFF && u8[1] === 0xD8 && u8[2] === 0xFF) {
-            return await pdfDoc.embedJpg(u8);
+            try {
+                return await pdfDoc.embedJpg(u8);
+            } catch (err) {
+                console.warn('[DocDispatch] embedJpg 직접 임베드 실패, 캔버스 변환 폴백:', err.message);
+            }
         }
-        // WEBP / GIF / BMP -> HTML5 Canvas 변환 후 PNG 임베드
-        const blob = new Blob([u8]);
-        const objUrl = URL.createObjectURL(blob);
+
+        // WEBP / GIF / BMP / 비표준 JPEG·PNG -> 브라우저 디코딩 + HTML5 Canvas 표준 RGB PNG 임베드
+        const mimeType = inferImageMimeType(u8, att);
+        const blob = mimeType ? new Blob([u8], { type: mimeType }) : new Blob([u8]);
+
+        let drawable = null;
+        let imgW = 0;
+        let imgH = 0;
+        let objUrl = '';
+        let isBitmap = false;
+
         try {
-            const img = await new Promise((resolve, reject) => {
-                const el = new Image();
-                el.onload = () => resolve(el);
-                el.onerror = () => reject(new Error('이미지 디코딩 실패'));
-                el.src = objUrl;
-            });
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    drawable = await createImageBitmap(blob);
+                    imgW = drawable.width;
+                    imgH = drawable.height;
+                    isBitmap = true;
+                } catch (bitmapErr) {
+                    drawable = null;
+                }
+            }
+
+            if (!drawable) {
+                objUrl = URL.createObjectURL(blob);
+                drawable = await new Promise((resolve, reject) => {
+                    const el = new Image();
+                    el.onload = () => resolve(el);
+                    el.onerror = () => reject(new Error(diagnoseNonDecodableBytes(u8, att)));
+                    el.src = objUrl;
+                });
+                imgW = drawable.naturalWidth || drawable.width;
+                imgH = drawable.naturalHeight || drawable.height;
+            }
+
+            if (!imgW || !imgH) {
+                throw new Error(diagnoseNonDecodableBytes(u8, att));
+            }
+
             const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
+            canvas.width = imgW;
+            canvas.height = imgH;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
+            ctx.drawImage(drawable, 0, 0);
+
             const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!pngBlob) {
+                throw new Error(diagnoseNonDecodableBytes(u8, att));
+            }
             const pngBytes = await pngBlob.arrayBuffer();
             return await pdfDoc.embedPng(pngBytes);
         } finally {
-            URL.revokeObjectURL(objUrl);
+            if (isBitmap && drawable && typeof drawable.close === 'function') {
+                drawable.close();
+            }
+            if (objUrl) URL.revokeObjectURL(objUrl);
         }
     }
 
@@ -1643,7 +1754,7 @@
                 for (const att of attachmentsToPrint) {
                     try {
                         const bytes = await getAttachmentBytes(att);
-                        if (isPdfFile(att)) {
+                        if (isPdfFile(att) || isPdfBytes(bytes)) {
                             const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
                             const cnt = srcDoc.getPageCount();
                             loadedSources.push({ type: 'pdf', doc: srcDoc, count: cnt, att });
@@ -1664,99 +1775,103 @@
 
                 let curSubPage = 0;
                 for (const src of loadedSources) {
-                    if (src.type === 'pdf') {
-                        const srcPages = src.doc.getPages();
-                        for (const srcPage of srcPages) {
+                    try {
+                        if (src.type === 'pdf') {
+                            const srcPages = src.doc.getPages();
+                            for (const srcPage of srcPages) {
+                                curSubPage++;
+                                const rawRot = ((srcPage.getRotation()?.angle || 0) % 360 + 360) % 360;
+                                const embedded = await mergedPdf.embedPage(srcPage);
+                                const embeddedSingle = await singleDoc.embedPage(srcPage);
+                                const swapDim = (rawRot === 90 || rawRot === 270);
+                                const visSrcW = swapDim ? embedded.height : embedded.width;
+                                const visSrcH = swapDim ? embedded.width : embedded.height;
+                                const isLandscape = visSrcW > visSrcH * 1.15;
+                                const targetSize = isLandscape ? [841.89, 595.28] : [595.28, 841.89];
+
+                                const drawIntoTarget = (pageObj, embObj, fnt) => {
+                                    const pW = pageObj.getWidth();
+                                    const pH = pageObj.getHeight();
+                                    const topMargin = (opts.showNumbering && opts.safeShrink) ? 36 : 0;
+                                    const sidePad = (opts.showNumbering && opts.safeShrink) ? 14 : 0;
+                                    const bottomPad = (opts.showNumbering && opts.safeShrink) ? 12 : 0;
+                                    const availW = pW - sidePad * 2;
+                                    const availH = pH - topMargin - bottomPad;
+                                    const scale = Math.min(availW / visSrcW, availH / visSrcH);
+                                    const rawDrawW = embObj.width * scale;
+                                    const rawDrawH = embObj.height * scale;
+                                    const cx = pW / 2;
+                                    const cy = bottomPad + availH / 2;
+
+                                    let drawX = cx - rawDrawW / 2;
+                                    let drawY = cy - rawDrawH / 2;
+                                    let rotDeg = 0;
+
+                                    if (rawRot === 90) {
+                                        drawX = cx - rawDrawH / 2;
+                                        drawY = cy + rawDrawW / 2;
+                                        rotDeg = -90;
+                                    } else if (rawRot === 180) {
+                                        drawX = cx + rawDrawW / 2;
+                                        drawY = cy + rawDrawH / 2;
+                                        rotDeg = 180;
+                                    } else if (rawRot === 270) {
+                                        drawX = cx + rawDrawH / 2;
+                                        drawY = cy - rawDrawW / 2;
+                                        rotDeg = 90;
+                                    }
+
+                                    pageObj.drawPage(embObj, {
+                                        x: drawX,
+                                        y: drawY,
+                                        width: rawDrawW,
+                                        height: rawDrawH,
+                                        rotate: degrees(rotDeg)
+                                    });
+                                    if (opts.showNumbering) {
+                                        const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages);
+                                        drawStampOnPage(pageObj, fnt, stamp, opts.stampPosition, rgb);
+                                    }
+                                };
+
+                                drawIntoTarget(mergedPdf.addPage(targetSize), embedded, customFont);
+                                drawIntoTarget(singleDoc.addPage(targetSize), embeddedSingle, singleFont);
+                                attachedPagesCount++;
+                            }
+                        } else {
+                            const embImg = await embedAnyImage(mergedPdf, src.bytes, src.att);
+                            const embImgSingle = await embedAnyImage(singleDoc, src.bytes, src.att);
                             curSubPage++;
-                            const rawRot = ((srcPage.getRotation()?.angle || 0) % 360 + 360) % 360;
-                            const embedded = await mergedPdf.embedPage(srcPage);
-                            const embeddedSingle = await singleDoc.embedPage(srcPage);
-                            const swapDim = (rawRot === 90 || rawRot === 270);
-                            const visSrcW = swapDim ? embedded.height : embedded.width;
-                            const visSrcH = swapDim ? embedded.width : embedded.height;
-                            const isLandscape = visSrcW > visSrcH * 1.15;
+                            const isLandscape = embImg.width > embImg.height * 1.15;
                             const targetSize = isLandscape ? [841.89, 595.28] : [595.28, 841.89];
 
-                            const drawIntoTarget = (pageObj, embObj, fnt) => {
+                            const drawImgIntoTarget = (pageObj, imgObj, fnt) => {
                                 const pW = pageObj.getWidth();
                                 const pH = pageObj.getHeight();
-                                const topMargin = (opts.showNumbering && opts.safeShrink) ? 36 : 0;
-                                const sidePad = (opts.showNumbering && opts.safeShrink) ? 14 : 0;
-                                const bottomPad = (opts.showNumbering && opts.safeShrink) ? 12 : 0;
+                                const topMargin = (opts.showNumbering && opts.safeShrink) ? 38 : 16;
+                                const sidePad = 20;
+                                const bottomPad = 18;
                                 const availW = pW - sidePad * 2;
                                 const availH = pH - topMargin - bottomPad;
-                                const scale = Math.min(availW / visSrcW, availH / visSrcH);
-                                const rawDrawW = embObj.width * scale;
-                                const rawDrawH = embObj.height * scale;
-                                const cx = pW / 2;
-                                const cy = bottomPad + availH / 2;
+                                const scale = Math.min(availW / imgObj.width, availH / imgObj.height);
+                                const drawW = imgObj.width * scale;
+                                const drawH = imgObj.height * scale;
+                                const drawX = (pW - drawW) / 2;
+                                const drawY = bottomPad + (availH - drawH) / 2;
 
-                                let drawX = cx - rawDrawW / 2;
-                                let drawY = cy - rawDrawH / 2;
-                                let rotDeg = 0;
-
-                                if (rawRot === 90) {
-                                    drawX = cx - rawDrawH / 2;
-                                    drawY = cy + rawDrawW / 2;
-                                    rotDeg = -90;
-                                } else if (rawRot === 180) {
-                                    drawX = cx + rawDrawW / 2;
-                                    drawY = cy + rawDrawH / 2;
-                                    rotDeg = 180;
-                                } else if (rawRot === 270) {
-                                    drawX = cx + rawDrawH / 2;
-                                    drawY = cy - rawDrawW / 2;
-                                    rotDeg = 90;
-                                }
-
-                                pageObj.drawPage(embObj, {
-                                    x: drawX,
-                                    y: drawY,
-                                    width: rawDrawW,
-                                    height: rawDrawH,
-                                    rotate: degrees(rotDeg)
-                                });
+                                pageObj.drawImage(imgObj, { x: drawX, y: drawY, width: drawW, height: drawH });
                                 if (opts.showNumbering) {
                                     const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages);
                                     drawStampOnPage(pageObj, fnt, stamp, opts.stampPosition, rgb);
                                 }
                             };
 
-                            drawIntoTarget(mergedPdf.addPage(targetSize), embedded, customFont);
-                            drawIntoTarget(singleDoc.addPage(targetSize), embeddedSingle, singleFont);
+                            drawImgIntoTarget(mergedPdf.addPage(targetSize), embImg, customFont);
+                            drawImgIntoTarget(singleDoc.addPage(targetSize), embImgSingle, singleFont);
                             attachedPagesCount++;
                         }
-                    } else {
-                        curSubPage++;
-                        const embImg = await embedAnyImage(mergedPdf, src.bytes);
-                        const embImgSingle = await embedAnyImage(singleDoc, src.bytes);
-                        const isLandscape = embImg.width > embImg.height * 1.15;
-                        const targetSize = isLandscape ? [841.89, 595.28] : [595.28, 841.89];
-
-                        const drawImgIntoTarget = (pageObj, imgObj, fnt) => {
-                            const pW = pageObj.getWidth();
-                            const pH = pageObj.getHeight();
-                            const topMargin = (opts.showNumbering && opts.safeShrink) ? 38 : 16;
-                            const sidePad = 20;
-                            const bottomPad = 18;
-                            const availW = pW - sidePad * 2;
-                            const availH = pH - topMargin - bottomPad;
-                            const scale = Math.min(availW / imgObj.width, availH / imgObj.height);
-                            const drawW = imgObj.width * scale;
-                            const drawH = imgObj.height * scale;
-                            const drawX = (pW - drawW) / 2;
-                            const drawY = bottomPad + (availH - drawH) / 2;
-
-                            pageObj.drawImage(imgObj, { x: drawX, y: drawY, width: drawW, height: drawH });
-                            if (opts.showNumbering) {
-                                const stamp = formatStampLabel(itemNo, itemName, item.submitType, curSubPage, totalItemPages);
-                                drawStampOnPage(pageObj, fnt, stamp, opts.stampPosition, rgb);
-                            }
-                        };
-
-                        drawImgIntoTarget(mergedPdf.addPage(targetSize), embImg, customFont);
-                        drawImgIntoTarget(singleDoc.addPage(targetSize), embImgSingle, singleFont);
-                        attachedPagesCount++;
+                    } catch (err) {
+                        warnings.push(`${itemNo}. ${itemName} (${src.att?.originalName || '파일'}): ${err.message}`);
                     }
                 }
 
@@ -2140,12 +2255,31 @@
         els.filePreviewContainer.innerHTML = `<div style="padding:20px; color:var(--slate-600);">미리보기 로딩 중...</div>`;
         els.filePreviewModal.showModal();
 
-        let viewUrl = att.url ? resolveUploadUrl(att.url) : '';
-        if (!viewUrl && att.localBlobId) {
-            const buf = await loadLocalBlob(att.localBlobId);
-            if (buf) {
-                const blob = new Blob([buf], { type: att.mimeType || 'application/pdf' });
-                viewUrl = URL.createObjectURL(blob);
+        let detectedPdf = isPdfFile(att);
+        let viewUrl = '';
+        if (att.localBlobId) {
+            try {
+                const buf = await loadLocalBlob(att.localBlobId);
+                if (buf) {
+                    const u8 = new Uint8Array(buf);
+                    if (isPdfBytes(u8)) detectedPdf = true;
+                    const mime = detectedPdf
+                        ? 'application/pdf'
+                        : (inferImageMimeType(u8, att) || att.mimeType || 'application/octet-stream');
+                    viewUrl = URL.createObjectURL(new Blob([u8], { type: mime }));
+                }
+            } catch (e) {}
+        }
+        if (!viewUrl && att.url) {
+            viewUrl = resolveUploadUrl(att.url);
+            if (!detectedPdf) {
+                try {
+                    const res = await fetch(viewUrl);
+                    if (res.ok) {
+                        const u8 = new Uint8Array(await res.arrayBuffer());
+                        if (isPdfBytes(u8)) detectedPdf = true;
+                    }
+                } catch (e) {}
             }
         }
         if (!viewUrl) {
@@ -2154,7 +2288,7 @@
         }
         els.btnOpenFileNewTab.href = viewUrl;
 
-        if (isPdfFile(att)) {
+        if (detectedPdf) {
             els.filePreviewContainer.innerHTML = `<iframe src="${escapeHtml(viewUrl)}" title="PDF 미리보기"></iframe>`;
         } else {
             els.filePreviewContainer.innerHTML = `<img src="${escapeHtml(viewUrl)}" alt="${escapeHtml(att.originalName || '이미지 미리보기')}">`;
