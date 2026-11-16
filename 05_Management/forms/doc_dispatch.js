@@ -139,6 +139,7 @@
 
     let cachedFontBytes = null;
     let initialSettingsSnapshot = '';
+    let submitDateManuallyEdited = false;
     const els = {};
 
     const Toast = Swal.mixin({
@@ -234,6 +235,15 @@
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
+    function addDaysToDateStr(dateStr, days) {
+        if (!dateStr) return '';
+        const parts = String(dateStr).split('-').map(Number);
+        if (parts.length !== 3 || parts.some(isNaN)) return '';
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        d.setDate(d.getDate() + (parseInt(days, 10) || 0));
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
     function generateDefaultDocNo() {
         const d = new Date();
         const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
@@ -323,7 +333,7 @@
             'archiveCountBadge', 'vaultCountBadge', 'storageModeBadge',
             'btnSettings', 'btnNewPackage', 'btnSavePackage', 'btnBuildMergedPdf',
             'presetSelect', 'btnLoadPreset', 'btnSaveAsPreset',
-            'inputDocNo', 'inputStatus', 'inputSubmitDate', 'inputSubmitMethod',
+            'inputDocNo', 'inputStatus', 'inputDraftDate', 'inputSubmitDate', 'inputSubmitMethod',
             'inputTitle', 'inputRecipient', 'partnerSuggestions', 'inputAuthor', 'inputContact', 'inputRemarks',
             'chkShowApprovalBox', 'btnAutoMatchVault', 'btnCheckAllItems', 'btnUncheckAllItems', 'btnAddDocItem',
             'batchDropZone', 'batchFileInput', 'checklistContainer',
@@ -577,9 +587,12 @@
 
     function resetNewPackage() {
         state.currentPackageId = null;
+        submitDateManuallyEdited = false;
+        const today = getLocalTodayStr();
         els.inputDocNo.value = generateDefaultDocNo();
         els.inputStatus.value = '준비중';
-        els.inputSubmitDate.value = getLocalTodayStr();
+        els.inputDraftDate.value = today;
+        els.inputSubmitDate.value = addDaysToDateStr(today, 1);
         els.inputSubmitMethod.value = '방문제출';
         els.inputTitle.value = '';
         els.inputRecipient.value = '';
@@ -953,7 +966,8 @@
         const docNo = (els.inputDocNo?.value || '').trim() || '-';
         const title = (els.inputTitle?.value || '').trim() || '(문서명 미입력)';
         const recipient = (els.inputRecipient?.value || '').trim() || '(제출처 미입력)';
-        const submitDate = (els.inputSubmitDate?.value || '').trim() || getLocalTodayStr();
+        const draftDate = (els.inputDraftDate?.value || '').trim() || getLocalTodayStr();
+        const submitDate = (els.inputSubmitDate?.value || '').trim();
         const submitMethod = (els.inputSubmitMethod?.value || '').trim() || '방문제출';
         const author = (els.inputAuthor?.value || '').trim() || '-';
         const contact = (els.inputContact?.value || '').trim() || '-';
@@ -993,7 +1007,7 @@
                     <div class="cover-title-block">
                         <div class="cover-sub-caption">제출서류 목록</div>
                         <h1 class="cover-main-title">${escapeHtml(title)}</h1>
-                        <div class="cover-docno-line">관리번호: ${escapeHtml(docNo)} &nbsp;|&nbsp; 제출일자: ${escapeHtml(submitDate)}</div>
+                        <div class="cover-docno-line">관리번호: ${escapeHtml(docNo)} &nbsp;|&nbsp; 작성일자: ${escapeHtml(draftDate)}</div>
                     </div>
                     ${buildApprovalBoxHtml()}
                 </div>
@@ -1002,8 +1016,8 @@
                         <tr>
                             <th>제출처 (수신)</th>
                             <td class="meta-strong">${escapeHtml(recipient)}</td>
-                            <th>제출방법 / 일자</th>
-                            <td>${escapeHtml(submitMethod)} (${escapeHtml(submitDate)})</td>
+                            <th>제출(예정)일자 / 방법</th>
+                            <td>${escapeHtml(submitDate || '미정')} (${escapeHtml(submitMethod)})</td>
                         </tr>
                         <tr>
                             <th>담당자 (제출자)</th>
@@ -1177,6 +1191,7 @@
     function collectCurrentPackagePayload() {
         syncPrintOptionsFromDom();
         const title = (els.inputTitle.value || '').trim();
+        const draftDate = (els.inputDraftDate.value || '').trim() || getLocalTodayStr();
         return {
             id: state.currentPackageId,
             docNo: (els.inputDocNo.value || '').trim() || generateDefaultDocNo(),
@@ -1184,7 +1199,8 @@
             title,
             recipient: (els.inputRecipient.value || '').trim(),
             purpose: title,
-            submitDate: (els.inputSubmitDate.value || '').trim() || getLocalTodayStr(),
+            draftDate,
+            submitDate: (els.inputSubmitDate.value || '').trim(),
             submitMethod: (els.inputSubmitMethod.value || '').trim() || '방문제출',
             author: (els.inputAuthor.value || '').trim(),
             contact: (els.inputContact.value || '').trim(),
@@ -1217,9 +1233,15 @@
 
     function applyPackageDataToEditor(pkg) {
         state.currentPackageId = pkg.id || null;
+        const fallbackDraft = pkg.draftDate || (pkg.createdAt ? pkg.createdAt.slice(0, 10) : '') || getLocalTodayStr();
+        const defaultSubmit = addDaysToDateStr(fallbackDraft, 1);
+        const resolvedSubmit = pkg.submitDate !== undefined ? pkg.submitDate : defaultSubmit;
+        submitDateManuallyEdited = !!(resolvedSubmit && resolvedSubmit !== defaultSubmit);
+
         els.inputDocNo.value = pkg.docNo || generateDefaultDocNo();
         els.inputStatus.value = pkg.status || '준비중';
-        els.inputSubmitDate.value = pkg.submitDate || getLocalTodayStr();
+        els.inputDraftDate.value = fallbackDraft;
+        els.inputSubmitDate.value = resolvedSubmit;
         els.inputSubmitMethod.value = pkg.submitMethod || '방문제출';
         els.inputTitle.value = pkg.title || pkg.purpose || '';
         els.inputRecipient.value = pkg.recipient || '';
@@ -1765,7 +1787,7 @@
 
         const filtered = list.filter(pkg => {
             if (st && pkg.status !== st) return false;
-            if (ym && !(pkg.submitDate || '').startsWith(ym)) return false;
+            if (ym && !(pkg.submitDate || '').startsWith(ym) && !(pkg.draftDate || '').startsWith(ym)) return false;
             if (kw) {
                 const docNames = (pkg.items || []).map(it => it.name || '').join(' ').toLowerCase();
                 const hay = `${pkg.docNo || ''} ${pkg.title || ''} ${pkg.recipient || ''} ${pkg.purpose || ''} ${pkg.author || ''} ${docNames}`.toLowerCase();
@@ -1784,12 +1806,17 @@
             const prepCnt = items.filter(it => it.prepared).length;
             const fileCnt = items.reduce((s, it) => s + (it.attachments ? it.attachments.length : 0), 0);
             const statusCls = `status-${escapeHtml(pkg.status || '준비중')}`;
+            const draftDisp = pkg.draftDate || (pkg.createdAt ? pkg.createdAt.slice(0, 10) : '-');
+            const submitDisp = pkg.submitDate || '미정';
 
             return `
                 <tr>
                     <td style="text-align:center;"><input type="checkbox" class="archive-row-chk" value="${escapeHtml(pkg.id)}"></td>
                     <td style="font-weight:700; color: var(--slate-700);">${escapeHtml(pkg.docNo || '-')}</td>
-                    <td>${escapeHtml(pkg.submitDate || '-')}</td>
+                    <td style="font-size:11px; line-height:1.45;">
+                        <div><span style="color:var(--slate-500);">작성</span> ${escapeHtml(draftDisp)}</div>
+                        <div><span style="color:var(--primary-dark); font-weight:600;">예정</span> ${escapeHtml(submitDisp)}</div>
+                    </td>
                     <td><strong>${escapeHtml(pkg.recipient || '-')}</strong></td>
                     <td>
                         <div style="font-weight:700; color:var(--slate-900);">${escapeHtml(pkg.title || '(문서명 없음)')}</div>
@@ -1825,9 +1852,11 @@
             showToast('저장된 제출 패키지를 불러왔습니다.');
         } else if (action === 'clone') {
             const cloned = JSON.parse(JSON.stringify(pkg));
+            const today = getLocalTodayStr();
             cloned.id = null;
             cloned.docNo = generateDefaultDocNo();
-            cloned.submitDate = getLocalTodayStr();
+            cloned.draftDate = today;
+            cloned.submitDate = addDaysToDateStr(today, 1);
             cloned.status = '준비중';
             cloned.title = `${cloned.title || '서류 제출'} (복제본)`;
 
@@ -2235,7 +2264,7 @@
 
         // 기본 입력 실시간 프리뷰 반영
         const liveFields = [
-            els.inputDocNo, els.inputStatus, els.inputSubmitDate,
+            els.inputDocNo, els.inputStatus, els.inputDraftDate, els.inputSubmitDate,
             els.inputSubmitMethod, els.inputTitle, els.inputRecipient,
             els.inputAuthor, els.inputContact, els.inputRemarks
         ];
@@ -2243,6 +2272,15 @@
             if (!el) return;
             el.addEventListener('input', () => { renderPreview(); saveDraft(); });
             el.addEventListener('change', () => { renderPreview(); saveDraft(); });
+        });
+        els.inputSubmitDate.addEventListener('input', () => { submitDateManuallyEdited = true; });
+        els.inputSubmitDate.addEventListener('change', () => { submitDateManuallyEdited = true; });
+        els.inputDraftDate.addEventListener('change', () => {
+            if (!submitDateManuallyEdited && els.inputDraftDate.value) {
+                els.inputSubmitDate.value = addDaysToDateStr(els.inputDraftDate.value, 1);
+                renderPreview();
+                saveDraft();
+            }
         });
 
         // 결재박스 및 출력 옵션 실시간 반영

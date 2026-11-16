@@ -113,6 +113,7 @@ async function initDocDispatchTables(dbInstance) {
             title TEXT,
             recipient TEXT,
             purpose TEXT,
+            draftDate TEXT,
             submitDate TEXT,
             submitMethod TEXT DEFAULT '방문제출',
             author TEXT,
@@ -161,6 +162,7 @@ async function initDocDispatchTables(dbInstance) {
     // 마이그레이션 (혹시 누락 컬럼이 있을 경우 대비)
     try { await dbRun(`ALTER TABLE doc_dispatch_packages ADD COLUMN coverTitle TEXT DEFAULT ''`); } catch (e) {}
     try { await dbRun(`ALTER TABLE doc_dispatch_packages ADD COLUMN userEmail TEXT DEFAULT ''`); } catch (e) {}
+    try { await dbRun(`ALTER TABLE doc_dispatch_packages ADD COLUMN draftDate TEXT DEFAULT ''`); } catch (e) {}
 
     // 기본 프리셋 시딩
     const row = await dbGet(`SELECT COUNT(*) AS cnt FROM doc_dispatch_templates`);
@@ -310,9 +312,9 @@ router.post('/packages', async (req, res) => {
     try {
         await dbRun(
             `INSERT INTO doc_dispatch_packages (
-                id, docNo, coverTitle, title, recipient, purpose, submitDate, submitMethod,
+                id, docNo, coverTitle, title, recipient, purpose, draftDate, submitDate, submitMethod,
                 author, contact, status, itemsJson, printOptionsJson, remarks, userEmail, createdAt, updatedAt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 (p.docNo || '').trim(),
@@ -320,6 +322,7 @@ router.post('/packages', async (req, res) => {
                 (p.title || '').trim(),
                 (p.recipient || '').trim(),
                 (p.purpose || '').trim(),
+                (p.draftDate || '').trim(),
                 (p.submitDate || '').trim(),
                 (p.submitMethod || '방문제출').trim(),
                 (p.author || '').trim(),
@@ -358,7 +361,7 @@ router.put('/packages/:id', async (req, res) => {
         const result = await dbRun(
             `UPDATE doc_dispatch_packages SET
                 docNo = ?, coverTitle = ?, title = ?, recipient = ?, purpose = ?,
-                submitDate = ?, submitMethod = ?, author = ?, contact = ?, status = ?,
+                draftDate = ?, submitDate = ?, submitMethod = ?, author = ?, contact = ?, status = ?,
                 itemsJson = ?, printOptionsJson = ?, remarks = ?, updatedAt = ?
              WHERE id = ?`,
             [
@@ -367,6 +370,7 @@ router.put('/packages/:id', async (req, res) => {
                 (p.title || '').trim(),
                 (p.recipient || '').trim(),
                 (p.purpose || '').trim(),
+                (p.draftDate || '').trim(),
                 (p.submitDate || '').trim(),
                 (p.submitMethod || '방문제출').trim(),
                 (p.author || '').trim(),

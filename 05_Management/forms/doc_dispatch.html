@@ -8,7 +8,7 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="./doc_dispatch.css?v=20261116_3">
+    <link rel="stylesheet" href="./doc_dispatch.css?v=20261116_4">
 </head>
 <body>
 
@@ -79,7 +79,7 @@
                     <div class="form-section-title">
                         <i class='bx bx-info-circle'></i> 1. 기본 제출 · 발송 정보
                     </div>
-                    <div class="form-grid-3">
+                    <div class="form-grid-2">
                         <div class="form-group">
                             <label for="inputDocNo">문서 관리번호</label>
                             <input type="text" id="inputDocNo" name="docNo" class="form-control-custom" placeholder="예: DOC-20261116-001" autocorrect="off" autocapitalize="none" spellcheck="false">
@@ -93,8 +93,15 @@
                                 <option value="보류">보류</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div class="form-grid-2">
                         <div class="form-group">
-                            <label for="inputSubmitDate">제출 일자</label>
+                            <label for="inputDraftDate">작성 일자</label>
+                            <input type="date" id="inputDraftDate" name="draftDate" class="form-control-custom">
+                        </div>
+                        <div class="form-group">
+                            <label for="inputSubmitDate">제출(예정)일자 <span class="text-muted-sm">(기본: 작성일+1일)</span></label>
                             <input type="date" id="inputSubmitDate" name="submitDate" class="form-control-custom">
                         </div>
                     </div>
@@ -358,7 +365,7 @@
                         <tr>
                             <th style="width: 36px; text-align: center;"><input type="checkbox" id="archiveSelectAll" aria-label="전체 선택"></th>
                             <th style="width: 145px;">문서 관리번호</th>
-                            <th style="width: 100px;">제출 일자</th>
+                            <th style="width: 135px;">작성 / 제출예정일</th>
                             <th style="width: 155px;">제출처</th>
                             <th>문서명</th>
                             <th style="width: 160px;">서류 구비 현황</th>
@@ -634,6 +641,6 @@
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="./doc_dispatch.js?v=20261116_3"></script>
+    <script src="./doc_dispatch.js?v=20261116_4"></script>
 </body>
 </html>
