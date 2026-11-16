@@ -119,6 +119,10 @@ const { initSiteSalesStatementTables } = siteSalesStatementRoutes;
 const adminUsersRoutes = require('./routes/admin-users');
 const { initAdminUsersTables } = adminUsersRoutes;
 
+// 문서발송함 (제출서류 패키지 관리) 모듈
+const docDispatchRoutes = require('./routes/doc-dispatch');
+const { initDocDispatchTables } = docDispatchRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -248,6 +252,11 @@ app.use('/api/purchase-orders/uploads', express.static(PO_UPLOAD_DIR, { fallthro
 const QUOTE_UPLOAD_DIR = path.join(UPLOAD_DIR, 'quotations');
 if (!fs.existsSync(QUOTE_UPLOAD_DIR)) fs.mkdirSync(QUOTE_UPLOAD_DIR, { recursive: true });
 app.use('/api/quotations/uploads', express.static(QUOTE_UPLOAD_DIR, { fallthrough: false }));
+
+// 문서발송함 첨부파일 (PDF, 스캔본 등)
+const DOC_DISPATCH_UPLOAD_DIR = path.join(UPLOAD_DIR, 'doc-dispatch');
+if (!fs.existsSync(DOC_DISPATCH_UPLOAD_DIR)) fs.mkdirSync(DOC_DISPATCH_UPLOAD_DIR, { recursive: true });
+app.use('/api/doc-dispatch/uploads', express.static(DOC_DISPATCH_UPLOAD_DIR, { fallthrough: false }));
 
 // 견적서 QR 모바일 제품 상세 카탈로그 공개 조회 API 및 단축 뷰어(/q/:code) — 인증 불필요 (포털 주소 완전 은폐 & 단가/원가/마진 비공개)
 app.get('/q/:code', (req, res) => quotationsRoutes.servePublicCatalogPage(req, res));
@@ -450,6 +459,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             adminUsersRoutes.setDb(db);
             console.log('admin_users API 준비 완료');
         }).catch(err => console.error('admin_users 초기화 실패:', err));
+        // 문서발송함 테이블 초기화 + 라우트에 DB 주입
+        initDocDispatchTables(db).then(() => {
+            docDispatchRoutes.setDb(db);
+            console.log('doc_dispatch API 준비 완료');
+        }).catch(err => console.error('doc_dispatch 초기화 실패:', err));
         // 대시보드
         dashboardRoutes.setDb(db);
     }
@@ -1510,6 +1524,7 @@ app.use('/api/site-sales-statements', siteSalesStatementRoutes.router);
 app.use('/api/purchase-orders', purchaseOrderRoutes.router);
 app.use('/api/quotations', quotationsRoutes.router);
 app.use('/api/admin', adminUsersRoutes.router);
+app.use('/api/doc-dispatch', docDispatchRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
