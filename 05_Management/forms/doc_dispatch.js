@@ -333,7 +333,7 @@
             'archiveCountBadge', 'vaultCountBadge', 'storageModeBadge',
             'btnSettings', 'btnNewPackage', 'btnSavePackage', 'btnBuildMergedPdf',
             'presetSelect', 'btnLoadPreset', 'btnSaveAsPreset',
-            'inputDocNo', 'inputStatus', 'inputDraftDate', 'inputSubmitDate', 'inputSubmitMethod',
+            'inputDocNo', 'inputStatus', 'inputDraftDate', 'inputSubmitDate',
             'inputTitle', 'inputRecipient', 'partnerSuggestions', 'inputAuthor', 'inputContact', 'inputRemarks',
             'chkShowApprovalBox', 'btnAutoMatchVault', 'btnCheckAllItems', 'btnUncheckAllItems', 'btnAddDocItem',
             'batchDropZone', 'batchFileInput', 'checklistContainer',
@@ -593,7 +593,6 @@
         els.inputStatus.value = '준비중';
         els.inputDraftDate.value = today;
         els.inputSubmitDate.value = addDaysToDateStr(today, 1);
-        els.inputSubmitMethod.value = '방문제출';
         els.inputTitle.value = '';
         els.inputRecipient.value = '';
         els.inputRemarks.value = '';
@@ -960,7 +959,6 @@
         const recipient = (els.inputRecipient?.value || '').trim() || '(제출처 미입력)';
         const draftDate = (els.inputDraftDate?.value || '').trim() || getLocalTodayStr();
         const submitDate = (els.inputSubmitDate?.value || '').trim();
-        const submitMethod = (els.inputSubmitMethod?.value || '').trim() || '방문제출';
         const author = (els.inputAuthor?.value || '').trim() || '-';
         const contact = (els.inputContact?.value || '').trim() || '-';
         const remarks = (els.inputRemarks?.value || '').trim();
@@ -1005,7 +1003,7 @@
                             <th>수 신 처</th>
                             <td class="meta-strong">${escapeHtml(recipient)}</td>
                             <th>제출(예정)일</th>
-                            <td>${escapeHtml(submitDate || '미정')} <span class="meta-method-tag">(${escapeHtml(submitMethod)})</span></td>
+                            <td>${escapeHtml(submitDate || '미정')}</td>
                         </tr>
                         <tr>
                             <th>담 당 자</th>
@@ -1190,7 +1188,7 @@
             draftDate,
             submitDate: (els.inputSubmitDate.value || '').trim(),
             _submitDateManual: submitDateManuallyEdited,
-            submitMethod: (els.inputSubmitMethod.value || '').trim() || '방문제출',
+            submitMethod: '',
             author: (els.inputAuthor.value || '').trim(),
             contact: (els.inputContact.value || '').trim(),
             status: (els.inputStatus.value || '').trim() || '준비중',
@@ -1236,7 +1234,6 @@
         els.inputStatus.value = pkg.status || '준비중';
         els.inputDraftDate.value = fallbackDraft;
         els.inputSubmitDate.value = resolvedSubmit;
-        els.inputSubmitMethod.value = pkg.submitMethod || '방문제출';
         els.inputTitle.value = pkg.title || pkg.purpose || '';
         els.inputRecipient.value = pkg.recipient || '';
         els.inputAuthor.value = pkg.author || '';
@@ -2259,7 +2256,7 @@
         // 기본 입력 실시간 프리뷰 반영
         const liveFields = [
             els.inputDocNo, els.inputStatus, els.inputDraftDate, els.inputSubmitDate,
-            els.inputSubmitMethod, els.inputTitle, els.inputRecipient,
+            els.inputTitle, els.inputRecipient,
             els.inputAuthor, els.inputContact, els.inputRemarks
         ];
         liveFields.forEach(el => {
