@@ -1185,18 +1185,25 @@ button:focus-visible,
 .cover-doc-table .td-submit-type { font-size: 9.8px; color: #1e293b; font-weight: 600; white-space: nowrap; }
 .cover-doc-table .td-note { font-size: 9.5px; color: #475569; }
 
-.cover-doc-status {
-    font-size: 9.8px;
-    font-weight: 700;
-    white-space: nowrap;
+.cover-check-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border: 1.4px solid #334155;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
 }
 
-.cover-doc-status.done {
-    color: #065f46;
-}
-
-.cover-doc-status.todo {
-    color: #64748b;
+.cover-check-box.checked {
+    border-color: #0f172a;
+    background: #f8fafc;
 }
 
 .cover-remarks-box {

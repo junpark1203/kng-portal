@@ -920,9 +920,7 @@
 
     function buildCoverItemRowHtml(item, idx) {
         const hasFiles = Array.isArray(item.attachments) && item.attachments.length > 0;
-        const statusHtml = item.prepared
-            ? `<span class="cover-doc-status done">☑ 완료</span>`
-            : `<span class="cover-doc-status todo">☐ 미비</span>`;
+        const statusHtml = `<span class="cover-check-box ${item.prepared ? 'checked' : ''}" aria-label="${item.prepared ? '준비 완료' : '미체크'}">${item.prepared ? '✓' : ''}</span>`;
 
         let typeText = '';
         if (item.submitType === 'original_scan') {
