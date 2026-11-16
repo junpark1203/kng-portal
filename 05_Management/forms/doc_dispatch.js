@@ -867,22 +867,45 @@
         }
     }
 
-    function buildLetterheadHtml(docNo = '-', draftDate = '') {
+    function buildTopHeaderBandHtml(docNo = '-', draftDate = '', showAppr = false) {
+        const brandHtml = `
+            <div class="letterhead-brand">
+                <img src="${escapeHtml(state.company.logoUrl)}" class="letterhead-logo" alt="K&G Logo" onerror="this.style.display='none'">
+                <div class="letterhead-brand-divider"></div>
+                <div class="letterhead-name-group">
+                    <span class="letterhead-corp-kr">${escapeHtml(state.company.nameKr)}</span>
+                    <span class="letterhead-corp-en">${escapeHtml(state.company.nameEn)}</span>
+                </div>
+            </div>
+        `;
+        const metaLinesHtml = `
+            <div class="top-meta-lines ${showAppr ? 'stacked' : 'right-aligned'}">
+                <div><span class="lh-meta-lbl">문서번호</span><span class="lh-meta-val">${escapeHtml(docNo)}</span></div>
+                <div><span class="lh-meta-lbl">작성일자</span><span class="lh-meta-val">${escapeHtml(draftDate || getLocalTodayStr())}</span></div>
+            </div>
+        `;
+
+        if (showAppr) {
+            return `
+                <header class="cover-top-band with-approval">
+                    <div class="cover-top-left">
+                        ${brandHtml}
+                        ${metaLinesHtml}
+                    </div>
+                    <div class="cover-top-right">
+                        ${buildApprovalBoxHtml()}
+                    </div>
+                </header>
+            `;
+        }
+
         return `
-            <header class="letterhead-header">
-                <div class="letterhead-top">
-                    <div class="letterhead-brand">
-                        <img src="${escapeHtml(state.company.logoUrl)}" class="letterhead-logo" alt="K&G Logo" onerror="this.style.display='none'">
-                        <div class="letterhead-brand-divider"></div>
-                        <div class="letterhead-name-group">
-                            <span class="letterhead-corp-kr">${escapeHtml(state.company.nameKr)}</span>
-                            <span class="letterhead-corp-en">${escapeHtml(state.company.nameEn)}</span>
-                        </div>
-                    </div>
-                    <div class="letterhead-doc-meta">
-                        <div><span class="lh-meta-lbl">문서번호</span><span class="lh-meta-val">${escapeHtml(docNo)}</span></div>
-                        <div><span class="lh-meta-lbl">작성일자</span><span class="lh-meta-val">${escapeHtml(draftDate || getLocalTodayStr())}</span></div>
-                    </div>
+            <header class="cover-top-band no-approval">
+                <div class="cover-top-left">
+                    ${brandHtml}
+                </div>
+                <div class="cover-top-right">
+                    ${metaLinesHtml}
                 </div>
             </header>
         `;
@@ -919,20 +942,17 @@
 
     function buildCoverItemRowHtml(item, idx) {
         const hasFiles = Array.isArray(item.attachments) && item.attachments.length > 0;
-        const statusBadge = item.prepared
-            ? `<span class="cover-check-done">☑ 완료</span>`
-            : `<span class="cover-check-todo">☐ 미비</span>`;
+        const statusHtml = item.prepared
+            ? `<span class="cover-doc-status done">☑ 완료</span>`
+            : `<span class="cover-doc-status todo">☐ 미비</span>`;
 
-        let typeTag = '';
+        let typeText = '';
         if (item.submitType === 'original_scan') {
-            const label = hasFiles ? '원본제출 (스캔보관)' : '원본제출';
-            typeTag = `<span class="cover-subtag tag-scan">${label}</span>`;
+            typeText = hasFiles ? '원본 제출 (스캔보관)' : '원본 제출';
         } else if (item.submitType === 'original_hardcopy') {
-            const label = hasFiles ? '실물지참 (스캔보관)' : '실물지참';
-            typeTag = `<span class="cover-subtag tag-hardcopy">${label}</span>`;
+            typeText = hasFiles ? '실물 지참 (스캔보관)' : '실물 지참';
         } else {
-            const label = hasFiles ? '사본제출 (파일첨부)' : '사본제출';
-            typeTag = `<span class="cover-subtag tag-file">${label}</span>`;
+            typeText = hasFiles ? '사본 제출 (첨부완료)' : '사본 제출';
         }
 
         const noteParts = [];
@@ -945,9 +965,9 @@
                 <td class="td-name">${escapeHtml(item.name || '(미입력)')}</td>
                 <td class="td-center">${item.required !== false ? '필수' : '선택'}</td>
                 <td class="td-center">${parseInt(item.copies, 10) || 1}부</td>
-                <td class="td-center">${typeTag}</td>
-                <td class="td-center">${statusBadge}</td>
-                <td style="font-size: 9.2px; color: #334155;">${escapeHtml(noteParts.join(' · ') || '-')}</td>
+                <td class="td-center td-submit-type">${escapeHtml(typeText)}</td>
+                <td class="td-center">${statusHtml}</td>
+                <td class="td-note">${escapeHtml(noteParts.join(' · ') || '-')}</td>
             </tr>
         `;
     }
@@ -979,13 +999,13 @@
         const tableHeaderHtml = `
             <thead>
                 <tr>
-                    <th style="width: 28px;">No.</th>
+                    <th style="width: 30px;">No.</th>
                     <th>구비 서류명</th>
-                    <th style="width: 38px;">구분</th>
-                    <th style="width: 38px;">부수</th>
+                    <th style="width: 40px;">구분</th>
+                    <th style="width: 40px;">부수</th>
                     <th style="width: 118px;">제출 형태</th>
-                    <th style="width: 56px;">준비상태</th>
-                    <th style="width: 150px;">비고 (발급일 등)</th>
+                    <th style="width: 58px;">확인</th>
+                    <th style="width: 156px;">비고 (발급일 등)</th>
                 </tr>
             </thead>
         `;
@@ -993,15 +1013,13 @@
         const createSheet = (isFirst, pageNum, totalPages) => {
             const sheet = document.createElement('div');
             sheet.className = 'a4-sheet';
-            const approvalRowHtml = showAppr ? `<div class="cover-approval-row">${buildApprovalBoxHtml()}</div>` : '';
             const topHeaderSection = isFirst ? `
-                ${buildLetterheadHtml(docNo, draftDate)}
-                ${approvalRowHtml}
-                <div class="cover-title-section ${showAppr ? '' : 'standalone-title'}">
-                    <div class="cover-sub-caption">제 출 서 류 &nbsp; 목 록</div>
+                ${buildTopHeaderBandHtml(docNo, draftDate, showAppr)}
+                <div class="cover-title-section">
+                    <div class="cover-sub-caption">제 출 서 류 목 록</div>
                     <h1 class="cover-main-title">${escapeHtml(title)}</h1>
                 </div>
-                <table class="cover-open-meta">
+                <table class="cover-info-table">
                     <tbody>
                         <tr>
                             <th>수 신 처</th>
@@ -1018,8 +1036,8 @@
                     </tbody>
                 </table>
             ` : `
-                ${buildLetterheadHtml(docNo, draftDate)}
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #cbd5e1;">
+                ${buildTopHeaderBandHtml(docNo, draftDate, false)}
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <strong style="font-size:12px;">${escapeHtml(title)} (계속)</strong>
                     <span style="font-size:10px; color:#475569;">수신처: ${escapeHtml(recipient)}</span>
                 </div>

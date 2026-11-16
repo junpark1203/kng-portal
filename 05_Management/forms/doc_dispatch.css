@@ -939,17 +939,31 @@ button:focus-visible,
     overflow: hidden;
 }
 
-/* Corporate Letterhead */
-.letterhead-header {
-    border-bottom: 1.5px solid #1e293b;
-    padding-bottom: 7px;
-    margin-bottom: 11px;
-}
-
-.letterhead-top {
+/* Integrated Cover Top Band: Left (Brand + Doc Meta) | Right (Approval Box or Doc Meta) */
+.cover-top-band {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid #0f172a;
+    margin-bottom: 16px;
+}
+
+.cover-top-band.no-approval {
     align-items: center;
+    padding-bottom: 8px;
+}
+
+.cover-top-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cover-top-right {
+    flex-shrink: 0;
 }
 
 .letterhead-brand {
@@ -958,16 +972,16 @@ button:focus-visible,
 }
 
 .letterhead-logo {
-    max-height: 34px;
-    max-width: 115px;
+    max-height: 30px;
+    max-width: 100px;
     object-fit: contain;
 }
 
 .letterhead-brand-divider {
     width: 1px;
-    height: 24px;
+    height: 22px;
     background-color: #cbd5e1;
-    margin: 0 11px;
+    margin: 0 9px;
 }
 
 .letterhead-name-group {
@@ -976,84 +990,74 @@ button:focus-visible,
 }
 
 .letterhead-corp-kr {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.2;
 }
 
 .letterhead-corp-en {
-    font-size: 8px;
+    font-size: 7.8px;
     font-weight: 700;
     color: #64748b;
-    letter-spacing: 1.4px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
 }
 
-.letterhead-doc-meta {
-    text-align: right;
+.top-meta-lines {
     font-size: 9.8px;
     color: #334155;
     line-height: 1.55;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
 }
 
-.letterhead-doc-meta .lh-meta-lbl {
+.top-meta-lines.stacked {
+    padding-left: 1px;
+}
+
+.top-meta-lines.right-aligned {
+    text-align: right;
+}
+
+.top-meta-lines .lh-meta-lbl {
     display: inline-block;
     color: #64748b;
     font-weight: 700;
-    margin-right: 7px;
+    margin-right: 6px;
 }
 
-.letterhead-doc-meta .lh-meta-val {
+.top-meta-lines .lh-meta-val {
     font-weight: 700;
     color: #0f172a;
     font-variant-numeric: tabular-nums;
 }
 
-/* Standalone Right-Aligned Approval Row */
-.cover-approval-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 12px;
-}
-
-/* Centered Document Title Block */
+/* Centered Document Title Block (No underline to prevent double-line clash) */
 .cover-title-section {
     text-align: center;
-    margin: 2px 0 14px;
-}
-
-.cover-title-section.standalone-title {
-    margin: 14px 0 18px;
+    margin: 4px 0 16px;
 }
 
 .cover-sub-caption {
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 700;
-    color: #1e40af;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
+    color: #475569;
+    letter-spacing: 3px;
+    margin-bottom: 5px;
 }
 
 .cover-main-title {
     margin: 0;
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 800;
     color: #0f172a;
-    letter-spacing: -0.2px;
+    letter-spacing: -0.3px;
     line-height: 1.3;
     word-break: keep-all;
-    border-bottom: 2px solid #0f172a;
-    display: inline-block;
-    padding: 0 18px 6px;
 }
 
 /* 9-Rank Approval Table (담당 ~ 사장) */
 .approval-box-table {
-    width: 118mm;
+    width: 112mm;
     border-collapse: collapse;
     table-layout: fixed;
     flex-shrink: 0;
@@ -1068,9 +1072,9 @@ button:focus-visible,
 }
 
 .approval-box-table .appr-side-th {
-    width: 6mm;
+    width: 5.5mm;
     background: #f1f5f9;
-    font-size: 9px;
+    font-size: 8.8px;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.25;
@@ -1080,7 +1084,7 @@ button:focus-visible,
 .approval-box-table .appr-rank-th {
     height: 17px;
     background: #f8fafc;
-    font-size: 8.8px;
+    font-size: 8.5px;
     font-weight: 700;
     color: #1e293b;
 }
@@ -1090,125 +1094,117 @@ button:focus-visible,
     background: #ffffff;
 }
 
-/* Open-Grid Meta Block (No Outer Vertical Borders) */
-.cover-open-meta {
+/* Classic Formal 4-Cell Info Table */
+.cover-info-table {
     width: 100%;
     border-collapse: collapse;
-    border-top: 2px solid #0f172a;
+    border-top: 1.5px solid #0f172a;
     border-bottom: 1.5px solid #0f172a;
-    margin-bottom: 13px;
+    margin-bottom: 14px;
     font-size: 10.5px;
 }
 
-.cover-open-meta tr + tr th,
-.cover-open-meta tr + tr td {
-    border-top: 1px solid #e2e8f0;
+.cover-info-table th,
+.cover-info-table td {
+    border: 1px solid #cbd5e1;
+    padding: 7px 9px;
+    vertical-align: middle;
 }
 
-.cover-open-meta th {
-    padding: 6px 6px;
-    width: 15%;
-    color: #475569;
+.cover-info-table th:first-child,
+.cover-info-table td:first-child {
+    border-left: none;
+}
+
+.cover-info-table th:last-child,
+.cover-info-table td:last-child {
+    border-right: none;
+}
+
+.cover-info-table th {
+    background: #f8fafc;
+    color: #334155;
     font-weight: 700;
-    text-align: left;
+    width: 15%;
+    text-align: center;
     white-space: nowrap;
 }
 
-.cover-open-meta th::after {
-    content: ':';
-    float: right;
-    color: #94a3b8;
-    font-weight: 400;
-    margin-right: 2px;
-}
-
-.cover-open-meta td {
-    padding: 6px 8px;
+.cover-info-table td {
     width: 35%;
     color: #0f172a;
     font-weight: 500;
 }
 
-.cover-open-meta .meta-strong {
+.cover-info-table .meta-strong {
     font-weight: 700;
     color: #0f172a;
 }
 
-.cover-open-meta .meta-method-tag {
+.cover-info-table .meta-method-tag {
     color: #475569;
     font-size: 10px;
 }
 
-/* Cover Checklist Main Table */
+/* Cover Checklist Main Table (Classic Paper Document Style) */
 .cover-doc-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 10px;
+    font-size: 10.2px;
+    border-top: 2px solid #0f172a;
+    border-bottom: 1.5px solid #0f172a;
 }
 
 .cover-doc-table th {
-    background: #1e293b;
-    color: #ffffff;
-    font-weight: 700;
-    padding: 5.5px 4px;
-    border: 1px solid #1e293b;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 800;
+    padding: 7px 5px;
+    border: 1px solid #cbd5e1;
+    border-bottom: 1.5px solid #0f172a;
     text-align: center;
     white-space: nowrap;
 }
 
 .cover-doc-table td {
     border: 1px solid #cbd5e1;
-    padding: 5px 5px;
+    padding: 8px 6px;
     vertical-align: middle;
     color: #0f172a;
     word-break: keep-all;
     overflow-wrap: break-word;
+    line-height: 1.35;
 }
 
-.cover-doc-table tr:nth-child(even) td {
-    background: #f8fafc;
+.cover-doc-table th:first-child,
+.cover-doc-table td:first-child {
+    border-left: none;
+}
+
+.cover-doc-table th:last-child,
+.cover-doc-table td:last-child {
+    border-right: none;
 }
 
 .cover-doc-table .td-center { text-align: center; }
-.cover-doc-table .td-no { font-weight: 800; font-size: 10.5px; color: #0f172a; text-align: center; }
+.cover-doc-table .td-no { font-weight: 700; font-size: 10.2px; color: #334155; text-align: center; }
 .cover-doc-table .td-name { font-weight: 700; color: #0f172a; }
+.cover-doc-table .td-submit-type { font-size: 9.8px; color: #1e293b; font-weight: 600; white-space: nowrap; }
+.cover-doc-table .td-note { font-size: 9.5px; color: #475569; }
 
-.cover-check-done {
-    display: inline-block;
-    font-weight: 800;
-    color: #047857;
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 9.5px;
-    white-space: nowrap;
-}
-
-.cover-check-todo {
-    display: inline-block;
+.cover-doc-status {
+    font-size: 9.8px;
     font-weight: 700;
-    color: #b45309;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 9.5px;
     white-space: nowrap;
 }
 
-.cover-subtag {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
-    white-space: nowrap;
+.cover-doc-status.done {
+    color: #065f46;
 }
 
-.tag-scan { background: #e0e7ff; color: #3730a3; }
-.tag-file { background: #eff6ff; color: #1d4ed8; }
-.tag-hardcopy { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.cover-doc-status.todo {
+    color: #64748b;
+}
 
 .cover-remarks-box {
     margin-top: 9px;
