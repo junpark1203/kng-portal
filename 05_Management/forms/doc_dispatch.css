@@ -939,26 +939,20 @@ button:focus-visible,
     overflow: hidden;
 }
 
-/* Integrated Cover Top Band: Left (Brand + Doc Meta) | Right (Approval Box or Doc Meta) */
+/* Cover Top Letterhead Band */
 .cover-top-band {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1.5px solid #0f172a;
-    margin-bottom: 16px;
-}
-
-.cover-top-band.no-approval {
     align-items: center;
-    padding-bottom: 8px;
+    gap: 12px;
+    padding-bottom: 9px;
+    border-bottom: 1.5px solid #0f172a;
+    margin-bottom: 12px;
 }
 
 .cover-top-left {
     display: flex;
     flex-direction: column;
-    gap: 6px;
     min-width: 0;
 }
 
@@ -972,8 +966,8 @@ button:focus-visible,
 }
 
 .letterhead-logo {
-    max-height: 30px;
-    max-width: 100px;
+    max-height: 32px;
+    max-width: 110px;
     object-fit: contain;
 }
 
@@ -981,7 +975,7 @@ button:focus-visible,
     width: 1px;
     height: 22px;
     background-color: #cbd5e1;
-    margin: 0 9px;
+    margin: 0 10px;
 }
 
 .letterhead-name-group {
@@ -990,14 +984,14 @@ button:focus-visible,
 }
 
 .letterhead-corp-kr {
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.2;
 }
 
 .letterhead-corp-en {
-    font-size: 7.8px;
+    font-size: 8px;
     font-weight: 700;
     color: #64748b;
     letter-spacing: 1.2px;
@@ -1008,10 +1002,6 @@ button:focus-visible,
     font-size: 9.8px;
     color: #334155;
     line-height: 1.55;
-}
-
-.top-meta-lines.stacked {
-    padding-left: 1px;
 }
 
 .top-meta-lines.right-aligned {
@@ -1031,33 +1021,36 @@ button:focus-visible,
     font-variant-numeric: tabular-nums;
 }
 
-/* Centered Document Title Block (No underline to prevent double-line clash) */
-.cover-title-section {
-    text-align: center;
-    margin: 4px 0 16px;
+/* Standalone Right-Aligned Approval Row below Letterhead */
+.cover-approval-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
 }
 
-.cover-sub-caption {
-    font-size: 10.5px;
-    font-weight: 700;
-    color: #475569;
-    letter-spacing: 3px;
-    margin-bottom: 5px;
+/* Centered Document Title Block with Generous Whitespace */
+.cover-title-section {
+    text-align: center;
+    margin: 22px 0 24px;
+}
+
+.cover-title-section.standalone-title {
+    margin: 28px 0 28px;
 }
 
 .cover-main-title {
     margin: 0;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.3px;
-    line-height: 1.3;
+    line-height: 1.35;
     word-break: keep-all;
 }
 
 /* 9-Rank Approval Table (담당 ~ 사장) */
 .approval-box-table {
-    width: 112mm;
+    width: 116mm;
     border-collapse: collapse;
     table-layout: fixed;
     flex-shrink: 0;
