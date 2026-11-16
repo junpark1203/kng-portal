@@ -867,7 +867,7 @@
         }
     }
 
-    function buildLetterheadHtml() {
+    function buildLetterheadHtml(docNo = '-', draftDate = '') {
         return `
             <header class="letterhead-header">
                 <div class="letterhead-top">
@@ -879,9 +879,9 @@
                             <span class="letterhead-corp-en">${escapeHtml(state.company.nameEn)}</span>
                         </div>
                     </div>
-                    <div class="letterhead-contact">
-                        <div><strong>TEL</strong> ${escapeHtml(state.company.tel)} &nbsp;|&nbsp; <strong>FAX</strong> ${escapeHtml(state.company.fax)}</div>
-                        <div>${escapeHtml(state.company.address)}</div>
+                    <div class="letterhead-doc-meta">
+                        <div><span class="lh-meta-lbl">문서번호</span><span class="lh-meta-val">${escapeHtml(docNo)}</span></div>
+                        <div><span class="lh-meta-lbl">작성일자</span><span class="lh-meta-val">${escapeHtml(draftDate || getLocalTodayStr())}</span></div>
                     </div>
                 </div>
             </header>
@@ -925,20 +925,14 @@
 
         let typeTag = '';
         if (item.submitType === 'original_scan') {
-            typeTag = `<span class="cover-subtag tag-scan">원본제출</span>`;
+            const label = hasFiles ? '원본제출 (스캔보관)' : '원본제출';
+            typeTag = `<span class="cover-subtag tag-scan">${label}</span>`;
         } else if (item.submitType === 'original_hardcopy') {
-            typeTag = `<span class="cover-subtag tag-hardcopy">실물지참</span>`;
+            const label = hasFiles ? '실물지참 (스캔보관)' : '실물지참';
+            typeTag = `<span class="cover-subtag tag-hardcopy">${label}</span>`;
         } else {
-            typeTag = `<span class="cover-subtag tag-file">사본(출력)</span>`;
-        }
-
-        let attachDesc = '-';
-        if (item.submitType === 'original_scan') {
-            attachDesc = hasFiles ? `스캔본 (${item.attachments.length}건)` : '스캔본 미첨부';
-        } else if (item.submitType === 'original_hardcopy') {
-            attachDesc = hasFiles ? `스캔본 (${item.attachments.length}건)` : (item.prepared ? '실물 지참' : '미준비');
-        } else {
-            attachDesc = hasFiles ? `파일 첨부 (${item.attachments.length}건)` : (item.prepared ? '보유 체크' : '미첨부');
+            const label = hasFiles ? '사본제출 (파일첨부)' : '사본제출';
+            typeTag = `<span class="cover-subtag tag-file">${label}</span>`;
         }
 
         const noteParts = [];
@@ -953,7 +947,6 @@
                 <td class="td-center">${parseInt(item.copies, 10) || 1}부</td>
                 <td class="td-center">${typeTag}</td>
                 <td class="td-center">${statusBadge}</td>
-                <td class="td-center" style="font-size: 9.2px;">${escapeHtml(attachDesc)}</td>
                 <td style="font-size: 9.2px; color: #334155;">${escapeHtml(noteParts.join(' · ') || '-')}</td>
             </tr>
         `;
@@ -988,12 +981,11 @@
                 <tr>
                     <th style="width: 28px;">No.</th>
                     <th>구비 서류명</th>
-                    <th style="width: 40px;">구분</th>
+                    <th style="width: 38px;">구분</th>
                     <th style="width: 38px;">부수</th>
-                    <th style="width: 78px;">제출 형태</th>
-                    <th style="width: 58px;">준비상태</th>
-                    <th style="width: 86px;">첨부/보관</th>
-                    <th style="width: 145px;">비고 (발급일 등)</th>
+                    <th style="width: 118px;">제출 형태</th>
+                    <th style="width: 56px;">준비상태</th>
+                    <th style="width: 150px;">비고 (발급일 등)</th>
                 </tr>
             </thead>
         `;
@@ -1001,37 +993,35 @@
         const createSheet = (isFirst, pageNum, totalPages) => {
             const sheet = document.createElement('div');
             sheet.className = 'a4-sheet';
+            const approvalRowHtml = showAppr ? `<div class="cover-approval-row">${buildApprovalBoxHtml()}</div>` : '';
             const topHeaderSection = isFirst ? `
-                ${buildLetterheadHtml()}
-                <div class="cover-title-approval-row ${showAppr ? '' : 'no-approval'}">
-                    <div class="cover-title-block">
-                        <div class="cover-sub-caption">제출서류 목록</div>
-                        <h1 class="cover-main-title">${escapeHtml(title)}</h1>
-                        <div class="cover-docno-line">관리번호: ${escapeHtml(docNo)} &nbsp;|&nbsp; 작성일자: ${escapeHtml(draftDate)}</div>
-                    </div>
-                    ${buildApprovalBoxHtml()}
+                ${buildLetterheadHtml(docNo, draftDate)}
+                ${approvalRowHtml}
+                <div class="cover-title-section ${showAppr ? '' : 'standalone-title'}">
+                    <div class="cover-sub-caption">제 출 서 류 &nbsp; 목 록</div>
+                    <h1 class="cover-main-title">${escapeHtml(title)}</h1>
                 </div>
-                <table class="cover-meta-table">
+                <table class="cover-open-meta">
                     <tbody>
                         <tr>
-                            <th>제출처 (수신)</th>
+                            <th>수 신 처</th>
                             <td class="meta-strong">${escapeHtml(recipient)}</td>
-                            <th>제출(예정)일자 / 방법</th>
-                            <td>${escapeHtml(submitDate || '미정')} (${escapeHtml(submitMethod)})</td>
+                            <th>제출(예정)일</th>
+                            <td>${escapeHtml(submitDate || '미정')} <span class="meta-method-tag">(${escapeHtml(submitMethod)})</span></td>
                         </tr>
                         <tr>
-                            <th>담당자 (제출자)</th>
+                            <th>담 당 자</th>
                             <td>${escapeHtml(author)}</td>
-                            <th>연락처 / 이메일</th>
+                            <th>연 락 처</th>
                             <td>${escapeHtml(contact)}</td>
                         </tr>
                     </tbody>
                 </table>
             ` : `
-                ${buildLetterheadHtml()}
+                ${buildLetterheadHtml(docNo, draftDate)}
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #cbd5e1;">
                     <strong style="font-size:12px;">${escapeHtml(title)} (계속)</strong>
-                    <span style="font-size:10px; color:#475569;">관리번호: ${escapeHtml(docNo)} | 제출처: ${escapeHtml(recipient)}</span>
+                    <span style="font-size:10px; color:#475569;">수신처: ${escapeHtml(recipient)}</span>
                 </div>
             `;
 
@@ -1060,7 +1050,7 @@
 
         const rowItems = state.items.length > 0 ? state.items : [];
         if (rowItems.length === 0) {
-            currentSheet.querySelector('.cover-doc-tbody').innerHTML = `<tr><td colspan="8" class="td-center" style="padding: 18px; color: #64748b;">등록된 구비서류 항목이 없습니다.</td></tr>`;
+            currentSheet.querySelector('.cover-doc-tbody').innerHTML = `<tr><td colspan="7" class="td-center" style="padding: 18px; color: #64748b;">등록된 구비서류 항목이 없습니다.</td></tr>`;
         } else {
             rowItems.forEach((item, idx) => {
                 const tbody = currentSheet.querySelector('.cover-doc-tbody');
