@@ -1148,6 +1148,8 @@ button:focus-visible,
     padding: 5px 5px;
     vertical-align: middle;
     color: #0f172a;
+    word-break: keep-all;
+    overflow-wrap: break-word;
 }
 
 .cover-doc-table tr:nth-child(even) td {
@@ -1167,6 +1169,7 @@ button:focus-visible,
     border-radius: 3px;
     padding: 1px 5px;
     font-size: 9.5px;
+    white-space: nowrap;
 }
 
 .cover-check-todo {
@@ -1178,6 +1181,7 @@ button:focus-visible,
     border-radius: 3px;
     padding: 1px 5px;
     font-size: 9.5px;
+    white-space: nowrap;
 }
 
 .cover-subtag {
@@ -1186,6 +1190,7 @@ button:focus-visible,
     font-weight: 700;
     padding: 1px 4px;
     border-radius: 3px;
+    white-space: nowrap;
 }
 
 .tag-scan { background: #e0e7ff; color: #3730a3; }

@@ -978,12 +978,12 @@
                 <tr>
                     <th style="width: 28px;">No.</th>
                     <th>구비 서류명</th>
-                    <th style="width: 38px;">구분</th>
-                    <th style="width: 36px;">부수</th>
-                    <th style="width: 68px;">제출 형태</th>
-                    <th style="width: 54px;">준비상태</th>
-                    <th style="width: 82px;">첨부/보관</th>
-                    <th style="width: 120px;">비고 (발급일 등)</th>
+                    <th style="width: 40px;">구분</th>
+                    <th style="width: 38px;">부수</th>
+                    <th style="width: 78px;">제출 형태</th>
+                    <th style="width: 58px;">준비상태</th>
+                    <th style="width: 86px;">첨부/보관</th>
+                    <th style="width: 145px;">비고 (발급일 등)</th>
                 </tr>
             </thead>
         `;
@@ -1039,7 +1039,7 @@
                     ${topHeaderSection}
                     <table class="cover-doc-table">
                         ${tableHeaderHtml}
-                        <tbody></tbody>
+                        <tbody class="cover-doc-tbody"></tbody>
                     </table>
                     <div class="cover-remarks-slot"></div>
                 </div>
@@ -1059,10 +1059,10 @@
 
         const rowItems = state.items.length > 0 ? state.items : [];
         if (rowItems.length === 0) {
-            currentSheet.querySelector('tbody').innerHTML = `<tr><td colspan="8" class="td-center" style="padding: 18px; color: #64748b;">등록된 구비서류 항목이 없습니다.</td></tr>`;
+            currentSheet.querySelector('.cover-doc-tbody').innerHTML = `<tr><td colspan="8" class="td-center" style="padding: 18px; color: #64748b;">등록된 구비서류 항목이 없습니다.</td></tr>`;
         } else {
             rowItems.forEach((item, idx) => {
-                const tbody = currentSheet.querySelector('tbody');
+                const tbody = currentSheet.querySelector('.cover-doc-tbody');
                 tbody.insertAdjacentHTML('beforeend', buildCoverItemRowHtml(item, idx));
                 const addedRow = tbody.lastElementChild;
 
@@ -1071,7 +1071,7 @@
                     currentSheet = createSheet(false, sheets.length + 1, sheets.length + 1);
                     els.a4PagesContainer.appendChild(currentSheet);
                     sheets.push(currentSheet);
-                    currentSheet.querySelector('tbody').insertAdjacentHTML('beforeend', buildCoverItemRowHtml(item, idx));
+                    currentSheet.querySelector('.cover-doc-tbody').insertAdjacentHTML('beforeend', buildCoverItemRowHtml(item, idx));
                 }
             });
         }
