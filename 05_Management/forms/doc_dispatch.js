@@ -16,7 +16,7 @@
     const ADMIN_USERS_API_URL = `${API_ORIGIN}/api/admin/users`;
 
     const STORAGE_KEY_COMPANY = 'kng_doc_dispatch_company_v1';
-    const STORAGE_KEY_DRAFT = 'kng_doc_dispatch_draft_v1';
+    const STORAGE_KEY_DRAFT = 'kng_doc_dispatch_draft_v2';
     const STORAGE_KEY_PACKAGES = 'kng_doc_dispatch_packages_fallback_v1';
     const STORAGE_KEY_TEMPLATES = 'kng_doc_dispatch_templates_fallback_v1';
     const STORAGE_KEY_VAULT = 'kng_doc_dispatch_vault_fallback_v1';
@@ -1201,6 +1201,7 @@
             purpose: title,
             draftDate,
             submitDate: (els.inputSubmitDate.value || '').trim(),
+            _submitDateManual: submitDateManuallyEdited,
             submitMethod: (els.inputSubmitMethod.value || '').trim() || '방문제출',
             author: (els.inputAuthor.value || '').trim(),
             contact: (els.inputContact.value || '').trim(),
@@ -1235,8 +1236,13 @@
         state.currentPackageId = pkg.id || null;
         const fallbackDraft = pkg.draftDate || (pkg.createdAt ? pkg.createdAt.slice(0, 10) : '') || getLocalTodayStr();
         const defaultSubmit = addDaysToDateStr(fallbackDraft, 1);
-        const resolvedSubmit = pkg.submitDate !== undefined ? pkg.submitDate : defaultSubmit;
-        submitDateManuallyEdited = !!(resolvedSubmit && resolvedSubmit !== defaultSubmit);
+        const isLegacyDraft = !pkg.draftDate;
+        const isUneditedSameDay = !pkg.id && pkg.submitDate === fallbackDraft && !pkg._submitDateManual;
+        let resolvedSubmit = pkg.submitDate !== undefined ? pkg.submitDate : defaultSubmit;
+        if (isLegacyDraft || isUneditedSameDay) {
+            resolvedSubmit = defaultSubmit;
+        }
+        submitDateManuallyEdited = !!pkg._submitDateManual || !!(pkg.id && resolvedSubmit && resolvedSubmit !== defaultSubmit);
 
         els.inputDocNo.value = pkg.docNo || generateDefaultDocNo();
         els.inputStatus.value = pkg.status || '준비중';
