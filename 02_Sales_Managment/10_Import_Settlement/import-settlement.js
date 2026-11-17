@@ -1875,19 +1875,38 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
     const isLCL = state.doc.quotationSnapshot.shipmentType === 'LCL';
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
 
-    let totalInvoiceKrw = 0;
+    const getQuotedExRate = (curr) => curr === 'KRW' ? 1 : (parseFloat(snapRates[curr]) || 1);
+    const getBilledExRate = (curr) => {
+        const qRate = getQuotedExRate(curr);
+        if (curr === 'KRW') return 1;
+        if (state.doc && state.doc.actualCosts) {
+            const invoiceCost = state.doc.actualCosts.find(
+                c => c.group === 'invoice' && (c.billedCurrency === curr || c.currency === curr)
+            );
+            if (invoiceCost && invoiceCost.billedRate) {
+                return parseFloat(invoiceCost.billedRate) || qRate;
+            }
+        }
+        return qRate;
+    };
+
+    let estTotalInvoiceKrw = 0;
+    let billedTotalInvoiceKrw = 0;
     items.forEach(item => {
         const p = item.prices && item.prices[term] ? item.prices[term] : null;
         if (p && p.currency && p.unitPrice) {
-            const pRate = snapRates[p.currency] || 1;
-            totalInvoiceKrw += (p.unitPrice * (item.qty || 0) * pRate);
+            const itemTotalFC = p.unitPrice * (item.qty || 0);
+            estTotalInvoiceKrw += itemTotalFC * getQuotedExRate(p.currency);
+            billedTotalInvoiceKrw += itemTotalFC * getBilledExRate(p.currency);
         }
     });
 
-    // 실청구 기준 배분비율
-    const allocationRatio = totalInvoiceKrw > 0 ? (totalBilledKrw / totalInvoiceKrw) : 0;
-    // 견적 기준 배분비율
-    const estAllocationRatio = totalInvoiceKrw > 0 ? (totalEstKrw / totalInvoiceKrw) : 0;
+    // 실청구 기준 배분비율 (실제 청구환율 기준 물품대금 대비)
+    const allocationRatio = billedTotalInvoiceKrw > 0 ? (totalBilledKrw / billedTotalInvoiceKrw) : 0;
+    const dutiableAllocationRatio = billedTotalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / billedTotalInvoiceKrw) : 0;
+    // 견적 기준 배분비율 (견적환율 기준 물품대금 대비)
+    const estAllocationRatio = estTotalInvoiceKrw > 0 ? (totalEstKrw / estTotalInvoiceKrw) : 0;
+    const estDutiableAllocationRatio = estTotalInvoiceKrw > 0 ? (totalDutiableEstKrw / estTotalInvoiceKrw) : 0;
 
     let htmlValue = '';
 
@@ -1914,20 +1933,13 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
 
         const unitPriceFC = p.unitPrice;
         
-        const quotedExRate = snapRates[p.currency] || 1;
-        let billedExRate = quotedExRate;
-        if (state.doc && state.doc.actualCosts) {
-            const invoiceCost = state.doc.actualCosts.find(c => c.group === 'invoice' && (c.billedCurrency === p.currency || c.currency === p.currency));
-            if (invoiceCost && invoiceCost.billedRate) {
-                billedExRate = parseFloat(invoiceCost.billedRate);
-            }
-        }
+        const quotedExRate = getQuotedExRate(p.currency);
+        const billedExRate = getBilledExRate(p.currency);
         
         const dutyRate = item.dutyRate || 0;
 
         // === 실청구 기준 (가치비례 배분) ===
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
-        const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
 
         const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
@@ -1940,7 +1952,6 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
 
         // === 견적 기준 (가치비례 배분) ===
         const estAllocatedFC_Value_Total = unitPriceFC * estAllocationRatio;
-        const estDutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableEstKrw / totalInvoiceKrw) : 0;
         const estAllocatedFC_Value_Dutiable = unitPriceFC * estDutiableAllocationRatio;
 
         const estBaseCostFC_Value = unitPriceFC + estAllocatedFC_Value_Total;
