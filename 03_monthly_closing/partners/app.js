@@ -767,6 +767,17 @@ const app = {
     },
 
     async savePartner() {
+        const editorEl = document.getElementById('bankAccEditor');
+        if (editorEl && editorEl.style.display !== 'none') {
+            const pendingBank = (document.getElementById('bankAccBankName')?.value || '').trim();
+            const pendingAccNo = (document.getElementById('bankAccAccountNo')?.value || '').trim();
+            if (pendingBank && pendingAccNo) {
+                this.saveBankAccSubform();
+            } else if (pendingBank || pendingAccNo) {
+                return Swal.fire('알림', '작성 중인 외화 계좌의 은행명과 계좌번호를 모두 입력하거나 [취소]를 눌러주세요.', 'warning');
+            }
+        }
+
         const id = document.getElementById('partnerId').value;
         const name = document.getElementById('partnerName').value.trim();
         const company_name = document.getElementById('companyName').value.trim();
@@ -858,6 +869,7 @@ const app = {
                 }
                 Swal.fire({ title: '등록 완료', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }
+            try { localStorage.setItem('kngPartnersUpdatedAt', String(Date.now())); } catch (e) {}
             this.initialFormSnapshot = null;
             if (this.modal) this.modal.hide();
             await this.loadData();
@@ -891,6 +903,7 @@ const app = {
                     throw new Error(errData.error || '삭제 중 오류가 발생했습니다.');
                 }
                 Swal.fire({ title: '삭제됨', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                try { localStorage.setItem('kngPartnersUpdatedAt', String(Date.now())); } catch (e) {}
                 this.loadData();
             } catch (error) {
                 console.error(error);
@@ -990,4 +1003,16 @@ document.addEventListener('DOMContentLoaded', () => {
             app.closeModalWithConfirm();
         }
     });
+});
+
+window.onPortalTabActivated = () => {
+    if (!document.getElementById('partnerModal')?.classList.contains('show')) {
+        app.loadData();
+    }
+};
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'kngPartnersUpdatedAt' && !document.getElementById('partnerModal')?.classList.contains('show')) {
+        app.loadData();
+    }
 });

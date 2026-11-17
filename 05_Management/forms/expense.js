@@ -22,16 +22,25 @@ async function authFetch(url, options = {}) {
     return fetch(url, options);
 }
 
-const API_URL = 'https://kng.junparks.com/api/expense-resolution';
-const PARTNERS_API_URL = 'https://kng.junparks.com/api/partners';
 const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const TRADE_REMITTANCE_API_URL = isLocalHost ? 'http://localhost:3000/api/trade-remittance' : 'https://kng.junparks.com/api/trade-remittance';
+const SERVER_BASE_URL = isLocalHost ? 'http://localhost:3000' : 'https://kng.junparks.com';
+const API_URL = `${SERVER_BASE_URL}/api/expense-resolution`;
+const PARTNERS_API_URL = `${SERVER_BASE_URL}/api/partners`;
+const TRADE_REMITTANCE_API_URL = `${SERVER_BASE_URL}/api/trade-remittance`;
 const TRADE_REMITTANCE_CACHE_KEY = 'kngTradeRemittanceRecords_v1';
+const PARTNERS_SYNC_KEY = 'kngPartnersUpdatedAt';
 let currentExpenses = [];
 let currentVendors = [];
 let currentTradeRemittances = [];
 let editingExpenseId = null;
 let editingVendorId = null;
+
+function normCorpName(s) {
+    return (s || '')
+        .toLowerCase()
+        .replace(/\(주\)|주식회사|㈜|\(유\)|유한회사|\(사\)|사단법인|\(재\)|재단법인/g, '')
+        .replace(/[\s\-.,()_]/g, '');
+}
 
 function findVendorByIdOrName(vendorId, vendorName = '') {
     if (vendorId) {
@@ -48,6 +57,17 @@ function findVendorByIdOrName(vendorId, vendorName = '') {
             (v.companyNameEn && v.companyNameEn.trim().toLowerCase() === normName)
         );
         if (byName) return byName;
+
+        const fuzzyName = normCorpName(vendorName);
+        if (fuzzyName) {
+            const byFuzzy = currentVendors.find(v =>
+                (v.vendorName && normCorpName(v.vendorName) === fuzzyName) ||
+                (v.korName && normCorpName(v.korName) === fuzzyName) ||
+                (v.companyName && normCorpName(v.companyName) === fuzzyName) ||
+                (v.companyNameEn && normCorpName(v.companyNameEn) === fuzzyName)
+            );
+            if (byFuzzy) return byFuzzy;
+        }
     }
     return null;
 }
@@ -283,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnPrintPreview').addEventListener('click', showPrintPreview);
     document.getElementById('btnClosePrint').addEventListener('click', () => {
         printLayout.style.display = 'none';
-        document.body.style.overflow = 'hidden'; // Keep modal scroll hidden
+        document.body.style.overflow = (expenseEditModal && expenseEditModal.classList.contains('active')) ? 'hidden' : '';
     });
 
     // File Drag and Drop Events
@@ -529,7 +549,8 @@ function renderExpenseList() {
     });
 }
 
-function showNewExpenseForm() {
+async function showNewExpenseForm() {
+    await loadVendors();
     editingExpenseId = null;
     document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지출결의서 작성";
     expenseForm.reset();
@@ -582,6 +603,7 @@ function showNewExpenseForm() {
 
 async function editExpense(id) {
     try {
+        await loadVendors();
         const res = await authFetch(`${API_URL}/${id}`);
         if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
         const exp = await res.json();
@@ -656,6 +678,7 @@ async function editExpense(id) {
 
 async function duplicateExpense(id) {
     try {
+        await loadVendors();
         const res = await authFetch(`${API_URL}/${id}`);
         if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
         const exp = await res.json();
@@ -1136,12 +1159,16 @@ window.openTradeRemittanceFromExpenseId = async function(expId) {
 window.addEventListener('storage', (e) => {
     if (e.key === TRADE_REMITTANCE_CACHE_KEY) {
         loadTradeRemittances().then(() => renderExpenseList());
+    } else if (e.key === PARTNERS_SYNC_KEY) {
+        loadVendors();
     }
 });
 window.addEventListener('focus', () => {
+    loadVendors();
     loadTradeRemittances().then(() => renderExpenseList());
 });
 window.onPortalTabActivated = () => {
+    loadVendors();
     loadTradeRemittances().then(() => renderExpenseList());
 };
 
@@ -1250,16 +1277,17 @@ function handleVendorSelect() {
 // 거래처 프리셋 & 통합 거래처(partners) 연동 로직
 // ==========================================
 
-function openVendorModal() {
+async function openVendorModal() {
     vendorModal.classList.add('active');
     hideVendorForm();
+    await loadVendors();
 }
 
 function closeVendorModal() {
     const formArea = document.getElementById('vendorFormArea');
     if (formArea && formArea.style.display !== 'none') {
-        const vName = document.getElementById('vName')?.value?.trim();
-        const vBiz = document.getElementById('vBizNum')?.value?.trim();
+        const vName = document.getElementById('vVendorName')?.value?.trim();
+        const vBiz = document.getElementById('vBizRegNumber')?.value?.trim();
         if ((vName || vBiz) && !confirm('작성 중인 거래처 정보가 있습니다. 저장하지 않고 닫으시겠습니까?')) {
             return;
         }
@@ -1339,8 +1367,8 @@ function extractPartnerAccounts(p, fallbackHolder) {
 async function loadVendors() {
     try {
         const [presetsRes, partnersRes] = await Promise.allSettled([
-            authFetch(`${API_URL}/vendors`),
-            authFetch(PARTNERS_API_URL)
+            authFetch(`${API_URL}/vendors`, { cache: 'no-store' }),
+            authFetch(PARTNERS_API_URL, { cache: 'no-store' })
         ]);
 
         let presetRows = [];
@@ -1371,7 +1399,11 @@ async function loadVendors() {
             const rep = (p.ceo_name || p.ceoName || '').trim();
             const bizNo = (p.business_number || '').trim();
 
-            // 매칭되는 기존 지출결의서 프리셋 찾기 (사업자번호 또는 국/영문 상호명 기준)
+            const fuzzyEn = normCorpName(companyNameEn);
+            const fuzzyKor = normCorpName(korName);
+            const fuzzyComp = normCorpName(companyName);
+
+            // 매칭되는 기존 지출결의서 프리셋 찾기 (사업자번호 또는 국/영문 상호명, 법인 표기 정규화 기준)
             const matchedPresets = presetRows.filter(pr => {
                 if (usedPresetIds.has(pr.id)) return false;
                 if (bizNo && pr.bizRegNumber && normBiz(bizNo) === normBiz(pr.bizRegNumber)) {
@@ -1379,11 +1411,22 @@ async function loadVendors() {
                 }
                 const prName = normName(pr.vendorName);
                 if (!prName) return false;
-                return (
+                if (
                     (companyNameEn && prName === normName(companyNameEn)) ||
                     (korName && prName === normName(korName)) ||
                     (companyName && prName === normName(companyName))
-                );
+                ) {
+                    return true;
+                }
+                const fuzzyPr = normCorpName(pr.vendorName);
+                if (fuzzyPr) {
+                    return (
+                        (fuzzyEn && fuzzyPr === fuzzyEn) ||
+                        (fuzzyKor && fuzzyPr === fuzzyKor) ||
+                        (fuzzyComp && fuzzyPr === fuzzyComp)
+                    );
+                }
+                return false;
             });
 
             const accounts = extractPartnerAccounts(p, displayVendorName);
@@ -1423,6 +1466,7 @@ async function loadVendors() {
                 id: primaryPresetId || `PARTNER-${p.id}`,
                 presetId: primaryPresetId,
                 partnerId: p.id,
+                rawPartner: p,
                 aliasIds: aliasIds,
                 vendorName: displayVendorName,
                 korName: korName,
@@ -1441,6 +1485,7 @@ async function loadVendors() {
                 id: pr.id,
                 presetId: pr.id,
                 partnerId: null,
+                rawPartner: null,
                 aliasIds: [String(pr.id)],
                 vendorName: pr.vendorName || '',
                 korName: pr.vendorName || '',
@@ -1455,6 +1500,21 @@ async function loadVendors() {
         mergedList.sort((a, b) => (a.vendorName || '').localeCompare(b.vendorName || '', 'ko'));
         currentVendors = mergedList;
         renderVendorList();
+
+        if (expenseEditModal && expenseEditModal.classList.contains('active')) {
+            updateVendorDropdown(fVendorSearch ? fVendorSearch.value : '');
+            if (fVendorId && fVendorId.value) {
+                const prevAccVal = fAccountSelect ? fAccountSelect.value : '';
+                const v = findVendorByIdOrName(fVendorId.value, fVendorSearch ? fVendorSearch.value : '');
+                if (v) {
+                    fVendorId.value = v.id;
+                    handleVendorSelect();
+                    if (prevAccVal && fAccountSelect && Array.from(fAccountSelect.options).some(o => o.value === prevAccVal)) {
+                        fAccountSelect.value = prevAccVal;
+                    }
+                }
+            }
+        }
     } catch (e) {
         console.error("Failed to load vendors", e);
     }
@@ -1595,9 +1655,55 @@ async function saveVendor() {
             body: JSON.stringify(payload)
         });
         if (res.ok) {
+            if (existingVendor && existingVendor.partnerId && existingVendor.rawPartner) {
+                try {
+                    const rp = existingVendor.rawPartner;
+                    const partnerPayload = {
+                        ...rp,
+                        name: rp.name || name,
+                        company_name: rp.company_name || name,
+                        ceo_name: payload.representative || rp.ceo_name || '',
+                        business_number: payload.bizRegNumber || rp.business_number || ''
+                    };
+                    if (accounts.length > 0 && !rp.company_name_en) {
+                        partnerPayload.bank_name = accounts[0].bankName;
+                        partnerPayload.account_number = accounts[0].accountNumber;
+                        partnerPayload.account_holder = accounts[0].accountHolder || rp.account_holder || name;
+                    }
+                    await authFetch(`${PARTNERS_API_URL}/${existingVendor.partnerId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(partnerPayload)
+                    });
+                } catch (err) {
+                    console.warn('Partner PUT sync failed:', err);
+                }
+            } else if (!existingVendor || !existingVendor.partnerId) {
+                try {
+                    await authFetch(PARTNERS_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name,
+                            company_name: name,
+                            ceo_name: payload.representative,
+                            business_number: payload.bizRegNumber,
+                            bank_name: accounts[0]?.bankName || '',
+                            account_number: accounts[0]?.accountNumber || '',
+                            account_holder: accounts[0]?.accountHolder || name,
+                            type: '매입처'
+                        })
+                    });
+                } catch (err) {
+                    console.warn('Partner POST sync failed:', err);
+                }
+            }
+            try { localStorage.setItem(PARTNERS_SYNC_KEY, String(Date.now())); } catch (e) {}
             showToast('거래처가 저장되었습니다.', 'success');
             await loadVendors();
             hideVendorForm();
+        } else {
+            showToast('저장에 실패했습니다.', 'error');
         }
     } catch(e) {
         showToast('저장 실패', 'error');

@@ -2,9 +2,64 @@
    지출결의서 (Expense Resolution) Styles
    ========================================== */
 
+/* --- 레이아웃 & 스크롤 컨테이너 (../../styles.css의 overflow:hidden 해제) --- */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+}
+
+.main-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 20px 32px;
+}
+
 /* --- 뷰 컨테이너 --- */
 .view-section { display: none; }
-.view-section.active { display: block; }
+.view-section.active {
+    display: block;
+    flex-shrink: 0;
+}
+
+#listView .panel {
+    overflow: visible;
+}
+
+#listView .panel-header {
+    border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+}
+
+/* --- 모달 내부 스크롤 보장 --- */
+.modal .modal-content {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow: hidden;
+}
+
+.modal .modal-header {
+    flex-shrink: 0;
+}
+
+.modal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
 
 /* --- 편집 모달 폼 --- */
 .expense-form-grid {
@@ -352,6 +407,12 @@
    인쇄 시 적용 스타일
    ========================================== */
 @media print {
+    html, body, .app-container, .main-content {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+    }
     body * { visibility: hidden; }
     .print-layout,
     .print-layout * {
@@ -382,6 +443,17 @@
 
 /* --- 반응형 --- */
 @media (max-width: 768px) {
+    .main-content {
+        padding: 10px 8px 24px;
+    }
+    .modal .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+    }
     .expense-form-grid {
         grid-template-columns: 1fr;
     }
