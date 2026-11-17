@@ -263,6 +263,7 @@ router.get('/bids', async (req, res) => {
                 SUM(CASE WHEN status = '입찰중' THEN 1 ELSE 0 END) as bidding_count,
                 SUM(CASE WHEN status = '낙찰' THEN 1 ELSE 0 END) as won_count,
                 SUM(CASE WHEN status = '미선정' THEN 1 ELSE 0 END) as lost_count,
+                SUM(CASE WHEN status = '유찰' THEN 1 ELSE 0 END) as failed_count,
                 SUM(CASE WHEN status = '낙찰' THEN total_delivery_amount ELSE 0 END) as won_amount,
                 SUM(CASE WHEN status = '낙찰' THEN total_profit ELSE 0 END) as won_profit,
                 AVG(CASE WHEN status = '낙찰' AND profit_rate > 0 THEN profit_rate ELSE NULL END) as avg_won_margin
@@ -428,15 +429,19 @@ router.post('/bids', async (req, res) => {
                     total_profit, profit_rate, winning_bid_amount, winning_company, result_note, remarks, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
+            const finalStatus = status || '입찰중';
+            const finalWinningAmount = finalStatus === '유찰' ? 0 : (Number(winning_bid_amount) || 0);
+            const finalWinningCompany = finalStatus === '유찰' ? '' : (winning_company || '');
+
             const bidParams = [
                 bidId, title.trim(), client_name || '', bid_type || '공개 입찰', urgency || '일반',
                 issue_date || '', bid_deadline || '', delivery_deadline || '', delivery_address || '',
                 delivery_condition || '하차도', delivery_method || '직접배송',
                 shipping_included !== undefined ? Number(shipping_included) : 1,
                 Number(estimated_shipping_fee) || 0,
-                author_info || '', manager_info || '', status || '입찰중',
+                author_info || '', manager_info || '', finalStatus,
                 totalBuyCost, totalSettlement, totalFee, totalDeliveryAmount, totalProfit, profitRate,
-                Number(winning_bid_amount) || 0, winning_company || '', result_note || '',
+                finalWinningAmount, finalWinningCompany, result_note || '',
                 remarks || '', now, now
             ];
 
@@ -576,15 +581,19 @@ router.put('/bids/:id', async (req, res) => {
                     total_profit = ?, profit_rate = ?, winning_bid_amount = ?, winning_company = ?, result_note = ?, remarks = ?, updated_at = ?
                 WHERE id = ?
             `;
+            const finalStatus = status || '입찰중';
+            const finalWinningAmount = finalStatus === '유찰' ? 0 : (Number(winning_bid_amount) || 0);
+            const finalWinningCompany = finalStatus === '유찰' ? '' : (winning_company || '');
+
             const updateParams = [
                 title.trim(), client_name || '', bid_type || '공개 입찰', urgency || '일반',
                 issue_date || '', bid_deadline || '', delivery_deadline || '', delivery_address || '',
                 delivery_condition || '하차도', delivery_method || '직접배송',
                 shipping_included !== undefined ? Number(shipping_included) : 1,
                 Number(estimated_shipping_fee) || 0,
-                author_info || '', manager_info || '', status || '입찰중',
+                author_info || '', manager_info || '', finalStatus,
                 totalBuyCost, totalSettlement, totalFee, totalDeliveryAmount, totalProfit, profitRate,
-                Number(winning_bid_amount) || 0, winning_company || '', result_note || '',
+                finalWinningAmount, finalWinningCompany, result_note || '',
                 remarks || '', now, bidId
             ];
 
@@ -647,7 +656,7 @@ router.put('/bids/:id', async (req, res) => {
     res.json({ success: true, message: '공고가 성공적으로 수정되었습니다.' });
 });
 
-// 6. 공고 상태 및 입찰결과(낙찰가) 변경 API (입찰중 / 낙찰 / 미선정 / 입찰포기)
+// 6. 공고 상태 및 입찰결과(낙찰가) 변경 API (입찰중 / 낙찰 / 미선정 / 유찰 / 입찰포기)
 router.patch('/bids/:id/status', async (req, res) => {
     const { status, winning_bid_amount, winning_company, result_note } = req.body;
     if (!status) {
@@ -658,13 +667,18 @@ router.patch('/bids/:id/status', async (req, res) => {
         let sql = 'UPDATE gongsaero_bids SET status = ?, updated_at = ?';
         let params = [status, now];
 
-        if (winning_bid_amount !== undefined) {
-            sql += ', winning_bid_amount = ?';
-            params.push(Number(winning_bid_amount) || 0);
-        }
-        if (winning_company !== undefined) {
-            sql += ', winning_company = ?';
-            params.push(winning_company || '');
+        if (status === '유찰') {
+            sql += ', winning_bid_amount = 0, winning_company = ?';
+            params.push('');
+        } else {
+            if (winning_bid_amount !== undefined) {
+                sql += ', winning_bid_amount = ?';
+                params.push(Number(winning_bid_amount) || 0);
+            }
+            if (winning_company !== undefined) {
+                sql += ', winning_company = ?';
+                params.push(winning_company || '');
+            }
         }
         if (result_note !== undefined) {
             sql += ', result_note = ?';

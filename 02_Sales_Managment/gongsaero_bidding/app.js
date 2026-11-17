@@ -73,8 +73,33 @@ function calcSettlementFromDelivery(deliveryPrice) {
     return { settlementPrice: 0, fee: 0 };
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ── What-If 가상 마진 및 전략 진단 산출 엔진 ──
 function calcWhatIfMetrics(ourBid, winningBid, buyCost, shippingFee, status = '미선정') {
+    if (status === '유찰') {
+        return {
+            diff: 0,
+            diffPercent: '0.0',
+            simSettlement: 0,
+            simFee: 0,
+            simProfit: 0,
+            simMarginRate: 0,
+            badgeClass: 'low',
+            diagText: '유찰 (입찰 무효)',
+            diagClass: 'bg-secondary text-white',
+            strategyText: '유찰 처리 (낙찰가 없음)'
+        };
+    }
+
     const ourTotal = Number(ourBid) || 0;
     const winTotal = Number(winningBid) || 0;
     const totalBuy = Number(buyCost) || 0;
@@ -158,8 +183,11 @@ const app = {
     itemsHistoryData: [],
     modalInstance: null,
     quickResultModalInstance: null,
+    printPreviewModalInstance: null,
     searchDebounceTimer: null,
     currentDatePreset: 'all',
+    selectedBidIds: new Set(),
+    currentPrintData: [],
 
     init: async function() {
         const modalEl = document.getElementById('bidModal');
@@ -167,6 +195,9 @@ const app = {
 
         const qrModalEl = document.getElementById('quickResultModal');
         if (qrModalEl) this.quickResultModalInstance = new bootstrap.Modal(qrModalEl);
+
+        const printModalEl = document.getElementById('printPreviewModal');
+        if (printModalEl) this.printPreviewModalInstance = new bootstrap.Modal(printModalEl);
 
         await this.loadBids();
     },
@@ -222,7 +253,7 @@ const app = {
         const tbody = document.getElementById('bidsTableBody');
         tbody.innerHTML = `
             <tr>
-                <td colspan="14" class="text-center py-4 text-muted">
+                <td colspan="15" class="text-center py-4 text-muted">
                     <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
                     <div>데이터를 불러오는 중입니다...</div>
                 </td>
@@ -243,12 +274,16 @@ const app = {
 
             const data = await res.json();
             this.rawBidsData = data.bids || [];
+            const validIds = new Set(this.rawBidsData.map(b => b.id));
+            this.selectedBidIds.forEach(id => {
+                if (!validIds.has(id)) this.selectedBidIds.delete(id);
+            });
             this.renderKPIs(data.stats || {});
             this.filterAndRenderBids();
         } catch (err) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="14" class="text-center py-4 text-danger">
+                    <td colspan="15" class="text-center py-4 text-danger">
                         <i class='bx bx-error-circle fs-4'></i><br>
                         데이터를 불러오는 중 오류가 발생했습니다: ${err.message}
                     </td>
@@ -279,10 +314,55 @@ const app = {
         this.bidsData = filtered;
         const query = document.getElementById('globalSearchInput').value.trim();
         this.renderBidsTable(this.bidsData, query);
+        this.syncSelectionUI();
 
         document.getElementById('badgeBidsCount').innerText = this.bidsData.length;
         const summaryEl = document.getElementById('filterResultSummary');
         if (summaryEl) summaryEl.innerText = `총 ${this.bidsData.length}건 조회됨`;
+    },
+
+    toggleSelectAllBids: function(checked) {
+        if (checked) {
+            this.bidsData.forEach(b => this.selectedBidIds.add(b.id));
+        } else {
+            this.bidsData.forEach(b => this.selectedBidIds.delete(b.id));
+        }
+        document.querySelectorAll('#bidsTableBody .bid-row-check').forEach(chk => {
+            chk.checked = checked;
+            const tr = chk.closest('tr');
+            if (tr) tr.classList.toggle('row-checked', checked);
+        });
+        this.syncSelectionUI();
+    },
+
+    toggleBidSelection: function(bidId, checked) {
+        if (checked) {
+            this.selectedBidIds.add(bidId);
+        } else {
+            this.selectedBidIds.delete(bidId);
+        }
+        const chk = document.querySelector(`#bidsTableBody .bid-row-check[data-bid-id="${bidId}"]`);
+        if (chk) {
+            const tr = chk.closest('tr');
+            if (tr) tr.classList.toggle('row-checked', checked);
+        }
+        this.syncSelectionUI();
+    },
+
+    syncSelectionUI: function() {
+        const chkAll = document.getElementById('chkSelectAllBids');
+        if (chkAll) {
+            const total = this.bidsData.length;
+            const checkedInView = this.bidsData.filter(b => this.selectedBidIds.has(b.id)).length;
+            chkAll.checked = total > 0 && checkedInView === total;
+            chkAll.indeterminate = checkedInView > 0 && checkedInView < total;
+        }
+        const badgeEl = document.getElementById('badgeSelectedPrintCount');
+        if (badgeEl) {
+            const count = this.selectedBidIds.size;
+            badgeEl.innerText = count;
+            badgeEl.style.display = count > 0 ? 'inline-block' : 'none';
+        }
     },
 
     renderKPIs: function(stats) {
@@ -298,7 +378,7 @@ const app = {
         if (!bids || bids.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="14" class="text-center py-5 text-muted">
+                    <td colspan="15" class="text-center py-5 text-muted">
                         <i class='bx bx-folder-open fs-2 text-secondary'></i>
                         <div class="mt-2 fw-bold">등록된 입찰 공고가 없습니다</div>
                         <div class="small text-muted mt-1">상단의 '+ 새 입찰공고 등록' 버튼을 눌러 새로운 공고를 등록해보세요.</div>
@@ -313,13 +393,17 @@ const app = {
 
         bids.forEach((b, idx) => {
             const tr = document.createElement('tr');
+            const isChecked = this.selectedBidIds.has(b.id);
             if (b.status === '낙찰') tr.classList.add('row-won');
             else if (b.status === '미선정') tr.classList.add('row-lost');
+            else if (b.status === '유찰') tr.classList.add('row-failed');
+            if (isChecked) tr.classList.add('row-checked');
 
             // 상태 배지 클래스
             let statusClass = 'bidding';
             if (b.status === '낙찰') statusClass = 'won';
             else if (b.status === '미선정') statusClass = 'lost';
+            else if (b.status === '유찰') statusClass = 'failed';
             else if (b.status === '입찰포기') statusClass = 'abandoned';
 
             // 마감시간 카운트다운
@@ -358,7 +442,18 @@ const app = {
             let winningColHtml = '';
             let whatIfColHtml = '';
 
-            if (winAmount > 0) {
+            if (b.status === '유찰') {
+                const notePreview = b.result_note
+                    ? `<div class="text-muted text-truncate" style="font-size: 9.5px; max-width: 165px;" title="${escapeHtml(b.result_note)}">${escapeHtml(b.result_note)}</div>`
+                    : '';
+                winningColHtml = `
+                    <div class="cell-bid-compare">
+                        <span class="text-secondary fw-semibold" style="font-size: 11px;">유찰 (낙찰가 없음)</span>
+                        ${notePreview}
+                    </div>
+                `;
+                whatIfColHtml = `<div class="text-center text-muted" style="font-size:10px;">해당없음</div>`;
+            } else if (winAmount > 0) {
                 const diffBadge = whatIf.diff > 0
                     ? `<span class="badge-diff-plus">+${Number(whatIf.diff).toLocaleString()}원 (+${whatIf.diffPercent}%)</span>`
                     : (whatIf.diff < 0 
@@ -396,6 +491,9 @@ const app = {
             }
 
             tr.innerHTML = `
+                <td class="text-center">
+                    <input type="checkbox" class="form-check-input erp-grid-check bid-row-check" data-bid-id="${escapeHtml(b.id)}" ${isChecked ? 'checked' : ''} onchange="app.toggleBidSelection('${escapeHtml(b.id)}', this.checked)">
+                </td>
                 <td class="text-center text-muted fw-bold">${idx + 1}</td>
                 <td>
                     <span class="status-pill ${statusClass}">
@@ -443,6 +541,7 @@ const app = {
                             <li><h6 class="dropdown-header py-0" style="font-size: 10px;">상태 빠른 변경</h6></li>
                             <li><a class="dropdown-item text-success" href="javascript:app.quickChangeStatus('${b.id}', '낙찰')"><i class='bx bx-check-circle'></i> 낙찰 (수주 성공)</a></li>
                             <li><a class="dropdown-item text-muted" href="javascript:app.quickChangeStatus('${b.id}', '미선정')"><i class='bx bx-x-circle'></i> 미선정 (탈락)</a></li>
+                            <li><a class="dropdown-item" style="color: #6d28d9;" href="javascript:app.quickChangeStatus('${b.id}', '유찰')"><i class='bx bx-minus-circle'></i> 유찰 (입찰 무효)</a></li>
                             <li><a class="dropdown-item text-warning" href="javascript:app.quickChangeStatus('${b.id}', '입찰중')"><i class='bx bx-time'></i> 입찰중 (진행 복원)</a></li>
                             <li><a class="dropdown-item text-danger" href="javascript:app.quickChangeStatus('${b.id}', '입찰포기')"><i class='bx bx-block'></i> 입찰포기</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -502,11 +601,16 @@ const app = {
             tbody.innerHTML = '';
             this.itemsHistoryData.forEach(item => {
                 const tr = document.createElement('tr');
-                let statusBadge = item.bid_status === '낙찰'
-                    ? '<span class="status-pill won">낙찰</span>'
-                    : (item.bid_status === '미선정'
-                        ? '<span class="status-pill lost">미선정</span>'
-                        : '<span class="status-pill bidding">진행</span>');
+                let statusBadge = '<span class="status-pill bidding">진행</span>';
+                if (item.bid_status === '낙찰') {
+                    statusBadge = '<span class="status-pill won">낙찰</span>';
+                } else if (item.bid_status === '미선정') {
+                    statusBadge = '<span class="status-pill lost">미선정</span>';
+                } else if (item.bid_status === '유찰') {
+                    statusBadge = '<span class="status-pill failed">유찰</span>';
+                } else if (item.bid_status === '입찰포기') {
+                    statusBadge = '<span class="status-pill abandoned">입찰포기</span>';
+                }
 
                 tr.innerHTML = `
                     <td>${(item.issue_date || item.created_at || '').substring(0, 10)}</td>
@@ -537,7 +641,7 @@ const app = {
     },
 
     // ── [신규] 입찰 결과 빠른 입력 모달 열기 ──
-    openQuickResultModal: function(bidId) {
+    openQuickResultModal: function(bidId, presetStatus = null) {
         const bid = this.rawBidsData.find(b => b.id === bidId);
         if (!bid) return;
 
@@ -549,28 +653,57 @@ const app = {
         document.getElementById('qrTotalBuyCost').value = bid.total_buy_cost || 0;
         document.getElementById('qrShippingFee').value = bid.estimated_shipping_fee || 0;
 
-        document.getElementById('qrStatus').value = (bid.status === '입찰중' || !bid.status) ? '낙찰' : bid.status;
-        document.getElementById('qrWinningCompany').value = bid.winning_company || (bid.status === '낙찰' ? '당사(K&G)' : '');
+        const targetStatus = presetStatus || ((bid.status === '입찰중' || !bid.status) ? '낙찰' : bid.status);
+        document.getElementById('qrStatus').value = targetStatus;
+        document.getElementById('qrWinningCompany').value = bid.winning_company || (targetStatus === '낙찰' ? '당사(K&G)' : '');
         document.getElementById('qrWinningBidAmount').value = bid.winning_bid_amount > 0 ? bid.winning_bid_amount : (bid.total_delivery_amount || '');
         document.getElementById('qrResultNote').value = bid.result_note || '';
 
-        this.calcQuickResultSimulation();
+        this.syncQuickResultStatusUI(Boolean(presetStatus));
         if (this.quickResultModalInstance) this.quickResultModalInstance.show();
     },
 
-    handleQuickResultStatusChange: function() {
+    syncQuickResultStatusUI: function(autoFillOnSwitch = false) {
         const status = document.getElementById('qrStatus').value;
         const winCompanyEl = document.getElementById('qrWinningCompany');
-        if (status === '낙찰' && (!winCompanyEl.value || winCompanyEl.value === '타사')) {
-            winCompanyEl.value = '당사(K&G)';
-            this.copyOurBidToWinning();
-        } else if (status === '미선정' && winCompanyEl.value === '당사(K&G)') {
+        const winAmountEl = document.getElementById('qrWinningBidAmount');
+        const copyBtn = document.getElementById('qrCopyOurBidBtn');
+
+        if (status === '유찰') {
+            winAmountEl.value = '';
+            winAmountEl.disabled = true;
+            winAmountEl.placeholder = '유찰 건은 입력 불가';
+            if (copyBtn) copyBtn.disabled = true;
+
             winCompanyEl.value = '';
+            winCompanyEl.disabled = true;
+            winCompanyEl.placeholder = '유찰 (해당없음)';
+        } else {
+            winAmountEl.disabled = false;
+            winAmountEl.placeholder = '예: 3650000';
+            if (copyBtn) copyBtn.disabled = false;
+
+            winCompanyEl.disabled = false;
+            winCompanyEl.placeholder = '예: 당사(K&G) 또는 경쟁사명';
+
+            if (autoFillOnSwitch) {
+                if (status === '낙찰' && (!winCompanyEl.value || winCompanyEl.value === '타사')) {
+                    winCompanyEl.value = '당사(K&G)';
+                    winAmountEl.value = document.getElementById('qrOurBidAmount').value || 0;
+                } else if (status === '미선정' && winCompanyEl.value === '당사(K&G)') {
+                    winCompanyEl.value = '';
+                }
+            }
         }
         this.calcQuickResultSimulation();
     },
 
+    handleQuickResultStatusChange: function() {
+        this.syncQuickResultStatusUI(true);
+    },
+
     copyOurBidToWinning: function() {
+        if (document.getElementById('qrStatus').value === '유찰') return;
         const ourBid = document.getElementById('qrOurBidAmount').value || 0;
         document.getElementById('qrWinningBidAmount').value = ourBid;
         this.calcQuickResultSimulation();
@@ -584,8 +717,6 @@ const app = {
         const shippingFee = parseFloat(document.getElementById('qrShippingFee').value) || 0;
         const status = document.getElementById('qrStatus').value;
 
-        const metrics = calcWhatIfMetrics(ourBid, winningBid, buyCost, shippingFee, status);
-
         const diffEl = document.getElementById('qrDiffAmount');
         const diffPercentEl = document.getElementById('qrDiffPercent');
         const simSettlementEl = document.getElementById('qrSimSettlement');
@@ -593,6 +724,25 @@ const app = {
         const simProfitEl = document.getElementById('qrSimProfit');
         const simMarginEl = document.getElementById('qrSimMarginRate');
         const diagBadge = document.getElementById('qrDiagnosisBadge');
+
+        if (status === '유찰') {
+            diffEl.innerText = '-';
+            diffEl.style.color = '#64748b';
+            diffPercentEl.innerText = '(유찰)';
+            simSettlementEl.innerText = '-';
+            simFeeEl.innerText = '수수료: -';
+            simProfitEl.innerText = '-';
+            simProfitEl.style.color = '#64748b';
+            simMarginEl.innerText = '-';
+            simMarginEl.style.color = '#64748b';
+            diagBadge.className = 'badge text-white';
+            diagBadge.style.backgroundColor = '#6d28d9';
+            diagBadge.innerText = '유찰 처리 (낙찰가 없음)';
+            return;
+        }
+
+        diagBadge.style.backgroundColor = '';
+        const metrics = calcWhatIfMetrics(ourBid, winningBid, buyCost, shippingFee, status);
 
         if (metrics.diff > 0) {
             diffEl.innerText = `+${Number(metrics.diff).toLocaleString()}원`;
@@ -630,8 +780,8 @@ const app = {
     saveQuickResult: async function() {
         const bidId = document.getElementById('qrBidId').value;
         const status = document.getElementById('qrStatus').value;
-        const winning_bid_amount = parseFloat(document.getElementById('qrWinningBidAmount').value) || 0;
-        const winning_company = document.getElementById('qrWinningCompany').value.trim();
+        const winning_bid_amount = status === '유찰' ? 0 : (parseFloat(document.getElementById('qrWinningBidAmount').value) || 0);
+        const winning_company = status === '유찰' ? '' : document.getElementById('qrWinningCompany').value.trim();
         const result_note = document.getElementById('qrResultNote').value.trim();
 
         try {
@@ -745,23 +895,51 @@ const app = {
     handleModalStatusChange: function() {
         const status = document.getElementById('formStatus').value;
         const panel = document.getElementById('modalResultPanel');
-        if (status === '낙찰' || status === '미선정') {
+        const winAmountEl = document.getElementById('formWinningBidAmount');
+        const winCompanyEl = document.getElementById('formWinningCompany');
+        const copyBtn = document.getElementById('formCopyOurBidBtn');
+
+        panel.classList.remove('lost-mode', 'failed-mode');
+
+        if (status === '낙찰' || status === '미선정' || status === '유찰') {
             panel.style.display = 'block';
-            if (status === '낙찰') {
-                panel.classList.remove('lost-mode');
-                if (!document.getElementById('formWinningCompany').value) {
-                    document.getElementById('formWinningCompany').value = '당사(K&G)';
-                }
+            if (status === '유찰') {
+                panel.classList.add('failed-mode');
+                winAmountEl.value = '';
+                winAmountEl.disabled = true;
+                winAmountEl.placeholder = '유찰 불가';
+                if (copyBtn) copyBtn.disabled = true;
+
+                winCompanyEl.value = '';
+                winCompanyEl.disabled = true;
+                winCompanyEl.placeholder = '유찰 (해당없음)';
             } else {
-                panel.classList.add('lost-mode');
+                winAmountEl.disabled = false;
+                winAmountEl.placeholder = '0';
+                if (copyBtn) copyBtn.disabled = false;
+
+                winCompanyEl.disabled = false;
+                winCompanyEl.placeholder = '당사(K&G) or 타사명';
+
+                if (status === '낙찰') {
+                    if (!winCompanyEl.value) {
+                        winCompanyEl.value = '당사(K&G)';
+                    }
+                } else {
+                    panel.classList.add('lost-mode');
+                }
             }
             this.calcModalWhatIfSimulation();
         } else {
+            winAmountEl.disabled = false;
+            if (copyBtn) copyBtn.disabled = false;
+            winCompanyEl.disabled = false;
             panel.style.display = 'none';
         }
     },
 
     copyOurBidToModalWinning: function() {
+        if (document.getElementById('formStatus').value === '유찰') return;
         let totalDelivery = 0;
         document.querySelectorAll('#itemsInputTbody tr').forEach(tr => {
             const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
@@ -788,8 +966,6 @@ const app = {
         const shippingFee = parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0;
         const status = document.getElementById('formStatus').value;
 
-        const metrics = calcWhatIfMetrics(totalDelivery, winningBid, totalBuy, shippingFee, status);
-
         const diffEl = document.getElementById('modalSimDiff');
         const diffSubEl = document.getElementById('modalSimDiffSub');
         const settlementEl = document.getElementById('modalSimSettlement');
@@ -799,6 +975,27 @@ const app = {
         const strategyEl = document.getElementById('modalSimStrategy');
         const strategySubEl = document.getElementById('modalSimStrategySub');
         const diagTag = document.getElementById('modalDiagTag');
+
+        if (status === '유찰') {
+            diffEl.innerText = '-';
+            diffEl.style.color = '#64748b';
+            diffSubEl.innerText = '유찰 (낙찰가 없음)';
+            settlementEl.innerText = '-';
+            feeEl.innerText = '수수료(6%): -';
+            profitEl.innerText = '-';
+            profitEl.style.color = '#64748b';
+            marginEl.innerText = '가상 마진율: -';
+            marginEl.style.color = '#64748b';
+            strategyEl.innerText = '유찰 처리 (낙찰업체 없음)';
+            strategySubEl.innerText = '결과 사유/메모에 유찰 사유를 기록하세요';
+            diagTag.className = 'badge text-white';
+            diagTag.style.backgroundColor = '#6d28d9';
+            diagTag.innerText = '유찰 (낙찰가 입력 불가)';
+            return;
+        }
+
+        diagTag.style.backgroundColor = '';
+        const metrics = calcWhatIfMetrics(totalDelivery, winningBid, totalBuy, shippingFee, status);
 
         if (metrics.diff > 0) {
             diffEl.innerText = `+${Number(metrics.diff).toLocaleString()}원`;
@@ -1098,6 +1295,7 @@ const app = {
             return;
         }
 
+        const status = document.getElementById('formStatus').value;
         const payload = {
             title,
             client_name: document.getElementById('formClientName').value.trim(),
@@ -1106,14 +1304,14 @@ const app = {
             issue_date: document.getElementById('formIssueDate').value,
             bid_deadline: document.getElementById('formBidDeadline').value,
             delivery_deadline: document.getElementById('formDeliveryDeadline').value,
-            status: document.getElementById('formStatus').value,
+            status,
             delivery_address: document.getElementById('formDeliveryAddress').value.trim(),
             delivery_condition: document.getElementById('formDeliveryCondition').value,
             shipping_included: document.getElementById('formShippingIncluded').value,
             manager_info: document.getElementById('formManagerInfo').value.trim(),
             estimated_shipping_fee: parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0,
-            winning_bid_amount: parseFloat(document.getElementById('formWinningBidAmount').value) || 0,
-            winning_company: document.getElementById('formWinningCompany').value.trim(),
+            winning_bid_amount: status === '유찰' ? 0 : (parseFloat(document.getElementById('formWinningBidAmount').value) || 0),
+            winning_company: status === '유찰' ? '' : document.getElementById('formWinningCompany').value.trim(),
             result_note: document.getElementById('formResultNote').value.trim(),
             remarks: document.getElementById('formRemarks').value.trim(),
             items
@@ -1147,8 +1345,8 @@ const app = {
 
     // ── 빠른 상태 변경 ──
     quickChangeStatus: async function(bidId, status) {
-        if (status === '낙찰' || status === '미선정') {
-            this.openQuickResultModal(bidId);
+        if (status === '낙찰' || status === '미선정' || status === '유찰') {
+            this.openQuickResultModal(bidId, status);
             return;
         }
 
@@ -1180,6 +1378,7 @@ const app = {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!res.ok) throw new Error('삭제 실패');
+            this.selectedBidIds.delete(bidId);
             this.loadBids();
         } catch (err) {
             alert(err.message);
@@ -1322,6 +1521,688 @@ const app = {
             XLSX.utils.book_append_sheet(wb, ws, '품목투찰이력');
             XLSX.writeFile(wb, `공새로_품목투찰이력_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
+    },
+
+    // ── 선택 공고 일괄 인쇄 미리보기 ──
+    openPrintPreviewForSelected: async function() {
+        if (this.selectedBidIds.size === 0) {
+            alert('출력할 입찰 공고를 좌측 체크박스에서 먼저 선택해주세요.');
+            return;
+        }
+
+        const orderedIds = [];
+        this.bidsData.forEach(b => {
+            if (this.selectedBidIds.has(b.id)) orderedIds.push(b.id);
+        });
+        this.rawBidsData.forEach(b => {
+            if (this.selectedBidIds.has(b.id) && !orderedIds.includes(b.id)) orderedIds.push(b.id);
+        });
+        this.selectedBidIds.forEach(id => {
+            if (!orderedIds.includes(id)) orderedIds.push(id);
+        });
+
+        const container = document.getElementById('printPreviewContainer');
+        const statusTextEl = document.getElementById('printPreviewStatusText');
+        if (container) {
+            container.innerHTML = `
+                <div class="bg-white p-5 rounded text-center text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                    <div>선택된 ${orderedIds.length}건의 공고 및 품목 데이터를 불러오는 중입니다...</div>
+                </div>
+            `;
+        }
+        if (statusTextEl) {
+            statusTextEl.innerText = `선택된 ${orderedIds.length}건 조회 중...`;
+        }
+
+        if (this.printPreviewModalInstance) {
+            this.printPreviewModalInstance.show();
+        }
+
+        try {
+            const token = await getAuthToken();
+            const results = await Promise.all(orderedIds.map(async (id) => {
+                const res = await fetch(`${API_BASE}/bids/${encodeURIComponent(id)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error(`공고(${id}) 상세 조회 실패`);
+                const data = await res.json();
+                return { bid: data.bid, items: data.items || [] };
+            }));
+
+            this.currentPrintData = results;
+            this.renderPrintPreview();
+        } catch (err) {
+            this.currentPrintData = [];
+            if (container) {
+                container.innerHTML = `
+                    <div class="bg-white p-4 rounded text-center text-danger">
+                        <i class='bx bx-error-circle fs-3'></i>
+                        <div class="mt-2 fw-bold">인쇄 데이터를 불러오는 중 오류가 발생했습니다.</div>
+                        <div class="small mt-1">${escapeHtml(err.message)}</div>
+                    </div>
+                `;
+            }
+            if (statusTextEl) {
+                statusTextEl.innerText = '데이터 조회 오류';
+            }
+        }
+    },
+
+    // ── 현재 상세 모달 공고 단건 인쇄 미리보기 ──
+    printCurrentModalBid: function() {
+        const status = document.getElementById('formStatus').value;
+        const rows = document.querySelectorAll('#itemsInputTbody tr');
+        const items = [];
+        let totalBuyCost = 0;
+        let totalSettlement = 0;
+        let totalFee = 0;
+        let totalDeliveryAmount = 0;
+        let totalProfit = 0;
+
+        rows.forEach((r, idx) => {
+            const qty = parseFloat(r.querySelector('.item-qty').value) || 0;
+            const buyPrice = Math.round(parseFloat(r.querySelector('.item-buy').value) || 0);
+            const marginRate = parseFloat(r.querySelector('.item-margin').value) || 0;
+            const settlementPrice = Math.round(parseFloat(r.querySelector('.item-settlement').value) || 0);
+            const fee = Math.round(parseFloat(r.querySelector('.item-fee').value) || calcGongsaeroFee(settlementPrice));
+            const deliveryPrice = Math.round(parseFloat(r.querySelector('.item-delivery').value) || (settlementPrice + fee));
+
+            const itemBuy = buyPrice * qty;
+            const itemSettlement = settlementPrice * qty;
+            const itemFee = fee * qty;
+            const itemDelivery = deliveryPrice * qty;
+            const itemProfit = (settlementPrice - buyPrice) * qty;
+
+            totalBuyCost += itemBuy;
+            totalSettlement += itemSettlement;
+            totalFee += itemFee;
+            totalDeliveryAmount += itemDelivery;
+            totalProfit += itemProfit;
+
+            items.push({
+                item_no: idx + 1,
+                item_name: r.querySelector('.item-name').value.trim() || '-',
+                spec: r.querySelector('.item-spec').value.trim(),
+                unit: r.querySelector('.item-unit').value.trim() || 'EA',
+                qty,
+                buy_price: buyPrice,
+                margin_rate: marginRate,
+                settlement_price: settlementPrice,
+                gongsaero_fee: fee,
+                delivery_price: deliveryPrice,
+                total_buy_cost: itemBuy,
+                total_settlement_price: itemSettlement,
+                total_delivery_price: itemDelivery,
+                item_profit: itemProfit,
+                item_note: r.querySelector('.item-note').value.trim()
+            });
+        });
+
+        const profitRate = totalBuyCost > 0 ? Number(((totalProfit / totalBuyCost) * 100).toFixed(2)) : 0;
+        const bid = {
+            id: document.getElementById('editBidId').value || '작성중 전표',
+            title: document.getElementById('formTitle').value.trim() || '(공고명 미입력)',
+            client_name: document.getElementById('formClientName').value.trim(),
+            bid_type: document.getElementById('formBidType').value,
+            urgency: document.getElementById('formUrgency').value,
+            issue_date: document.getElementById('formIssueDate').value,
+            bid_deadline: document.getElementById('formBidDeadline').value,
+            delivery_deadline: document.getElementById('formDeliveryDeadline').value,
+            status,
+            delivery_address: document.getElementById('formDeliveryAddress').value.trim(),
+            delivery_condition: document.getElementById('formDeliveryCondition').value,
+            shipping_included: Number(document.getElementById('formShippingIncluded').value),
+            manager_info: document.getElementById('formManagerInfo').value.trim(),
+            estimated_shipping_fee: parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0,
+            winning_bid_amount: status === '유찰' ? 0 : (parseFloat(document.getElementById('formWinningBidAmount').value) || 0),
+            winning_company: status === '유찰' ? '' : document.getElementById('formWinningCompany').value.trim(),
+            result_note: document.getElementById('formResultNote').value.trim(),
+            remarks: document.getElementById('formRemarks').value.trim(),
+            total_buy_cost: totalBuyCost,
+            total_settlement: totalSettlement,
+            total_fee: totalFee,
+            total_delivery_amount: totalDeliveryAmount,
+            total_profit: totalProfit,
+            profit_rate: profitRate
+        };
+
+        this.currentPrintData = [{ bid, items }];
+        this.renderPrintPreview();
+        if (this.printPreviewModalInstance) {
+            this.printPreviewModalInstance.show();
+        }
+    },
+
+    renderPrintPreview: function() {
+        const container = document.getElementById('printPreviewContainer');
+        const statusTextEl = document.getElementById('printPreviewStatusText');
+        if (!container) return;
+
+        if (!this.currentPrintData || this.currentPrintData.length === 0) {
+            container.innerHTML = `<div class="bg-white p-4 rounded text-center text-muted">출력할 공고 데이터가 없습니다.</div>`;
+            if (statusTextEl) statusTextEl.innerText = '출력할 공고 없음';
+            return;
+        }
+
+        const pageBreak = Boolean(document.getElementById('optPrintPageBreak')?.checked);
+        const hideCost = Boolean(document.getElementById('optPrintHideCost')?.checked);
+
+        container.innerHTML = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost });
+
+        if (statusTextEl) {
+            const optsDesc = [];
+            if (pageBreak) optsDesc.push('공고별 페이지 분리');
+            if (hideCost) optsDesc.push('원가·마진 숨김');
+            statusTextEl.innerText = `총 ${this.currentPrintData.length}건 인쇄 준비 완료${optsDesc.length ? ` (${optsDesc.join(', ')})` : ''}`;
+        }
+    },
+
+    buildPrintReportHtml: function(records, opts = {}) {
+        const pageBreak = Boolean(opts.pageBreak);
+        const hideCost = Boolean(opts.hideCost);
+        const nowStr = new Date().toLocaleString('ko-KR', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        const statusCounts = { 낙찰: 0, 미선정: 0, 유찰: 0, 입찰중: 0, 입찰포기: 0 };
+        let sumBuyCost = 0;
+        let sumOurDelivery = 0;
+        let sumProfit = 0;
+        let sumWinningAmount = 0;
+        let winningInputCount = 0;
+
+        records.forEach(({ bid }) => {
+            const st = bid.status || '입찰중';
+            statusCounts[st] = (statusCounts[st] || 0) + 1;
+            sumBuyCost += Number(bid.total_buy_cost) || 0;
+            sumOurDelivery += Number(bid.total_delivery_amount) || 0;
+            sumProfit += Number(bid.total_profit) || 0;
+            if (st !== '유찰' && (Number(bid.winning_bid_amount) || 0) > 0) {
+                sumWinningAmount += Number(bid.winning_bid_amount);
+                winningInputCount++;
+            }
+        });
+
+        const statusBreakdown = Object.entries(statusCounts)
+            .filter(([, cnt]) => cnt > 0)
+            .map(([st, cnt]) => `${st} ${cnt}`)
+            .join(' · ');
+
+        let summaryHtml = '';
+        if (records.length >= 2) {
+            summaryHtml = `
+                <div class="gs-print-summary-bar">
+                    <div class="gs-print-summary-item">
+                        <span class="gs-print-summary-label">선택 공고 현황 (${records.length}건)</span>
+                        <span class="gs-print-summary-val" style="font-size: 11px;">${escapeHtml(statusBreakdown || '-')}</span>
+                    </div>
+                    ${hideCost ? '' : `
+                    <div class="gs-print-summary-item">
+                        <span class="gs-print-summary-label">총 매입원가 합계</span>
+                        <span class="gs-print-summary-val">${Math.round(sumBuyCost).toLocaleString()}원</span>
+                    </div>`}
+                    <div class="gs-print-summary-item">
+                        <span class="gs-print-summary-label">당사 투찰총액 합계</span>
+                        <span class="gs-print-summary-val" style="color: #1d4ed8;">${Math.round(sumOurDelivery).toLocaleString()}원</span>
+                    </div>
+                    ${hideCost ? '' : `
+                    <div class="gs-print-summary-item">
+                        <span class="gs-print-summary-label">예상 순이익 합계</span>
+                        <span class="gs-print-summary-val" style="color: #059669;">${Math.round(sumProfit).toLocaleString()}원</span>
+                    </div>`}
+                    <div class="gs-print-summary-item">
+                        <span class="gs-print-summary-label">최종 낙찰가 합계 (${winningInputCount}건 입력)</span>
+                        <span class="gs-print-summary-val">${Math.round(sumWinningAmount).toLocaleString()}원</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const formatDt = (val) => {
+            if (!val) return '-';
+            return String(val).replace('T', ' ').slice(0, 16);
+        };
+
+        const cardsHtml = records.map(({ bid, items }, idx) => {
+            const st = bid.status || '입찰중';
+            let statusCls = 'bidding';
+            if (st === '낙찰') statusCls = 'won';
+            else if (st === '미선정') statusCls = 'lost';
+            else if (st === '유찰') statusCls = 'failed';
+            else if (st === '입찰포기') statusCls = 'abandoned';
+
+            const totalBuy = Number(bid.total_buy_cost) || 0;
+            const totalFee = Number(bid.total_fee) || 0;
+            const totalSettlement = Number(bid.total_settlement) || 0;
+            const totalDelivery = Number(bid.total_delivery_amount) || 0;
+            const totalProfit = Number(bid.total_profit) || 0;
+            const profitRate = Number(bid.profit_rate || 0).toFixed(1);
+            const shippingFee = Number(bid.estimated_shipping_fee) || 0;
+            const winAmount = st === '유찰' ? 0 : (Number(bid.winning_bid_amount) || 0);
+            const whatIf = calcWhatIfMetrics(totalDelivery, winAmount, totalBuy, shippingFee, st);
+
+            let winningSummaryHtml = '<span style="color:#64748b;">개찰 대기</span>';
+            let whatIfSummaryHtml = '<span style="color:#64748b;">-</span>';
+
+            if (st === '유찰') {
+                winningSummaryHtml = `<span style="color:#5b21b6;">유찰 (낙찰가 없음)</span>`;
+                whatIfSummaryHtml = `<span style="color:#64748b;">해당없음</span>`;
+            } else if (winAmount > 0) {
+                const diffStr = whatIf.diff > 0
+                    ? `<span style="color:#b91c1c; font-size:10px;">(+${Number(whatIf.diff).toLocaleString()}원 / +${whatIf.diffPercent}%)</span>`
+                    : (whatIf.diff < 0
+                        ? `<span style="color:#15803d; font-size:10px;">(${Number(whatIf.diff).toLocaleString()}원 / ${whatIf.diffPercent}%)</span>`
+                        : `<span style="color:#0f172a; font-size:10px;">(동일)</span>`);
+                const companyLabel = bid.winning_company ? ` · ${escapeHtml(bid.winning_company)}` : '';
+                winningSummaryHtml = `${winAmount.toLocaleString()}원 ${diffStr}<div style="font-size:9.5px; color:#475569; font-weight:500;">낙찰사${companyLabel || (st === '낙찰' ? ': 당사' : ': 미입력')}</div>`;
+                const simColor = whatIf.simProfit < 0 ? '#dc2626' : '#059669';
+                whatIfSummaryHtml = `<span style="color:${simColor};">${Number(whatIf.simProfit).toLocaleString()}원 (${whatIf.simMarginRate}%)</span>`;
+            } else if (st === '낙찰' || st === '미선정') {
+                winningSummaryHtml = `<span style="color:#94a3b8;">낙찰가 미입력</span>`;
+            }
+
+            const compareSectionHtml = hideCost
+                ? `
+                    <table class="gs-print-compare-table">
+                        <thead>
+                            <tr>
+                                <th>당사 투찰총액</th>
+                                <th>최종 낙찰가 / 차액</th>
+                                <th>낙찰업체</th>
+                                <th>예상 용차비</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color:#1d4ed8;">${Math.round(totalDelivery).toLocaleString()}원</td>
+                                <td>${winningSummaryHtml}</td>
+                                <td style="text-align:center;">${st === '유찰' ? '유찰 (해당없음)' : escapeHtml(bid.winning_company || '-')}</td>
+                                <td>${shippingFee > 0 ? `${shippingFee.toLocaleString()}원` : '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `
+                : `
+                    <table class="gs-print-compare-table">
+                        <thead>
+                            <tr>
+                                <th>총 매입원가</th>
+                                <th>공새로 수수료(6%)</th>
+                                <th>희망 정산금액</th>
+                                <th>당사 투찰총액</th>
+                                <th>예상 순이익 (마진율)</th>
+                                <th>최종 낙찰가 / 차액</th>
+                                <th>가상 마진 (What-If)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${Math.round(totalBuy).toLocaleString()}원</td>
+                                <td style="color:#dc2626;">${Math.round(totalFee).toLocaleString()}원</td>
+                                <td>${Math.round(totalSettlement).toLocaleString()}원</td>
+                                <td style="color:#1d4ed8;">${Math.round(totalDelivery).toLocaleString()}원</td>
+                                <td style="color:#059669;">${Math.round(totalProfit).toLocaleString()}원 (${profitRate}%)</td>
+                                <td>${winningSummaryHtml}</td>
+                                <td>${whatIfSummaryHtml}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+
+            let sumItemBuy = 0;
+            let sumItemFee = 0;
+            let sumItemDelivery = 0;
+            let sumItemProfit = 0;
+
+            const itemRowsHtml = items.length > 0
+                ? items.map((it, iIdx) => {
+                    const qty = Number(it.qty) || 0;
+                    const buy = Number(it.buy_price) || 0;
+                    const margin = Number(it.margin_rate) || 0;
+                    const settlement = Number(it.settlement_price) || 0;
+                    const fee = Number(it.gongsaero_fee ?? calcGongsaeroFee(settlement)) || 0;
+                    const delivery = Number(it.delivery_price || (settlement + fee)) || 0;
+                    const itemBuyTotal = Number(it.total_buy_cost ?? (buy * qty)) || 0;
+                    const itemDeliveryTotal = Number(it.total_delivery_price ?? (delivery * qty)) || 0;
+                    const itemProfit = Number(it.item_profit ?? ((settlement - buy) * qty)) || 0;
+
+                    sumItemBuy += itemBuyTotal;
+                    sumItemFee += (fee * qty);
+                    sumItemDelivery += itemDeliveryTotal;
+                    sumItemProfit += itemProfit;
+
+                    if (hideCost) {
+                        return `
+                            <tr>
+                                <td style="text-align:center;">${it.item_no || (iIdx + 1)}</td>
+                                <td style="font-weight:600;">${escapeHtml(it.item_name)}</td>
+                                <td>${escapeHtml(it.spec || '-')}</td>
+                                <td style="text-align:center;">${escapeHtml(it.unit || 'EA')}</td>
+                                <td style="text-align:right;">${qty.toLocaleString()}</td>
+                                <td style="text-align:right; font-weight:700; color:#1d4ed8;">${Math.round(delivery).toLocaleString()}원</td>
+                                <td style="text-align:right; font-weight:700;">${Math.round(itemDeliveryTotal).toLocaleString()}원</td>
+                                <td>${escapeHtml(it.item_note || it.origin_brand || '')}</td>
+                            </tr>
+                        `;
+                    }
+                    return `
+                        <tr>
+                            <td style="text-align:center;">${it.item_no || (iIdx + 1)}</td>
+                            <td style="font-weight:600;">${escapeHtml(it.item_name)}</td>
+                            <td>${escapeHtml(it.spec || '-')}</td>
+                            <td style="text-align:center;">${escapeHtml(it.unit || 'EA')}</td>
+                            <td style="text-align:right;">${qty.toLocaleString()}</td>
+                            <td style="text-align:right;">${Math.round(buy).toLocaleString()}</td>
+                            <td style="text-align:right;">${margin.toFixed(1)}%</td>
+                            <td style="text-align:right;">${Math.round(settlement).toLocaleString()}</td>
+                            <td style="text-align:right; color:#dc2626;">${Math.round(fee).toLocaleString()}</td>
+                            <td style="text-align:right; font-weight:700; color:#1d4ed8;">${Math.round(delivery).toLocaleString()}</td>
+                            <td style="text-align:right; font-weight:700;">${Math.round(itemDeliveryTotal).toLocaleString()}</td>
+                            <td style="text-align:right; font-weight:700; color:#059669;">${Math.round(itemProfit).toLocaleString()}</td>
+                            <td>${escapeHtml(it.item_note || it.origin_brand || '')}</td>
+                        </tr>
+                    `;
+                }).join('')
+                : `<tr><td colspan="${hideCost ? 8 : 13}" style="text-align:center; color:#64748b; padding:10px;">등록된 품목이 없습니다.</td></tr>`;
+
+            const itemsTableHtml = hideCost
+                ? `
+                    <table class="gs-print-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width:30px;">No</th>
+                                <th>품목명</th>
+                                <th style="width:16%;">규격</th>
+                                <th style="width:45px;">단위</th>
+                                <th style="width:60px;">수량</th>
+                                <th style="width:95px;">납품단가(투찰가)</th>
+                                <th style="width:105px;">납품합계</th>
+                                <th style="width:14%;">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRowsHtml}</tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6" style="text-align:center;">합 계 (${items.length}개 품목)</td>
+                                <td style="text-align:right; color:#1d4ed8;">${Math.round(sumItemDelivery).toLocaleString()}원</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `
+                : `
+                    <table class="gs-print-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width:28px;">No</th>
+                                <th>품목명</th>
+                                <th style="width:12%;">규격</th>
+                                <th style="width:42px;">단위</th>
+                                <th style="width:52px;">수량</th>
+                                <th style="width:74px;">매입가</th>
+                                <th style="width:54px;">마진율</th>
+                                <th style="width:74px;">정산단가</th>
+                                <th style="width:64px;">수수료(6%)</th>
+                                <th style="width:76px;">납품단가</th>
+                                <th style="width:86px;">납품합계</th>
+                                <th style="width:78px;">순이익</th>
+                                <th style="width:10%;">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRowsHtml}</tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" style="text-align:center;">소 계 (${items.length}개 품목)</td>
+                                <td style="text-align:right;">${Math.round(sumItemBuy).toLocaleString()}원</td>
+                                <td></td>
+                                <td></td>
+                                <td style="text-align:right; color:#dc2626;">${Math.round(sumItemFee).toLocaleString()}원</td>
+                                <td></td>
+                                <td style="text-align:right; color:#1d4ed8;">${Math.round(sumItemDelivery).toLocaleString()}원</td>
+                                <td style="text-align:right; color:#059669;">${Math.round(sumItemProfit).toLocaleString()}원</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+            const resultNoteHtml = bid.result_note
+                ? `<div style="margin-top:5px; padding:4px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:3px; font-size:10px; color:#334155;"><strong>결과/유찰 메모:</strong> ${escapeHtml(bid.result_note)}</div>`
+                : '';
+
+            return `
+                <section class="gs-print-bid-card ${pageBreak ? 'page-break' : ''}">
+                    <div class="gs-print-card-header">
+                        <div class="gs-print-card-title">
+                            [${idx + 1}] ${escapeHtml(bid.title || '-')}
+                            <span class="gs-print-card-id">(${escapeHtml(bid.id || '')})</span>
+                        </div>
+                        <span class="gs-print-status-badge ${statusCls}">${escapeHtml(st)}</span>
+                    </div>
+                    <div class="gs-print-card-body">
+                        <table class="gs-print-meta-table">
+                            <tr>
+                                <th>발주처</th>
+                                <td style="width:24%;">${escapeHtml(bid.client_name || '-')}</td>
+                                <th>입찰형태 / 긴급</th>
+                                <td style="width:20%;">${escapeHtml(bid.bid_type || '공개 입찰')} / ${escapeHtml(bid.urgency || '일반')}</td>
+                                <th>발행일시</th>
+                                <td>${escapeHtml(formatDt(bid.issue_date))}</td>
+                            </tr>
+                            <tr>
+                                <th>투찰 마감</th>
+                                <td>${escapeHtml(formatDt(bid.bid_deadline))}</td>
+                                <th>납품 기한</th>
+                                <td>${escapeHtml(formatDt(bid.delivery_deadline))}</td>
+                                <th>인도 / 배송비</th>
+                                <td>${escapeHtml(bid.delivery_condition || '하차도')} (${Number(bid.shipping_included) ? '단가포함' : '별도청구'})</td>
+                            </tr>
+                            <tr>
+                                <th>납품 주소</th>
+                                <td colspan="3">${escapeHtml(bid.delivery_address || '-')}</td>
+                                <th>예상 용차비</th>
+                                <td>${shippingFee > 0 ? `${shippingFee.toLocaleString()}원` : '0원'}</td>
+                            </tr>
+                            <tr>
+                                <th>담당자 정보</th>
+                                <td>${escapeHtml(bid.manager_info || '-')}</td>
+                                <th>공고 비고</th>
+                                <td colspan="3">${escapeHtml(bid.remarks || '-')}</td>
+                            </tr>
+                        </table>
+                        ${compareSectionHtml}
+                        ${resultNoteHtml}
+                        ${itemsTableHtml}
+                    </div>
+                </section>
+            `;
+        }).join('');
+
+        return `
+            <div class="gs-print-doc">
+                <div class="gs-print-doc-header">
+                    <h1 class="gs-print-doc-title">공새로 입찰관리 - 공고별 투찰 및 입찰결과 내역서</h1>
+                    <div class="gs-print-doc-meta">
+                        <div>출력일시: ${escapeHtml(nowStr)}</div>
+                        <div>대상 공고: 총 <strong>${records.length}</strong>건</div>
+                    </div>
+                </div>
+                ${summaryHtml}
+                ${cardsHtml}
+            </div>
+        `;
+    },
+
+    getPrintReportCss: function() {
+        return `
+            @page { size: A4 portrait; margin: 10mm; }
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Inter', Arial, sans-serif;
+                color: #0f172a;
+                font-size: 10.5px;
+                line-height: 1.35;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .gs-print-doc { width: 100%; }
+            .gs-print-doc-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                border-bottom: 2px solid #0f172a;
+                padding-bottom: 6px;
+                margin-bottom: 12px;
+            }
+            .gs-print-doc-title { font-size: 16px; font-weight: 800; margin: 0; }
+            .gs-print-doc-meta { text-align: right; font-size: 9.5px; color: #475569; }
+            .gs-print-summary-bar {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 8px;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1;
+                border-radius: 4px;
+                padding: 8px 10px;
+                margin-bottom: 12px;
+            }
+            .gs-print-summary-item { display: flex; flex-direction: column; }
+            .gs-print-summary-label { font-size: 9px; color: #64748b; font-weight: 600; }
+            .gs-print-summary-val { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+            .gs-print-bid-card {
+                border: 1px solid #94a3b8;
+                border-radius: 4px;
+                margin-bottom: 14px;
+                overflow: hidden;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .gs-print-bid-card.page-break:not(:last-child) {
+                break-after: page;
+                page-break-after: always;
+            }
+            .gs-print-card-header {
+                background: #0f172a;
+                color: #ffffff;
+                padding: 5px 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+            }
+            .gs-print-card-title { font-size: 11.5px; font-weight: 700; }
+            .gs-print-card-id { font-size: 9.5px; color: #cbd5e1; font-weight: 500; }
+            .gs-print-status-badge {
+                display: inline-block;
+                padding: 1px 7px;
+                border-radius: 10px;
+                font-size: 9.5px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+            .gs-print-status-badge.won { background: #dcfce7; color: #166534; }
+            .gs-print-status-badge.lost { background: #f1f5f9; color: #334155; }
+            .gs-print-status-badge.bidding { background: #fef3c7; color: #92400e; }
+            .gs-print-status-badge.failed { background: #ede9fe; color: #5b21b6; }
+            .gs-print-status-badge.abandoned { background: #fee2e2; color: #991b1b; }
+            .gs-print-card-body { padding: 7px 9px 9px 9px; }
+            .gs-print-meta-table,
+            .gs-print-compare-table,
+            .gs-print-items-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 9.5px;
+                font-variant-numeric: tabular-nums;
+            }
+            .gs-print-meta-table th,
+            .gs-print-meta-table td {
+                border: 1px solid #cbd5e1;
+                padding: 3px 6px;
+            }
+            .gs-print-meta-table th {
+                background: #f8fafc;
+                color: #334155;
+                font-weight: 700;
+                width: 11%;
+                text-align: center;
+                white-space: nowrap;
+            }
+            .gs-print-compare-table { margin-top: 5px; }
+            .gs-print-compare-table th,
+            .gs-print-compare-table td {
+                border: 1px solid #cbd5e1;
+                padding: 4px 6px;
+            }
+            .gs-print-compare-table th {
+                background: #f1f5f9;
+                color: #1e293b;
+                font-weight: 700;
+                text-align: center;
+                font-size: 9px;
+            }
+            .gs-print-compare-table td {
+                text-align: right;
+                font-weight: 700;
+                font-size: 10.5px;
+            }
+            .gs-print-items-table { margin-top: 5px; }
+            .gs-print-items-table th,
+            .gs-print-items-table td {
+                border: 1px solid #cbd5e1;
+                padding: 3px 5px;
+            }
+            .gs-print-items-table thead th {
+                background: #f8fafc;
+                color: #334155;
+                font-weight: 700;
+                text-align: center;
+                white-space: nowrap;
+            }
+            .gs-print-items-table tfoot td {
+                background: #f1f5f9;
+                font-weight: 700;
+                color: #0f172a;
+            }
+        `;
+    },
+
+    executePrintReport: function() {
+        if (!this.currentPrintData || this.currentPrintData.length === 0) {
+            alert('인쇄할 공고 내역이 없습니다.');
+            return;
+        }
+
+        const pageBreak = Boolean(document.getElementById('optPrintPageBreak')?.checked);
+        const hideCost = Boolean(document.getElementById('optPrintHideCost')?.checked);
+        const reportHtml = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost });
+
+        const frame = document.getElementById('printFrame');
+        if (!frame || !frame.contentWindow) {
+            window.print();
+            return;
+        }
+
+        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>공새로 입찰관리 출력</title>
+<style>${this.getPrintReportCss()}</style>
+</head>
+<body>${reportHtml}</body>
+</html>`);
+        frameDoc.close();
+
+        setTimeout(() => {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+        }, 120);
     }
 };
 
@@ -1343,7 +2224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return vals.join('|');
     }
     function isModalDirty(modalEl) {
-        if (!modalEl || !modalEl.classList.contains('show')) return false;
+        if (!modalEl || !modalEl.classList.contains('show') || modalEl.id === 'printPreviewModal') return false;
         return modalEl._initialSnapshot !== undefined && getModalSnapshot(modalEl) !== modalEl._initialSnapshot;
     }
     document.addEventListener('show.bs.modal', (e) => {
@@ -1376,6 +2257,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modalEl) {
             modalEl._isForceHiding = false;
             modalEl._confirmingHide = false;
+        }
+        if (document.querySelector('.modal.show')) {
+            document.body.classList.add('modal-open');
         }
     });
     document.addEventListener('input', (e) => {

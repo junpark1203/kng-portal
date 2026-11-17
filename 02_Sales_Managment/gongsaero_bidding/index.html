@@ -17,7 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- ECOUNT ERP Style Custom Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=20261113_1">
+    <link rel="stylesheet" href="styles.css?v=20261117_1">
 </head>
 
 <body>
@@ -32,6 +32,9 @@
         <div class="d-flex align-items-center gap-2">
             <button type="button" class="btn-erp" onclick="app.loadBids()" title="데이터 새로고침 (F5)">
                 <i class='bx bx-refresh'></i> 새로고침
+            </button>
+            <button type="button" class="btn-erp" id="btnPrintSelected" onclick="app.openPrintPreviewForSelected()" title="체크박스로 선택한 공고 일괄 인쇄">
+                <i class='bx bx-printer'></i> 선택 인쇄 <span class="badge bg-primary text-white ms-1" id="badgeSelectedPrintCount" style="display: none;">0</span>
             </button>
             <button type="button" class="btn-erp btn-erp-success" onclick="app.exportToExcel()" title="현재 목록 엑셀 다운로드">
                 <i class='bx bxs-file-export'></i> 엑셀저장
@@ -90,6 +93,7 @@
                     <option value="입찰중">입찰중 (진행)</option>
                     <option value="낙찰">낙찰 (성공)</option>
                     <option value="미선정">미선정 (탈락)</option>
+                    <option value="유찰">유찰 (입찰무효)</option>
                     <option value="입찰포기">입찰포기</option>
                 </select>
 
@@ -132,6 +136,9 @@
                 <table class="erp-sheet-table">
                     <thead>
                         <tr>
+                            <th style="width: 32px;" class="text-center">
+                                <input type="checkbox" class="form-check-input erp-grid-check" id="chkSelectAllBids" onchange="app.toggleSelectAllBids(this.checked)" title="현재 목록 전체 선택/해제">
+                            </th>
                             <th style="width: 38px;">No</th>
                             <th style="width: 80px;">상태</th>
                             <th>공고 / 공사명</th>
@@ -150,7 +157,7 @@
                     </thead>
                     <tbody id="bidsTableBody">
                         <tr>
-                            <td colspan="14" class="text-center py-5 text-muted">
+                            <td colspan="15" class="text-center py-5 text-muted">
                                 <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
                                 <div>입찰 공고 데이터를 불러오는 중...</div>
                             </td>
@@ -234,6 +241,7 @@
                             <select class="form-select form-select-sm" id="qrStatus" onchange="app.handleQuickResultStatusChange()">
                                 <option value="낙찰">낙찰 (당사 수주)</option>
                                 <option value="미선정">미선정 (타사 낙찰 / 탈락)</option>
+                                <option value="유찰">유찰 (입찰 무효 / 재공고)</option>
                                 <option value="입찰중">입찰중 (진행 상태로 복원)</option>
                                 <option value="입찰포기">입찰포기</option>
                             </select>
@@ -247,7 +255,7 @@
                             <div class="input-group input-group-sm">
                                 <input type="number" class="form-control fw-bold fs-6 text-end" id="qrWinningBidAmount" placeholder="예: 3650000" oninput="app.calcQuickResultSimulation()">
                                 <span class="input-group-text">원</span>
-                                <button type="button" class="btn btn-outline-secondary" onclick="app.copyOurBidToWinning()">당사투찰가 적용</button>
+                                <button type="button" class="btn btn-outline-secondary" id="qrCopyOurBidBtn" onclick="app.copyOurBidToWinning()">당사투찰가 적용</button>
                             </div>
                         </div>
                     </div>
@@ -365,6 +373,7 @@
                                         <option value="입찰중">입찰중 (진행)</option>
                                         <option value="낙찰">낙찰 (수주성공)</option>
                                         <option value="미선정">미선정 (탈락)</option>
+                                        <option value="유찰">유찰 (입찰무효)</option>
                                         <option value="입찰포기">입찰포기</option>
                                     </select>
                                 </td>
@@ -426,7 +435,7 @@
                                     <span class="input-group-text bg-white fw-bold">최종 낙찰금액</span>
                                     <input type="number" class="form-control text-end fw-bold fs-6" id="formWinningBidAmount" placeholder="0" oninput="app.calcModalWhatIfSimulation()">
                                     <span class="input-group-text bg-white">원</span>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="app.copyOurBidToModalWinning()" title="당사 투찰총액을 그대로 낙찰가로 복사">당사투찰가</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="formCopyOurBidBtn" onclick="app.copyOurBidToModalWinning()" title="당사 투찰총액을 그대로 낙찰가로 복사">당사투찰가</button>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -549,6 +558,9 @@
                         <button type="button" class="btn-erp btn-erp-success" onclick="app.downloadTenderExcel()">
                             <i class='bx bx-download'></i> 엑셀 다운로드
                         </button>
+                        <button type="button" class="btn-erp" onclick="app.printCurrentModalBid()" title="현재 열려있는 공고 전표 인쇄">
+                            <i class='bx bx-printer'></i> 전표 인쇄
+                        </button>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
@@ -561,12 +573,56 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- 인쇄 미리보기 모달 (Print Preview Modal)             -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div class="modal fade" id="printPreviewModal" tabindex="-1" style="z-index: 1100;">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 96vw; width: 1120px; margin: 1rem auto;">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white py-2 px-3 d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+                        <i class='bx bx-printer text-info'></i>
+                        <span>입찰 공고 및 투찰 내역 인쇄 미리보기</span>
+                    </h6>
+                    <div class="d-flex align-items-center gap-3">
+                        <label class="form-check-label small text-white d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                            <input type="checkbox" class="form-check-input mt-0" id="optPrintPageBreak" onchange="app.renderPrintPreview()">
+                            <span>공고별 페이지 나누기</span>
+                        </label>
+                        <label class="form-check-label small text-white d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                            <input type="checkbox" class="form-check-input mt-0" id="optPrintHideCost" onchange="app.renderPrintPreview()">
+                            <span>내부 원가·마진 숨기기</span>
+                        </label>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.executePrintReport()">
+                            <i class='bx bx-printer'></i> 인쇄 / PDF 저장
+                        </button>
+                        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-3 print-preview-canvas">
+                    <div id="printPreviewContainer"></div>
+                </div>
+                <div class="modal-footer bg-white py-2 px-3 d-flex justify-content-between">
+                    <span class="small text-muted" id="printPreviewStatusText">인쇄할 공고 내역을 준비 중입니다.</span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.executePrintReport()">
+                            <i class='bx bx-printer'></i> 인쇄 / PDF 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="printFrame" style="position:fixed; right:0; bottom:0; width:0; height:0; border:0;" aria-hidden="true"></iframe>
+
     <!-- Bootstrap 5 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Application Logic -->
-    <script src="app.js?v=20261113_1"></script>
+    <script src="app.js?v=20261117_1"></script>
 </body>
 
 </html>

@@ -389,6 +389,20 @@ body {
 .erp-sheet-table tbody tr.row-lost td {
     background-color: #fafaf9;
 }
+.erp-sheet-table tbody tr.row-failed td {
+    background-color: #fcfaff;
+}
+.erp-sheet-table tbody tr.row-checked td {
+    background-color: #eff6ff !important;
+}
+
+.erp-grid-check {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    cursor: pointer;
+    vertical-align: middle;
+}
 
 /* Status Badges */
 .status-pill {
@@ -420,6 +434,11 @@ body {
     background: #fee2e2;
     color: #991b1b;
     border: 1px solid #fecaca;
+}
+.status-pill.failed {
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1px solid #ddd6fe;
 }
 
 /* What-If Simulation Badges & Cells */
@@ -614,6 +633,19 @@ body {
     background: #fff7ed;
     border-color: #fed7aa;
 }
+.erp-result-panel.failed-mode {
+    background: #f5f3ff;
+    border-color: #ddd6fe;
+}
+
+#qrWinningBidAmount:disabled,
+#qrWinningCompany:disabled,
+#formWinningBidAmount:disabled,
+#formWinningCompany:disabled {
+    background-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
 
 .result-panel-header {
     display: flex;
@@ -720,7 +752,200 @@ body {
     display: block;
 }
 
-/* ── 10. Responsive ── */
+/* ── 10. Print Preview Canvas & Report Styles ── */
+.print-preview-canvas {
+    background: #cbd5e1;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.gs-print-doc {
+    max-width: 980px;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 20px 24px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.14);
+    border-radius: 4px;
+    color: #0f172a;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.gs-print-doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+}
+
+.gs-print-doc-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+.gs-print-doc-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+}
+
+.gs-print-summary-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+}
+
+.gs-print-summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-print-summary-label {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.gs-print-summary-val {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.gs-print-bid-card {
+    border: 1px solid #94a3b8;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.gs-print-bid-card.page-break {
+    margin-bottom: 22px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.gs-print-card-header {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.gs-print-card-title {
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.gs-print-card-id {
+    font-size: 10.5px;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+.gs-print-status-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+}
+.gs-print-status-badge.won { background: #dcfce7; color: #166534; }
+.gs-print-status-badge.lost { background: #f1f5f9; color: #334155; }
+.gs-print-status-badge.bidding { background: #fef3c7; color: #92400e; }
+.gs-print-status-badge.failed { background: #ede9fe; color: #5b21b6; }
+.gs-print-status-badge.abandoned { background: #fee2e2; color: #991b1b; }
+
+.gs-print-meta-table,
+.gs-print-compare-table,
+.gs-print-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.gs-print-meta-table th,
+.gs-print-meta-table td {
+    border: 1px solid #cbd5e1;
+    padding: 4px 7px;
+}
+
+.gs-print-meta-table th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    width: 11%;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.gs-print-compare-table {
+    margin-top: 6px;
+}
+
+.gs-print-compare-table th,
+.gs-print-compare-table td {
+    border: 1px solid #cbd5e1;
+    padding: 5px 8px;
+}
+
+.gs-print-compare-table th {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: 700;
+    text-align: center;
+    font-size: 10px;
+}
+
+.gs-print-compare-table td {
+    text-align: right;
+    font-weight: 700;
+    font-size: 11.5px;
+}
+
+.gs-print-items-table {
+    margin-top: 6px;
+}
+
+.gs-print-items-table th,
+.gs-print-items-table td {
+    border: 1px solid #cbd5e1;
+    padding: 3px 6px;
+}
+
+.gs-print-items-table thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.gs-print-items-table tfoot td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.gs-print-card-body {
+    padding: 8px 10px 10px 10px;
+}
+
+/* ── 11. Responsive ── */
 @media (max-width: 992px) {
     .result-sim-grid {
         grid-template-columns: repeat(2, 1fr);
