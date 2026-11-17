@@ -758,6 +758,19 @@ button:focus-visible,
     color: var(--primary-dark);
 }
 
+.attach-btn-mini.prep-toggle-btn.is-checked {
+    background: #ecfdf5;
+    border-color: #34d399;
+    color: #047857;
+    font-weight: 700;
+}
+
+.attach-btn-mini.prep-toggle-btn.is-checked:hover {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
 .file-chip {
     display: inline-flex;
     align-items: center;
@@ -1184,6 +1197,32 @@ button:focus-visible,
 .cover-doc-table .td-name { font-weight: 700; color: #0f172a; }
 .cover-doc-table .td-submit-type { font-size: 9.8px; color: #1e293b; font-weight: 600; white-space: nowrap; }
 .cover-doc-table .td-note { font-size: 9.5px; color: #475569; }
+
+.cover-check-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    margin: -5px 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    appearance: none;
+}
+
+.cover-check-btn:hover .cover-check-box {
+    border-color: var(--primary-color);
+    background: #eff6ff;
+}
+
+.cover-check-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
 
 .cover-check-box {
     display: inline-flex;
@@ -2039,5 +2078,10 @@ dialog.erp-dialog::backdrop {
     .a4-sheet:last-child {
         page-break-after: auto !important;
         break-after: auto !important;
+    }
+
+    .cover-check-btn {
+        outline: none !important;
+        background: transparent !important;
     }
 }

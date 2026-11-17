@@ -747,7 +747,7 @@
             if (item.submitType === 'original_scan' && hasFiles) {
                 statusTag = `<span class="status-mini-pill pill-scan">스캔본 보관중</span>`;
             } else if (isPrepared && !hasFiles) {
-                statusTag = `<span class="status-mini-pill pill-hardcopy">실물(하드카피) 준비완료</span>`;
+                statusTag = `<span class="status-mini-pill pill-hardcopy">원본/실물 준비완료</span>`;
             }
 
             const chipsHtml = (item.attachments || []).map((att, aIdx) => {
@@ -781,7 +781,7 @@
                             <button type="button" class="btn-order" data-action="move-down" data-row="${idx}" ${idx === state.items.length - 1 ? 'disabled' : ''} title="아래로 이동" aria-label="아래로 이동">▼</button>
                         </div>
                         <span class="item-num-badge">${idx + 1}</span>
-                        <input type="checkbox" class="item-prep-chk" data-field="prepared" data-row="${idx}" ${isPrepared ? 'checked' : ''} title="준비 완료 체크 (파일 첨부 시 자동 체크, 하드카피는 수동 체크)" aria-label="${idx + 1}번 서류 준비 완료">
+                        <input type="checkbox" class="item-prep-chk" data-field="prepared" data-row="${idx}" ${isPrepared ? 'checked' : ''} title="커버페이지 확인(✓) 표시 체크 (파일 첨부 없이도 단독 체크 가능)" aria-label="${idx + 1}번 서류 확인란 체크">
                         <input type="text" class="item-name-input" data-field="name" data-row="${idx}" value="${escapeHtml(item.name)}" placeholder="필요 서류명 입력 (예: 사업자등록증)">
                         <select class="item-req-select" data-field="required" data-row="${idx}" aria-label="필수 여부">
                             <option value="true" ${item.required !== false ? 'selected' : ''}>필수</option>
@@ -809,6 +809,9 @@
 
                     <div class="doc-item-attach-bar">
                         <input type="file" class="visually-hidden row-file-input" data-row="${idx}" multiple accept=".pdf,image/*">
+                        <button type="button" class="attach-btn-mini prep-toggle-btn ${isPrepared ? 'is-checked' : ''}" data-action="toggle-prepared" data-row="${idx}" aria-pressed="${isPrepared ? 'true' : 'false'}" title="파일 첨부와 별개로 커버페이지 확인(✓) 칸을 체크하거나 해제합니다">
+                            <i class='bx ${isPrepared ? 'bx-check-square' : 'bx-checkbox'}' aria-hidden="true"></i> 확인란 체크
+                        </button>
                         <button type="button" class="attach-btn-mini" data-action="pick-file" data-row="${idx}">
                             <i class='bx bx-paperclip'></i> 파일 첨부
                         </button>
@@ -1026,7 +1029,8 @@
     }
 
     function buildCoverItemRowHtml(item, idx) {
-        const statusHtml = `<span class="cover-check-box ${item.prepared ? 'checked' : ''}" aria-label="${item.prepared ? '준비 완료' : '미체크'}">${item.prepared ? '✓' : ''}</span>`;
+        const docLabel = item.name || '서류';
+        const statusHtml = `<button type="button" class="cover-check-btn" data-toggle-prepared="${idx}" aria-pressed="${item.prepared ? 'true' : 'false'}" aria-label="${idx + 1}번 ${escapeHtml(docLabel)} 확인란 체크" title="클릭하여 커버페이지 확인(✓) 표시 켜기/끄기"><span class="cover-check-box ${item.prepared ? 'checked' : ''}" aria-hidden="true">${item.prepared ? '✓' : ''}</span></button>`;
 
         let typeText = '';
         if (item.submitType === 'original_scan') {
@@ -2490,13 +2494,19 @@
             saveDraft();
         });
         els.btnCheckAllItems.addEventListener('click', () => {
-            state.items.forEach(it => { it.prepared = true; });
+            state.items.forEach(it => {
+                it.prepared = true;
+                it._manualPrepared = true;
+            });
             renderChecklist();
             renderPreview();
             saveDraft();
         });
         els.btnUncheckAllItems.addEventListener('click', () => {
-            state.items.forEach(it => { it.prepared = false; });
+            state.items.forEach(it => {
+                it.prepared = false;
+                it._manualPrepared = false;
+            });
             renderChecklist();
             renderPreview();
             saveDraft();
@@ -2537,6 +2547,7 @@
             const row = e.target.getAttribute('data-row');
             const field = e.target.getAttribute('data-field');
             if (row === null || !field || !state.items[row]) return;
+            if (field === 'prepared' || field === 'required' || field === 'submitType') return;
             const item = state.items[row];
             if (field === 'copies' || field === 'validityDays') {
                 item[field] = parseInt(e.target.value, 10) || 0;
@@ -2564,6 +2575,7 @@
 
             if (field === 'prepared') {
                 item.prepared = e.target.checked;
+                item._manualPrepared = item.prepared;
                 renderChecklist();
             } else if (field === 'required') {
                 item.required = e.target.value === 'true';
@@ -2595,6 +2607,10 @@
             } else if (action === 'delete-row') {
                 state.items.splice(rowIdx, 1);
                 renderChecklist(); renderPreview(); saveDraft();
+            } else if (action === 'toggle-prepared') {
+                item.prepared = !item.prepared;
+                item._manualPrepared = item.prepared;
+                renderChecklist(); renderPreview(); saveDraft();
             } else if (action === 'pick-file') {
                 const card = actionEl.closest('.doc-item-card');
                 card?.querySelector('.row-file-input')?.click();
@@ -2606,11 +2622,25 @@
                 await openFilePreviewModal(item.attachments[attIdx]);
             } else if (action === 'remove-file') {
                 item.attachments.splice(attIdx, 1);
-                if (item.attachments.length === 0 && item.submitType === 'file_print') {
+                if (item.attachments.length === 0 && item.submitType === 'file_print' && !item._manualPrepared) {
                     item.prepared = false;
                 }
                 renderChecklist(); renderPreview(); saveDraft();
             }
+        });
+
+        // 우측 A4 커버페이지 미리보기에서 확인란(✓) 직접 클릭 토글
+        els.a4PagesContainer?.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-toggle-prepared]');
+            if (!btn) return;
+            const rowIdx = parseInt(btn.getAttribute('data-toggle-prepared'), 10);
+            const item = state.items[rowIdx];
+            if (!item) return;
+            item.prepared = !item.prepared;
+            item._manualPrepared = item.prepared;
+            renderChecklist();
+            renderPreview();
+            saveDraft();
         });
 
         // 개별 행 드래그 앤 드롭 지원
