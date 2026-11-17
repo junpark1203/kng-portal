@@ -1536,4 +1536,19 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
 }
 
+/* ==========================================================================
+   견적 불러오기 모달 (.modal.active ↔ Bootstrap 충돌 방지)
+   ========================================================================== */
+#quoteModal.modal.active {
+    display: flex !important;
+    opacity: 1 !important;
+}
+
+#quoteModal.modal.active .modal-dialog {
+    transform: none !important;
+}
+
+#quoteModal .modal-content > .erp-window-header {
+    margin-bottom: 0 !important;
+}
 

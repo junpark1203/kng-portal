@@ -292,6 +292,13 @@ input.form-control, select.form-control, .form-select {
 .modal {
     z-index: 1055 !important;
 }
+.modal.active {
+    display: flex !important;
+    opacity: 1 !important;
+}
+.modal.active .modal-dialog {
+    transform: none !important;
+}
 .modal-backdrop {
     z-index: 1050 !important;
 }

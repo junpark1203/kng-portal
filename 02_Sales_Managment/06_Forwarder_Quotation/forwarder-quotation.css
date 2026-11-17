@@ -995,3 +995,18 @@ thead th .tooltip-text::before {
         break-inside: avoid;
     }
 }
+
+/* ── 11. 모달 표시 보장 (.modal.active ↔ Bootstrap 충돌 방지) ── */
+.modal.active {
+    display: flex !important;
+    opacity: 1 !important;
+}
+
+.modal.active .modal-dialog {
+    transform: none !important;
+}
+
+.modal-content > .erp-window-header {
+    margin-bottom: 0 !important;
+}
+

@@ -220,7 +220,7 @@ function initEvents() {
     document.getElementById('btnCloseQuoteModal').addEventListener('click', closeQuoteModal);
     document.getElementById('btnCancelQuoteModal').addEventListener('click', closeQuoteModal);
     document.getElementById('quoteModal')?.addEventListener('click', (e) => {
-        if (e.target.id === 'quoteModal') closeQuoteModal();
+        if (e.target.id === 'quoteModal' || e.target.classList.contains('modal-dialog')) closeQuoteModal();
     });
     document.getElementById('btnConfirmQuote').addEventListener('click', loadSelectedQuote);
 
