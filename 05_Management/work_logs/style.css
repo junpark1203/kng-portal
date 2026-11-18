@@ -381,11 +381,13 @@ button {
     display: flex;
     gap: 24px;
     align-items: flex-start;
+    width: 100%;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .editor-form {
     flex: 1;
+    width: 100%;
     min-width: 0; /* Prevent flex blowout */
     transition: all 0.3s;
 }
@@ -981,6 +983,10 @@ body:has(#editView.active) .mobile-fab-newlog {
 @media (max-width: 1024px) {
     .editor-layout {
         flex-direction: column;
+        align-items: stretch;
+    }
+    .editor-form {
+        width: 100%;
     }
     .past-history-panel {
         width: 100%;
@@ -991,6 +997,9 @@ body:has(#editView.active) .mobile-fab-newlog {
 @media (max-width: 768px) {
     #app-container {
         padding: 12px 14px 80px 14px; /* Bottom padding for FAB and action bar */
+    }
+    #app-container:has(#editView.active) {
+        padding-bottom: 0;
     }
 
     /* Header */
@@ -1110,13 +1119,7 @@ body:has(#editView.active) .mobile-fab-newlog {
 
     /* Editor View */
     .editor-header {
-        position: sticky;
-        top: 0;
-        z-index: 950;
-        background: rgba(243, 244, 246, 0.96);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        padding: 8px 0;
+        padding: 4px 0 10px 0;
         margin-bottom: 12px;
         border-bottom: 1px solid var(--border-color);
         display: flex;
@@ -1134,7 +1137,7 @@ body:has(#editView.active) .mobile-fab-newlog {
         flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;
-        gap: 6px;
+        gap: 5px;
         margin-left: auto;
     }
     .editor-header .btn-outline,
@@ -1144,12 +1147,13 @@ body:has(#editView.active) .mobile-fab-newlog {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 7px 10px;
-        font-size: 12.5px;
+        padding: 6px 9px;
+        font-size: 12px;
         border-radius: 8px;
         white-space: nowrap;
     }
     .editor-form {
+        width: 100%;
         padding: 14px;
         margin-bottom: 16px;
     }
@@ -1212,6 +1216,12 @@ body:has(#editView.active) .mobile-fab-newlog {
 @media (max-width: 480px) {
     #app-container {
         padding: 8px 10px 80px 10px;
+    }
+    #app-container:has(#editView.active) {
+        padding-bottom: 0;
+    }
+    .mobile-editor-bottom-bar {
+        margin: 0 -10px;
     }
     .filter-col-selects {
         grid-template-columns: 1fr;
