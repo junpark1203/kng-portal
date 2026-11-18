@@ -197,31 +197,31 @@
                 <section class="sticky-dashboard" id="stickyDashboard">
                     <div class="dashboard-grid">
                         <div class="dash-card">
-                            <div class="dash-label">예상 총 견적비용</div>
+                            <div class="dash-label">사전 견적 총액 (비용)</div>
                             <div class="dash-value" id="dashTotalEstimated">₩ 0</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">실제 총 투입비용</div>
+                            <div class="dash-label">실제 정산 총액 (비용)</div>
                             <div class="dash-value text-primary" id="dashTotalBilled">₩ 0</div>
                             <div class="dash-pct neutral" id="dashBilledPct">-</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">순수 물류비 증감</div>
+                            <div class="dash-label">순수 비용 증감</div>
                             <div class="dash-value" id="dashCostVariance">₩ 0</div>
-                            <div class="dash-sub" id="dashCostVarianceSub">(청구금액 - 예상금액) × 견적환율</div>
+                            <div class="dash-sub" id="dashCostVarianceSub">(정산금액 - 견적금액) × 견적환율</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">총 환차익 / 환차손</div>
+                            <div class="dash-label">환율 변동 손익</div>
                             <div class="dash-value" id="dashExchangeGainLoss">₩ 0</div>
-                            <div class="dash-sub">(청구환율 - 견적환율) × 청구금액</div>
+                            <div class="dash-sub">(정산환율 - 견적환율) × 정산금액</div>
                         </div>
                     </div>
                 </section>
 
-                <!-- SECTION 3: 비용 요약 (고밀도 엑셀 대사 테이블) -->
+                <!-- SECTION 3: 비용 요약 -->
                 <section class="edit-section" id="summaryTableSection">
                     <div class="section-header-flex">
-                        <h3>3. 비용 구분별 요약 대사표</h3>
+                        <h3>3. 비용 구분별 정산 요약표</h3>
                     </div>
                     <div class="erp-grid-wrapper" style="min-height: 120px;">
                         <table class="erp-sheet-table grid-table" id="summaryTable">
@@ -229,8 +229,8 @@
                                 <tr>
                                     <th style="width: 8%; text-align: center;">No.</th>
                                     <th style="width: 32%; text-align: left; padding-left: 8px !important;">비용 구분</th>
-                                    <th class="col-num" style="width: 20%; padding-right: 8px !important;">예상 견적 (KRW)</th>
-                                    <th class="col-num highlight-col" style="width: 20%; padding-right: 8px !important;">실제 청구 (KRW)</th>
+                                    <th class="col-num" style="width: 20%; padding-right: 8px !important;">사전 견적 (KRW)</th>
+                                    <th class="col-num highlight-col" style="width: 20%; padding-right: 8px !important;">실제 정산 (KRW)</th>
                                     <th class="col-num" style="width: 20%; padding-right: 8px !important;">증감액 (KRW)</th>
                                 </tr>
                             </thead>
@@ -249,7 +249,7 @@
                     <div class="section-header-flex">
                         <div>
                             <h3>4. 항목별 상세 비용 정산 및 분석</h3>
-                            <span class="text-muted" style="font-size: 11px;">* 각 항목의 우측 파란 패널에서 실제 청구 내역(외화/환율/KRW)을 입력하세요. 드래그하여 순서 변경이 가능합니다.</span>
+                            <span class="text-muted" style="font-size: 11px;">* 각 항목의 우측 파란 패널에서 실제 정산 내역(외화/환율/KRW)을 입력하세요. 드래그하여 순서 변경이 가능합니다.</span>
                         </div>
                     </div>
                     
@@ -277,14 +277,14 @@
                             <thead>
                                 <tr>
                                     <th>품명</th>
-                                    <th class="col-num" style="width: 75px;">수량</th>
-                                    <th class="col-num" style="width: 115px;">단위당 단가 (외화)</th>
-                                    <th class="col-num" style="width: 125px;">배분 부대비용 (외화)</th>
+                                    <th class="col-num" style="width: 115px;">수량 / 점유율</th>
+                                    <th class="col-num" style="width: 115px;">물품단가 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
                                     <th class="col-num" style="width: 125px;">실수입원가 (외화)</th>
-                                    <th class="col-num" style="width: 110px;">관세 (KRW)</th>
-                                    <th class="col-num" style="width: 130px; background: #f0fdf4;">예상원가 (KRW)</th>
-                                    <th class="col-num highlight-col" style="width: 140px;">실청구원가 (KRW)</th>
-                                    <th class="col-num" style="width: 110px;">증감</th>
+                                    <th class="col-num" style="width: 105px;">관세 (KRW)</th>
+                                    <th class="col-num" style="width: 155px; background: #f0fdf4;">사전 견적기준 원가 (KRW)</th>
+                                    <th class="col-num highlight-col" style="width: 135px;">확정 수입원가 (KRW)</th>
+                                    <th class="col-num" style="width: 180px;">견적기준 원가 대비 증감 (KRW)</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyValue">
@@ -305,14 +305,14 @@
                             <thead>
                                 <tr>
                                     <th>품명</th>
-                                    <th class="col-num" style="width: 110px;">수량 / 점유율</th>
-                                    <th class="col-num" style="width: 115px;">단위당 단가 (외화)</th>
-                                    <th class="col-num" style="width: 125px;">배분 부대비용 (외화)</th>
+                                    <th class="col-num" style="width: 115px;">수량 / 점유율</th>
+                                    <th class="col-num" style="width: 115px;">물품단가 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
                                     <th class="col-num" style="width: 125px;">실수입원가 (외화)</th>
-                                    <th class="col-num" style="width: 110px;">관세 (KRW)</th>
-                                    <th class="col-num" style="width: 130px; background: #f0fdf4;">예상원가 (KRW)</th>
-                                    <th class="col-num highlight-col" style="width: 140px;">실청구원가 (KRW)</th>
-                                    <th class="col-num" style="width: 110px;">증감</th>
+                                    <th class="col-num" style="width: 105px;">관세 (KRW)</th>
+                                    <th class="col-num" style="width: 155px; background: #f0fdf4;">사전 견적기준 원가 (KRW)</th>
+                                    <th class="col-num highlight-col" style="width: 135px;">확정 수입원가 (KRW)</th>
+                                    <th class="col-num" style="width: 180px;">견적기준 원가 대비 증감 (KRW)</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyVolume">
@@ -411,12 +411,12 @@
                         </div>
                     </div>
                     <div class="is-print-input-wrap">
-                        <input type="text" id="inpPrintTitle" class="is-print-input" placeholder="실제 비용 기준 정산 및 품목별 원가 산출" value="실제 비용 기준 정산 및 품목별 원가 산출">
+                        <input type="text" id="inpPrintTitle" class="is-print-input" placeholder="수입비용 정산 및 품목별 원가 산출" value="수입비용 정산 및 품목별 원가 산출">
                         <div class="is-print-hint">* 인쇄물 상단 메인 타이틀로 출력되며, 자유롭게 수정할 수 있습니다.</div>
                     </div>
                 </div>
 
-                <!-- 2. 데이터 포함 옵션 (예상견적 vs 실제비용) -->
+                <!-- 2. 데이터 포함 옵션 (사전 견적 vs 실제 정산) -->
                 <div class="is-print-card" style="margin-bottom: 12px;">
                     <div class="is-print-card-header">
                         <span class="is-print-card-title">
@@ -428,15 +428,15 @@
                         <label class="is-print-check-card">
                             <input type="checkbox" id="chkPrintData_Estimate" checked>
                             <div class="check-content">
-                                <span class="check-title">예상 견적 데이터</span>
+                                <span class="check-title">사전 견적 데이터</span>
                                 <span class="check-desc">포워더 사전 견적 및 예상 비용</span>
                             </div>
                         </label>
                         <label class="is-print-check-card">
                             <input type="checkbox" id="chkPrintData_Actual" checked>
                             <div class="check-content">
-                                <span class="check-title">실제 청구 데이터</span>
-                                <span class="check-desc">세금계산서 및 실제 지급 집계비용</span>
+                                <span class="check-title">실제 정산 데이터</span>
+                                <span class="check-desc">세금계산서 및 실제 정산 집계비용</span>
                             </div>
                         </label>
                     </div>
@@ -507,10 +507,10 @@
                                 </div>
                             </div>
 
-                            <!-- 연동된 포워더 견적 정보 -->
+                            <!-- 선적 및 운송 정보 (연동 견적) -->
                             <div class="custom-chk-group">
                                 <label style="font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 7px; color: #1e293b;">
-                                    <input type="checkbox" id="chkPrint_QuoteInfo" class="parent-chk" checked> 연동된 포워더 견적 정보
+                                    <input type="checkbox" id="chkPrint_QuoteInfo" class="parent-chk" checked> 선적 및 운송 정보 (연동 견적)
                                 </label>
                                 <div style="padding-left: 22px; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px;">
                                     <label style="font-size: 0.77rem; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #475569;">
@@ -593,6 +593,6 @@
     <div id="printContainer" class="print-only"></div>
 
     <!-- 스크립트 모듈 -->
-    <script type="module" src="import-settlement.js?v=20261117_2"></script>
+    <script type="module" src="import-settlement.js?v=20261118_1"></script>
 </body>
 </html>

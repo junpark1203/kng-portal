@@ -173,7 +173,7 @@ function initEvents() {
     document.getElementById('btnExecutePrint').addEventListener('click', executePrint);
     document.getElementById('btnSetDefaultPrintTitle')?.addEventListener('click', () => {
         const titleInp = document.getElementById('inpPrintTitle');
-        if (titleInp) titleInp.value = '실제 비용 기준 정산 및 품목별 원가 산출';
+        if (titleInp) titleInp.value = '수입비용 정산 및 품목별 원가 산출';
     });
     document.getElementById('btnSetDocPrintTitle')?.addEventListener('click', () => {
         const titleInp = document.getElementById('inpPrintTitle');
@@ -886,11 +886,11 @@ function renderSettlementGrid() {
                 </div>
                 <div class="group-subtotal">
                     <div class="subtotal-item">
-                        <span class="subtotal-label">견적</span>
+                        <span class="subtotal-label">사전 견적</span>
                         <span class="subtotal-value" id="grpEst_${grp.key}">₩ 0</span>
                     </div>
                     <div class="subtotal-item">
-                        <span class="subtotal-label">실제</span>
+                        <span class="subtotal-label">실제 정산</span>
                         <span class="subtotal-value" id="grpAct_${grp.key}">₩ 0</span>
                     </div>
                 </div>
@@ -986,7 +986,7 @@ function renderSettlementGrid() {
                 invoiceItemsHtml = `
                     <div style="grid-column: 1 / -1; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
                         <div style="background: #f8fafc; padding: 10px 12px; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; font-size:14px;">
-                            <i class='bx bx-list-ul'></i> 수입 대상 품목 내역 (예상 견적)
+                            <i class='bx bx-list-ul'></i> 수입 대상 품목 내역 (사전 견적)
                         </div>
                         <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;">
                             <thead>
@@ -1022,10 +1022,10 @@ function renderSettlementGrid() {
 
                 <div class="card-body">
                     ${invoiceItemsHtml}
-                    <!-- 좌측: 예상 견적 (Read-only) -->
+                    <!-- 좌측: 사전 견적 (Read-only) -->
                     ${cost.key === 'INTEREST' ? `
                     <div class="panel-quote">
-                        <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
+                        <div class="panel-title"><i class='bx bx-file'></i> 사전 견적</div>
                         <div class="panel-row">
                             <span class="p-label">사업기간</span>
                             <span class="p-value">${cost.durationMonths || 0} 개월</span>
@@ -1045,7 +1045,7 @@ function renderSettlementGrid() {
                     </div>
                     ` : `
                     <div class="panel-quote">
-                        <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
+                        <div class="panel-title"><i class='bx bx-file'></i> 사전 견적</div>
                         ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
                             <span class="p-label">단위</span>
@@ -1079,10 +1079,10 @@ function renderSettlementGrid() {
                     </div>
                     `}
 
-                    <!-- 우측: 실제 청구 (Editable) -->
+                    <!-- 우측: 실제 정산 (Editable) -->
                     ${cost.key === 'INTEREST' ? `
                     <div class="panel-billed">
-                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 정산 (입력)</div>
                         <div class="panel-row">
                             <span class="p-label" style="flex:0 0 70px;">사업기간</span>
                             <div class="p-input-wide" style="display:flex; align-items:center;">
@@ -1105,13 +1105,13 @@ function renderSettlementGrid() {
                             </div>
                         </div>
                         <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; margin-top:20px;">
-                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">산출금액</span>
                             <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem; font-weight:700;">₩ ${formatNum(amt)}</span>
                         </div>
                     </div>
                     ` : `
                     <div class="panel-billed">
-                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 정산 (입력)</div>
                         ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
                             <span class="p-label">단위</span>
@@ -1139,7 +1139,7 @@ function renderSettlementGrid() {
                         </div>
                         `}
                         <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; ${cost.group === 'invoice' ? 'margin-top:20px;' : ''}">
-                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">정산금액</span>
                             <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
                         </div>
                         <div class="panel-row">
@@ -1159,15 +1159,15 @@ function renderSettlementGrid() {
                 <!-- 하단: 결과 -->
                 <div class="card-result">
                     <div class="result-item">
-                        <div class="r-label">실제 원화(KRW)</div>
+                        <div class="r-label">정산 원화(KRW)</div>
                         <div class="r-value" id="krw_${idx}">₩ 0</div>
                     </div>
                     <div class="result-item">
-                        <div class="r-label">비용증감</div>
+                        <div class="r-label">순수 비용증감</div>
                         <div class="r-value" id="var_${idx}">0</div>
                     </div>
                     <div class="result-item">
-                        <div class="r-label">환차익/손</div>
+                        <div class="r-label">환율 변동손익</div>
                         <div class="r-value" id="gl_${idx}">0</div>
                     </div>
                 </div>
@@ -1967,10 +1967,14 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         const diffColorValue = diffValue > 0 ? '#dc2626' : (diffValue < 0 ? '#16a34a' : 'inherit');
         const diffTextValue = diffValue > 0 ? `+₩ ${formatNum(diffValue)}` : `₩ ${formatNum(diffValue)}`;
 
+        const itemInvoiceKrw = unitPriceFC * (item.qty || 0) * billedExRate;
+        const valueShareRatio = billedTotalInvoiceKrw > 0 ? (itemInvoiceKrw / billedTotalInvoiceKrw) : 0;
+        const valueShareText = `${formatNum(item.qty)} (${(valueShareRatio * 100).toFixed(1)}%)`;
+
         htmlValue += `
             <tr>
                 <td>${item.name}</td>
-                <td class="col-num">${formatNum(item.qty)}</td>
+                <td class="col-num">${valueShareText}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
@@ -2035,8 +2039,8 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         const diffTextVolume = diffVolume > 0 ? `+₩ ${formatNum(diffVolume)}` : `₩ ${formatNum(diffVolume)}`;
 
         const shareText = isLCL ? 
-            ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
-            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
+            `${formatNum(item.qty)} (${(volumeShareRatio * 100).toFixed(1)}% R/T)` : 
+            (item.maxLoad > 0 ? `${formatNum(item.qty)} (${(volumeShareRatio * 100).toFixed(1)}%)` : `${formatNum(item.qty)} (<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>)`);
 
         htmlVolume += `
             <tr>
@@ -2114,7 +2118,7 @@ function openPrintModal() {
     if (titleInp) {
         // 기존 입력값이 없으면 문서명 또는 기본값 세팅
         if (!titleInp.value || titleInp.value.trim() === '') {
-            titleInp.value = (state.doc && state.doc.title) ? state.doc.title : '실제 비용 기준 정산 및 품목별 원가 산출';
+            titleInp.value = (state.doc && state.doc.title) ? state.doc.title : '수입비용 정산 및 품목별 원가 산출';
         }
     }
     document.body.style.overflow = 'hidden';
@@ -2138,7 +2142,7 @@ function escapeHtml(str) {
 
 function executePrint() {
     const mode = document.querySelector('input[name="printMode"]:checked').value;
-    const customTitle = (document.getElementById('inpPrintTitle')?.value || '').trim() || '실제 비용 기준 정산 및 품목별 원가 산출';
+    const customTitle = (document.getElementById('inpPrintTitle')?.value || '').trim() || '수입비용 정산 및 품목별 원가 산출';
     
     let opts = { mode, customTitle };
     opts.includeEstimate = document.getElementById('chkPrintData_Estimate').checked;
@@ -2205,7 +2209,7 @@ function generatePrintTemplate(opts) {
     let html = `<div class="print-report" style="width: 100%; box-sizing: border-box; margin: 0; padding: 0;">`;
     
     // Header (Always show - 사용자가 지정한 제목 반영)
-    const reportTitle = escapeHtml(opts.customTitle || "실제 비용 기준 정산 및 품목별 원가 산출");
+    const reportTitle = escapeHtml(opts.customTitle || "수입비용 정산 및 품목별 원가 산출");
     html += `
         <div class="print-header">
             <h1 class="print-title">${reportTitle}</h1>
@@ -2228,7 +2232,7 @@ function generatePrintTemplate(opts) {
         }
 
         if (opts.showQuoteInfo) {
-            html += `<h3 class="sub-title">포워더 정보</h3>`;
+            html += `<h3 class="sub-title">선적 및 운송 정보</h3>`;
             if (opts.showQuoteName || opts.showQuoteDate || opts.showShipmentType || opts.showPolPod || opts.showForwarder || opts.showIncoterms) {
                 html += `<table class="print-info-table">`;
                 if (opts.showQuoteName) {
@@ -2269,9 +2273,9 @@ function generatePrintTemplate(opts) {
             <h2 class="section-title">${sectionNum++}. 종합 요약 대시보드</h2>
             <table class="print-dash-table">
                 <tr>
-                    ${opts.includeEstimate ? '<th>예상 총 견적비용</th>' : ''}
-                    ${opts.includeActual ? '<th>실제 총 투입비용</th>' : ''}
-                    ${(opts.includeEstimate && opts.includeActual) ? '<th>순수 물류비 증감</th><th>총 환차익 / 환차손</th>' : ''}
+                    ${opts.includeEstimate ? '<th>사전 견적 총액 (비용)</th>' : ''}
+                    ${opts.includeActual ? '<th>실제 정산 총액 (비용)</th>' : ''}
+                    ${(opts.includeEstimate && opts.includeActual) ? '<th>순수 비용 증감</th><th>환율 변동 손익</th>' : ''}
                 </tr>
                 <tr>
                     ${opts.includeEstimate ? `<td class="bold-value">${estStr}</td>` : ''}
@@ -2292,8 +2296,8 @@ function generatePrintTemplate(opts) {
                 <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
                     <th style="width:10%; text-align:center; padding:12px;">No.</th>
                     <th style="width:30%; text-align:left; padding:12px;">비용 구분</th>
-                    ${opts.includeEstimate ? '<th class="col-num" style="width:20%; padding:12px;">예상 견적 (KRW)</th>' : ''}
-                    ${opts.includeActual ? '<th class="col-num highlight-col" style="width:20%; padding:12px;">실제 청구 (KRW)</th>' : ''}
+                    ${opts.includeEstimate ? '<th class="col-num" style="width:20%; padding:12px;">사전 견적 (KRW)</th>' : ''}
+                    ${opts.includeActual ? '<th class="col-num highlight-col" style="width:20%; padding:12px;">실제 정산 (KRW)</th>' : ''}
                     ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num" style="width:20%; padding:12px;">증감액 (KRW)</th>' : ''}
                 </tr>
             </thead>
@@ -2338,7 +2342,7 @@ function generatePrintTemplate(opts) {
 
         html += `
         <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 비용 요약</h2>
+            <h2 class="section-title">${sectionNum++}. 비용 구분별 정산 요약표</h2>
             <table class="print-data-table">
                 ${sumHtml}
             </table>
@@ -2356,8 +2360,8 @@ function generatePrintTemplate(opts) {
                         <th rowspan="2" style="width: 5%;">No.</th>
                         <th rowspan="2" style="width: 15%;">구분</th>
                         <th rowspan="2" style="width: 20%;">항목명</th>
-                        ${opts.includeEstimate ? '<th colspan="3">예상 견적</th>' : ''}
-                        ${opts.includeActual ? '<th colspan="3">실제 청구</th>' : ''}
+                        ${opts.includeEstimate ? '<th colspan="3">사전 견적</th>' : ''}
+                        ${opts.includeActual ? '<th colspan="3">실제 정산</th>' : ''}
                         ${(opts.includeEstimate && opts.includeActual) ? '<th rowspan="2">증감액 (KRW)</th>' : ''}
                     </tr>
                     <tr>
@@ -2546,13 +2550,13 @@ function generatePrintTemplate(opts) {
                     <tr>
                         <th>품명</th>
                         <th class="col-num">수량 / 점유율</th>
-                        <th class="col-num">단위당 단가 (외화)</th>
-                        <th class="col-num">배분된 부대비용 (외화)</th>
+                        <th class="col-num">물품단가 (외화)</th>
+                        <th class="col-num">배분 부대비용 (외화)</th>
                         <th class="col-num">실수입원가 (외화)</th>
                         <th class="col-num">관세 (KRW)</th>
-                        ${opts.includeEstimate ? '<th class="col-num" style="background:#f0fdf4;">예상원가 (KRW)</th>' : ''}
-                        ${opts.includeActual ? '<th class="col-num highlight-col">실청구원가 (KRW)</th>' : ''}
-                        ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num">증감</th>' : ''}
+                        ${opts.includeEstimate ? '<th class="col-num" style="background:#f0fdf4;">사전 견적기준 원가 (KRW)</th>' : ''}
+                        ${opts.includeActual ? '<th class="col-num highlight-col">확정 수입원가 (KRW)</th>' : ''}
+                        ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num">견적기준 원가 대비 증감 (KRW)</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
