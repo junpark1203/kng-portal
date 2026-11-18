@@ -862,6 +862,95 @@ function formatNumber(num, decimals = 2) {
    즐겨찾기 (Bookmarks)
    ════════════════════════════════ */
 let userBookmarks = Array(10).fill(null);
+const VOLATILE_QUERY_PARAMS = new Set(['v', '_t', 'embed', 'author']);
+
+function escapeBookmarkHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function normalizeExternalUrl(url) {
+    const trimmed = String(url || '').trim();
+    if (!trimmed) return '';
+    if (/^(javascript|data|vbscript):/i.test(trimmed)) return '';
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
+        return 'https://' + trimmed;
+    }
+    return trimmed;
+}
+
+function stripVolatileParams(url) {
+    const raw = String(url || '').trim();
+    if (!raw || raw.startsWith('#')) return raw;
+
+    const hashIdx = raw.indexOf('#');
+    const baseAndQuery = hashIdx !== -1 ? raw.slice(0, hashIdx) : raw;
+    const hash = hashIdx !== -1 ? raw.slice(hashIdx) : '';
+
+    const qIdx = baseAndQuery.indexOf('?');
+    const pathPart = (qIdx !== -1 ? baseAndQuery.slice(0, qIdx) : baseAndQuery).replace(/^\.\//, '');
+    const queryPart = qIdx !== -1 ? baseAndQuery.slice(qIdx + 1) : '';
+
+    if (!queryPart) return pathPart + hash;
+
+    const params = new URLSearchParams(queryPart);
+    VOLATILE_QUERY_PARAMS.forEach(key => params.delete(key));
+    const filteredQuery = params.toString();
+
+    return pathPart + (filteredQuery ? '?' + filteredQuery : '') + hash;
+}
+
+function getBaseMenuPath(url) {
+    const raw = String(url || '').trim();
+    if (!raw || raw.startsWith('#')) return raw;
+    return raw.split('#')[0].split('?')[0].replace(/^\.\//, '');
+}
+
+function formatBookmarkIconClass(icon) {
+    const raw = String(icon || '').trim();
+    if (!raw) return 'bx bx-link';
+    const tokens = raw.split(/\s+/).filter(Boolean);
+    if (!tokens.includes('bx')) tokens.unshift('bx');
+    return escapeBookmarkHtml(tokens.join(' '));
+}
+
+function findParentMenuLink(targetUrl) {
+    if (!targetUrl) return null;
+    try {
+        if (!window.parent || !window.parent.document) return null;
+        const links = Array.from(window.parent.document.querySelectorAll('.sidebar .menu a[href]'))
+            .filter(link => {
+                const href = link.getAttribute('href');
+                return href && href !== '#' && !href.startsWith('javascript:') && link.getAttribute('data-nav') !== 'none';
+            });
+
+        // 1. 완전 일치
+        const exact = links.find(link => link.getAttribute('href') === targetUrl);
+        if (exact) return exact;
+
+        // 2. 캐시 버스팅/임베드 파라미터(?v, _t, embed, author) 제외 일치 (?menu=trade 등 기능성 쿼리 보존)
+        const targetStripped = stripVolatileParams(targetUrl);
+        if (targetStripped) {
+            const strippedMatch = links.find(link => stripVolatileParams(link.getAttribute('href')) === targetStripped);
+            if (strippedMatch) return strippedMatch;
+        }
+
+        // 3. 순수 파일 경로 일치 (과거 #register 해시 등 흡수)
+        const targetBase = getBaseMenuPath(targetUrl);
+        if (targetBase) {
+            const baseMatch = links.find(link => getBaseMenuPath(link.getAttribute('href')) === targetBase);
+            if (baseMatch) return baseMatch;
+        }
+    } catch (e) {
+        console.warn('부모 사이드바 메뉴 탐색 실패:', e);
+    }
+    return null;
+}
 
 async function loadBookmarks() {
     try {
@@ -890,14 +979,22 @@ function renderBookmarks() {
     
     grid.innerHTML = userBookmarks.map((bm, index) => {
         if (bm && bm.url) {
+            const isExternal = bm.type === 'external';
+            const externalUrl = isExternal ? normalizeExternalUrl(bm.url) : '';
+            const hrefAttr = escapeBookmarkHtml(isExternal ? (externalUrl || '#') : '#');
+            const targetAttr = isExternal ? '_blank' : '_self';
+            const relAttr = isExternal ? ' rel="noopener noreferrer"' : '';
+            const iconClass = formatBookmarkIconClass(bm.icon);
+            const titleHtml = escapeBookmarkHtml(bm.title || '새 탭');
+
             // Filled slot
             return `
-                <div class="bookmark-item filled" draggable="true" data-index="${index}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
-                    <a href="${bm.type === 'external' ? bm.url : '#'}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-link" onclick="handleBookmarkClick(event, this, ${index})">
-                        <i class='bx ${bm.icon || 'bx-link'}'></i>
-                        <span>${bm.title}</span>
+                <div class="bookmark-item filled" draggable="true" data-index="${index}" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                    <a href="${hrefAttr}" target="${targetAttr}"${relAttr} class="bookmark-link" onclick="handleBookmarkClick(event, this, ${index})">
+                        <i class='${iconClass}'></i>
+                        <span>${titleHtml}</span>
                     </a>
-                    <button class="bookmark-edit-btn" onclick="openBookmarkModal(${index}, true)" title="수정/삭제" aria-label="수정/삭제">
+                    <button type="button" class="bookmark-edit-btn" onclick="event.stopPropagation(); openBookmarkModal(${index}, true)" title="수정/삭제" aria-label="수정/삭제">
                         <i class='bx bx-dots-vertical-rounded'></i>
                     </button>
                 </div>
@@ -922,15 +1019,34 @@ function handleBookmarkClick(e, el, index) {
     }
     
     const bm = userBookmarks[index];
-    if (bm && bm.type === 'internal') {
+    if (!bm || !bm.url) return;
+
+    if (bm.type === 'external') {
+        const externalUrl = normalizeExternalUrl(bm.url);
+        if (!externalUrl) {
+            e.preventDefault();
+            alert('유효하지 않은 외부 웹 주소입니다.');
+        }
+        return;
+    }
+
+    if (bm.type === 'internal') {
         e.preventDefault();
-        if (window.parent && window.parent.document) {
-            const parentLink = window.parent.document.querySelector(`.sidebar .menu a[href="${bm.url}"]`);
-            if (parentLink) {
-                parentLink.click();
+        const parentLink = findParentMenuLink(bm.url);
+        if (parentLink) {
+            if (parentLink.getAttribute('target') === '_blank') {
+                window.open(parentLink.href, '_blank', 'noopener,noreferrer');
             } else {
-                console.warn('Parent link not found for URL:', bm.url);
+                parentLink.click();
             }
+            return;
+        }
+
+        // 사이드바에 매칭되는 링크가 없을 때도 포털 탭/직접 이동 폴백
+        if (window.parent && window.parent !== window && typeof window.parent.openPortalTab === 'function') {
+            window.parent.openPortalTab(bm.url, bm.title, bm.icon || 'bx bx-link', 'iframe');
+        } else {
+            window.location.href = '../../' + String(bm.url).trim().replace(/^\.\//, '');
         }
     }
 }
@@ -944,6 +1060,13 @@ function handleDragStart(e) {
     draggedBookmarkIndex = parseInt(e.currentTarget.dataset.index);
     e.dataTransfer.effectAllowed = 'move';
     e.currentTarget.style.opacity = '0.4';
+}
+
+function handleDragEnd(e) {
+    document.querySelectorAll('.bookmark-item').forEach(el => {
+        el.style.opacity = '1';
+    });
+    draggedBookmarkIndex = null;
 }
 
 function handleDragOver(e) {
@@ -984,29 +1107,97 @@ document.addEventListener('contextmenu', function(e) {
 });
 
 let internalMenus = [];
+
+function getMenuCategoryName(link) {
+    const group = link.closest('.menu-group');
+    if (group) {
+        const toggleSpan = group.querySelector(':scope > .menu-group-toggle span');
+        if (toggleSpan && toggleSpan.textContent.trim()) {
+            return toggleSpan.textContent.trim();
+        }
+    }
+    let prev = link.previousElementSibling;
+    while (prev) {
+        if (prev.classList && prev.classList.contains('menu-label')) {
+            return prev.textContent.trim() || '기타';
+        }
+        prev = prev.previousElementSibling;
+    }
+    return '기타';
+}
+
 function populateInternalMenus() {
+    const nextMenus = [];
+    const seenKeys = new Set();
     try {
         // 부모 창(index.html)에서 메뉴 읽어오기
         if (window.parent && window.parent.document) {
-            const links = window.parent.document.querySelectorAll('.sidebar .menu a[data-nav="iframe"]');
-            internalMenus = Array.from(links).map(link => {
+            const links = window.parent.document.querySelectorAll('.sidebar .menu a[data-nav="iframe"], .sidebar .menu a[target="_blank"]');
+            links.forEach(link => {
+                const url = link.getAttribute('href');
+                if (!url || url === '#' || url.startsWith('javascript:')) return;
+                if (getBaseMenuPath(url) === '05_Management/dashboard/index.html') return;
+
+                // 권한 등으로 숨겨진 메뉴 제외
+                const parentGroup = link.closest('.menu-group');
+                if (link.style.display === 'none' || (parentGroup && parentGroup.style.display === 'none')) return;
+
+                const dedupKey = stripVolatileParams(url);
+                if (seenKeys.has(dedupKey)) return;
+                seenKeys.add(dedupKey);
+
                 const icon = link.querySelector('i') ? link.querySelector('i').className : 'bx bx-link';
                 const text = link.querySelector('span') ? link.querySelector('span').textContent.trim() : link.textContent.trim();
-                const url = link.getAttribute('href');
-                return { title: text, url: url, icon: icon };
+                const category = getMenuCategoryName(link);
+                nextMenus.push({ title: text, url: url, icon: icon, category: category });
             });
         }
     } catch (e) {
         console.error('메뉴 로드 실패 (CORS 등):', e);
     }
 
+    internalMenus = nextMenus;
+
     const select = document.getElementById('bmInternalSelect');
     if (select) {
-        select.innerHTML = internalMenus.map(m => `<option value="${m.url}">${m.title}</option>`).join('');
+        const grouped = new Map();
+        internalMenus.forEach(m => {
+            const cat = m.category || '기타';
+            if (!grouped.has(cat)) grouped.set(cat, []);
+            grouped.get(cat).push(m);
+        });
+
+        let optionsHtml = '';
+        grouped.forEach((items, cat) => {
+            optionsHtml += `<optgroup label="${escapeBookmarkHtml(cat)}">`;
+            optionsHtml += items.map(m => `<option value="${escapeBookmarkHtml(m.url)}">${escapeBookmarkHtml(m.title)}</option>`).join('');
+            optionsHtml += `</optgroup>`;
+        });
+        select.innerHTML = optionsHtml;
     }
 }
 
+function findMatchingInternalMenuUrl(targetUrl) {
+    if (!targetUrl || internalMenus.length === 0) return '';
+    const exact = internalMenus.find(m => m.url === targetUrl);
+    if (exact) return exact.url;
+
+    const targetStripped = stripVolatileParams(targetUrl);
+    if (targetStripped) {
+        const strippedMatch = internalMenus.find(m => stripVolatileParams(m.url) === targetStripped);
+        if (strippedMatch) return strippedMatch.url;
+    }
+
+    const targetBase = getBaseMenuPath(targetUrl);
+    if (targetBase) {
+        const baseMatch = internalMenus.find(m => getBaseMenuPath(m.url) === targetBase);
+        if (baseMatch) return baseMatch.url;
+    }
+    return '';
+}
+
 function openBookmarkModal(index, isEdit = false) {
+    populateInternalMenus();
     document.getElementById('bmSlotIndex').value = index;
     const modal = document.getElementById('bookmarkModalOverlay');
     const form = document.getElementById('bookmarkForm');
@@ -1023,7 +1214,10 @@ function openBookmarkModal(index, isEdit = false) {
             document.getElementById('bmExternalTitle').value = bm.title;
         } else {
             document.querySelector('input[name="bmType"][value="internal"]').checked = true;
-            document.getElementById('bmInternalSelect').value = bm.url;
+            const matchedUrl = findMatchingInternalMenuUrl(bm.url);
+            if (matchedUrl) {
+                document.getElementById('bmInternalSelect').value = matchedUrl;
+            }
         }
     } else {
         btnDelete.classList.add('hidden');
@@ -1091,8 +1285,10 @@ document.getElementById('bookmarkForm')?.addEventListener('submit', async (e) =>
         bm.title = menuObj.title;
         bm.icon = menuObj.icon;
     } else {
-        bm.url = document.getElementById('bmExternalUrl').value;
-        bm.title = document.getElementById('bmExternalTitle').value || '새 탭';
+        const normalizedUrl = normalizeExternalUrl(document.getElementById('bmExternalUrl').value);
+        if (!normalizedUrl) return alert('유효한 웹 주소(URL)를 입력해주세요.');
+        bm.url = normalizedUrl;
+        bm.title = document.getElementById('bmExternalTitle').value.trim() || '새 탭';
         // domain 추출해서 첫글자 아이콘이나 기본 아이콘 사용
         bm.icon = 'bx-globe';
     }

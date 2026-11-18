@@ -938,6 +938,7 @@ body {
 
 .bookmark-item.filled {
     border-style: solid;
+    padding: 0;
 }
 
 .bookmark-item i {
@@ -967,6 +968,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    padding: 16px 8px;
     text-decoration: none;
     color: var(--text-primary);
     width: 100%;
@@ -977,6 +979,7 @@ body {
     position: absolute;
     top: 4px;
     right: 4px;
+    z-index: 2;
     background: transparent;
     border: none;
     color: var(--text-tertiary);
