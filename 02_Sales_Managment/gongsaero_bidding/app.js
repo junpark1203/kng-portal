@@ -108,6 +108,76 @@ function formatFileSize(bytes) {
     return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function formatAttachmentLabel(att, fallbackIdx = 0) {
+    if (!att) return `사진 ${fallbackIdx + 1}`;
+    const itemTag = att.targetItemNo
+        ? `[품목 ${att.targetItemNo}${att.targetItemName ? ': ' + att.targetItemName : ''}]`
+        : '';
+    const cap = (att.caption || '').trim();
+    if (itemTag && cap) return `${itemTag} ${cap}`;
+    if (itemTag) return itemTag;
+    if (cap) return cap;
+    return att.originalName || att.filename || `사진 ${fallbackIdx + 1}`;
+}
+
+async function loadAttachmentImageForExcel(att) {
+    let blob = null;
+    if (att && att.isNew && att.file instanceof Blob) {
+        blob = att.file;
+    } else {
+        const url = resolveAttachmentUrl(att);
+        if (!url) throw new Error('이미지 경로가 없습니다.');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`이미지 로드 실패 (${res.status})`);
+        blob = await res.blob();
+    }
+
+    const objUrl = URL.createObjectURL(blob);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = () => reject(new Error('이미지 디코딩 실패'));
+            el.src = objUrl;
+        });
+
+        const natW = img.naturalWidth || 640;
+        const natH = img.naturalHeight || 420;
+        const mime = (blob.type || att.mimeType || '').toLowerCase();
+        const lowerName = (att.originalName || att.filename || '').toLowerCase();
+
+        let extension = 'png';
+        let buffer = null;
+
+        if (mime === 'image/png' || lowerName.endsWith('.png')) {
+            extension = 'png';
+            buffer = await blob.arrayBuffer();
+        } else if (mime === 'image/jpeg' || mime === 'image/jpg' || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+            extension = 'jpeg';
+            buffer = await blob.arrayBuffer();
+        } else if (mime === 'image/gif' || lowerName.endsWith('.gif')) {
+            extension = 'gif';
+            buffer = await blob.arrayBuffer();
+        } else {
+            // WebP/BMP 등 엑셀 비호환 포맷은 원본 해상도 그대로 무손실 PNG 변환하여 삽입
+            const canvas = document.createElement('canvas');
+            canvas.width = natW;
+            canvas.height = natH;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, natW, natH);
+            const pngBlob = await new Promise((resolve, reject) => {
+                canvas.toBlob(b => (b ? resolve(b) : reject(new Error('PNG 변환 실패'))), 'image/png');
+            });
+            extension = 'png';
+            buffer = await pngBlob.arrayBuffer();
+        }
+
+        return { buffer, extension, natW, natH };
+    } finally {
+        URL.revokeObjectURL(objUrl);
+    }
+}
+
 // ── What-If 가상 마진 및 전략 진단 산출 엔진 ──
 function calcWhatIfMetrics(ourBid, winningBid, buyCost, shippingFee, status = '미선정') {
     if (status === '유찰') {
@@ -218,6 +288,7 @@ const app = {
     lightboxIndex: 0,
     lightboxZoomOriginal: false,
     isSavingBid: false,
+    _rowUidSeq: 0,
 
     init: async function() {
         const modalEl = document.getElementById('bidModal');
@@ -998,8 +1069,26 @@ const app = {
             }
 
             this.clearModalAttachments();
+            const domRows = Array.from(document.querySelectorAll('#itemsInputTbody tr'));
             this.modalAttachments = Array.isArray(bid.attachments)
-                ? bid.attachments.map(att => ({ ...att, isNew: false }))
+                ? bid.attachments.map(att => {
+                    let rowUid = '';
+                    const itemNo = Number(att.targetItemNo) || 0;
+                    if (itemNo >= 1 && itemNo <= domRows.length) {
+                        rowUid = domRows[itemNo - 1].dataset.rowUid || '';
+                    } else if (att.targetItemName) {
+                        const matched = domRows.find(r => r.querySelector('.item-name')?.value.trim() === att.targetItemName);
+                        if (matched) rowUid = matched.dataset.rowUid || '';
+                    }
+                    return {
+                        ...att,
+                        rowUid,
+                        targetItemNo: itemNo || null,
+                        targetItemName: att.targetItemName || '',
+                        caption: att.caption || '',
+                        isNew: false
+                    };
+                })
                 : [];
             this.renderModalAttachments();
 
@@ -1156,21 +1245,22 @@ const app = {
         const no = rowNumber || (tbody.children.length + 1);
         const tr = document.createElement('tr');
         tr.dataset.itemNo = no;
+        tr.dataset.rowUid = data._rowUid || `ROW-${++this._rowUidSeq}`;
 
         const qty = data.qty !== undefined ? data.qty : 1;
         const buyPrice = data.buy_price || 0;
         const marginRate = data.margin_rate !== undefined ? data.margin_rate : 15;
 
         let settlementPrice = data.settlement_price || Math.round(buyPrice * (1 + marginRate / 100));
-        let fee = calcGongsaeroFee(settlementPrice);
-        let deliveryPrice = data.delivery_price || (settlementPrice + fee);
+        let deliveryPrice = data.delivery_price || (settlementPrice + calcGongsaeroFee(settlementPrice));
+        let fee = data.delivery_price ? Math.max(0, deliveryPrice - settlementPrice) : calcGongsaeroFee(settlementPrice);
         let profit = (settlementPrice - buyPrice) * qty;
 
         tr.innerHTML = `
             <td class="text-center fw-bold text-muted row-num">${no}</td>
-            <td><input type="text" class="item-name form-control" value="${data.item_name || ''}" placeholder="품목명" required></td>
-            <td><input type="text" class="item-spec form-control" value="${data.spec || ''}" placeholder="규격"></td>
-            <td><input type="text" class="item-unit form-control text-center" value="${data.unit || 'EA'}"></td>
+            <td><input type="text" class="item-name form-control" value="${escapeHtml(data.item_name || '')}" placeholder="품목명" oninput="app.refreshPhotoItemSelectOptions()" required></td>
+            <td><input type="text" class="item-spec form-control" value="${escapeHtml(data.spec || '')}" placeholder="규격" oninput="app.refreshPhotoItemSelectOptions()"></td>
+            <td><input type="text" class="item-unit form-control text-center" value="${escapeHtml(data.unit || 'EA')}"></td>
             <td><input type="number" class="item-qty form-control text-end" value="${qty}" min="0" step="any" oninput="app.recalcRow(this)"></td>
             <td><input type="number" class="item-buy form-control text-end" value="${buyPrice}" min="0" oninput="app.recalcRow(this, 'buy')"></td>
             <td><input type="number" class="item-margin form-control text-end" value="${marginRate}" step="0.5" oninput="app.recalcRow(this, 'margin')"></td>
@@ -1178,7 +1268,7 @@ const app = {
             <td class="bg-light"><input type="number" class="item-fee form-control text-end text-danger" value="${fee}" readonly></td>
             <td class="bg-light"><input type="number" class="item-delivery form-control text-end text-primary fw-bold" value="${deliveryPrice}" min="0" oninput="app.recalcRow(this, 'delivery')"></td>
             <td class="text-end fw-bold item-profit-cell text-success bg-light">${Number(profit).toLocaleString()}원</td>
-            <td><input type="text" class="item-note form-control" value="${data.item_note || data.origin_brand || ''}" placeholder="비고"></td>
+            <td><input type="text" class="item-note form-control" value="${escapeHtml(data.item_note || data.origin_brand || '')}" placeholder="비고"></td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-link text-danger p-0 lh-1" onclick="app.removeItemRow(this)" title="행 삭제">
                     <i class='bx bx-x' style="font-size: 15px; line-height: 1;"></i>
@@ -1187,17 +1277,29 @@ const app = {
         `;
 
         tbody.appendChild(tr);
+        this.refreshPhotoItemSelectOptions();
         this.updateSummaryMetrics();
     },
 
     removeItemRow: function(btn) {
         const tr = btn.closest('tr');
+        const removedUid = tr ? tr.dataset.rowUid : '';
         tr.remove();
         const rows = document.querySelectorAll('#itemsInputTbody tr');
         rows.forEach((r, idx) => {
             r.querySelector('.row-num').innerText = idx + 1;
             r.dataset.itemNo = idx + 1;
         });
+        if (removedUid && Array.isArray(this.modalAttachments)) {
+            this.modalAttachments.forEach(att => {
+                if (att.rowUid === removedUid) {
+                    att.rowUid = '';
+                    att.targetItemNo = null;
+                }
+            });
+        }
+        this.syncAttachmentTargetsFromRows();
+        this.refreshPhotoItemSelectOptions();
         this.updateSummaryMetrics();
     },
 
@@ -1420,6 +1522,10 @@ const app = {
                 originalName: file.name || 'image.png',
                 mimeType: file.type || 'image/jpeg',
                 size: file.size || 0,
+                rowUid: '',
+                targetItemNo: null,
+                targetItemName: '',
+                caption: '',
                 isNew: true
             });
             added++;
@@ -1436,13 +1542,128 @@ const app = {
         const idx = this.modalAttachments.findIndex(a => a.id === attId);
         if (idx === -1) return;
         const target = this.modalAttachments[idx];
+        const prevRowUid = target.rowUid || '';
         if (target && target.previewUrl) {
             try { URL.revokeObjectURL(target.previewUrl); } catch (e) {}
         }
         this.modalAttachments.splice(idx, 1);
+        if (prevRowUid) {
+            this.syncRowAttachmentNote(prevRowUid);
+        }
         const bidModalEl = document.getElementById('bidModal');
         if (bidModalEl) bidModalEl._userEdited = true;
         this.renderModalAttachments();
+    },
+
+    getModalItemRowChoices: function() {
+        const rows = Array.from(document.querySelectorAll('#itemsInputTbody tr'));
+        return rows.map((tr, idx) => {
+            const uid = tr.dataset.rowUid || '';
+            const name = tr.querySelector('.item-name')?.value.trim() || '(품목명 미입력)';
+            const spec = tr.querySelector('.item-spec')?.value.trim() || '';
+            return {
+                uid,
+                no: idx + 1,
+                name,
+                spec,
+                label: `[품목 ${idx + 1}] ${name}${spec ? ` (${spec})` : ''}`
+            };
+        });
+    },
+
+    refreshPhotoItemSelectOptions: function() {
+        const stripEl = document.getElementById('modalPhotoStrip');
+        if (!stripEl || this.modalAttachments.length === 0) return;
+        const choices = this.getModalItemRowChoices();
+
+        stripEl.querySelectorAll('.bid-photo-item-select').forEach(sel => {
+            const attId = sel.dataset.attId;
+            const att = this.modalAttachments.find(a => a.id === attId);
+            const currentUid = att ? (att.rowUid || '') : sel.value;
+
+            sel.innerHTML = `<option value="">📌 공고 공통 (전체 참고)</option>` +
+                choices.map(c => `<option value="${escapeHtml(c.uid)}" ${c.uid === currentUid ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
+        });
+    },
+
+    handlePhotoItemSelectChange: function(attId, newRowUid) {
+        const att = this.modalAttachments.find(a => a.id === attId);
+        if (!att) return;
+        const prevRowUid = att.rowUid || '';
+        att.rowUid = newRowUid || '';
+
+        this.syncAttachmentTargetsFromRows();
+        if (prevRowUid && prevRowUid !== att.rowUid) {
+            this.syncRowAttachmentNote(prevRowUid);
+        }
+        if (att.rowUid) {
+            this.syncRowAttachmentNote(att.rowUid);
+        }
+
+        const bidModalEl = document.getElementById('bidModal');
+        if (bidModalEl) bidModalEl._userEdited = true;
+    },
+
+    handlePhotoCaptionInput: function(attId, value) {
+        const att = this.modalAttachments.find(a => a.id === attId);
+        if (!att) return;
+        att.caption = value;
+        const bidModalEl = document.getElementById('bidModal');
+        if (bidModalEl) bidModalEl._userEdited = true;
+    },
+
+    syncRowAttachmentNote: function(rowUid) {
+        if (!rowUid) return;
+        const tr = document.querySelector(`#itemsInputTbody tr[data-row-uid="${rowUid}"]`);
+        if (!tr) return;
+        const noteInput = tr.querySelector('.item-note');
+        if (!noteInput) return;
+
+        const linkedCount = this.modalAttachments.filter(a => a.rowUid === rowUid).length;
+        const cur = noteInput.value.trim();
+
+        if (linkedCount > 0) {
+            if (!cur) {
+                noteInput.value = '첨부파일 참고';
+            } else if (!cur.includes('첨부')) {
+                noteInput.value = `${cur} (첨부파일 참고)`;
+            }
+        } else {
+            if (cur === '첨부파일 참고') {
+                noteInput.value = '';
+            } else if (cur.endsWith('(첨부파일 참고)')) {
+                noteInput.value = cur.slice(0, -'(첨부파일 참고)'.length).trim();
+            }
+        }
+    },
+
+    syncAttachmentTargetsFromRows: function() {
+        const rows = Array.from(document.querySelectorAll('#itemsInputTbody tr'));
+        const rowMap = new Map();
+        rows.forEach((tr, idx) => {
+            const uid = tr.dataset.rowUid || '';
+            if (uid) {
+                rowMap.set(uid, {
+                    tr,
+                    no: idx + 1,
+                    name: tr.querySelector('.item-name')?.value.trim() || '',
+                    spec: tr.querySelector('.item-spec')?.value.trim() || ''
+                });
+            }
+        });
+
+        this.modalAttachments.forEach(att => {
+            if (att.rowUid && rowMap.has(att.rowUid)) {
+                const info = rowMap.get(att.rowUid);
+                att.targetItemNo = info.no;
+                att.targetItemName = info.name;
+                this.syncRowAttachmentNote(att.rowUid);
+            } else {
+                att.rowUid = '';
+                att.targetItemNo = null;
+                att.targetItemName = '';
+            }
+        });
     },
 
     renderModalAttachments: function() {
@@ -1464,22 +1685,34 @@ const app = {
             return;
         }
 
+        const choices = this.getModalItemRowChoices();
         stripEl.style.display = 'flex';
         stripEl.innerHTML = this.modalAttachments.map((att, idx) => {
             const imgSrc = resolveAttachmentUrl(att);
             const name = att.originalName || att.filename || `사진 ${idx + 1}`;
             const sizeText = formatFileSize(att.size);
-            const tooltip = sizeText ? `${name} (${sizeText})` : name;
+            const tooltip = sizeText ? `클릭하여 확대 보기: ${name} (${sizeText})` : `클릭하여 확대 보기: ${name}`;
+            const currentUid = att.rowUid || '';
+            const selectOptions = `<option value="">📌 공고 공통 (전체 참고)</option>` +
+                choices.map(c => `<option value="${escapeHtml(c.uid)}" ${c.uid === currentUid ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
+
             return `
-                <div class="bid-photo-card" title="${escapeHtml(tooltip)}">
-                    ${att.isNew ? '<span class="bid-photo-badge-new">신규</span>' : ''}
-                    <button type="button" class="bid-photo-remove-btn" onclick="app.removeModalAttachment('${escapeHtml(att.id)}')" title="첨부 취소/삭제">
-                        <i class='bx bx-x'></i>
-                    </button>
-                    <div class="bid-photo-thumb-wrap" onclick="app.openModalPhotoLightbox(${idx})">
+                <div class="bid-photo-card">
+                    <div class="bid-photo-thumb-wrap" onclick="app.openModalPhotoLightbox(${idx})" title="${escapeHtml(tooltip)}">
+                        ${att.isNew ? '<span class="bid-photo-badge-new">신규</span>' : ''}
                         <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(name)}" loading="lazy">
                     </div>
-                    <div class="bid-photo-meta">${escapeHtml(name)}</div>
+                    <div class="bid-photo-controls">
+                        <div class="bid-photo-top-row">
+                            <select class="bid-photo-item-select" data-att-id="${escapeHtml(att.id)}" onchange="app.handlePhotoItemSelectChange('${escapeHtml(att.id)}', this.value)" title="이 사진이 해당하는 품목을 선택하면 해당 품목 비고에 '첨부파일 참고'가 자동 입력됩니다">
+                                ${selectOptions}
+                            </select>
+                            <button type="button" class="bid-photo-remove-btn" onclick="app.removeModalAttachment('${escapeHtml(att.id)}')" title="첨부 취소/삭제">
+                                <i class='bx bx-x'></i>
+                            </button>
+                        </div>
+                        <input type="text" class="bid-photo-caption-input" value="${escapeHtml(att.caption || '')}" placeholder="품목/사진 설명 입력 (선택)" oninput="app.handlePhotoCaptionInput('${escapeHtml(att.id)}', this.value)">
+                    </div>
                 </div>
             `;
         }).join('');
@@ -1487,6 +1720,7 @@ const app = {
 
     openModalPhotoLightbox: function(index = 0) {
         if (!this.modalAttachments || this.modalAttachments.length === 0) return;
+        this.syncAttachmentTargetsFromRows();
         this.openLightbox(this.modalAttachments, index);
     },
 
@@ -1514,7 +1748,8 @@ const app = {
         if (total === 0) return;
         const current = this.lightboxPhotos[this.lightboxIndex];
         const imgSrc = resolveAttachmentUrl(current);
-        const name = current.originalName || current.filename || `사진 ${this.lightboxIndex + 1}`;
+        const rawFileName = current.originalName || current.filename || `사진_${this.lightboxIndex + 1}.png`;
+        const displayLabel = formatAttachmentLabel(current, this.lightboxIndex);
         const sizeStr = formatFileSize(current.size);
 
         const imgEl = document.getElementById('lightboxImageEl');
@@ -1530,11 +1765,11 @@ const app = {
         if (imgEl) imgEl.src = imgSrc;
         if (stageEl) stageEl.classList.toggle('zoom-original', this.lightboxZoomOriginal);
         if (idxBadge) idxBadge.innerText = `${this.lightboxIndex + 1} / ${total}`;
-        if (nameEl) nameEl.innerText = name;
+        if (nameEl) nameEl.innerText = displayLabel;
         if (sizeEl) sizeEl.innerText = sizeStr ? `(${sizeStr})` : '';
         if (dlBtn) {
             dlBtn.href = imgSrc;
-            dlBtn.setAttribute('download', name);
+            dlBtn.setAttribute('download', rawFileName);
         }
         if (zoomBtn) {
             zoomBtn.innerHTML = this.lightboxZoomOriginal
@@ -1575,6 +1810,7 @@ const app = {
     // ── 공고 저장 (POST / PUT + 지연 원본 사진 업로드) ──
     saveBid: async function() {
         if (this.isSavingBid) return;
+        this.syncAttachmentTargetsFromRows();
         const bidId = document.getElementById('editBidId').value;
         const title = document.getElementById('formTitle').value.trim();
         if (!title) {
@@ -1661,10 +1897,21 @@ const app = {
             let newIdx = 0;
             const finalAttachments = this.modalAttachments.map(att => {
                 if (att.isNew) {
-                    return uploadedNewFiles[newIdx++];
+                    const uploaded = uploadedNewFiles[newIdx++];
+                    return uploaded ? {
+                        ...uploaded,
+                        targetItemNo: att.targetItemNo || null,
+                        targetItemName: att.targetItemName || '',
+                        caption: (att.caption || '').trim()
+                    } : null;
                 }
-                const { isNew, previewUrl, file, ...cleanAtt } = att;
-                return cleanAtt;
+                const { isNew, previewUrl, file, rowUid, ...cleanAtt } = att;
+                return {
+                    ...cleanAtt,
+                    targetItemNo: att.targetItemNo || null,
+                    targetItemName: att.targetItemName || '',
+                    caption: (att.caption || '').trim()
+                };
             }).filter(Boolean);
 
             const payload = {
@@ -1801,50 +2048,831 @@ const app = {
         });
     },
 
-    // ── 견적서 엑셀 다운로드 ──
-    downloadTenderExcel: function() {
-        if (typeof XLSX === 'undefined') {
-            alert('Excel 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    // ── 담당자 배포용 양방향 자동계산 + 시트잠금(2833) 엑셀 다운로드 ──
+    downloadTenderExcel: async function() {
+        if (typeof ExcelJS === 'undefined') {
+            alert('ExcelJS 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
             return;
         }
 
+        this.syncAttachmentTargetsFromRows();
+
         const title = document.getElementById('formTitle').value.trim() || '공새로_입찰_투찰서';
+        const clientName = document.getElementById('formClientName').value.trim() || '-';
+        const bidDeadline = (document.getElementById('formBidDeadline').value || '').replace('T', ' ') || '-';
+        const deliveryDeadline = (document.getElementById('formDeliveryDeadline').value || '').replace('T', ' ') || '-';
+        const deliveryAddress = document.getElementById('formDeliveryAddress').value.trim() || '-';
+        const deliveryCondition = document.getElementById('formDeliveryCondition').value || '하차도';
+        const shippingIncluded = document.getElementById('formShippingIncluded').value === '1';
+        const shippingFee = parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0;
+        const managerInfo = document.getElementById('formManagerInfo').value.trim() || '';
+        const remarks = document.getElementById('formRemarks').value.trim() || '';
+
         const rows = document.querySelectorAll('#itemsInputTbody tr');
         if (rows.length === 0) {
             alert('다운로드할 품목이 없습니다.');
             return;
         }
 
-        const data = [
-            ['공사/공고명', title],
-            ['발주처', document.getElementById('formClientName').value || ''],
-            ['납품주소', document.getElementById('formDeliveryAddress').value || ''],
-            ['인도조건', document.getElementById('formDeliveryCondition').value || ''],
-            [],
-            ['No', '품목명', '규격', '단위', '수량', 'K&G 매입가', '마진율(%)', '정산단가', '수수료(6%)', '납품단가', '순이익', '비고']
-        ];
+        const btn = document.getElementById('btnDownloadTenderExcel');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 엑셀 생성 중...`;
+        }
 
-        rows.forEach((r, idx) => {
-            data.push([
-                idx + 1,
-                r.querySelector('.item-name').value,
-                r.querySelector('.item-spec').value,
-                r.querySelector('.item-unit').value,
-                parseFloat(r.querySelector('.item-qty').value) || 0,
-                parseFloat(r.querySelector('.item-buy').value) || 0,
-                parseFloat(r.querySelector('.item-margin').value) || 0,
-                parseFloat(r.querySelector('.item-settlement').value) || 0,
-                parseFloat(r.querySelector('.item-fee').value) || 0,
-                parseFloat(r.querySelector('.item-delivery').value) || 0,
-                (parseFloat(r.querySelector('.item-settlement').value) - parseFloat(r.querySelector('.item-buy').value)) * (parseFloat(r.querySelector('.item-qty').value) || 0),
-                r.querySelector('.item-note').value
-            ]);
-        });
+        try {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'K&G Portal - 공새로 입찰관리';
+            wb.created = new Date();
 
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '투찰내역');
-        XLSX.writeFile(wb, `${title}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            const ws = wb.addWorksheet('투찰단가_산출표', {
+                views: [{ state: 'frozen', ySplit: 7 }]
+            });
+
+            ws.columns = [
+                { key: 'no', width: 6 },
+                { key: 'name', width: 28 },
+                { key: 'spec', width: 18 },
+                { key: 'unit', width: 8 },
+                { key: 'qty', width: 10 },
+                { key: 'buy', width: 15 },
+                { key: 'marginInput', width: 16 },
+                { key: 'directDelivery', width: 18 },
+                { key: 'settlement', width: 15 },
+                { key: 'fee', width: 14 },
+                { key: 'finalDelivery', width: 16 },
+                { key: 'finalMargin', width: 14 },
+                { key: 'totalDelivery', width: 17 },
+                { key: 'profit', width: 16 },
+                { key: 'note', width: 22 }
+            ];
+
+            const thinBorder = {
+                top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+
+            // 1행: 타이틀 배너
+            ws.mergeCells('A1:O1');
+            const titleCell = ws.getCell('A1');
+            titleCell.value = '공새로 입찰관리 — 담당자 매입원가 및 투찰단가 산출서';
+            titleCell.font = { name: '맑은 고딕', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+            titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+            ws.getRow(1).height = 28;
+
+            // 2행: 작성 안내 배너 (첨부 사진 유무 안내 포함)
+            ws.mergeCells('A2:O2');
+            const guideCell = ws.getCell('A2');
+            const photoGuideSuffix = this.modalAttachments.length > 0
+                ? `  |  📎 첨부 사진 ${this.modalAttachments.length}장 포함 → 하단 [첨부사진] 시트 탭을 확인하세요!`
+                : '';
+            guideCell.value = `💡 작성 안내: 노란색·하늘색 칸만 입력 가능합니다. ① [K&G 매입가 + 희망마진(%)]을 적으면 최종 투찰단가가 자동 계산되며, ② [직접지정 투찰단가(하늘색)]에 금액을 적으면 해당 단가가 우선 적용되어 최종 마진율이 자동 역산됩니다.${photoGuideSuffix}`;
+            guideCell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF1E3A8A' } };
+            guideCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+            guideCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+            guideCell.border = thinBorder;
+            ws.getRow(2).height = 22;
+
+            const styleMetaLabel = (cell) => {
+                cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = thinBorder;
+            };
+            const styleMetaVal = (cell) => {
+                cell.font = { name: '맑은 고딕', size: 9.5, color: { argb: 'FF0F172A' } };
+                cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                cell.border = thinBorder;
+            };
+
+            // 3행: 공고명 / 발주처 / 공새로 수수료율(6% 고정 잠금 셀: O3)
+            ws.mergeCells('A3:B3');
+            ws.mergeCells('C3:I3');
+            ws.mergeCells('J3:J3');
+            ws.mergeCells('K3:M3');
+            ws.getCell('A3').value = '공사 / 공고명';
+            ws.getCell('C3').value = title;
+            ws.getCell('J3').value = '발주처';
+            ws.getCell('K3').value = clientName;
+            ws.getCell('N3').value = '공새로 수수료율 🔒';
+            ws.getCell('O3').value = 0.06;
+
+            styleMetaLabel(ws.getCell('A3'));
+            styleMetaVal(ws.getCell('C3'));
+            ws.getCell('C3').font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+            styleMetaLabel(ws.getCell('J3'));
+            styleMetaVal(ws.getCell('K3'));
+
+            ws.getCell('N3').font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF991B1B' } };
+            ws.getCell('N3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+            ws.getCell('N3').alignment = { vertical: 'middle', horizontal: 'center' };
+            ws.getCell('O3').numFmt = '0.0%';
+            ws.getCell('O3').font = { name: '맑은 고딕', size: 10.5, bold: true, color: { argb: 'FFDC2626' } };
+            ws.getCell('O3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+            ws.getCell('O3').alignment = { vertical: 'middle', horizontal: 'right' };
+            ws.getRow(3).height = 21;
+
+            // 4행: 투찰 마감 / 납품 기한 / 인도조건 / 예상 용차비
+            ws.mergeCells('A4:B4');
+            ws.mergeCells('C4:E4');
+            ws.mergeCells('G4:I4');
+            ws.mergeCells('K4:M4');
+            ws.getCell('A4').value = '투찰 마감일시';
+            ws.getCell('C4').value = bidDeadline;
+            ws.getCell('F4').value = '납품 기한';
+            ws.getCell('G4').value = deliveryDeadline;
+            ws.getCell('J4').value = '인도 / 배송';
+            ws.getCell('K4').value = `${deliveryCondition} (${shippingIncluded ? '단가포함' : '별도청구'})`;
+            ws.getCell('N4').value = '예상 용차비';
+            ws.getCell('O4').value = shippingFee;
+
+            styleMetaLabel(ws.getCell('A4'));
+            styleMetaVal(ws.getCell('C4'));
+            styleMetaLabel(ws.getCell('F4'));
+            styleMetaVal(ws.getCell('G4'));
+            styleMetaLabel(ws.getCell('J4'));
+            styleMetaVal(ws.getCell('K4'));
+            styleMetaLabel(ws.getCell('N4'));
+            ws.getCell('O4').numFmt = '#,##0"원"';
+            ws.getCell('O4').font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+            ws.getCell('O4').alignment = { vertical: 'middle', horizontal: 'right' };
+            ws.getRow(4).height = 20;
+
+            // 5행: 납품 주소 / 담당자 및 메모
+            ws.mergeCells('A5:B5');
+            ws.mergeCells('C5:I5');
+            ws.mergeCells('K5:O5');
+            ws.getCell('A5').value = '납품 주소';
+            ws.getCell('C5').value = deliveryAddress;
+            ws.getCell('J5').value = '담당자 / 메모';
+            ws.getCell('K5').value = [managerInfo, remarks].filter(Boolean).join(' / ') || '-';
+
+            styleMetaLabel(ws.getCell('A5'));
+            styleMetaVal(ws.getCell('C5'));
+            styleMetaLabel(ws.getCell('J5'));
+            styleMetaVal(ws.getCell('K5'));
+            ws.getRow(5).height = 20;
+
+            for (let r = 3; r <= 5; r++) {
+                for (let c = 1; c <= 15; c++) {
+                    ws.getRow(r).getCell(c).border = thinBorder;
+                }
+            }
+
+            // 6행: 여백
+            ws.getRow(6).height = 8;
+
+            // 7행: 품목 테이블 헤더
+            const headers = [
+                'No',
+                '품목명 🔒',
+                '규격 🔒',
+                '단위 🔒',
+                '수량 🔒',
+                '✏️ K&G 매입가',
+                '✏️ 희망마진(%)',
+                '✏️ 직접지정 투찰단가',
+                '정산단가(자동)',
+                '수수료 6% 🔒',
+                '최종 투찰단가',
+                '최종 마진율(%)',
+                '최종 납품합계',
+                '예상 순이익',
+                '✏️ 비고'
+            ];
+            const headerRow = ws.getRow(7);
+            headerRow.height = 26;
+            headers.forEach((hText, idx) => {
+                const colNum = idx + 1;
+                const cell = headerRow.getCell(colNum);
+                cell.value = hText;
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                cell.border = {
+                    top: { style: 'medium', color: { argb: 'FF475569' } },
+                    bottom: { style: 'medium', color: { argb: 'FF475569' } },
+                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                };
+
+                if (colNum === 6 || colNum === 7) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF08A' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF854D0E' } };
+                } else if (colNum === 8) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBAE6FD' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF075985' } };
+                } else if (colNum === 10) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FFB91C1C' } };
+                } else if (colNum === 11) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF1E40AF' } };
+                } else if (colNum === 15) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+                } else {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+                }
+            });
+
+            // 8행~: 데이터 행 및 양방향 자동계산 수식
+            const startRow = 8;
+            let sumQtyInit = 0;
+            let sumBuyTotalInit = 0;
+            let sumSettlementTotalInit = 0;
+            let sumFeeTotalInit = 0;
+            let sumDeliveryTotalInit = 0;
+            let sumProfitTotalInit = 0;
+
+            rows.forEach((tr, idx) => {
+                const rNum = startRow + idx;
+                const row = ws.getRow(rNum);
+                row.height = 22;
+
+                const itemName = tr.querySelector('.item-name').value.trim();
+                const spec = tr.querySelector('.item-spec').value.trim();
+                const unit = tr.querySelector('.item-unit').value.trim() || 'EA';
+                const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
+                const buyPrice = Math.round(parseFloat(tr.querySelector('.item-buy').value) || 0);
+                const marginRate = parseFloat(tr.querySelector('.item-margin').value) || 0;
+                const currentSettlement = Math.round(parseFloat(tr.querySelector('.item-settlement').value) || 0);
+                const currentDelivery = Math.round(parseFloat(tr.querySelector('.item-delivery').value) || 0);
+                let note = tr.querySelector('.item-note').value.trim();
+
+                // 해당 품목에 연결된 첨부사진이 있으면 비고란에 '첨부파일 참고' 문구 보장
+                const rowUid = tr.dataset.rowUid || '';
+                const hasLinkedPhoto = rowUid && this.modalAttachments.some(a => a.rowUid === rowUid);
+                if (hasLinkedPhoto) {
+                    if (!note) note = '첨부파일 참고';
+                    else if (!note.includes('첨부')) note = `${note} (첨부파일 참고)`;
+                }
+
+                // 현재 포털 값이 마진율(모드1) 산출값과 다른 수기 지정 납품단가인지 판별
+                const mode1Settlement = buyPrice > 0 ? Math.round(buyPrice * (1 + marginRate / 100)) : 0;
+                const mode1Delivery = mode1Settlement + calcGongsaeroFee(mode1Settlement);
+                const hasCustomDirectDelivery = currentDelivery > 0 && currentDelivery !== mode1Delivery && (buyPrice === 0 || currentSettlement !== mode1Settlement);
+
+                const initDirectDelivery = hasCustomDirectDelivery ? currentDelivery : null;
+                let initSettlement = 0;
+                let initFee = 0;
+                let initFinalDelivery = 0;
+                if (initDirectDelivery && initDirectDelivery > 0) {
+                    const rev = calcSettlementFromDelivery(initDirectDelivery);
+                    initSettlement = rev.settlementPrice;
+                    initFee = rev.fee;
+                    initFinalDelivery = initDirectDelivery;
+                } else {
+                    initSettlement = mode1Settlement;
+                    initFee = calcGongsaeroFee(initSettlement);
+                    initFinalDelivery = initSettlement + initFee;
+                }
+                const initFinalMargin = buyPrice > 0
+                    ? Number(((initSettlement - buyPrice) / buyPrice * 100).toFixed(1))
+                    : (initDirectDelivery ? 0 : marginRate);
+                const initTotalDelivery = initFinalDelivery * qty;
+                const initProfit = (initSettlement - buyPrice) * qty;
+
+                sumQtyInit += qty;
+                sumBuyTotalInit += (buyPrice * qty);
+                sumSettlementTotalInit += (initSettlement * qty);
+                sumFeeTotalInit += (initFee * qty);
+                sumDeliveryTotalInit += initTotalDelivery;
+                sumProfitTotalInit += initProfit;
+
+                // 원본 스펙 열 (A~E, 잠금)
+                row.getCell(1).value = idx + 1;
+                row.getCell(2).value = itemName;
+                row.getCell(3).value = spec;
+                row.getCell(4).value = unit;
+                row.getCell(5).value = qty;
+
+                // 담당자 입력 열 (F: 매입가, G: 희망마진, H: 직접지정 투찰단가 — 잠금 해제)
+                row.getCell(6).value = buyPrice > 0 ? buyPrice : null;
+                row.getCell(7).value = marginRate;
+                row.getCell(8).value = initDirectDelivery;
+
+                // 자동 계산 수식 열 (I~N, 잠금 + $O$3 6% 고정 수수료 참조)
+                row.getCell(9).value = {
+                    formula: `IF(AND(ISNUMBER(H${rNum}),H${rNum}>0),IF(ROUND(H${rNum},0)>17,ROUNDUP(ROUND(H${rNum},0)/(1+$O$3),0),IF(ROUND(H${rNum},0)>=1,MAX(0,ROUND(H${rNum},0)-1),0)),IF(AND(ISNUMBER(F${rNum}),F${rNum}>0),ROUND(F${rNum}*(1+IF(ISNUMBER(G${rNum}),G${rNum},0)/100),0),0))`,
+                    result: initSettlement
+                };
+                row.getCell(10).value = {
+                    formula: `IF(AND(ISNUMBER(H${rNum}),H${rNum}>0),MAX(0,ROUND(H${rNum},0)-I${rNum}),IF(I${rNum}>16,ROUNDDOWN(I${rNum}*$O$3,0),IF(I${rNum}>=1,1,0)))`,
+                    result: initFee
+                };
+                row.getCell(11).value = {
+                    formula: `IF(AND(ISNUMBER(H${rNum}),H${rNum}>0),ROUND(H${rNum},0),I${rNum}+J${rNum})`,
+                    result: initFinalDelivery
+                };
+                row.getCell(12).value = {
+                    formula: `IF(AND(ISNUMBER(F${rNum}),F${rNum}>0),ROUND((I${rNum}-F${rNum})/F${rNum}*100,1),IF(AND(ISNUMBER(G${rNum}),NOT(AND(ISNUMBER(H${rNum}),H${rNum}>0))),G${rNum},0))`,
+                    result: initFinalMargin
+                };
+                row.getCell(13).value = {
+                    formula: `K${rNum}*E${rNum}`,
+                    result: initTotalDelivery
+                };
+                row.getCell(14).value = {
+                    formula: `IF(OR(AND(ISNUMBER(F${rNum}),F${rNum}>0),I${rNum}>0),(I${rNum}-IF(ISNUMBER(F${rNum}),F${rNum},0))*E${rNum},0)`,
+                    result: initProfit
+                };
+
+                // 비고 열 (O, 잠금 해제)
+                row.getCell(15).value = note;
+
+                // 셀 서식 및 스타일링
+                for (let c = 1; c <= 15; c++) {
+                    const cell = row.getCell(c);
+                    cell.border = thinBorder;
+                    cell.font = { name: '맑은 고딕', size: 9.5, color: { argb: 'FF1E293B' } };
+                    cell.alignment = { vertical: 'middle', horizontal: 'right' };
+                }
+
+                row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
+                row.getCell(2).font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+                row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+                row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(5).numFmt = '#,##0.##';
+                row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+
+                // 입력 허용 칸 강조 (F, G: 연노랑 / H: 연하늘 / O: 흰색)
+                row.getCell(6).numFmt = '#,##0';
+                row.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEFCE8' } };
+                row.getCell(6).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+
+                row.getCell(7).numFmt = '0.0';
+                row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEFCE8' } };
+                row.getCell(7).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF854D0E' } };
+
+                row.getCell(8).numFmt = '#,##0';
+                row.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F9FF' } };
+                row.getCell(8).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF0369A1' } };
+
+                // 자동 계산 칸 서식
+                row.getCell(9).numFmt = '#,##0';
+                row.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+
+                row.getCell(10).numFmt = '#,##0';
+                row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+                row.getCell(10).font = { name: '맑은 고딕', size: 9.5, color: { argb: 'FFDC2626' } };
+
+                row.getCell(11).numFmt = '#,##0';
+                row.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+                row.getCell(11).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF1D4ED8' } };
+
+                row.getCell(12).numFmt = '0.0"%"';
+                row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(12).font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+
+                row.getCell(13).numFmt = '#,##0';
+                row.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                row.getCell(13).font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+
+                row.getCell(14).numFmt = '#,##0;[Red]-#,##0;0';
+                row.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDF4' } };
+                row.getCell(14).font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF059669' } };
+
+                row.getCell(15).alignment = { vertical: 'middle', horizontal: 'left' };
+            });
+
+            // 하단 합계 행 (잠금)
+            const lastRow = startRow + rows.length - 1;
+            const sumRowIdx = lastRow + 1;
+            const sumRow = ws.getRow(sumRowIdx);
+            sumRow.height = 25;
+
+            ws.mergeCells(`A${sumRowIdx}:D${sumRowIdx}`);
+            sumRow.getCell(1).value = `총 합 계 (${rows.length}개 품목)`;
+            sumRow.getCell(5).value = { formula: `SUM(E${startRow}:E${lastRow})`, result: sumQtyInit };
+            sumRow.getCell(6).value = { formula: `SUMPRODUCT(E${startRow}:E${lastRow},F${startRow}:F${lastRow})`, result: sumBuyTotalInit };
+            sumRow.getCell(7).value = '-';
+            sumRow.getCell(8).value = '-';
+            sumRow.getCell(9).value = { formula: `SUMPRODUCT(E${startRow}:E${lastRow},I${startRow}:I${lastRow})`, result: sumSettlementTotalInit };
+            sumRow.getCell(10).value = { formula: `SUMPRODUCT(E${startRow}:E${lastRow},J${startRow}:J${lastRow})`, result: sumFeeTotalInit };
+            sumRow.getCell(11).value = '-';
+            sumRow.getCell(12).value = {
+                formula: `IF(F${sumRowIdx}>0,ROUND(N${sumRowIdx}/F${sumRowIdx}*100,1),0)`,
+                result: sumBuyTotalInit > 0 ? Number(((sumProfitTotalInit / sumBuyTotalInit) * 100).toFixed(1)) : 0
+            };
+            sumRow.getCell(13).value = { formula: `SUM(M${startRow}:M${lastRow})`, result: sumDeliveryTotalInit };
+            sumRow.getCell(14).value = { formula: `SUM(N${startRow}:N${lastRow})`, result: sumProfitTotalInit };
+            sumRow.getCell(15).value = '';
+
+            for (let c = 1; c <= 15; c++) {
+                const cell = sumRow.getCell(c);
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+                cell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+                cell.border = {
+                    top: { style: 'medium', color: { argb: 'FF475569' } },
+                    bottom: { style: 'double', color: { argb: 'FF0F172A' } },
+                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'right' };
+            }
+            sumRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+            sumRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+            sumRow.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+            sumRow.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
+            sumRow.getCell(5).numFmt = '#,##0.##';
+            sumRow.getCell(6).numFmt = '#,##0';
+            sumRow.getCell(9).numFmt = '#,##0';
+            sumRow.getCell(10).numFmt = '#,##0';
+            sumRow.getCell(10).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FFDC2626' } };
+            sumRow.getCell(12).numFmt = '0.0"%"';
+            sumRow.getCell(13).numFmt = '#,##0';
+            sumRow.getCell(13).font = { name: '맑은 고딕', size: 10.5, bold: true, color: { argb: 'FF1D4ED8' } };
+            sumRow.getCell(14).numFmt = '#,##0;[Red]-#,##0;0';
+            sumRow.getCell(14).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF059669' } };
+
+            // 시트 전체 기본 잠금(locked: true) 후, 품목 데이터 행의 입력 허용 4개 열(F, G, H, O)만 잠금 해제
+            for (let r = 1; r <= sumRowIdx; r++) {
+                const rowObj = ws.getRow(r);
+                for (let c = 1; c <= 15; c++) {
+                    rowObj.getCell(c).protection = { locked: true };
+                }
+            }
+            for (let r = startRow; r <= lastRow; r++) {
+                const rowObj = ws.getRow(r);
+                rowObj.getCell(6).protection = { locked: false };  // K&G 매입가
+                rowObj.getCell(7).protection = { locked: false };  // 희망마진(%)
+                rowObj.getCell(8).protection = { locked: false };  // 직접지정 투찰단가
+                rowObj.getCell(15).protection = { locked: false }; // 비고
+            }
+
+            // 비밀번호 '2833'으로 1번 시트 보호 적용 (6% 수수료·수식·품목명·규격·단위·수량 수정 차단)
+            await ws.protect('2833', {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: false,
+                formatColumns: true,
+                formatRows: false,
+                insertColumns: false,
+                insertRows: false,
+                insertHyperlinks: false,
+                deleteColumns: false,
+                deleteRows: false,
+                sort: false,
+                autoFilter: false,
+                pivotTables: false
+            });
+
+            // ── 2번 시트: 첨부사진 (첨부된 사진이 있을 때 자동 생성 및 원본 비율 이미지 삽입) ──
+            if (this.modalAttachments.length > 0) {
+                if (btn) {
+                    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 첨부사진 시트 생성 중 (${this.modalAttachments.length}장)...`;
+                }
+
+                const wsPhotos = wb.addWorksheet('첨부사진', {
+                    views: [{ state: 'frozen', ySplit: 2 }]
+                });
+                wsPhotos.columns = [
+                    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+                    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }
+                ];
+
+                wsPhotos.mergeCells('A1:H1');
+                const pTitle = wsPhotos.getCell('A1');
+                pTitle.value = '공새로 입찰관리 — 품목별 첨부 사진 및 사양 참고자료';
+                pTitle.font = { name: '맑은 고딕', size: 12.5, bold: true, color: { argb: 'FFFFFFFF' } };
+                pTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+                pTitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                wsPhotos.getRow(1).height = 26;
+
+                wsPhotos.mergeCells('A2:H2');
+                const pSub = wsPhotos.getCell('A2');
+                pSub.value = `공사 / 공고명: ${title}   |   첨부 사진: 총 ${this.modalAttachments.length}장 (각 사진 상단의 대상 품목 및 설명을 확인하세요)`;
+                pSub.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF1E3A8A' } };
+                pSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+                pSub.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                pSub.border = thinBorder;
+                wsPhotos.getRow(2).height = 20;
+
+                // 품목 규격 참조 맵
+                const itemSpecByNo = {};
+                rows.forEach((tr, idx) => {
+                    itemSpecByNo[idx + 1] = tr.querySelector('.item-spec')?.value.trim() || '';
+                });
+
+                let curRow = 4;
+                for (let i = 0; i < this.modalAttachments.length; i++) {
+                    const att = this.modalAttachments[i];
+                    const itemNo = Number(att.targetItemNo) || 0;
+                    const itemName = (att.targetItemName || '').trim();
+                    const itemSpec = itemNo ? (itemSpecByNo[itemNo] || '') : '';
+                    const cap = (att.caption || '').trim();
+                    const origName = att.originalName || att.filename || `사진_${i + 1}`;
+
+                    let headerLabel = `📷 [사진 ${i + 1}] `;
+                    if (itemNo > 0) {
+                        headerLabel += `대상 품목: [No.${itemNo}] ${itemName}${itemSpec ? ` (${itemSpec})` : ''}`;
+                        if (cap) headerLabel += `  —  ${cap}`;
+                    } else if (cap) {
+                        headerLabel += `공고 참고 / 설명: ${cap}`;
+                    } else {
+                        headerLabel += `공고 공통 참고 사진 (${origName})`;
+                    }
+
+                    wsPhotos.mergeCells(`A${curRow}:H${curRow}`);
+                    const hdrCell = wsPhotos.getCell(`A${curRow}`);
+                    hdrCell.value = headerLabel;
+                    hdrCell.font = {
+                        name: '맑은 고딕',
+                        size: 10,
+                        bold: true,
+                        color: { argb: itemNo > 0 ? 'FF1E3A8A' : 'FF1E293B' }
+                    };
+                    hdrCell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: itemNo > 0 ? 'FFDBEAFE' : 'FFF1F5F9' }
+                    };
+                    hdrCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                    for (let c = 1; c <= 8; c++) {
+                        wsPhotos.getRow(curRow).getCell(c).border = thinBorder;
+                    }
+                    wsPhotos.getRow(curRow).height = 23;
+
+                    try {
+                        const imgData = await loadAttachmentImageForExcel(att);
+                        const maxW = 660;
+                        const maxH = 440;
+                        const scale = Math.min(1, maxW / imgData.natW, maxH / imgData.natH);
+                        const dispW = Math.max(120, Math.round(imgData.natW * scale));
+                        const dispH = Math.max(90, Math.round(imgData.natH * scale));
+
+                        const rowPt = 20; // 20pt ≈ 26.6px
+                        const spanRows = Math.max(5, Math.ceil((dispH + 20) / 26));
+                        const imgStartRow = curRow + 1;
+                        const imgEndRow = imgStartRow + spanRows - 1;
+
+                        for (let r = imgStartRow; r <= imgEndRow; r++) {
+                            wsPhotos.getRow(r).height = rowPt;
+                            for (let c = 1; c <= 8; c++) {
+                                const cObj = wsPhotos.getRow(r).getCell(c);
+                                cObj.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                                cObj.border = {
+                                    top: r === imgStartRow ? thinBorder.top : undefined,
+                                    bottom: r === imgEndRow ? thinBorder.bottom : undefined,
+                                    left: c === 1 ? thinBorder.left : undefined,
+                                    right: c === 8 ? thinBorder.right : undefined
+                                };
+                            }
+                        }
+
+                        const imgId = wb.addImage({
+                            buffer: imgData.buffer,
+                            extension: imgData.extension
+                        });
+                        wsPhotos.addImage(imgId, {
+                            tl: { col: 0.25, row: (imgStartRow - 1) + 0.25 },
+                            ext: { width: dispW, height: dispH },
+                            editAs: 'oneCell'
+                        });
+
+                        curRow = imgEndRow + 2;
+                    } catch (imgErr) {
+                        const errRow = curRow + 1;
+                        wsPhotos.mergeCells(`A${errRow}:H${errRow}`);
+                        const errCell = wsPhotos.getCell(`A${errRow}`);
+                        errCell.value = `이미지를 불러오지 못했습니다 (${origName}): ${imgErr.message}`;
+                        errCell.font = { name: '맑은 고딕', size: 9.5, color: { argb: 'FFDC2626' } };
+                        errCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+                        for (let c = 1; c <= 8; c++) {
+                            wsPhotos.getRow(errRow).getCell(c).border = thinBorder;
+                        }
+                        wsPhotos.getRow(errRow).height = 24;
+                        curRow = errRow + 2;
+                    }
+                }
+
+                for (let r = 1; r <= curRow; r++) {
+                    for (let c = 1; c <= 8; c++) {
+                        wsPhotos.getRow(r).getCell(c).protection = { locked: true };
+                    }
+                }
+                await wsPhotos.protect('2833', {
+                    selectLockedCells: true,
+                    selectUnlockedCells: true,
+                    editObjects: false
+                });
+            }
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_').trim() || '공새로_입찰_투찰서';
+            const fileName = `${safeTitle}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+        } catch (err) {
+            alert('엑셀 파일 생성 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    },
+
+    // ── 담당 직원이 작성한 엑셀 파일을 읽어 현재 모달 전표에 자동 반영 ──
+    importTenderExcel: async function(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+
+        if (typeof XLSX === 'undefined') {
+            alert('Excel 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+            return;
+        }
+
+        try {
+            const arrayBuf = await file.arrayBuffer();
+            const wb = XLSX.read(arrayBuf, { type: 'array' });
+            const firstSheetName = wb.SheetNames[0];
+            if (!firstSheetName) throw new Error('엑셀 시트를 찾을 수 없습니다.');
+
+            const ws = wb.Sheets[firstSheetName];
+            const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!matrix || matrix.length === 0) throw new Error('비어있는 엑셀 파일입니다.');
+
+            // 헤더 행('품목명' 포함 행) 자동 탐색
+            let headerRowIdx = -1;
+            for (let i = 0; i < Math.min(matrix.length, 20); i++) {
+                const rowStrs = (matrix[i] || []).map(v => String(v || '').replace(/\s+/g, ''));
+                if (rowStrs.some(s => s.includes('품목명'))) {
+                    headerRowIdx = i;
+                    break;
+                }
+            }
+            if (headerRowIdx === -1) {
+                throw new Error("'품목명' 헤더가 포함된 투찰 내역 표를 찾을 수 없습니다.");
+            }
+
+            const rawHeaders = (matrix[headerRowIdx] || []).map(v => String(v || '').trim());
+            const findCol = (keywords, excludeKeywords = []) => {
+                return rawHeaders.findIndex(h => {
+                    const norm = h.replace(/\s+/g, '');
+                    if (excludeKeywords.some(ex => norm.includes(ex))) return false;
+                    return keywords.some(kw => norm.includes(kw));
+                });
+            };
+
+            const colName = findCol(['품목명']);
+            const colSpec = findCol(['규격']);
+            const colUnit = findCol(['단위']);
+            const colQty = findCol(['수량']);
+            const colBuy = findCol(['매입가', '매입단가', '매입원가']);
+            const colMarginInput = findCol(['희망마진', '목표마진'], ['최종']);
+            const colLegacyMargin = colMarginInput !== -1 ? colMarginInput : findCol(['마진율'], ['최종']);
+            const colDirectDelivery = findCol(['직접지정투찰단가', '직접투찰단가']);
+            const colFinalDelivery = findCol(['최종투찰단가', '납품단가'], ['직접', '합계']);
+            const colNote = findCol(['비고']);
+
+            const parseNum = (val) => {
+                if (val === null || val === undefined || val === '' || val === '-') return 0;
+                if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+                const cleaned = String(val).replace(/[,원%\s]/g, '');
+                const num = parseFloat(cleaned);
+                return Number.isFinite(num) ? num : 0;
+            };
+
+            const importedItems = [];
+            for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                const row = matrix[r] || [];
+                const firstCellStr = String(row[0] || '').replace(/\s+/g, '');
+                const nameStr = colName !== -1 ? String(row[colName] || '').trim() : '';
+
+                // 합계 행 도달 시 종료
+                if (firstCellStr.startsWith('총합계') || firstCellStr.startsWith('합계') || firstCellStr.startsWith('소계')) {
+                    break;
+                }
+                if (!nameStr) continue;
+
+                const specStr = colSpec !== -1 ? String(row[colSpec] || '').trim() : '';
+                const unitStr = colUnit !== -1 ? String(row[colUnit] || '').trim() || 'EA' : 'EA';
+                const qty = colQty !== -1 ? (parseNum(row[colQty]) || 1) : 1;
+                const buyPrice = colBuy !== -1 ? Math.round(parseNum(row[colBuy])) : 0;
+                const noteStr = colNote !== -1 ? String(row[colNote] || '').trim() : '';
+
+                const directDeliveryVal = colDirectDelivery !== -1 ? Math.round(parseNum(row[colDirectDelivery])) : 0;
+                const marginInputVal = colLegacyMargin !== -1 ? parseNum(row[colLegacyMargin]) : 15;
+                const finalDeliveryVal = colFinalDelivery !== -1 ? Math.round(parseNum(row[colFinalDelivery])) : 0;
+
+                let settlementPrice = 0;
+                let deliveryPrice = 0;
+                let marginRate = marginInputVal;
+
+                if (directDeliveryVal > 0) {
+                    // 모드 2: 담당 직원이 직접 지정 투찰단가를 입력한 경우 우선 역산
+                    const rev = calcSettlementFromDelivery(directDeliveryVal);
+                    settlementPrice = rev.settlementPrice;
+                    deliveryPrice = directDeliveryVal;
+                    if (buyPrice > 0) {
+                        marginRate = Number(((settlementPrice - buyPrice) / buyPrice * 100).toFixed(1));
+                    }
+                } else if (colDirectDelivery === -1 && finalDeliveryVal > 0 && buyPrice > 0) {
+                    // 구버전 엑셀 양식 호환: 납품단가가 마진 산출값과 다르면 납품단가 기준 역산
+                    const m1Settlement = Math.round(buyPrice * (1 + marginInputVal / 100));
+                    const m1Delivery = m1Settlement + calcGongsaeroFee(m1Settlement);
+                    if (finalDeliveryVal !== m1Delivery) {
+                        const rev = calcSettlementFromDelivery(finalDeliveryVal);
+                        settlementPrice = rev.settlementPrice;
+                        deliveryPrice = finalDeliveryVal;
+                        marginRate = Number(((settlementPrice - buyPrice) / buyPrice * 100).toFixed(1));
+                    } else {
+                        settlementPrice = m1Settlement;
+                        deliveryPrice = m1Delivery;
+                    }
+                } else {
+                    // 모드 1: 매입가 + 희망마진율 기준 자동 산출
+                    settlementPrice = buyPrice > 0 ? Math.round(buyPrice * (1 + marginRate / 100)) : 0;
+                    const fee = calcGongsaeroFee(settlementPrice);
+                    deliveryPrice = settlementPrice + fee;
+                }
+
+                importedItems.push({
+                    item_name: nameStr,
+                    spec: specStr,
+                    unit: unitStr,
+                    qty,
+                    buy_price: buyPrice,
+                    margin_rate: marginRate,
+                    settlement_price: settlementPrice,
+                    delivery_price: deliveryPrice,
+                    item_note: noteStr
+                });
+            }
+
+            if (importedItems.length === 0) {
+                throw new Error('반영할 품목 데이터가 없습니다.');
+            }
+
+            // 현재 모달 상단 공고명이 비어있을 경우에만 엑셀 상단 공고 정보 보조 채움
+            if (!document.getElementById('formTitle').value.trim()) {
+                for (let i = 0; i < headerRowIdx; i++) {
+                    const row = matrix[i] || [];
+                    const labelA = String(row[0] || '').replace(/\s+/g, '');
+                    if (labelA.includes('공고명') && row[2]) {
+                        document.getElementById('formTitle').value = String(row[2]).trim();
+                    }
+                    if (String(row[9] || '').includes('발주처') && row[10] && row[10] !== '-') {
+                        document.getElementById('formClientName').value = String(row[10]).trim();
+                    }
+                    if (labelA.includes('납품주소') && row[2] && row[2] !== '-') {
+                        document.getElementById('formDeliveryAddress').value = String(row[2]).trim();
+                    }
+                }
+            }
+
+            const tbody = document.getElementById('itemsInputTbody');
+            tbody.innerHTML = '';
+            importedItems.forEach((it, idx) => {
+                this.addItemRow(it, idx + 1);
+            });
+
+            // 기존 모달에 첨부되어 있던 사진들의 품목 번호/이름 재매칭 및 비고 동기화
+            if (this.modalAttachments.length > 0) {
+                const newRows = Array.from(document.querySelectorAll('#itemsInputTbody tr'));
+                this.modalAttachments.forEach(att => {
+                    const itemNo = Number(att.targetItemNo) || 0;
+                    if (itemNo >= 1 && itemNo <= newRows.length) {
+                        att.rowUid = newRows[itemNo - 1].dataset.rowUid || '';
+                    } else if (att.targetItemName) {
+                        const matched = newRows.find(r => r.querySelector('.item-name')?.value.trim() === att.targetItemName);
+                        att.rowUid = matched ? (matched.dataset.rowUid || '') : '';
+                    }
+                });
+                this.syncAttachmentTargetsFromRows();
+                this.renderModalAttachments();
+            }
+
+            const bidModalEl = document.getElementById('bidModal');
+            if (bidModalEl) bidModalEl._userEdited = true;
+            this.updateSummaryMetrics();
+            this.calcModalWhatIfSimulation();
+
+            alert(`엑셀에서 총 ${importedItems.length}개 품목의 매입가·마진·투찰단가 내역을 반영했습니다.\n내용 확인 후 '공고 및 투찰서 저장' 버튼을 눌러 저장해주세요.`);
+        } catch (err) {
+            alert('엑셀 불러오기 오류: ' + err.message);
+        }
     },
 
     // ── 공고 목록 엑셀 저장 ──
@@ -1985,6 +3013,7 @@ const app = {
 
     // ── 현재 상세 모달 공고 단건 인쇄 미리보기 ──
     printCurrentModalBid: function() {
+        this.syncAttachmentTargetsFromRows();
         const status = document.getElementById('formStatus').value;
         const rows = document.querySelectorAll('#itemsInputTbody tr');
         const items = [];
@@ -2382,7 +3411,7 @@ const app = {
                         <div class="gs-print-photos-grid">
                             ${bidPhotos.map((att, pIdx) => {
                                 const src = resolveAttachmentUrl(att);
-                                const label = att.originalName || att.filename || `사진 ${pIdx + 1}`;
+                                const label = formatAttachmentLabel(att, pIdx);
                                 return `
                                     <div class="gs-print-photo-box">
                                         <img src="${escapeHtml(src)}" alt="${escapeHtml(label)}">
@@ -2720,7 +3749,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vals.push(`${el.id || el.name || el.className}:${el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value}`);
         });
         if (modalEl.id === 'bidModal' && Array.isArray(app.modalAttachments)) {
-            vals.push(`attachments:${app.modalAttachments.map(a => a.id).join(',')}`);
+            vals.push(`attachments:${app.modalAttachments.map(a => `${a.id}:${a.rowUid || ''}:${a.caption || ''}`).join(',')}`);
         }
         return vals.join('|');
     }

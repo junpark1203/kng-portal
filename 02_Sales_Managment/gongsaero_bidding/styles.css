@@ -1029,13 +1029,14 @@ body {
 
 .bid-photo-card {
     position: relative;
-    width: 84px;
+    width: 256px;
+    height: 68px;
     border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f8fafc;
+    background: #ffffff;
     overflow: hidden;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -1045,8 +1046,10 @@ body {
 }
 
 .bid-photo-thumb-wrap {
-    width: 100%;
-    height: 64px;
+    position: relative;
+    width: 66px;
+    height: 100%;
+    flex-shrink: 0;
     background: #e2e8f0;
     cursor: zoom-in;
     overflow: hidden;
@@ -1062,22 +1065,71 @@ body {
     display: block;
 }
 
-.bid-photo-meta {
-    padding: 2px 4px;
-    font-size: 9.5px;
-    color: #334155;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.bid-photo-controls {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+    border-left: 1px solid var(--border-light);
     background: #ffffff;
-    border-top: 1px solid var(--border-light);
+}
+
+.bid-photo-top-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bid-photo-item-select {
+    flex: 1;
+    min-width: 0;
+    height: 22px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #1e293b;
+    background-color: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+.bid-photo-item-select:focus {
+    border-color: var(--primary);
+    background-color: #eff6ff;
+}
+
+.bid-photo-caption-input {
+    width: 100%;
+    height: 22px;
+    font-size: 10.5px;
+    color: #1e293b;
+    background-color: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 3px;
+    padding: 0 6px;
+    outline: none;
+}
+
+.bid-photo-caption-input:focus {
+    border-color: var(--primary);
+    background-color: #eff6ff;
+}
+
+.bid-photo-caption-input::placeholder {
+    color: #94a3b8;
+    font-size: 10px;
 }
 
 .bid-photo-badge-new {
     position: absolute;
     top: 3px;
     left: 3px;
-    background: rgba(37, 99, 235, 0.9);
+    background: rgba(37, 99, 235, 0.92);
     color: #ffffff;
     font-size: 8.5px;
     font-weight: 700;
@@ -1087,26 +1139,26 @@ body {
 }
 
 .bid-photo-remove-btn {
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 18px;
-    height: 18px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(15, 23, 42, 0.72);
-    color: #ffffff;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 1px solid #fecaca;
+    border-radius: 3px;
+    background: #fef2f2;
+    color: #dc2626;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 13px;
     padding: 0;
     cursor: pointer;
-    transition: background-color 0.12s ease;
+    transition: all 0.12s ease;
 }
 
 .bid-photo-remove-btn:hover {
     background: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
 }
 
 .badge-photo-count {

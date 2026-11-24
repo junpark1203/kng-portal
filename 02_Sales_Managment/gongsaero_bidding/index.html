@@ -17,7 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- ECOUNT ERP Style Custom Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=20261124_1">
+    <link rel="stylesheet" href="styles.css?v=20261124_3">
 </head>
 
 <body>
@@ -534,7 +534,7 @@
                                 </span>
                                 <span class="badge bg-secondary-subtle text-secondary border" id="modalPhotoCountBadge" style="font-size: 10px;">0장</span>
                                 <span class="text-muted" style="font-size: 10.5px;">
-                                    파일 선택, 드래그 앤 드롭 또는 <strong>Ctrl+V</strong>로 캡처 이미지를 붙여넣으세요 (원본 화질 저장 · 저장 시 서버 업로드)
+                                    파일 선택, 드래그 앤 드롭 또는 <strong>Ctrl+V</strong> 붙여넣기 · 품목을 지정하면 해당 품목 비고에 <strong>'첨부파일 참고'</strong>가 자동 입력되고 엑셀 2번째 시트에 포함됩니다
                                 </span>
                             </div>
                             <div class="d-flex align-items-center gap-1">
@@ -573,12 +573,16 @@
                 </div>
 
                 <div class="modal-footer bg-white py-2 px-3 d-flex justify-content-between">
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn-erp" onclick="app.copyDeliveryPricesToClipboard()">
                             <i class='bx bx-copy'></i> 납품단가 일괄 복사
                         </button>
-                        <button type="button" class="btn-erp btn-erp-success" onclick="app.downloadTenderExcel()">
+                        <button type="button" class="btn-erp btn-erp-success" id="btnDownloadTenderExcel" onclick="app.downloadTenderExcel()" title="담당자 배포용 양식 엑셀 다운로드 (양방향 자동계산 + 6% 수수료·원본 스펙 잠금)">
                             <i class='bx bx-download'></i> 엑셀 다운로드
+                        </button>
+                        <input type="file" id="tenderExcelUploadInput" accept=".xlsx,.xls" hidden onchange="app.importTenderExcel(event)">
+                        <button type="button" class="btn-erp" onclick="document.getElementById('tenderExcelUploadInput').click()" title="담당 직원이 작성해 보내준 엑셀 파일의 매입가·마진율·투찰단가를 현재 전표에 자동 반영">
+                            <i class='bx bx-upload text-success'></i> 작성된 엑셀 반영
                         </button>
                         <button type="button" class="btn-erp" onclick="app.printCurrentModalBid()" title="현재 열려있는 공고 전표 인쇄">
                             <i class='bx bx-printer'></i> 전표 인쇄
@@ -678,10 +682,12 @@
 
     <!-- Bootstrap 5 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- SheetJS for Excel export -->
+    <!-- SheetJS for Excel import & list export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ExcelJS (MIT Open Source) for formula & password-protected tender sheet export -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <!-- Application Logic -->
-    <script src="app.js?v=20261124_1"></script>
+    <script src="app.js?v=20261124_3"></script>
 </body>
 
 </html>
