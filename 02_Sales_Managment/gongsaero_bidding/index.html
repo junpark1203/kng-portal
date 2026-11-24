@@ -17,7 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- ECOUNT ERP Style Custom Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=20261117_1">
+    <link rel="stylesheet" href="styles.css?v=20261124_1">
 </head>
 
 <body>
@@ -525,6 +525,28 @@
                         </table>
                     </div>
 
+                    <!-- 3-1. 공고 첨부 사진 패널 (드래그 앤 드롭 / 파일 선택 / Ctrl+V 붙여넣기) -->
+                    <div class="erp-photo-panel" id="bidPhotoDropzone">
+                        <div class="erp-photo-header">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="fw-bold small text-dark d-inline-flex align-items-center gap-1">
+                                    <i class='bx bx-images text-primary'></i> 첨부 사진
+                                </span>
+                                <span class="badge bg-secondary-subtle text-secondary border" id="modalPhotoCountBadge" style="font-size: 10px;">0장</span>
+                                <span class="text-muted" style="font-size: 10.5px;">
+                                    파일 선택, 드래그 앤 드롭 또는 <strong>Ctrl+V</strong>로 캡처 이미지를 붙여넣으세요 (원본 화질 저장 · 저장 시 서버 업로드)
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <input type="file" id="bidPhotoInput" accept="image/*" multiple hidden onchange="app.handlePhotoInputChange(event)">
+                                <button type="button" class="btn-erp btn-erp-xs" onclick="document.getElementById('bidPhotoInput').click()">
+                                    <i class='bx bx-upload'></i> 사진 추가
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bid-photo-strip" id="modalPhotoStrip" style="display: none;"></div>
+                    </div>
+
                     <!-- 4. 하단 고정 요약 리본 -->
                     <div class="modal-summary-bar">
                         <div class="summary-metric">
@@ -564,7 +586,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
-                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.saveBid()">
+                        <button type="button" class="btn-erp btn-erp-primary" id="btnSaveBidModal" onclick="app.saveBid()">
                             <i class='bx bx-check'></i> 공고 및 투찰서 저장
                         </button>
                     </div>
@@ -584,7 +606,7 @@
                         <i class='bx bx-printer text-info'></i>
                         <span>입찰 공고 및 투찰 내역 인쇄 미리보기</span>
                     </h6>
-                    <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
                         <label class="form-check-label small text-white d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
                             <input type="checkbox" class="form-check-input mt-0" id="optPrintPageBreak" onchange="app.renderPrintPreview()">
                             <span>공고별 페이지 나누기</span>
@@ -592,6 +614,10 @@
                         <label class="form-check-label small text-white d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
                             <input type="checkbox" class="form-check-input mt-0" id="optPrintHideCost" onchange="app.renderPrintPreview()">
                             <span>내부 원가·마진 숨기기</span>
+                        </label>
+                        <label class="form-check-label small text-white d-flex align-items-center gap-1 mb-0" style="cursor: pointer;">
+                            <input type="checkbox" class="form-check-input mt-0" id="optPrintShowPhotos" onchange="app.renderPrintPreview()">
+                            <span>첨부 사진 포함</span>
                         </label>
                         <button type="button" class="btn-erp btn-erp-primary" onclick="app.executePrintReport()">
                             <i class='bx bx-printer'></i> 인쇄 / PDF 저장
@@ -615,6 +641,39 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- 첨부 사진 원본 뷰어 (Lightbox Overlay)               -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div class="photo-lightbox-overlay" id="photoLightboxOverlay" style="display: none;" onclick="app.handleLightboxBackdropClick(event)">
+        <div class="photo-lightbox-topbar" onclick="event.stopPropagation()">
+            <div class="d-flex align-items-center gap-2 text-truncate">
+                <span class="badge bg-primary" id="lightboxIndexBadge">1 / 1</span>
+                <span class="fw-semibold text-white text-truncate" id="lightboxFileName">-</span>
+                <span class="small text-white-50" id="lightboxFileSize"></span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <button type="button" class="btn-erp btn-erp-xs" id="btnLightboxZoomToggle" onclick="app.toggleLightboxZoom()">
+                    <i class='bx bx-zoom-in'></i> 1:1 원본 크기
+                </button>
+                <a class="btn-erp btn-erp-xs" id="btnLightboxDownload" href="#" target="_blank" rel="noopener" download>
+                    <i class='bx bx-download'></i> 원본 열기/저장
+                </a>
+                <button type="button" class="btn-erp btn-erp-xs btn-erp-danger" onclick="app.closeLightbox()">
+                    <i class='bx bx-x'></i> 닫기 (ESC)
+                </button>
+            </div>
+        </div>
+        <button type="button" class="photo-lightbox-nav prev" id="btnLightboxPrev" onclick="event.stopPropagation(); app.stepLightbox(-1)" title="이전 사진 (←)">
+            <i class='bx bx-chevron-left'></i>
+        </button>
+        <div class="photo-lightbox-stage" id="photoLightboxStage">
+            <img id="lightboxImageEl" src="" alt="첨부 사진 원본 보기" onclick="event.stopPropagation(); app.toggleLightboxZoom()">
+        </div>
+        <button type="button" class="photo-lightbox-nav next" id="btnLightboxNext" onclick="event.stopPropagation(); app.stepLightbox(1)" title="다음 사진 (→)">
+            <i class='bx bx-chevron-right'></i>
+        </button>
+    </div>
+
     <iframe id="printFrame" style="position:fixed; right:0; bottom:0; width:0; height:0; border:0;" aria-hidden="true"></iframe>
 
     <!-- Bootstrap 5 Bundle JS -->
@@ -622,7 +681,7 @@
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Application Logic -->
-    <script src="app.js?v=20261117_1"></script>
+    <script src="app.js?v=20261124_1"></script>
 </body>
 
 </html>

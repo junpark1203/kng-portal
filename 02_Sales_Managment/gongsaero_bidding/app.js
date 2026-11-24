@@ -83,6 +83,31 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+function resolveAttachmentUrl(attOrUrl) {
+    if (!attOrUrl) return '';
+    if (typeof attOrUrl === 'object') {
+        if (attOrUrl.previewUrl) return attOrUrl.previewUrl;
+        return resolveAttachmentUrl(attOrUrl.url || attOrUrl.filename || '');
+    }
+    const url = String(attOrUrl);
+    if (url.startsWith('blob:') || url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    const serverOrigin = API_BASE.replace(/\/api\/gongsaero-bidding$/, '');
+    if (url.startsWith('/')) {
+        return serverOrigin + url;
+    }
+    return `${API_BASE}/uploads/${encodeURIComponent(url)}`;
+}
+
+function formatFileSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n <= 0) return '';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 // ── What-If 가상 마진 및 전략 진단 산출 엔진 ──
 function calcWhatIfMetrics(ourBid, winningBid, buyCost, shippingFee, status = '미선정') {
     if (status === '유찰') {
@@ -188,6 +213,11 @@ const app = {
     currentDatePreset: 'all',
     selectedBidIds: new Set(),
     currentPrintData: [],
+    modalAttachments: [],
+    lightboxPhotos: [],
+    lightboxIndex: 0,
+    lightboxZoomOriginal: false,
+    isSavingBid: false,
 
     init: async function() {
         const modalEl = document.getElementById('bidModal');
@@ -199,7 +229,87 @@ const app = {
         const printModalEl = document.getElementById('printPreviewModal');
         if (printModalEl) this.printPreviewModalInstance = new bootstrap.Modal(printModalEl);
 
+        this.initPhotoEvents();
         await this.loadBids();
+    },
+
+    initPhotoEvents: function() {
+        const dropzone = document.getElementById('bidPhotoDropzone');
+        if (dropzone) {
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('drag-over');
+            });
+            dropzone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('drag-over');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('drag-over');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    this.appendPendingPhotos(e.dataTransfer.files);
+                }
+            });
+        }
+
+        // Ctrl+V 클립보드 캡처 이미지 붙여넣기 (일반 텍스트/엑셀 셀 붙여넣기와 충돌 방지)
+        document.addEventListener('paste', (e) => {
+            const bidModalEl = document.getElementById('bidModal');
+            if (!bidModalEl || !bidModalEl.classList.contains('show')) return;
+            const lightboxEl = document.getElementById('photoLightboxOverlay');
+            if (lightboxEl && lightboxEl.style.display !== 'none') return;
+
+            const cb = e.clipboardData;
+            if (!cb || !cb.items) return;
+
+            const activeTag = document.activeElement ? document.activeElement.tagName : '';
+            const isTypingField = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+            const hasPlainText = Array.from(cb.types || []).includes('text/plain');
+
+            // 인풋 칸 안에서 일반 텍스트(또는 엑셀 셀)를 붙여넣을 때는 기본 텍스트 붙여넣기 허용
+            if (isTypingField && hasPlainText) return;
+
+            const imageFiles = [];
+            for (const item of cb.items) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                        const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+                        const namedFile = (!file.name || file.name === 'image.png')
+                            ? new File([file], `캡처_${stamp}.${ext}`, { type: file.type })
+                            : file;
+                        imageFiles.push(namedFile);
+                    }
+                }
+            }
+
+            if (imageFiles.length > 0) {
+                e.preventDefault();
+                this.appendPendingPhotos(imageFiles);
+            }
+        });
+
+        // 라이트박스 키보드 단축키 (ESC / 좌우 화살표)
+        document.addEventListener('keydown', (e) => {
+            const lightboxEl = document.getElementById('photoLightboxOverlay');
+            if (!lightboxEl || lightboxEl.style.display === 'none') return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                this.stepLightbox(-1);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                this.stepLightbox(1);
+            }
+        }, true);
     },
 
     switchView: function(viewName) {
@@ -506,6 +616,7 @@ const app = {
                         <a href="javascript:app.openEditBidModal('${b.id}')" class="text-dark text-decoration-none" title="공고 상세 수정">
                             ${hl(b.title)}
                         </a>
+                        ${(b.attachment_count || 0) > 0 ? `<span class="badge-photo-count" onclick="app.openBidGalleryFromList('${escapeHtml(b.id)}')" title="첨부 사진 ${b.attachment_count}장 원본 보기"><i class='bx bx-image'></i> ${b.attachment_count}</span>` : ''}
                     </div>
                     <div class="text-muted mt-1" style="font-size: 10.5px;">
                         <span class="badge bg-light text-dark border me-1">${b.bid_type || '공개'}</span>
@@ -836,6 +947,8 @@ const app = {
         document.getElementById('formResultNote').value = '';
 
         document.getElementById('itemsInputTbody').innerHTML = '';
+        this.clearModalAttachments();
+        this.renderModalAttachments();
         this.addItemRow(); // 기본 1행
         this.handleModalStatusChange();
 
@@ -883,6 +996,12 @@ const app = {
             } else {
                 this.addItemRow();
             }
+
+            this.clearModalAttachments();
+            this.modalAttachments = Array.isArray(bid.attachments)
+                ? bid.attachments.map(att => ({ ...att, isNew: false }))
+                : [];
+            this.renderModalAttachments();
 
             this.handleModalStatusChange();
             if (this.modalInstance) this.modalInstance.show();
@@ -1254,8 +1373,208 @@ const app = {
         }
     },
 
-    // ── 공고 저장 (POST / PUT) ──
+    // ── 첨부 사진 관리 및 라이트박스 뷰어 ──
+    clearModalAttachments: function() {
+        if (Array.isArray(this.modalAttachments)) {
+            this.modalAttachments.forEach(att => {
+                if (att && att.previewUrl) {
+                    try { URL.revokeObjectURL(att.previewUrl); } catch (e) {}
+                }
+            });
+        }
+        this.modalAttachments = [];
+        const fileInput = document.getElementById('bidPhotoInput');
+        if (fileInput) fileInput.value = '';
+    },
+
+    handlePhotoInputChange: function(event) {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            this.appendPendingPhotos(files);
+        }
+        event.target.value = '';
+    },
+
+    appendPendingPhotos: function(fileList) {
+        const maxBytes = 50 * 1024 * 1024;
+        const allowedExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.heic', '.heif', '.avif', '.svg'];
+        let added = 0;
+
+        Array.from(fileList).forEach((file) => {
+            const lowerName = (file.name || '').toLowerCase();
+            const hasAllowedExt = allowedExts.some(ext => lowerName.endsWith(ext));
+            if (!(file.type && file.type.startsWith('image/')) && !hasAllowedExt) {
+                alert(`'${file.name}' 파일은 이미지 형식이 아니므로 제외되었습니다.`);
+                return;
+            }
+            if (file.size > maxBytes) {
+                alert(`'${file.name}' 파일 크기가 50MB를 초과하여 첨부할 수 없습니다.`);
+                return;
+            }
+
+            const tempId = `TEMP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            this.modalAttachments.push({
+                id: tempId,
+                file,
+                previewUrl: URL.createObjectURL(file),
+                originalName: file.name || 'image.png',
+                mimeType: file.type || 'image/jpeg',
+                size: file.size || 0,
+                isNew: true
+            });
+            added++;
+        });
+
+        if (added > 0) {
+            const bidModalEl = document.getElementById('bidModal');
+            if (bidModalEl) bidModalEl._userEdited = true;
+            this.renderModalAttachments();
+        }
+    },
+
+    removeModalAttachment: function(attId) {
+        const idx = this.modalAttachments.findIndex(a => a.id === attId);
+        if (idx === -1) return;
+        const target = this.modalAttachments[idx];
+        if (target && target.previewUrl) {
+            try { URL.revokeObjectURL(target.previewUrl); } catch (e) {}
+        }
+        this.modalAttachments.splice(idx, 1);
+        const bidModalEl = document.getElementById('bidModal');
+        if (bidModalEl) bidModalEl._userEdited = true;
+        this.renderModalAttachments();
+    },
+
+    renderModalAttachments: function() {
+        const stripEl = document.getElementById('modalPhotoStrip');
+        const badgeEl = document.getElementById('modalPhotoCountBadge');
+        const count = this.modalAttachments.length;
+
+        if (badgeEl) {
+            badgeEl.innerText = `${count}장`;
+            badgeEl.className = count > 0
+                ? 'badge bg-primary text-white'
+                : 'badge bg-secondary-subtle text-secondary border';
+        }
+        if (!stripEl) return;
+
+        if (count === 0) {
+            stripEl.style.display = 'none';
+            stripEl.innerHTML = '';
+            return;
+        }
+
+        stripEl.style.display = 'flex';
+        stripEl.innerHTML = this.modalAttachments.map((att, idx) => {
+            const imgSrc = resolveAttachmentUrl(att);
+            const name = att.originalName || att.filename || `사진 ${idx + 1}`;
+            const sizeText = formatFileSize(att.size);
+            const tooltip = sizeText ? `${name} (${sizeText})` : name;
+            return `
+                <div class="bid-photo-card" title="${escapeHtml(tooltip)}">
+                    ${att.isNew ? '<span class="bid-photo-badge-new">신규</span>' : ''}
+                    <button type="button" class="bid-photo-remove-btn" onclick="app.removeModalAttachment('${escapeHtml(att.id)}')" title="첨부 취소/삭제">
+                        <i class='bx bx-x'></i>
+                    </button>
+                    <div class="bid-photo-thumb-wrap" onclick="app.openModalPhotoLightbox(${idx})">
+                        <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(name)}" loading="lazy">
+                    </div>
+                    <div class="bid-photo-meta">${escapeHtml(name)}</div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    openModalPhotoLightbox: function(index = 0) {
+        if (!this.modalAttachments || this.modalAttachments.length === 0) return;
+        this.openLightbox(this.modalAttachments, index);
+    },
+
+    openBidGalleryFromList: function(bidId) {
+        const bid = this.rawBidsData.find(b => b.id === bidId);
+        if (!bid || !Array.isArray(bid.attachments) || bid.attachments.length === 0) return;
+        this.openLightbox(bid.attachments, 0);
+    },
+
+    openLightbox: function(photos, startIndex = 0) {
+        if (!Array.isArray(photos) || photos.length === 0) return;
+        this.lightboxPhotos = photos;
+        this.lightboxIndex = Math.max(0, Math.min(startIndex, photos.length - 1));
+        this.lightboxZoomOriginal = false;
+
+        const overlay = document.getElementById('photoLightboxOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            this.renderLightboxSlide();
+        }
+    },
+
+    renderLightboxSlide: function() {
+        const total = this.lightboxPhotos.length;
+        if (total === 0) return;
+        const current = this.lightboxPhotos[this.lightboxIndex];
+        const imgSrc = resolveAttachmentUrl(current);
+        const name = current.originalName || current.filename || `사진 ${this.lightboxIndex + 1}`;
+        const sizeStr = formatFileSize(current.size);
+
+        const imgEl = document.getElementById('lightboxImageEl');
+        const stageEl = document.getElementById('photoLightboxStage');
+        const idxBadge = document.getElementById('lightboxIndexBadge');
+        const nameEl = document.getElementById('lightboxFileName');
+        const sizeEl = document.getElementById('lightboxFileSize');
+        const dlBtn = document.getElementById('btnLightboxDownload');
+        const zoomBtn = document.getElementById('btnLightboxZoomToggle');
+        const prevBtn = document.getElementById('btnLightboxPrev');
+        const nextBtn = document.getElementById('btnLightboxNext');
+
+        if (imgEl) imgEl.src = imgSrc;
+        if (stageEl) stageEl.classList.toggle('zoom-original', this.lightboxZoomOriginal);
+        if (idxBadge) idxBadge.innerText = `${this.lightboxIndex + 1} / ${total}`;
+        if (nameEl) nameEl.innerText = name;
+        if (sizeEl) sizeEl.innerText = sizeStr ? `(${sizeStr})` : '';
+        if (dlBtn) {
+            dlBtn.href = imgSrc;
+            dlBtn.setAttribute('download', name);
+        }
+        if (zoomBtn) {
+            zoomBtn.innerHTML = this.lightboxZoomOriginal
+                ? `<i class='bx bx-zoom-out'></i> 화면 맞춤`
+                : `<i class='bx bx-zoom-in'></i> 1:1 원본 크기`;
+        }
+        if (prevBtn) prevBtn.style.display = total > 1 ? 'flex' : 'none';
+        if (nextBtn) nextBtn.style.display = total > 1 ? 'flex' : 'none';
+    },
+
+    stepLightbox: function(delta) {
+        const total = this.lightboxPhotos.length;
+        if (total <= 1) return;
+        this.lightboxIndex = (this.lightboxIndex + delta + total) % total;
+        this.lightboxZoomOriginal = false;
+        this.renderLightboxSlide();
+    },
+
+    toggleLightboxZoom: function() {
+        this.lightboxZoomOriginal = !this.lightboxZoomOriginal;
+        this.renderLightboxSlide();
+    },
+
+    closeLightbox: function() {
+        const overlay = document.getElementById('photoLightboxOverlay');
+        const imgEl = document.getElementById('lightboxImageEl');
+        if (overlay) overlay.style.display = 'none';
+        if (imgEl) imgEl.src = '';
+        this.lightboxPhotos = [];
+    },
+
+    handleLightboxBackdropClick: function(event) {
+        if (event.target.id === 'photoLightboxOverlay' || event.target.id === 'photoLightboxStage') {
+            this.closeLightbox();
+        }
+    },
+
+    // ── 공고 저장 (POST / PUT + 지연 원본 사진 업로드) ──
     saveBid: async function() {
+        if (this.isSavingBid) return;
         const bidId = document.getElementById('editBidId').value;
         const title = document.getElementById('formTitle').value.trim();
         if (!title) {
@@ -1296,29 +1615,80 @@ const app = {
         }
 
         const status = document.getElementById('formStatus').value;
-        const payload = {
-            title,
-            client_name: document.getElementById('formClientName').value.trim(),
-            bid_type: document.getElementById('formBidType').value,
-            urgency: document.getElementById('formUrgency').value,
-            issue_date: document.getElementById('formIssueDate').value,
-            bid_deadline: document.getElementById('formBidDeadline').value,
-            delivery_deadline: document.getElementById('formDeliveryDeadline').value,
-            status,
-            delivery_address: document.getElementById('formDeliveryAddress').value.trim(),
-            delivery_condition: document.getElementById('formDeliveryCondition').value,
-            shipping_included: document.getElementById('formShippingIncluded').value,
-            manager_info: document.getElementById('formManagerInfo').value.trim(),
-            estimated_shipping_fee: parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0,
-            winning_bid_amount: status === '유찰' ? 0 : (parseFloat(document.getElementById('formWinningBidAmount').value) || 0),
-            winning_company: status === '유찰' ? '' : document.getElementById('formWinningCompany').value.trim(),
-            result_note: document.getElementById('formResultNote').value.trim(),
-            remarks: document.getElementById('formRemarks').value.trim(),
-            items
-        };
+        const saveBtn = document.getElementById('btnSaveBidModal');
+        const origBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+        this.isSavingBid = true;
+        if (saveBtn) saveBtn.disabled = true;
 
+        let uploadedNewFiles = [];
         try {
             const token = await getAuthToken();
+            const pendingPhotos = this.modalAttachments.filter(a => a.isNew && a.file);
+
+            if (pendingPhotos.length > 0) {
+                if (saveBtn) {
+                    saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 사진 업로드 중 (${pendingPhotos.length}장)...`;
+                }
+                const formData = new FormData();
+                pendingPhotos.forEach(p => {
+                    formData.append('files', p.file, p.originalName || p.file.name || 'image.png');
+                });
+
+                const uploadRes = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if (!uploadRes.ok) {
+                    let errMsg = '첨부 사진 업로드에 실패했습니다.';
+                    try {
+                        const errJson = await uploadRes.json();
+                        if (errJson.error) errMsg = errJson.error;
+                    } catch (e) {}
+                    throw new Error(errMsg);
+                }
+                const uploadData = await uploadRes.json();
+                uploadedNewFiles = Array.isArray(uploadData.files) ? uploadData.files : [];
+                if (uploadedNewFiles.length !== pendingPhotos.length) {
+                    throw new Error('일부 사진 업로드가 누락되었습니다. 다시 시도해주세요.');
+                }
+            }
+
+            if (saveBtn) {
+                saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 전표 저장 중...`;
+            }
+
+            let newIdx = 0;
+            const finalAttachments = this.modalAttachments.map(att => {
+                if (att.isNew) {
+                    return uploadedNewFiles[newIdx++];
+                }
+                const { isNew, previewUrl, file, ...cleanAtt } = att;
+                return cleanAtt;
+            }).filter(Boolean);
+
+            const payload = {
+                title,
+                client_name: document.getElementById('formClientName').value.trim(),
+                bid_type: document.getElementById('formBidType').value,
+                urgency: document.getElementById('formUrgency').value,
+                issue_date: document.getElementById('formIssueDate').value,
+                bid_deadline: document.getElementById('formBidDeadline').value,
+                delivery_deadline: document.getElementById('formDeliveryDeadline').value,
+                status,
+                delivery_address: document.getElementById('formDeliveryAddress').value.trim(),
+                delivery_condition: document.getElementById('formDeliveryCondition').value,
+                shipping_included: document.getElementById('formShippingIncluded').value,
+                manager_info: document.getElementById('formManagerInfo').value.trim(),
+                estimated_shipping_fee: parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0,
+                winning_bid_amount: status === '유찰' ? 0 : (parseFloat(document.getElementById('formWinningBidAmount').value) || 0),
+                winning_company: status === '유찰' ? '' : document.getElementById('formWinningCompany').value.trim(),
+                result_note: document.getElementById('formResultNote').value.trim(),
+                remarks: document.getElementById('formRemarks').value.trim(),
+                attachments: finalAttachments,
+                items
+            };
+
             const method = bidId ? 'PUT' : 'POST';
             const url = bidId ? `${API_BASE}/bids/${bidId}` : `${API_BASE}/bids`;
 
@@ -1336,10 +1706,34 @@ const app = {
                 throw new Error(err.error || '저장에 실패했습니다.');
             }
 
+            // 성공 후 업로드된 임시 파일은 이제 DB에 귀속되었으므로 롤백 목록 비움
+            uploadedNewFiles = [];
+            this.clearModalAttachments();
+            const bidModalEl = document.getElementById('bidModal');
+            if (bidModalEl) bidModalEl._isForceHiding = true;
             if (this.modalInstance) this.modalInstance.hide();
             await this.loadBids();
         } catch (err) {
+            if (uploadedNewFiles.length > 0) {
+                try {
+                    const token = await getAuthToken();
+                    await fetch(`${API_BASE}/uploads/cleanup`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ files: uploadedNewFiles })
+                    });
+                } catch (cleanupErr) {}
+            }
             alert(err.message);
+        } finally {
+            this.isSavingBid = false;
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = origBtnHtml;
+            }
         }
     },
 
@@ -1659,6 +2053,10 @@ const app = {
             winning_company: status === '유찰' ? '' : document.getElementById('formWinningCompany').value.trim(),
             result_note: document.getElementById('formResultNote').value.trim(),
             remarks: document.getElementById('formRemarks').value.trim(),
+            attachments: this.modalAttachments.map(att => ({
+                ...att,
+                url: resolveAttachmentUrl(att)
+            })),
             total_buy_cost: totalBuyCost,
             total_settlement: totalSettlement,
             total_fee: totalFee,
@@ -1687,13 +2085,15 @@ const app = {
 
         const pageBreak = Boolean(document.getElementById('optPrintPageBreak')?.checked);
         const hideCost = Boolean(document.getElementById('optPrintHideCost')?.checked);
+        const showPhotos = Boolean(document.getElementById('optPrintShowPhotos')?.checked);
 
-        container.innerHTML = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost });
+        container.innerHTML = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost, showPhotos });
 
         if (statusTextEl) {
             const optsDesc = [];
             if (pageBreak) optsDesc.push('공고별 페이지 분리');
             if (hideCost) optsDesc.push('원가·마진 숨김');
+            if (showPhotos) optsDesc.push('첨부 사진 포함');
             statusTextEl.innerText = `총 ${this.currentPrintData.length}건 인쇄 준비 완료${optsDesc.length ? ` (${optsDesc.join(', ')})` : ''}`;
         }
     },
@@ -1701,6 +2101,7 @@ const app = {
     buildPrintReportHtml: function(records, opts = {}) {
         const pageBreak = Boolean(opts.pageBreak);
         const hideCost = Boolean(opts.hideCost);
+        const showPhotos = Boolean(opts.showPhotos);
         const nowStr = new Date().toLocaleString('ko-KR', {
             year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit'
@@ -1972,8 +2373,30 @@ const app = {
                 ? `<div style="margin-top:5px; padding:4px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:3px; font-size:10px; color:#334155;"><strong>결과/유찰 메모:</strong> ${escapeHtml(bid.result_note)}</div>`
                 : '';
 
+            const bidPhotos = Array.isArray(bid.attachments) ? bid.attachments : [];
+            const hasPhotosRendered = showPhotos && bidPhotos.length > 0;
+            const photosSectionHtml = hasPhotosRendered
+                ? `
+                    <div class="gs-print-photos-section">
+                        <div class="gs-print-photos-title">첨부 사진 (${bidPhotos.length}장)</div>
+                        <div class="gs-print-photos-grid">
+                            ${bidPhotos.map((att, pIdx) => {
+                                const src = resolveAttachmentUrl(att);
+                                const label = att.originalName || att.filename || `사진 ${pIdx + 1}`;
+                                return `
+                                    <div class="gs-print-photo-box">
+                                        <img src="${escapeHtml(src)}" alt="${escapeHtml(label)}">
+                                        <div class="gs-print-photo-caption">[사진 ${pIdx + 1}] ${escapeHtml(label)}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `
+                : '';
+
             return `
-                <section class="gs-print-bid-card ${pageBreak ? 'page-break' : ''}">
+                <section class="gs-print-bid-card ${pageBreak ? 'page-break' : ''} ${hasPhotosRendered ? 'has-photos' : ''}">
                     <div class="gs-print-card-header">
                         <div class="gs-print-card-title">
                             [${idx + 1}] ${escapeHtml(bid.title || '-')}
@@ -2015,6 +2438,7 @@ const app = {
                         ${compareSectionHtml}
                         ${resultNoteHtml}
                         ${itemsTableHtml}
+                        ${photosSectionHtml}
                     </div>
                 </section>
             `;
@@ -2080,6 +2504,10 @@ const app = {
                 overflow: hidden;
                 break-inside: avoid;
                 page-break-inside: avoid;
+            }
+            .gs-print-bid-card.has-photos {
+                break-inside: auto;
+                page-break-inside: auto;
             }
             .gs-print-bid-card.page-break:not(:last-child) {
                 break-after: page;
@@ -2167,6 +2595,49 @@ const app = {
                 font-weight: 700;
                 color: #0f172a;
             }
+            .gs-print-photos-section {
+                margin-top: 8px;
+                border-top: 1px dashed #cbd5e1;
+                padding-top: 6px;
+            }
+            .gs-print-photos-title {
+                font-size: 9.5px;
+                font-weight: 700;
+                color: #334155;
+                margin-bottom: 5px;
+            }
+            .gs-print-photos-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .gs-print-photo-box {
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                padding: 4px;
+                background: #ffffff;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .gs-print-photo-box img {
+                max-width: 100%;
+                max-height: 240px;
+                object-fit: contain;
+                display: block;
+            }
+            .gs-print-photo-caption {
+                margin-top: 3px;
+                font-size: 8.5px;
+                color: #64748b;
+                width: 100%;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         `;
     },
 
@@ -2178,7 +2649,8 @@ const app = {
 
         const pageBreak = Boolean(document.getElementById('optPrintPageBreak')?.checked);
         const hideCost = Boolean(document.getElementById('optPrintHideCost')?.checked);
-        const reportHtml = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost });
+        const showPhotos = Boolean(document.getElementById('optPrintShowPhotos')?.checked);
+        const reportHtml = this.buildPrintReportHtml(this.currentPrintData, { pageBreak, hideCost, showPhotos });
 
         const frame = document.getElementById('printFrame');
         if (!frame || !frame.contentWindow) {
@@ -2199,10 +2671,36 @@ const app = {
 </html>`);
         frameDoc.close();
 
-        setTimeout(() => {
-            frame.contentWindow.focus();
-            frame.contentWindow.print();
-        }, 120);
+        const imgs = Array.from(frameDoc.querySelectorAll('img'));
+        const triggerPrint = () => {
+            setTimeout(() => {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            }, 80);
+        };
+
+        if (imgs.length === 0) {
+            triggerPrint();
+            return;
+        }
+
+        let settled = false;
+        const done = () => {
+            if (settled) return;
+            settled = true;
+            triggerPrint();
+        };
+
+        const waitAll = Promise.all(imgs.map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+                img.onload = resolve;
+                img.onerror = resolve;
+            });
+        }));
+
+        waitAll.then(done);
+        setTimeout(done, 6000);
     }
 };
 
@@ -2221,6 +2719,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el.type === 'button' || el.type === 'submit' || el.type === 'reset' || el.type === 'file') return;
             vals.push(`${el.id || el.name || el.className}:${el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value}`);
         });
+        if (modalEl.id === 'bidModal' && Array.isArray(app.modalAttachments)) {
+            vals.push(`attachments:${app.modalAttachments.map(a => a.id).join(',')}`);
+        }
         return vals.join('|');
     }
     function isModalDirty(modalEl) {
@@ -2257,6 +2758,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modalEl) {
             modalEl._isForceHiding = false;
             modalEl._confirmingHide = false;
+            if (modalEl.id === 'bidModal') {
+                app.clearModalAttachments();
+            }
         }
         if (document.querySelector('.modal.show')) {
             document.body.classList.add('modal-open');

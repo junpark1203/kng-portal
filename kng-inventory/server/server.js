@@ -258,6 +258,11 @@ const DOC_DISPATCH_UPLOAD_DIR = path.join(UPLOAD_DIR, 'doc-dispatch');
 if (!fs.existsSync(DOC_DISPATCH_UPLOAD_DIR)) fs.mkdirSync(DOC_DISPATCH_UPLOAD_DIR, { recursive: true });
 app.use('/api/doc-dispatch/uploads', express.static(DOC_DISPATCH_UPLOAD_DIR, { fallthrough: false }));
 
+// 공새로 입찰관리 첨부 사진 (원본 이미지) — 미리보기/인쇄용 직접 접근 허용
+const GONGSAERO_UPLOAD_DIR = path.join(UPLOAD_DIR, 'gongsaero-bidding');
+if (!fs.existsSync(GONGSAERO_UPLOAD_DIR)) fs.mkdirSync(GONGSAERO_UPLOAD_DIR, { recursive: true });
+app.use('/api/gongsaero-bidding/uploads', express.static(GONGSAERO_UPLOAD_DIR, { fallthrough: false }));
+
 // 견적서 QR 모바일 제품 상세 카탈로그 공개 조회 API 및 단축 뷰어(/q/:code) — 인증 불필요 (포털 주소 완전 은폐 & 단가/원가/마진 비공개)
 app.get('/q/:code', (req, res) => quotationsRoutes.servePublicCatalogPage(req, res));
 app.get('/api/quotations/public/:id', (req, res) => quotationsRoutes.getPublicCatalog(req, res));
