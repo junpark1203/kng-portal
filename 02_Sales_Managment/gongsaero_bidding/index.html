@@ -36,8 +36,12 @@
             <button type="button" class="btn-erp" id="btnPrintSelected" onclick="app.openPrintPreviewForSelected()" title="체크박스로 선택한 공고 일괄 인쇄">
                 <i class='bx bx-printer'></i> 선택 인쇄 <span class="badge bg-primary text-white ms-1" id="badgeSelectedPrintCount" style="display: none;">0</span>
             </button>
-            <button type="button" class="btn-erp btn-erp-success" onclick="app.exportToExcel()" title="현재 목록 엑셀 다운로드">
-                <i class='bx bxs-file-export'></i> 엑셀저장
+            <button type="button" class="btn-erp btn-erp-success" id="btnExportSelectedExcel" onclick="app.exportToExcel()" title="체크박스로 선택한 공고들을 담당자 배포용 엑셀(양방향 수식·2833 잠금·첨부사진 시트 포함)로 다운로드">
+                <i class='bx bxs-file-export'></i> 선택 엑셀저장 <span class="badge bg-white text-success ms-1" id="badgeSelectedExcelCount" style="display: none;">0</span>
+            </button>
+            <input type="file" id="bulkTenderExcelUploadInput" accept=".xlsx,.xls" hidden onchange="app.importBulkTenderExcel(event)">
+            <button type="button" class="btn-erp" id="btnImportBulkExcel" onclick="document.getElementById('bulkTenderExcelUploadInput').click()" title="담당 직원이 단가를 작성한 엑셀 파일을 업로드하여 해당 공고들에 일괄 반영">
+                <i class='bx bx-upload text-success'></i> 엑셀 단가반영
             </button>
             <button type="button" class="btn-erp btn-erp-primary" onclick="app.openNewBidModal()" title="새 입찰공고 등록">
                 <i class='bx bx-plus-circle'></i> 새 입찰공고 등록
@@ -687,7 +691,7 @@
     <!-- ExcelJS (MIT Open Source) for formula & password-protected tender sheet export -->
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <!-- Application Logic -->
-    <script src="app.js?v=20261124_3"></script>
+    <script src="app.js?v=20261124_4"></script>
 </body>
 
 </html>
